@@ -7,8 +7,10 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { Menu } from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
 
 export function Header() {
+  const navigate = useNavigate();
   return (
     <header className="fixed top-0 w-full z-[1000] bg-white shadow-sm border-b border-[#e5e7eb]">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -26,9 +28,9 @@ export function Header() {
                 </svg>
               </div>
             </div>
-            <div className="ml-3">
+            <Link to="/" className="ml-3">
               <span className="text-xl font-bold text-[#2563eb]">AirsSky</span>
-            </div>
+            </Link>
           </div>
 
           {/* Menu desktop */}
@@ -36,7 +38,7 @@ export function Header() {
             {["Flights", "Hotels", "Cars", "Deals", "Blogs"].map((item) => (
               <a
                 key={item}
-                href="#"
+                href={`${item}`}
                 className="text-[#374151] hover:text-[#2563eb] font-medium"
               >
                 {item}
@@ -48,12 +50,12 @@ export function Header() {
           <div className="hidden md:flex items-center space-x-4">
             <Button
               variant="ghost"
-              className="text-[#374151] hover:text-[#2563eb]"
+              className="bg-[#2563eb] hover:bg-[#1e40af] text-white w-full"
+              onClick={() => {
+                navigate("/auth");
+              }}
             >
               Sign In
-            </Button>
-            <Button className="bg-[#2563eb] hover:bg-[#1e40af] text-white">
-              Sign Up
             </Button>
           </div>
 
@@ -87,12 +89,12 @@ export function Header() {
                 <div className="p-4 border-t flex flex-col space-y-2">
                   <Button
                     variant="ghost"
-                    className="text-[#374151] hover:text-[#2563eb] w-full"
+                    className="bg-[#2563eb] hover:bg-[#1e40af] text-white w-full"
+                    onClick={() => {
+                      navigate("/auth");
+                    }}
                   >
                     Sign In
-                  </Button>
-                  <Button className="bg-[#2563eb] hover:bg-[#1e40af] text-white w-full">
-                    Sign Up
                   </Button>
                 </div>
               </SheetContent>

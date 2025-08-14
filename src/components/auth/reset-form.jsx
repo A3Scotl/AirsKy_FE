@@ -4,9 +4,33 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 
 export default function ResetForm({ setCurrentView }) {
+  const handleBackClick = () => {
+    // Navigate back to home page or previous page
+    window.history.back();
+  };
+
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
+    <div className="min-h-screen bg-gray-50">
+      {/* Header */}
+      <div className="bg-white shadow-sm border-b border-gray-200">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center h-16">
+            <button
+              onClick={handleBackClick}
+              className="flex items-center text-gray-600 hover:text-gray-900 transition-colors"
+            >
+              <ArrowLeft className="w-5 h-5 mr-2" />
+              Back
+            </button>
+            <h1 className="text-xl font-bold text-blue-600">AirSky</h1>
+            <div className="w-16"></div> {/* Spacer for center alignment */}
+          </div>
+        </div>
+      </div>
+
+      {/* Main Content */}
+      <div className="flex items-center justify-center p-4 py-12">
+        <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <h1 className="text-2xl font-semibold text-blue-600">AirSky</h1>
         </div>
@@ -41,6 +65,7 @@ export default function ResetForm({ setCurrentView }) {
             </form>
           </CardContent>
         </Card>
+        </div>
       </div>
     </div>
   );
