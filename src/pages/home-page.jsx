@@ -79,10 +79,6 @@ function HomePage() {
           <p className="">
             Partner with leading airlines for your perfect journey
           </p>
-          <p className="text-lg max-w-2xl mx-auto mb-8">
-            ✈️ Over 500+ Airlines • 🌍 1000+ Destinations • 💰 Best Price
-            Guarantee • 📞 24/7 Support
-          </p>
         </div>
 
         <Swiper

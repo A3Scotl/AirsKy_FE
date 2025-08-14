@@ -1,22 +1,95 @@
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
-import PublicLayout from "@/layout/public-layout";
-import HomePage from "@/pages/home";
-import AuthLayout from "./layout/auth-layout";
-import AuthPage from "./pages/auth";
+import {
+  BrowserRouter as Router,
+  Routes,
+  Route,
+  useLocation,
+} from "react-router-dom";
+import { lazy, Suspense } from "react";
+import { useScrollToTop } from "@/hooks/use-scroll-to-top";
+import { AnimatePresence } from "framer-motion";
+import { AuthProvider, useAuth } from "@/contexts/auth-context";
+import { Toaster } from "sonner";
+import LoadingPage from "@/pages/loading/loading-page";
+import PageTransition from "@/components/common/page-transition";
+
+// Lazy load tất cả page
+const HomePage = lazy(() => import("@/pages/home-page"));
+const AuthPage = lazy(() => import("@/pages/auth-page"));
+const FlightPage = lazy(() => import("@/pages/flight-page"));
+const FlightBookingStepper = lazy(() => import("@/pages/booking-stepper-page"));
+const FlightDetail = lazy(() => import("@/pages/flight-detail-page"));
+const PublicLayout = lazy(() => import("@/layouts/public-layout"));
+const AuthLayout = lazy(() => import("@/layouts/auth-layout"));
+
+function AppRoutes() {
+  const { loading } = useAuth();
+  const location = useLocation();
+  useScrollToTop();
+
+  if (loading) return <LoadingPage />;
+
+  return (
+    <Suspense fallback={<LoadingPage />}>
+      <AnimatePresence mode="wait">
+        <Routes location={location} key={location.pathname}>
+          <Route path="/" element={<PublicLayout />}>
+            <Route
+              index
+              element={
+                <PageTransition>
+                  <HomePage />
+                </PageTransition>
+              }
+            />
+            <Route
+              path="/flights"
+              element={
+                <PageTransition>
+                  <FlightPage />
+                </PageTransition>
+              }
+            />
+            <Route
+              path="/booking-stepper"
+              element={
+                <PageTransition>
+                  <FlightBookingStepper />
+                </PageTransition>
+              }
+            />
+            <Route
+              path="/detail"
+              element={
+                <PageTransition>
+                  <FlightDetail />
+                </PageTransition>
+              }
+            />
+          </Route>
+
+          <Route path="/auth" element={<AuthLayout />}>
+            <Route
+              index
+              element={
+                <PageTransition>
+                  <AuthPage />
+                </PageTransition>
+              }
+            />
+          </Route>
+        </Routes>
+      </AnimatePresence>
+    </Suspense>
+  );
+}
 
 function App() {
   return (
     <Router>
-      <Routes>
-        <Route path="/" element={<PublicLayout />}>
-          <Route index element={<HomePage />} />
-          {/* Thêm các route khác ở đây */}
-        </Route>
-        <Route path="/login" element={<AuthLayout />}>
-          <Route index element={<AuthPage />} />
-          {/* Thêm các route khác ở đây */}
-        </Route>
-      </Routes>
+      <AuthProvider>
+        <Toaster position="top-right" richColors closeButton duration={3000} />
+        <AppRoutes />
+      </AuthProvider>
     </Router>
   );
 }
