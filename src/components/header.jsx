@@ -6,11 +6,27 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
-import { Menu } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Menu, User, LogOut } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
+import { useAuth } from "@/contexts/auth-context";
 
 export function Header() {
   const navigate = useNavigate();
+  const { user, logout } = useAuth();
+
+  const handleLogout = () => {
+    logout();
+    navigate("/auth");
+  };
+
   return (
     <header className="fixed top-0 w-full z-[1000] bg-white shadow-sm border-b border-[#e5e7eb]">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -31,27 +47,50 @@ export function Header() {
           {/* Menu desktop */}
           <nav className="hidden md:flex space-x-8">
             {["Flights", "Hotels", "Cars", "Deals", "Blogs"].map((item) => (
-              <a
+              <Link
                 key={item}
-                href={`${item}`}
+                to={`/${item.toLowerCase()}`}
                 className="text-[#374151] hover:text-[#2563eb] font-medium"
               >
                 {item}
-              </a>
+              </Link>
             ))}
           </nav>
 
           {/* Actions desktop */}
           <div className="hidden md:flex items-center space-x-4">
-            <Button
-              variant="ghost"
-              className="bg-[#2563eb] hover:bg-[#1e40af] text-white w-full"
-              onClick={() => {
-                navigate("/auth");
-              }}
-            >
-              Sign In
-            </Button>
+            {user ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" className="flex items-center space-x-2">
+                    <User className="w-5 h-5" />
+                    <span>{user.email || "User"}</span>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuLabel>My Account</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem asChild>
+                    <Link to="/profile" className="flex items-center">
+                      <User className="w-4 h-4 mr-2" />
+                      Profile
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleLogout} className="flex items-center">
+                    <LogOut className="w-4 h-4 mr-2" />
+                    Logout
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : (
+              <Button
+                variant="ghost"
+                className="bg-[#2563eb] hover:bg-[#1e40af] text-white w-full"
+                onClick={() => navigate("/auth")}
+              >
+                Sign In
+              </Button>
+            )}
           </div>
 
           {/* Mobile menu button */}
@@ -71,26 +110,45 @@ export function Header() {
                 <nav className="flex flex-col space-y-4 p-4">
                   {["Flights", "Hotels", "Cars", "Deals", "Blogs"].map(
                     (item) => (
-                      <a
+                      <Link
                         key={item}
-                        href="#"
+                        to={`/${item.toLowerCase()}`}
                         className="text-[#374151] hover:text-[#2563eb] font-medium"
                       >
                         {item}
-                      </a>
+                      </Link>
                     )
                   )}
                 </nav>
                 <div className="p-4 border-t flex flex-col space-y-2">
-                  <Button
-                    variant="ghost"
-                    className="bg-[#2563eb] hover:bg-[#1e40af] text-white w-full"
-                    onClick={() => {
-                      navigate("/auth");
-                    }}
-                  >
-                    Sign In
-                  </Button>
+                  {user ? (
+                    <>
+                      <Button
+                        variant="ghost"
+                        className="flex items-center justify-start space-x-2"
+                        onClick={() => navigate("/profile")}
+                      >
+                        <User className="w-5 h-5" />
+                        <span>Profile</span>
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        className="flex items-center justify-start space-x-2"
+                        onClick={handleLogout}
+                      >
+                        <LogOut className="w-5 h-5" />
+                        <span>Logout</span>
+                      </Button>
+                    </>
+                  ) : (
+                    <Button
+                      variant="ghost"
+                      className="bg-[#2563eb] hover:bg-[#1e40af] text-white w-full"
+                      onClick={() => navigate("/auth")}
+                    >
+                      Sign In
+                    </Button>
+                  )}
                 </div>
               </SheetContent>
             </Sheet>
