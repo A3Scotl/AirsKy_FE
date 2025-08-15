@@ -11,37 +11,32 @@ function HomePage() {
   const airlines = [
     {
       name: "Emirates",
-      logo: "https://logos-world.net/wp-content/uploads/2020/03/Emirates-Logo.png",
+      logo: "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d0/Emirates_logo.svg/2560px-Emirates_logo.svg.png",
       description: "Premium international flights",
     },
     {
       name: "VietJet Air",
-      logo: "https://logos-world.net/wp-content/uploads/2021/02/VietJet-Air-Logo.png",
+      logo: "https://upload.wikimedia.org/wikipedia/commons/8/8d/VietJet_Air_logo.png",
       description: "Budget-friendly domestic & international",
     },
     {
       name: "Vietnam Airlines",
-      logo: "https://logos-world.net/wp-content/uploads/2021/02/Vietnam-Airlines-Logo.png",
+      logo: "https://upload.wikimedia.org/wikipedia/en/thumb/b/b6/Vietnam_Airlines_logo_2015.svg/375px-Vietnam_Airlines_logo_2015.svg.png",
       description: "National flag carrier of Vietnam",
     },
     {
       name: "Qatar Airways",
-      logo: "https://logos-world.net/wp-content/uploads/2020/03/Qatar-Airways-Logo.png",
+      logo: "https://upload.wikimedia.org/wikipedia/en/thumb/9/9b/Qatar_Airways_Logo.svg/375px-Qatar_Airways_Logo.svg.png",
       description: "Award-winning airline",
     },
     {
       name: "Singapore Airlines",
-      logo: "https://logos-world.net/wp-content/uploads/2020/03/Singapore-Airlines-Logo.png",
+      logo: "https://upload.wikimedia.org/wikipedia/en/thumb/6/6b/Singapore_Airlines_Logo_2.svg/330px-Singapore_Airlines_Logo_2.svg.png",
       description: "World's best airline",
     },
     {
       name: "Turkish Airlines",
-      logo: "https://logos-world.net/wp-content/uploads/2020/03/Turkish-Airlines-Logo.png",
-      description: "Connecting Europe, Asia & Africa",
-    },
-    {
-      name: "Thailand Airlines",
-      logo: "https://logos-world.net/wp-content/uploads/2020/03/Turkish-Airlines-Logo.png",
+      logo: "https://upload.wikimedia.org/wikipedia/commons/thumb/0/00/Turkish_Airlines_logo_2019_compact.svg/2560px-Turkish_Airlines_logo_2019_compact.svg.png",
       description: "Connecting Europe, Asia & Africa",
     },
   ];
@@ -100,13 +95,18 @@ function HomePage() {
         >
           {airlines.map((airline, index) => (
             <SwiperSlide key={index}>
-              <div className="bg-white/90 backdrop-blur-sm p-4 rounded-xl hover:bg-white transition-all duration-300 group cursor-pointer">
+              <div className="p-4 transition-all duration-300 group cursor-pointer">
                 <div className="text-center">
-                  <img
-                    src={airline.logo}
-                    alt={airline.name}
-                    className="h-12 w-auto mx-auto mb-3 object-cover group-hover:scale-110 transition-transform duration-300"
-                  />
+                  <div className="h-16 flex items-center justify-center mb-3">
+                    <img
+                      src={airline.logo}
+                      alt={airline.name}
+                      className="h-full w-auto max-w-[120px] object-contain group-hover:scale-110 transition-transform duration-300 filter grayscale hover:grayscale-0"
+                      style={{
+                        filter: "drop-shadow(0 1px 2px rgba(0, 0, 0, 0.1))",
+                      }}
+                    />
+                  </div>
                 </div>
               </div>
             </SwiperSlide>

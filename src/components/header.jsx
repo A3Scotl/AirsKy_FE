@@ -15,16 +15,23 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Menu, User, LogOut } from "lucide-react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/auth-context";
 
 export function Header() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user, logout } = useAuth();
 
   const handleLogout = () => {
     logout();
     navigate("/auth");
+  };
+
+  // Function to check if current path matches menu item
+  const isActive = (item) => {
+    const path = `/${item.toLowerCase()}`;
+    return location.pathname === path || location.pathname.startsWith(path + '/');
   };
 
   return (
@@ -50,7 +57,11 @@ export function Header() {
               <Link
                 key={item}
                 to={`/${item.toLowerCase()}`}
-                className="text-[#374151] hover:text-[#2563eb] font-medium"
+                className={`font-medium transition-colors duration-200 ${
+                  isActive(item)
+                    ? "text-[#2563eb] font-bold"
+                    : "text-[#374151] hover:text-[#2563eb]"
+                }`}
               >
                 {item}
               </Link>
@@ -113,7 +124,11 @@ export function Header() {
                       <Link
                         key={item}
                         to={`/${item.toLowerCase()}`}
-                        className="text-[#374151] hover:text-[#2563eb] font-medium"
+                        className={`font-medium transition-colors duration-200 ${
+                          isActive(item)
+                            ? "text-[#2563eb] font-semibold bg-blue-50 px-3 py-2 rounded-md"
+                            : "text-[#374151] hover:text-[#2563eb] px-3 py-2 rounded-md hover:bg-gray-50"
+                        }`}
                       >
                         {item}
                       </Link>

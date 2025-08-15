@@ -20,6 +20,7 @@ const FlightBookingStepper = lazy(() => import("@/pages/booking-stepper-page"));
 const ConfirmBookingPage = lazy(() => import("@/pages/confirm-booking-page"));
 const FlightDetail = lazy(() => import("@/pages/flight-detail-page"));
 const ProfilePage = lazy(() => import("@/pages/profile-page"));
+const NotFoundPage = lazy(() => import("@/pages/not-found-page"));
 const PublicLayout = lazy(() => import("@/layouts/public-layout"));
 const AuthLayout = lazy(() => import("@/layouts/auth-layout"));
 
@@ -95,6 +96,16 @@ function AppRoutes() {
               }
             />
           </Route>
+
+          {/* 404 Route - Must be last */}
+          <Route
+            path="*"
+            element={
+              <PageTransition>
+                <NotFoundPage />
+              </PageTransition>
+            }
+          />
         </Routes>
       </AnimatePresence>
     </Suspense>
