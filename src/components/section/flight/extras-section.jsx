@@ -249,7 +249,7 @@ const Extras = () => {
             <Card className="shadow-sm">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  Seat Selection -  A330
+                  Seat Selection - A330
                 </CardTitle>
               </CardHeader>
               <CardContent>

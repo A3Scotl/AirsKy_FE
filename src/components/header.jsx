@@ -16,22 +16,17 @@ export function Header() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           {/* Logo */}
-          <div className="flex items-center">
+          <Link to="/" className="flex items-center">
             <div className="flex-shrink-0">
-              <div className="w-8 h-8 bg-[#2563eb] rounded-lg flex items-center justify-center">
-                <svg
-                  className="w-5 h-5 text-white"
-                  fill="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z" />
-                </svg>
-              </div>
+              <img
+                className="h-12 w-12 object-cover"
+                src="https://res.cloudinary.com/dzwjgfd7t/image/upload/v1755141382/flight%20booking/main_logo-removebg_xyofym.png"
+                alt="Workflow"
+              />
             </div>
-            <Link to="/" className="ml-3">
-              <span className="text-xl font-bold text-[#2563eb]">AirsSky</span>
-            </Link>
-          </div>
+
+            <span className="text-xl font-bold text-[#2563eb] ml-2">AirsSky</span>
+          </Link>
 
           {/* Menu desktop */}
           <nav className="hidden md:flex space-x-8">

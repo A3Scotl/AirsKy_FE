@@ -6,6 +6,7 @@ import AuthPage from "./pages/auth-page";
 import FlightPage from "./pages/flight-page";
 import { FlightBookingStepper } from "./pages/booking-stepper-page";
 import FlightDetail from "./pages/flight-detail-page";
+import BookingConfirmation from "./pages/confirm-booking-page";
 
 function App() {
   return (
@@ -15,6 +16,7 @@ function App() {
           <Route index element={<HomePage />} />
           <Route path="/flights" element={<FlightPage />} />
           <Route path="/booking-stepper" element={<FlightBookingStepper />} />
+          <Route path="/confirm-booking" element={<BookingConfirmation />} />
 
           {/* detail/:id */}
           <Route path="/detail" element={<FlightDetail />} />
