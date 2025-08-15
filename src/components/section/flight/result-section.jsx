@@ -238,7 +238,6 @@ const allFlights = [
 export function FlightSearchResults() {
   const navigate = useNavigate();
   const [selectedFlight, setSelectedFlight] = useState(null);
-  const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
   const [searchCriteria, setSearchCriteria] = useState(null);
   const [filters, setFilters] = useState({
     priceRange: [20, 1000],
@@ -298,7 +297,11 @@ export function FlightSearchResults() {
 
   const handleBookFlight = (flight) => {
     setSelectedFlight(flight);
-    setIsBookingModalOpen(true);
+  };
+
+  const handleViewFlightDetails = (flight) => {
+    // setSelectedFlight(flight);
+    navigate("/detail");
   };
 
   const handleSelectFare = (flightId, fareId) => {
@@ -554,7 +557,7 @@ export function FlightSearchResults() {
               filteredAndSortedFlights.map((flight) => (
                 <Card
                   key={flight.id}
-                  className="p-4 hover:shadow-md transition-shadow"
+                  className="p-4 hover:shadow-md transition-shadow hover:bg-blue-50/30 transition-bg cursor-pointer"
                 >
                   <div className="flex items-center justify-between">
                     {/* Left side - Airline info and route */}
@@ -606,7 +609,8 @@ export function FlightSearchResults() {
                       </div>
                       <Button
                         className="bg-blue-600 hover:bg-blue-700 px-6 py-3 text-white font-semibold"
-                        onClick={() => handleBookFlight(flight)}
+                        // onClick={() => handleBookFlight(flight)}
+                        onClick={() => handleViewFlightDetails(flight)}
                       >
                         Detail
                         <ArrowRight className="w-4 h-4 ml-2" />

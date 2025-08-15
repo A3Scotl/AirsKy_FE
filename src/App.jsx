@@ -17,7 +17,9 @@ const HomePage = lazy(() => import("@/pages/home-page"));
 const AuthPage = lazy(() => import("@/pages/auth-page"));
 const FlightPage = lazy(() => import("@/pages/flight-page"));
 const FlightBookingStepper = lazy(() => import("@/pages/booking-stepper-page"));
+const ConfirmBookingPage = lazy(() => import("@/pages/confirm-booking-page"));
 const FlightDetail = lazy(() => import("@/pages/flight-detail-page"));
+const ProfilePage = lazy(() => import("@/pages/profile-page"));
 const PublicLayout = lazy(() => import("@/layouts/public-layout"));
 const AuthLayout = lazy(() => import("@/layouts/auth-layout"));
 
@@ -58,10 +60,26 @@ function AppRoutes() {
               }
             />
             <Route
+              path="/confirm-booking"
+              element={
+                <PageTransition>
+                  <ConfirmBookingPage />
+                </PageTransition>
+              }
+            />
+            <Route
               path="/detail"
               element={
                 <PageTransition>
                   <FlightDetail />
+                </PageTransition>
+              }
+            />
+            <Route
+              path="/profile"
+              element={
+                <PageTransition>
+                  <ProfilePage />
                 </PageTransition>
               }
             />

@@ -1,11 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import Stepper from "../lib/Stepper";
-// import FlightInfo from "../components/section/flight/flight-detail-section";
-import PassengerDetails from "../components/section/flight/passenger-detail-section";
-import Extras from "../components/section/flight/extras-section";
-import Payment from "../components/section/flight/payment-section";
+import Stepper from "@/lib/Stepper";
+import PassengerDetails from "@/components/section/flight/passenger-detail-section";
+import Extras from "@/components/section/flight/extras-section";
+import Payment from "@/components/section/flight/payment-section";
 
 const steps = [
   { title: "Flight Selection" },
@@ -13,6 +12,20 @@ const steps = [
   { title: "Extras" },
   { title: "Payment" },
 ];
+
+const FlightInfo = ({ flightDetails }) => (
+  <div className="flex justify-between items-start my-8">
+    <div>
+      <h1 className="text-2xl font-bold">
+        {flightDetails.from} → {flightDetails.to}
+      </h1>
+      <p className="text-sm text-gray-500">
+        {flightDetails.date} {flightDetails.airline} {flightDetails.fare}
+      </p>
+    </div>
+    <div className="text-3xl font-bold">${flightDetails.price}</div>
+  </div>
+);
 
 export function FlightBookingStepper() {
   const [currentStep, setCurrentStep] = useState(2);
@@ -88,20 +101,6 @@ export function FlightBookingStepper() {
     }
   };
 
-  const FlightInfo = ({ flightDetails }) => (
-    <div className="flex justify-between items-start my-8">
-      <div>
-        <h1 className="text-2xl font-bold">
-          {flightDetails.from} → {flightDetails.to}
-        </h1>
-        <p className="text-sm text-gray-500">
-          {flightDetails.date} {flightDetails.airline} {flightDetails.fare}
-        </p>
-      </div>
-      <div className="text-3xl font-bold">${flightDetails.price}</div>
-    </div>
-  );
-
   return (
     <div className="min-h-screen bg-gray-50">
       <main className="max-w-5xl mx-auto py-8">
@@ -146,3 +145,5 @@ export function FlightBookingStepper() {
     </div>
   );
 }
+
+export default FlightBookingStepper;
