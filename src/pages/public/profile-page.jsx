@@ -14,7 +14,7 @@ import { Separator } from "@/components/ui/separator";
 import { Plane, Heart, User, Settings } from "lucide-react";
 
 // Import tab components
-import MyBookingsTab from "../components/section/profile/my-bookings-tab";
+import MyBookingsTab from "../../components/section/profile/my-bookings-tab";
 import FavouritesTab from "@/components/section/profile/favourites-tab";
 import AccountTab from "@/components/section/profile/account-tab";
 import SettingsTab from "@/components/section/profile/settings-tab";

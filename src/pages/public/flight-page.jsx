@@ -1,7 +1,7 @@
 "use client";
 
-import { FlightSearchResults } from "../components/section/flight/result-section";
-import { SuggestionDestination } from "../components/section/flight/suggestion-section";
+import { FlightSearchResults } from "../../components/section/flight/result-section";
+import { SuggestionDestination } from "../../components/section/flight/suggestion-section";
 
 export default function FlightPage() {
   return (
