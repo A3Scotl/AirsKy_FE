@@ -15,13 +15,41 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Menu, User, LogOut } from "lucide-react";
+
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/auth-context";
+
+import { useEffect, useRef, useState } from "react";
 
 export function Header() {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, logout } = useAuth();
+
+  // State for header visibility
+  const [showHeader, setShowHeader] = useState(true);
+  const lastScrollY = useRef(window.scrollY);
+
+  useEffect(() => {
+    let ticking = false;
+    const handleScroll = () => {
+      if (!ticking) {
+        window.requestAnimationFrame(() => {
+          const currentScrollY = window.scrollY;
+          if (currentScrollY > lastScrollY.current && currentScrollY > 60) {
+            setShowHeader(false); // scroll down
+          } else {
+            setShowHeader(true); // scroll up
+          }
+          lastScrollY.current = currentScrollY;
+          ticking = false;
+        });
+        ticking = true;
+      }
+    };
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
 
   const handleLogout = () => {
     logout();
@@ -31,11 +59,18 @@ export function Header() {
   // Function to check if current path matches menu item
   const isActive = (item) => {
     const path = `/${item.toLowerCase()}`;
-    return location.pathname === path || location.pathname.startsWith(path + '/');
+    return (
+      location.pathname === path || location.pathname.startsWith(path + "/")
+    );
   };
 
   return (
-    <header className="fixed top-0 w-full z-[1000] bg-white shadow-sm border-b border-[#e5e7eb]">
+    <header
+      className={`fixed top-0 w-full z-[1000] bg-white/20 backdrop-blur-sm border-b border-white/20 shadow-sm transition-transform duration-500 ease-in-out ${
+        showHeader ? "translate-y-0" : "-translate-y-full"
+      }`}
+      style={{ willChange: "transform" }}
+    >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           {/* Logo */}
@@ -48,19 +83,21 @@ export function Header() {
               />
             </div>
 
-            <span className="text-xl font-bold text-[#2563eb] ml-2">AirsSky</span>
+            <span className="text-xl font-bold bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent ml-2">
+              AirsSky
+            </span>
           </Link>
 
           {/* Menu desktop */}
           <nav className="hidden md:flex space-x-8">
-            {["Flights", "Hotels", "Cars", "Deals", "Blogs"].map((item) => (
+            {["Flights", "Deals", "Blogs"].map((item) => (
               <Link
                 key={item}
                 to={`/${item.toLowerCase()}`}
                 className={`font-medium transition-colors duration-200 ${
                   isActive(item)
                     ? "text-[#2563eb] font-bold"
-                    : "text-[#374151] hover:text-[#2563eb]"
+                    : "text-gray-700 hover:text-[#2563eb]"
                 }`}
               >
                 {item}
@@ -73,7 +110,10 @@ export function Header() {
             {user ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" className="flex items-center space-x-2">
+                  <Button
+                    variant="ghost"
+                    className="flex items-center space-x-2"
+                  >
                     <User className="w-5 h-5" />
                     <span>{user.email || "User"}</span>
                   </Button>
@@ -87,7 +127,10 @@ export function Header() {
                       Profile
                     </Link>
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={handleLogout} className="flex items-center">
+                  <DropdownMenuItem
+                    onClick={handleLogout}
+                    className="flex items-center"
+                  >
                     <LogOut className="w-4 h-4 mr-2" />
                     Logout
                   </DropdownMenuItem>
@@ -119,21 +162,19 @@ export function Header() {
                   </SheetTitle>
                 </SheetHeader>
                 <nav className="flex flex-col space-y-4 p-4">
-                  {["Flights", "Hotels", "Cars", "Deals", "Blogs"].map(
-                    (item) => (
-                      <Link
-                        key={item}
-                        to={`/${item.toLowerCase()}`}
-                        className={`font-medium transition-colors duration-200 ${
-                          isActive(item)
-                            ? "text-[#2563eb] font-semibold bg-blue-50 px-3 py-2 rounded-md"
-                            : "text-[#374151] hover:text-[#2563eb] px-3 py-2 rounded-md hover:bg-gray-50"
-                        }`}
-                      >
-                        {item}
-                      </Link>
-                    )
-                  )}
+                  {["Flights", "Deals", "Blogs"].map((item) => (
+                    <Link
+                      key={item}
+                      to={`/${item.toLowerCase()}`}
+                      className={`font-medium transition-colors duration-200 ${
+                        isActive(item)
+                          ? "text-[#2563eb] font-semibold bg-blue-50 px-3 py-2 rounded-md"
+                          : "text-[#374151] hover:text-[#2563eb] px-3 py-2 rounded-md hover:bg-gray-50"
+                      }`}
+                    >
+                      {item}
+                    </Link>
+                  ))}
                 </nav>
                 <div className="p-4 border-t flex flex-col space-y-2">
                   {user ? (
@@ -173,5 +214,4 @@ export function Header() {
     </header>
   );
 }
-
 export default Header;

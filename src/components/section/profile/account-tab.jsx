@@ -373,7 +373,7 @@ const AccountTab = ({ user }) => {
                     )}
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center flex-wrap justify-end gap-2">
                   {account.connected ? (
                     <>
                       <Badge variant="success" className="mr-2 bg-green-100">
@@ -415,7 +415,7 @@ const AccountTab = ({ user }) => {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="flex items-center justify-between p-4 bg-red-50 rounded-lg">
+          <div className="flex items-center flex-wrap gap-2 justify-between p-4 bg-red-50 rounded-lg">
             <div>
               <p className="font-medium text-red-900">Delete Account</p>
               <p className="text-sm text-red-700">

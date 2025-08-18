@@ -1,123 +1,210 @@
+import {
+  Plane,
+  Mail,
+  Phone,
+  MapPin,
+  Facebook,
+  Twitter,
+  Instagram,
+  Linkedin,
+  Award,
+  Shield,
+  Clock,
+  Users,
+} from "lucide-react";
+
 export function Footer() {
   return (
-    <footer className="bg-[#1f2937] text-white">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <div className="grid md:grid-cols-4 gap-8">
-          {/* Company */}
-          <div>
-            <h3 className="text-lg font-semibold mb-4">Company</h3>
-            <ul className="space-y-2">
-              <li>
-                <a href="#" className="text-gray-300 hover:text-white">
-                  About Us
-                </a>
-              </li>
-              <li>
-                <a href="#" className="text-gray-300 hover:text-white">
-                  Careers
-                </a>
-              </li>
-              <li>
-                <a href="#" className="text-gray-300 hover:text-white">
-                  Press
-                </a>
-              </li>
-              <li>
-                <a href="#" className="text-gray-300 hover:text-white">
-                  Blog
-                </a>
-              </li>
-            </ul>
-          </div>
+    <footer className="bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 text-white relative overflow-hidden">
+      {/* Background Pattern */}
+      <div className="absolute inset-0 opacity-5">
+        <div
+          className="absolute inset-0"
+          style={{
+            backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
+          }}
+        ></div>
+      </div>
 
-          {/* Support */}
-          <div>
-            <h3 className="text-lg font-semibold mb-4">Support</h3>
-            <ul className="space-y-2">
-              <li>
-                <a href="#" className="text-gray-300 hover:text-white">
-                  Help Center
-                </a>
-              </li>
-              <li>
-                <a href="#" className="text-gray-300 hover:text-white">
-                  Contact Us
-                </a>
-              </li>
-              <li>
-                <a href="#" className="text-gray-300 hover:text-white">
-                  Privacy Policy
-                </a>
-              </li>
-              <li>
-                <a href="#" className="text-gray-300 hover:text-white">
-                  Terms of Service
-                </a>
-              </li>
-            </ul>
-          </div>
-
-          {/* Legal */}
-          <div>
-            <h3 className="text-lg font-semibold mb-4">Legal</h3>
-            <ul className="space-y-2">
-              <li>
-                <a href="#" className="text-gray-300 hover:text-white">
-                  Privacy & Cookies Policy
-                </a>
-              </li>
-              <li>
-                <a href="#" className="text-gray-300 hover:text-white">
-                  Terms & Conditions
-                </a>
-              </li>
-              <li>
-                <a href="#" className="text-gray-300 hover:text-white">
-                  Accessibility
-                </a>
-              </li>
-            </ul>
-          </div>
-
-          {/* Newsletter */}
-          <div>
-            <h3 className="text-lg font-semibold mb-4">Newsletter</h3>
-            <p className="text-gray-300 mb-4">
-              Subscribe to get special offers and updates
+      <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        {/* Top Section */}
+        <div className="py-16">
+          <div className="text-center mb-12">
+            <div className="flex items-center justify-center mb-6">
+              <div className="flex-shrink-0">
+                <img
+                  className="h-16 w-16 object-cover"
+                  src="https://res.cloudinary.com/dzwjgfd7t/image/upload/v1755141382/flight%20booking/main_logo-removebg_xyofym.png"
+                  alt="Workflow"
+                />
+              </div>
+              <h2 className="text-4xl font-bold bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">
+                AirSky
+              </h2>
+            </div>
+            <p className="text-xl text-gray-300 max-w-3xl mx-auto">
+              Your trusted partner for seamless flight booking experiences.
+              Discover the world with confidence, comfort, and unbeatable deals.
             </p>
-            <div className="flex">
+          </div>
+
+          {/* Main Footer Content */}
+          <div className="grid md:grid-cols-5 gap-8">
+            {/* Company Info */}
+            <div className="md:col-span-2">
+              <h3 className="text-xl font-bold mb-6 text-white">
+                About AirSky
+              </h3>
+              <p className="text-gray-300 mb-6 leading-relaxed">
+                We revolutionize the way you travel by providing the most
+                comprehensive flight booking platform. From budget-friendly
+                options to luxury experiences, we make your journey
+                unforgettable.
+              </p>
+              <div className="space-y-3">
+                <div className="flex items-center text-gray-300">
+                  <Mail className="w-5 h-5 mr-3 text-blue-400" />
+                  <span>support@airsky.com</span>
+                </div>
+                <div className="flex items-center text-gray-300">
+                  <Phone className="w-5 h-5 mr-3 text-blue-400" />
+                  <span>+1 (555) 123-4567</span>
+                </div>
+                <div className="flex items-center text-gray-300">
+                  <MapPin className="w-5 h-5 mr-3 text-blue-400" />
+                  <span>123 Aviation Blvd, Sky City, SC 12345</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Quick Links */}
+            <div>
+              <h3 className="text-xl font-bold mb-6 text-white">Quick Tags</h3>
+              <ul className="space-y-3">
+                {[
+                  "Flight Search",
+                  "Travel Insurance",
+                  "Group Booking",
+                  "Corporate Travel",
+                ].map((link) => (
+                  <li key={link}>
+                    <a
+                      href="#"
+                      className="text-gray-300 hover:text-blue-400 transition-colors duration-200 hover:translate-x-1 transform inline-block"
+                    >
+                      {link}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            {/* Support */}
+            <div>
+              <h3 className="text-xl font-bold mb-6 text-white">
+                Customer Care
+              </h3>
+              <ul className="space-y-3">
+                {[
+                  "Help Center",
+                  "Contact Support",
+                  "Booking Management",
+                  "Cancellation Policy",
+                  "Refund Status",
+                  "Travel Guidelines",
+                ].map((link) => (
+                  <li key={link}>
+                    <a
+                      href="#"
+                      className="text-gray-300 hover:text-blue-400 transition-colors duration-200 hover:translate-x-1 transform inline-block"
+                    >
+                      {link}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            {/* Legal */}
+            <div>
+              <h3 className="text-xl font-bold mb-6 text-white">
+                Legal & Privacy
+              </h3>
+              <ul className="space-y-3">
+                {[
+                  "Terms of Service",
+                  "Privacy Policy",
+                  "Cookie Policy",
+                  "Accessibility",
+                  "Security Center",
+                  "Compliance",
+                ].map((link) => (
+                  <li key={link}>
+                    <a
+                      href="#"
+                      className="text-gray-300 hover:text-blue-400 transition-colors duration-200 hover:translate-x-1 transform inline-block"
+                    >
+                      {link}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        {/* Newsletter Section */}
+        <div className="border-t border-gray-700/50 py-12">
+          <div className="max-w-4xl mx-auto text-center">
+            <h3 className="text-2xl font-bold mb-4 text-white">
+              Stay Updated with AirSky
+            </h3>
+            <p className="text-gray-300 mb-8">
+              Subscribe to our newsletter and get exclusive deals, travel tips,
+              and destination inspiration delivered to your inbox.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-4 max-w-md mx-auto">
               <input
                 type="email"
-                placeholder="Enter your email"
-                className="flex-1 px-3 py-2 bg-gray-700 text-white rounded-l-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="Enter your email address"
+                className="flex-1 px-6 py-4 bg-white/10 backdrop-blur-sm text-white placeholder-gray-400 rounded-full border border-white/20 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
-              <button className="bg-[#2563eb] px-4 py-2 rounded-r-md hover:bg-[#1e40af] transition-colors">
+              <button className="bg-gradient-to-r from-blue-600 to-cyan-600 px-8 py-4 rounded-full hover:from-blue-700 hover:to-cyan-700 transition-all duration-200 font-semibold text-white shadow-lg hover:shadow-xl transform hover:scale-105">
                 Subscribe
               </button>
             </div>
           </div>
         </div>
 
-        <div className="border-t border-gray-700 mt-8 pt-8 flex flex-col md:flex-row justify-between items-center">
-          <p className="text-gray-300">
-            © 2025 KLTN - AirsKy. All rights reserved.
-          </p>
-          <div className="flex space-x-4 mt-4 md:mt-0">
-            <a href="#" className="text-gray-300 hover:text-white">
-              <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M24 4.557c-.883.392-1.832.656-2.828.775 1.017-.609 1.798-1.574 2.165-2.724-.951.564-2.005.974-3.127 1.195-.897-.957-2.178-1.555-3.594-1.555-3.179 0-5.515 2.966-4.797 6.045-4.091-.205-7.719-2.165-10.148-5.144-1.29 2.213-.669 5.108 1.523 6.574-.806-.026-1.566-.247-2.229-.616-.054 2.281 1.581 4.415 3.949 4.89-.693.188-1.452.232-2.224.084.626 1.956 2.444 3.379 4.6 3.419-2.07 1.623-4.678 2.348-7.29 2.04 2.179 1.397 4.768 2.212 7.548 2.212 9.142 0 14.307-7.721 13.995-14.646.962-.695 1.797-1.562 2.457-2.549z" />
-              </svg>
-            </a>
-            <a href="#" className="text-gray-300 hover:text-white">
-              <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M22.46 6c-.77.35-1.6.58-2.46.69.88-.53 1.56-1.37 1.88-2.38-.83.5-1.75.85-2.72 1.05C18.37 4.5 17.26 4 16 4c-2.35 0-4.27 1.92-4.27 4.29 0 .34.04.67.11.98C8.28 9.09 5.11 7.38 3 4.79c-.37.63-.58 1.37-.58 2.15 0 1.49.75 2.81 1.91 3.56-.71 0-1.37-.2-1.95-.5v.03c0 2.08 1.48 3.82 3.44 4.21a4.22 4.22 0 0 1-1.93.07 4.28 4.28 0 0 0 4 2.98 8.521 8.521 0 0 1-5.33 1.84c-.34 0-.68-.02-1.02-.06C3.44 20.29 5.7 21 8.12 21 16 21 20.33 14.46 20.33 8.79c0-.19 0-.37-.01-.56.84-.6 1.56-1.36 2.14-2.23z" />
-              </svg>
-            </a>
-            <a href="#" className="text-gray-300 hover:text-white">
-              <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M12.017 0C5.396 0 .029 5.367.029 11.987c0 5.079 3.158 9.417 7.618 11.174-.105-.949-.199-2.403.041-3.439.219-.937 1.406-5.957 1.406-5.957s-.359-.72-.359-1.781c0-1.663.967-2.911 2.168-2.911 1.024 0 1.518.769 1.518 1.688 0 1.029-.653 2.567-.992 3.992-.285 1.193.6 2.165 1.775 2.165 2.128 0 3.768-2.245 3.768-5.487 0-2.861-2.063-4.869-5.008-4.869-3.41 0-5.409 2.562-5.409 5.199 0 1.033.394 2.143.889 2.741.099.12.112.225.085.345-.09.375-.293 1.199-.334 1.363-.053.225-.172.271-.402.165-1.495-.69-2.433-2.878-2.433-4.646 0-3.776 2.748-7.252 7.92-7.252 4.158 0 7.392 2.967 7.392 6.923 0 4.135-2.607 7.462-6.233 7.462-1.214 0-2.357-.629-2.75-1.378l-.748 2.853c-.271 1.043-1.002 2.35-1.492 3.146C9.57 23.812 10.763 24.009 12.017 24.009c6.624 0 11.99-5.367 11.99-11.988C24.007 5.367 18.641.001 12.017.001z" />
-              </svg>
-            </a>
+        {/* Bottom Section */}
+        <div className="border-t border-gray-700/50 py-8">
+          <div className="flex flex-col lg:flex-row justify-between items-center">
+            <div className="flex items-center mb-4 lg:mb-0">
+              <p className="text-gray-400">
+                © 2025 AirSky Flight Booking. All rights reserved.
+              </p>
+            </div>
+
+            {/* Social Media */}
+            <div className="flex items-center space-x-6">
+              <span className="text-gray-400 hidden sm:block">Follow us:</span>
+              <div className="flex space-x-4">
+                {[
+                  { Icon: Facebook, color: "hover:text-blue-500" },
+                  { Icon: Twitter, color: "hover:text-sky-400" },
+                  { Icon: Instagram, color: "hover:text-pink-500" },
+                  { Icon: Linkedin, color: "hover:text-blue-600" },
+                ].map(({ Icon, color }, index) => (
+                  <a
+                    key={index}
+                    href="#"
+                    className={`text-gray-400 ${color} transition-all duration-200 hover:scale-110 transform`}
+                  >
+                    <Icon className="w-6 h-6" />
+                  </a>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
       </div>

@@ -43,26 +43,29 @@ const formatDate = (date, formatString) => {
 };
 
 const PassengerDetails = ({ formData, updateFormData, updatePassenger }) => (
-  <div>
-    <h2 className="text-xl font-bold mb-4">Passenger Information</h2>
-    <p className="text-sm text-gray-500 mb-6">
+  <div className="w-full">
+    <h2 className="text-lg sm:text-xl font-bold mb-4">Passenger Information</h2>
+    <p className="text-xs sm:text-sm text-gray-500 mb-4 sm:mb-6">
       Please provide the required information for all passengers
     </p>
 
     {/* Contact Person */}
-    <div className="mb-8 border-2 border-gray-200 p-4 rounded-lg bg-gray-50">
-      <div className="flex items-center gap-2 mb-4">
-        <div className="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center">
-          <span className="text-blue-600 text-sm">👤</span>
+    <div className="mb-6 sm:mb-8 border-2 border-gray-200 p-3 sm:p-4 rounded-lg bg-gray-50">
+      <div className="flex items-center gap-2 mb-3 sm:mb-4">
+        <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-blue-100 flex items-center justify-center">
+          <span className="text-blue-600 text-xs sm:text-sm">👤</span>
         </div>
-        <h3 className="font-semibold">Contact Person</h3>
+        <h3 className="font-semibold text-sm sm:text-base">Contact Person</h3>
       </div>
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
         <div>
-          <Label htmlFor="contact-fullname">Full Name *</Label>
+          <Label htmlFor="contact-fullname" className="text-xs sm:text-sm">
+            Full Name *
+          </Label>
           <Input
             id="contact-fullname"
             placeholder="Enter your full name"
+            className="text-sm"
             value={formData.contact.fullName}
             onChange={(e) =>
               updateFormData("contact", "fullName", e.target.value)
@@ -70,28 +73,37 @@ const PassengerDetails = ({ formData, updateFormData, updatePassenger }) => (
           />
         </div>
         <div>
-          <Label htmlFor="contact-phone">Phone Number *</Label>
+          <Label htmlFor="contact-phone" className="text-xs sm:text-sm">
+            Phone Number *
+          </Label>
           <Input
             id="contact-phone"
             placeholder="Enter phone number"
+            className="text-sm"
             value={formData.contact.phone}
             onChange={(e) => updateFormData("contact", "phone", e.target.value)}
           />
         </div>
         <div>
-          <Label htmlFor="contact-email">Email Address *</Label>
+          <Label htmlFor="contact-email" className="text-xs sm:text-sm">
+            Email Address *
+          </Label>
           <Input
             id="contact-email"
             placeholder="Enter your email address"
+            className="text-sm"
             value={formData.contact.email}
             onChange={(e) => updateFormData("contact", "email", e.target.value)}
           />
         </div>
         <div>
-          <Label htmlFor="contact-confirm-email">Confirm Email *</Label>
+          <Label htmlFor="contact-confirm-email" className="text-xs sm:text-sm">
+            Confirm Email *
+          </Label>
           <Input
             id="contact-confirm-email"
             placeholder="Confirm your email address"
+            className="text-sm"
             value={formData.contact.confirmEmail}
             onChange={(e) =>
               updateFormData("contact", "confirmEmail", e.target.value)
@@ -99,7 +111,7 @@ const PassengerDetails = ({ formData, updateFormData, updatePassenger }) => (
           />
         </div>
       </div>
-      <div className="flex items-center gap-2 mt-4">
+      <div className="flex items-center gap-2 mt-3 sm:mt-4">
         <Checkbox
           id="is-passenger"
           checked={formData.contact.isPassenger}
@@ -107,35 +119,44 @@ const PassengerDetails = ({ formData, updateFormData, updatePassenger }) => (
             updateFormData("contact", "isPassenger", checked)
           }
         />
-        <Label htmlFor="is-passenger">I am one of the passengers.</Label>
+        <Label htmlFor="is-passenger" className="text-xs sm:text-sm">
+          I am one of the passengers.
+        </Label>
       </div>
     </div>
 
     {/* Passenger 1: Adult */}
-    <div className="mb-8 border-2 border-gray-200 p-4 rounded-lg bg-gray-50">
-      <div className="flex items-center gap-2 mb-4">
-        <div className="w-6 h-6 rounded-full bg-green-100 flex items-center justify-center">
-          <span className="text-green-600 text-sm">👤</span>
+    <div className="mb-6 sm:mb-8 border-2 border-gray-200 p-3 sm:p-4 rounded-lg bg-gray-50">
+      <div className="flex items-center gap-2 mb-3 sm:mb-4">
+        <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-green-100 flex items-center justify-center">
+          <span className="text-green-600 text-xs sm:text-sm">👤</span>
         </div>
-        <h3 className="font-semibold">Passenger 1: Adult</h3>
+        <h3 className="font-semibold text-sm sm:text-base">
+          Passenger 1: Adult
+        </h3>
       </div>
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
         <div>
-          <Label htmlFor="p1-fullname">Full Name *</Label>
+          <Label htmlFor="p1-fullname" className="text-xs sm:text-sm">
+            Full Name *
+          </Label>
           <Input
             id="p1-fullname"
             placeholder="As on passport/ID"
+            className="text-sm"
             value={formData.passengers[0].fullName}
             onChange={(e) => updatePassenger(0, "fullName", e.target.value)}
           />
         </div>
         <div>
-          <Label htmlFor="p1-gender">Gender *</Label>
+          <Label htmlFor="p1-gender" className="text-xs sm:text-sm">
+            Gender *
+          </Label>
           <Select
             value={formData.passengers[0].gender}
             onValueChange={(value) => updatePassenger(0, "gender", value)}
           >
-            <SelectTrigger>
+            <SelectTrigger className="text-sm">
               <SelectValue placeholder="Select Gender" />
             </SelectTrigger>
             <SelectContent>
@@ -145,18 +166,20 @@ const PassengerDetails = ({ formData, updateFormData, updatePassenger }) => (
             </SelectContent>
           </Select>
         </div>
-        <div>
-          <Label htmlFor="p1-dob">Date of Birth *</Label>
+        <div className="sm:col-span-2 lg:col-span-1">
+          <Label htmlFor="p1-dob" className="text-xs sm:text-sm">
+            Date of Birth *
+          </Label>
           <Popover>
             <PopoverTrigger asChild>
               <Button
                 variant="outline"
                 className={cn(
-                  "w-full justify-start text-left font-normal",
+                  "w-full justify-start text-left font-normal text-sm",
                   !formData.passengers[0].dob && "text-muted-foreground"
                 )}
               >
-                <CalendarIcon className="mr-2 h-4 w-4" />
+                <CalendarIcon className="mr-2 h-3 w-3 sm:h-4 sm:w-4" />
                 {formData.passengers[0].dob ? (
                   formatDate(formData.passengers[0].dob, "dd/MM/yyyy")
                 ) : (
@@ -174,20 +197,26 @@ const PassengerDetails = ({ formData, updateFormData, updatePassenger }) => (
             </PopoverContent>
           </Popover>
         </div>
-        <div className="col-span-2">
-          <Label htmlFor="p1-passport">Passport Number (Optional)</Label>
+        <div className="sm:col-span-2 lg:col-span-2">
+          <Label htmlFor="p1-passport" className="text-xs sm:text-sm">
+            Passport Number (Optional)
+          </Label>
           <Input
             id="p1-passport"
             placeholder="Enter passport number"
+            className="text-sm"
             value={formData.passengers[0].passport}
             onChange={(e) => updatePassenger(0, "passport", e.target.value)}
           />
         </div>
-        <div>
-          <Label htmlFor="p1-ffn">Frequent Flyer Number (Optional)</Label>
+        <div className="sm:col-span-2 lg:col-span-1">
+          <Label htmlFor="p1-ffn" className="text-xs sm:text-sm">
+            Frequent Flyer Number (Optional)
+          </Label>
           <Input
             id="p1-ffn"
             placeholder="Enter frequent flyer number"
+            className="text-sm"
             value={formData.passengers[0].frequentFlyer}
             onChange={(e) =>
               updatePassenger(0, "frequentFlyer", e.target.value)

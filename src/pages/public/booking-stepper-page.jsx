@@ -14,16 +14,18 @@ const steps = [
 ];
 
 const FlightInfo = ({ flightDetails }) => (
-  <div className="flex justify-between items-start my-8">
+  <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start my-6 sm:my-8 space-y-4 sm:space-y-0">
     <div>
-      <h1 className="text-2xl font-bold">
+      <h1 className="text-xl sm:text-2xl font-bold">
         {flightDetails.from} → {flightDetails.to}
       </h1>
-      <p className="text-sm text-gray-500">
+      <p className="text-xs sm:text-sm text-gray-500">
         {flightDetails.date} {flightDetails.airline} {flightDetails.fare}
       </p>
     </div>
-    <div className="text-3xl font-bold">${flightDetails.price}</div>
+    <div className="text-2xl sm:text-3xl font-bold text-blue-600 sm:text-gray-900">
+      ${flightDetails.price}
+    </div>
   </div>
 );
 
@@ -103,7 +105,7 @@ export function FlightBookingStepper() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <main className="max-w-5xl mx-auto py-8">
+      <main className="max-w-5xl mx-auto py-8 mt-16 px-4 sm:px-6 lg:px-8">
         <Stepper
           steps={steps}
           currentStep={currentStep}
@@ -123,10 +125,10 @@ export function FlightBookingStepper() {
           }}
         />
         {renderStepContent()}
-        <div className="flex justify-between mt-8">
+        <div className="flex flex-col sm:flex-row justify-between gap-4 sm:gap-0 mt-8">
           <button
             type="button"
-            className="px-4 py-2 border rounded-md text-gray-600 hover:bg-gray-100 disabled:opacity-50"
+            className="px-4 py-2 border rounded-md text-gray-600 hover:bg-gray-100 disabled:opacity-50 order-2 sm:order-1"
             onClick={handleBack}
             disabled={currentStep === 1}
           >
@@ -134,7 +136,7 @@ export function FlightBookingStepper() {
           </button>
           <button
             type="button"
-            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
+            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 order-1 sm:order-2"
             onClick={handleNext}
             disabled={currentStep === steps.length}
           >

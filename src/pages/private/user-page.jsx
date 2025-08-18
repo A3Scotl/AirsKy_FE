@@ -234,7 +234,7 @@ const AdminUsers = () => {
         <div className="flex space-x-3">
           <Button variant="outline" className="hidden sm:flex">
             <Download className="h-4 w-4 mr-2" />
-            Export Users
+            Export
           </Button>
           <Button
             className="bg-blue-600 hover:bg-blue-700"

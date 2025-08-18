@@ -30,16 +30,16 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 
-const FlightFormModal = ({ 
-  open, 
-  onClose, 
-  onSave, 
-  aircraftTypes = [], 
+const FlightFormModal = ({
+  open,
+  onClose,
+  onSave,
+  aircraftTypes = [],
   flight = null, // Flight data for edit mode
-  mode = "add" // "add" or "edit"
+  mode = "add", // "add" or "edit"
 }) => {
   const isEditMode = mode === "edit" && flight;
-  
+
   const initialFormData = {
     flightNumber: "",
     aircraft: "",
@@ -138,7 +138,7 @@ const FlightFormModal = ({
     // Required fields for both add and edit
     const requiredFields = [
       "flightNumber",
-      "aircraft", 
+      "aircraft",
       "departureAirport",
       "arrivalAirport",
       "departureDate",
@@ -161,15 +161,23 @@ const FlightFormModal = ({
     });
 
     // Flight number format validation
-    if (formData.flightNumber && !/^[A-Z]{2}\d{3,4}$/.test(formData.flightNumber)) {
-      newErrors.flightNumber = "Flight number should be in format: AB123 or AB1234";
+    if (
+      formData.flightNumber &&
+      !/^[A-Z]{2}\d{3,4}$/.test(formData.flightNumber)
+    ) {
+      newErrors.flightNumber =
+        "Flight number should be in format: AB123 or AB1234";
     }
 
     // Date validation
     if (formData.departureDate && formData.arrivalDate) {
-      const depDate = new Date(formData.departureDate + " " + formData.departureTime);
-      const arrDate = new Date(formData.arrivalDate + " " + formData.arrivalTime);
-      
+      const depDate = new Date(
+        formData.departureDate + " " + formData.departureTime
+      );
+      const arrDate = new Date(
+        formData.arrivalDate + " " + formData.arrivalTime
+      );
+
       if (arrDate <= depDate) {
         newErrors.arrivalDate = "Arrival time must be after departure time";
       }
@@ -198,7 +206,7 @@ const FlightFormModal = ({
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    
+
     if (validateForm()) {
       // Calculate available seats for add mode
       const processedData = {
@@ -206,10 +214,14 @@ const FlightFormModal = ({
         id: isEditMode ? flight.id : `FL${Date.now()}`,
         capacity: parseInt(formData.capacity),
         economyPrice: parseFloat(formData.economyPrice),
-        businessPrice: formData.businessPrice ? parseFloat(formData.businessPrice) : null,
-        firstPrice: formData.firstPrice ? parseFloat(formData.firstPrice) : null,
-        availableSeats: isEditMode 
-          ? parseInt(formData.availableSeats) 
+        businessPrice: formData.businessPrice
+          ? parseFloat(formData.businessPrice)
+          : null,
+        firstPrice: formData.firstPrice
+          ? parseFloat(formData.firstPrice)
+          : null,
+        availableSeats: isEditMode
+          ? parseInt(formData.availableSeats)
           : parseInt(formData.capacity) - (parseInt(formData.bookedSeats) || 0),
         bookedSeats: isEditMode ? parseInt(formData.bookedSeats) || 0 : 0,
         wifiAvailable: Boolean(formData.wifiAvailable),
@@ -277,7 +289,7 @@ const FlightFormModal = ({
 
   const pilots = [
     "Captain John Smith",
-    "Captain Mary Johnson", 
+    "Captain Mary Johnson",
     "Captain David Wilson",
     "Captain Sarah Brown",
     "Captain Michael Davis",
@@ -311,10 +323,9 @@ const FlightFormModal = ({
                 {isEditMode ? "Edit Flight" : "Add New Flight"}
               </h2>
               <p className="text-sm text-gray-500">
-                {isEditMode 
-                  ? `Update flight ${flight?.flightNumber || ""} information` 
-                  : "Enter flight details to create a new flight"
-                }
+                {isEditMode
+                  ? `Update flight ${flight?.flightNumber || ""} information`
+                  : "Enter flight details to create a new flight"}
               </p>
             </div>
           </div>
@@ -348,7 +359,10 @@ const FlightFormModal = ({
                   id="flightNumber"
                   value={formData.flightNumber}
                   onChange={(e) =>
-                    handleInputChange("flightNumber", e.target.value.toUpperCase())
+                    handleInputChange(
+                      "flightNumber",
+                      e.target.value.toUpperCase()
+                    )
                   }
                   placeholder="VN123"
                   className={errors.flightNumber ? "border-red-500" : ""}
@@ -365,9 +379,13 @@ const FlightFormModal = ({
                 <Label htmlFor="aircraft">Aircraft Type *</Label>
                 <Select
                   value={formData.aircraft}
-                  onValueChange={(value) => handleInputChange("aircraft", value)}
+                  onValueChange={(value) =>
+                    handleInputChange("aircraft", value)
+                  }
                 >
-                  <SelectTrigger className={errors.aircraft ? "border-red-500" : ""}>
+                  <SelectTrigger
+                    className={errors.aircraft ? "border-red-500" : ""}
+                  >
                     <SelectValue placeholder="Select aircraft" />
                   </SelectTrigger>
                   <SelectContent>
@@ -389,7 +407,9 @@ const FlightFormModal = ({
                   id="capacity"
                   type="number"
                   value={formData.capacity}
-                  onChange={(e) => handleInputChange("capacity", e.target.value)}
+                  onChange={(e) =>
+                    handleInputChange("capacity", e.target.value)
+                  }
                   placeholder="180"
                   className={errors.capacity ? "border-red-500" : ""}
                 />
@@ -404,7 +424,9 @@ const FlightFormModal = ({
                   <Label htmlFor="status">Flight Status</Label>
                   <Select
                     value={formData.status}
-                    onValueChange={(value) => handleInputChange("status", value)}
+                    onValueChange={(value) =>
+                      handleInputChange("status", value)
+                    }
                   >
                     <SelectTrigger>
                       <SelectValue />
@@ -415,9 +437,13 @@ const FlightFormModal = ({
                           <div className="flex items-center">
                             <Badge
                               variant={
-                                status.value === "completed" ? "default" :
-                                status.value === "cancelled" ? "destructive" :
-                                status.value === "delayed" ? "secondary" : "outline"
+                                status.value === "completed"
+                                  ? "default"
+                                  : status.value === "cancelled"
+                                  ? "destructive"
+                                  : status.value === "delayed"
+                                  ? "secondary"
+                                  : "outline"
                               }
                               className="mr-2"
                             >
@@ -440,12 +466,16 @@ const FlightFormModal = ({
                       id="bookedSeats"
                       type="number"
                       value={formData.bookedSeats}
-                      onChange={(e) => handleInputChange("bookedSeats", e.target.value)}
+                      onChange={(e) =>
+                        handleInputChange("bookedSeats", e.target.value)
+                      }
                       placeholder="0"
                       className={errors.bookedSeats ? "border-red-500" : ""}
                     />
                     {errors.bookedSeats && (
-                      <p className="text-red-500 text-xs mt-1">{errors.bookedSeats}</p>
+                      <p className="text-red-500 text-xs mt-1">
+                        {errors.bookedSeats}
+                      </p>
                     )}
                   </div>
 
@@ -455,7 +485,9 @@ const FlightFormModal = ({
                       id="availableSeats"
                       type="number"
                       value={formData.availableSeats}
-                      onChange={(e) => handleInputChange("availableSeats", e.target.value)}
+                      onChange={(e) =>
+                        handleInputChange("availableSeats", e.target.value)
+                      }
                       placeholder="180"
                     />
                   </div>
@@ -484,7 +516,9 @@ const FlightFormModal = ({
                     handleInputChange("departureAirport", value)
                   }
                 >
-                  <SelectTrigger className={errors.departureAirport ? "border-red-500" : ""}>
+                  <SelectTrigger
+                    className={errors.departureAirport ? "border-red-500" : ""}
+                  >
                     <SelectValue placeholder="Select departure airport" />
                   </SelectTrigger>
                   <SelectContent>
@@ -510,7 +544,9 @@ const FlightFormModal = ({
                     handleInputChange("arrivalAirport", value)
                   }
                 >
-                  <SelectTrigger className={errors.arrivalAirport ? "border-red-500" : ""}>
+                  <SelectTrigger
+                    className={errors.arrivalAirport ? "border-red-500" : ""}
+                  >
                     <SelectValue placeholder="Select arrival airport" />
                   </SelectTrigger>
                   <SelectContent>
@@ -629,14 +665,14 @@ const FlightFormModal = ({
             </CardHeader>
             <CardContent className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               <div>
-                <Label htmlFor="pilot">
-                  Pilot {!isEditMode && "*"}
-                </Label>
+                <Label htmlFor="pilot">Pilot {!isEditMode && "*"}</Label>
                 <Select
                   value={formData.pilot}
                   onValueChange={(value) => handleInputChange("pilot", value)}
                 >
-                  <SelectTrigger className={errors.pilot ? "border-red-500" : ""}>
+                  <SelectTrigger
+                    className={errors.pilot ? "border-red-500" : ""}
+                  >
                     <SelectValue placeholder="Select pilot" />
                   </SelectTrigger>
                   <SelectContent>
@@ -653,9 +689,7 @@ const FlightFormModal = ({
               </div>
 
               <div>
-                <Label htmlFor="gate">
-                  Gate {!isEditMode && "*"}
-                </Label>
+                <Label htmlFor="gate">Gate {!isEditMode && "*"}</Label>
                 <Input
                   id="gate"
                   value={formData.gate}
@@ -676,7 +710,9 @@ const FlightFormModal = ({
                     <Input
                       id="terminal"
                       value={formData.terminal}
-                      onChange={(e) => handleInputChange("terminal", e.target.value)}
+                      onChange={(e) =>
+                        handleInputChange("terminal", e.target.value)
+                      }
                       placeholder="Terminal 1"
                     />
                   </div>
@@ -686,7 +722,9 @@ const FlightFormModal = ({
                     <Input
                       id="checkInCounter"
                       value={formData.checkInCounter}
-                      onChange={(e) => handleInputChange("checkInCounter", e.target.value)}
+                      onChange={(e) =>
+                        handleInputChange("checkInCounter", e.target.value)
+                      }
                       placeholder="Counter 12-15"
                     />
                   </div>
@@ -696,7 +734,9 @@ const FlightFormModal = ({
                     <Input
                       id="baggage"
                       value={formData.baggage}
-                      onChange={(e) => handleInputChange("baggage", e.target.value)}
+                      onChange={(e) =>
+                        handleInputChange("baggage", e.target.value)
+                      }
                       placeholder="20kg checked, 7kg carry-on"
                     />
                   </div>
@@ -705,7 +745,9 @@ const FlightFormModal = ({
                     <Label htmlFor="mealService">Meal Service</Label>
                     <Select
                       value={formData.mealService}
-                      onValueChange={(value) => handleInputChange("mealService", value)}
+                      onValueChange={(value) =>
+                        handleInputChange("mealService", value)
+                      }
                     >
                       <SelectTrigger>
                         <SelectValue placeholder="Select meal service" />
@@ -723,15 +765,21 @@ const FlightFormModal = ({
                     <Label htmlFor="entertainment">Entertainment</Label>
                     <Select
                       value={formData.entertainment}
-                      onValueChange={(value) => handleInputChange("entertainment", value)}
+                      onValueChange={(value) =>
+                        handleInputChange("entertainment", value)
+                      }
                     >
                       <SelectTrigger>
                         <SelectValue placeholder="Select entertainment" />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="none">No Entertainment</SelectItem>
-                        <SelectItem value="basic">Basic Entertainment</SelectItem>
-                        <SelectItem value="premium">Premium Entertainment</SelectItem>
+                        <SelectItem value="basic">
+                          Basic Entertainment
+                        </SelectItem>
+                        <SelectItem value="premium">
+                          Premium Entertainment
+                        </SelectItem>
                         <SelectItem value="live_tv">Live TV</SelectItem>
                       </SelectContent>
                     </Select>
@@ -742,7 +790,9 @@ const FlightFormModal = ({
                       type="checkbox"
                       id="wifiAvailable"
                       checked={formData.wifiAvailable}
-                      onChange={(e) => handleInputChange("wifiAvailable", e.target.checked)}
+                      onChange={(e) =>
+                        handleInputChange("wifiAvailable", e.target.checked)
+                      }
                       className="rounded border-gray-300"
                     />
                     <Label htmlFor="wifiAvailable">WiFi Available</Label>
@@ -755,7 +805,9 @@ const FlightFormModal = ({
                       <Input
                         id="delayReason"
                         value={formData.delayReason}
-                        onChange={(e) => handleInputChange("delayReason", e.target.value)}
+                        onChange={(e) =>
+                          handleInputChange("delayReason", e.target.value)
+                        }
                         placeholder="Weather conditions, technical issues, etc."
                       />
                     </div>
@@ -766,7 +818,9 @@ const FlightFormModal = ({
                     <textarea
                       id="remarks"
                       value={formData.remarks}
-                      onChange={(e) => handleInputChange("remarks", e.target.value)}
+                      onChange={(e) =>
+                        handleInputChange("remarks", e.target.value)
+                      }
                       placeholder="Additional notes or remarks about the flight..."
                       className="w-full p-2 border border-gray-300 rounded-md resize-none"
                       rows={3}

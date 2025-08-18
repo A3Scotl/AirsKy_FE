@@ -204,7 +204,7 @@ const AdminReportPage = () => {
 
           <Button onClick={() => handleExportReport("excel")}>
             <Download className="h-4 w-4 mr-2" />
-            Export Excel
+            Export
           </Button>
         </div>
       </div>

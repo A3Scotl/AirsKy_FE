@@ -42,9 +42,9 @@ function HomePage() {
   ];
 
   return (
-    <div className="bg-white overflow-hidden">
+    <div className="bg-white overflow-hidden pt-0">
       {/* Hero Section with Search Form */}
-      <section className="relative bg-gradient-to-br from-[#2563eb] to-[#1e40af] text-white min-h-[90vh] flex items-center">
+      <section className="relative bg-gradient-to-br from-[#2563eb] to-[#1e40af] text-white min-h-[100vh] flex items-center">
         <div
           className="absolute inset-0 bg-cover bg-center bg-no-repeat"
           style={{

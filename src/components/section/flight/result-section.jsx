@@ -3,8 +3,8 @@
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ArrowRight } from "lucide-react";
-import { useState, useMemo } from "react";
+import { ArrowRight, Filter, ChevronLeft, ChevronRight } from "lucide-react";
+import { useState, useMemo, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { SearchForm } from "../../common/search-form";
 import { FlightFilters } from "./filter-section";
@@ -35,22 +35,6 @@ const formatFlightDuration = (minutes) => {
   const mins = minutes % 60;
   return `${hours}h ${mins}m`;
 };
-
-/**
- * @typedef {Object} Flight
- * @property {string} id
- * @property {string} airline
- * @property {string} airlineLogo
- * @property {string} from
- * @property {string} fromCode
- * @property {string} to
- * @property {string} toCode
- * @property {string} date
- * @property {number} priceNumeric
- * @property {string} type
- * @property {string} departureTime
- * @property {string} duration
- */
 
 const allFlights = [
   {
@@ -248,6 +232,16 @@ export function FlightSearchResults() {
   const [activeTab, setActiveTab] = useState("one-way");
   const [expandedFlights, setExpandedFlights] = useState(new Set());
   const [selectedFares, setSelectedFares] = useState({});
+  const [showMobileFilters, setShowMobileFilters] = useState(false);
+
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [flightsPerPage] = useState(5); // Show 5 flights per page
+
+  // Reset page when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filters, searchCriteria, activeTab]);
 
   // Fare options data
   const fareOptions = [
@@ -327,6 +321,7 @@ export function FlightSearchResults() {
       departureTime: [],
       sortBy: "price-asc",
     });
+    setCurrentPage(1); // Reset to first page
   };
 
   const toggleDetails = (flightId) => {
@@ -434,8 +429,36 @@ export function FlightSearchResults() {
     return filtered;
   }, [filters, searchCriteria, activeTab]);
 
+  // Calculate pagination
+  const totalFlights = filteredAndSortedFlights.length;
+  const totalPages = Math.ceil(totalFlights / flightsPerPage);
+  const startIndex = (currentPage - 1) * flightsPerPage;
+  const endIndex = startIndex + flightsPerPage;
+  const currentFlights = filteredAndSortedFlights.slice(startIndex, endIndex);
+
+  // Reset to first page when filters change
+  const resetCurrentPage = () => setCurrentPage(1);
+
+  // Pagination handlers
+  const handlePageChange = (page) => {
+    setCurrentPage(page);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const handlePrevious = () => {
+    if (currentPage > 1) {
+      handlePageChange(currentPage - 1);
+    }
+  };
+
+  const handleNext = () => {
+    if (currentPage < totalPages) {
+      handlePageChange(currentPage + 1);
+    }
+  };
+
   return (
-    <div className="max-w-7xl mx-auto ">
+    <div className=" mx-auto ">
       {/* Search Form with Background Image */}
       <div className="relative mb-12">
         {/* Background Image with Overlay */}
@@ -459,8 +482,6 @@ export function FlightSearchResults() {
           </div>
         </div>
 
-       
-
         {/* Search Form positioned at bottom border */}
         <div className="absolute left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-full max-w-5xl px-4 z-20">
           <div className="bg-white rounded-2xl shadow-2xl p-6 border border-gray-200">
@@ -472,294 +493,401 @@ export function FlightSearchResults() {
       <DealsSection />
 
       {/* Results Section */}
-      <div className="flex gap-6">
-        {/* Filters Sidebar */}
-        <div className="w-80 flex-shrink-0">
-          <FlightFilters
-            filters={filters}
-            onFiltersChange={setFilters}
-            onReset={handleResetFilters}
-          />
-        </div>
-
-        {/* Flight Results */}
-        <div className="flex-1">
-          {/* Results Header */}
-          <div className="mb-6">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-bold text-gray-900">
-                {searchCriteria
-                  ? `Flights From ${searchCriteria.from} To ${searchCriteria.to}`
-                  : "Find Cheap Flight Deals From Vietnam"}
-              </h2>
-              <p className="text-sm text-gray-600">
-                {filteredAndSortedFlights.length} flights found
-              </p>
-            </div>
-
-            {/* Filter Tabs */}
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                className={`${
-                  activeTab === "one-way"
-                    ? "bg-blue-50 text-blue-600 border-blue-200"
-                    : ""
-                }`}
-                onClick={() => setActiveTab("one-way")}
-              >
-                One Way
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                className={`${
-                  activeTab === "domestic"
-                    ? "bg-blue-50 text-blue-600 border-blue-200"
-                    : ""
-                }`}
-                onClick={() => setActiveTab("domestic")}
-              >
-                Domestic
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                className={`${
-                  activeTab === "international"
-                    ? "bg-blue-50 text-blue-600 border-blue-200"
-                    : ""
-                }`}
-                onClick={() => setActiveTab("international")}
-              >
-                International
-              </Button>
-            </div>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex flex-col lg:flex-row gap-4 lg:gap-6">
+          {/* Filters Sidebar - Hidden on mobile, visible on desktop */}
+          <div className="hidden lg:block w-80 flex-shrink-0">
+            <FlightFilters
+              filters={filters}
+              onFiltersChange={setFilters}
+              onReset={handleResetFilters}
+            />
           </div>
 
-          {/* Flight Results List */}
-          <div className="space-y-4">
-            {filteredAndSortedFlights.length === 0 ? (
-              <Card className="p-8 text-center">
-                <p className="text-gray-500">
-                  No flights found matching your search criteria.
+          {/* Flight Results */}
+          <div className="flex-1 min-w-0">
+            {/* Results Header */}
+            <div className="mb-4 sm:mb-6">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-3 sm:mb-4 gap-2">
+                <h2 className="text-lg sm:text-xl font-bold text-gray-900">
+                  {searchCriteria
+                    ? `Flights From ${searchCriteria.from} To ${searchCriteria.to}`
+                    : "Find Cheap Flight Deals From Vietnam"}
+                </h2>
+                <p className="text-xs sm:text-sm text-gray-600">
+                  {totalFlights} flights found
+                  {totalFlights > 0 && (
+                    <span className="ml-2">
+                      (Page {currentPage} of {totalPages})
+                    </span>
+                  )}
                 </p>
-                <Button
-                  variant="outline"
-                  onClick={handleResetFilters}
-                  className="mt-4 bg-transparent"
-                >
-                  Reset Filters
-                </Button>
-              </Card>
-            ) : (
-              filteredAndSortedFlights.map((flight) => (
-                <Card
-                  key={flight.id}
-                  className="p-4 hover:shadow-md transition-shadow hover:bg-blue-50/30 transition-bg cursor-pointer"
-                >
-                  <div className="flex items-center justify-between">
-                    {/* Left side - Airline info and route */}
-                    <div className="flex items-center gap-4 flex-1">
-                      {/* Airline logo and name */}
-                      <div className="flex items-center gap-3">
-                        <img
-                          src={flight.airlineLogo}
-                          alt={flight.airline}
-                          className="w-10 h-10 rounded object-contain bg-white p-1 border"
-                        />
-                        <div>
-                          <p className="font-medium text-sm text-gray-900">
-                            {flight.airline}
-                          </p>
-                          <div className="flex items-center gap-2 text-sm text-gray-600">
-                            <span className="font-medium">
-                              {flight.from} ({flight.fromCode})
-                            </span>
-                            <ArrowRight className="w-4 h-4" />
-                            <span className="font-medium">
-                              {flight.to} ({flight.toCode})
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-4 text-xs text-gray-500 mt-1">
-                            <span className="bg-blue-50 text-blue-600 px-2 py-1 rounded-full">
-                              {formatDate(flight.date)}
-                            </span>
-                            <span className="font-semibold text-blue-600">
-                              {flight.departureTime}
-                            </span>
-                            <span className="bg-gray-100 text-gray-600 px-2 py-1 rounded-full">
-                              {formatFlightDuration(parseInt(flight.duration))}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
+              </div>
 
-                    {/* Right side - Price and booking */}
-                    <div className="flex items-center gap-4">
-                      <div className="text-right">
-                        <p className="text-2xl font-bold text-blue-600">
-                          {formatCurrency(flight.priceNumeric)}
-                        </p>
-                        <Badge variant="secondary" className="text-xs mt-1">
-                          {flight.type}
-                        </Badge>
-                      </div>
-                      <Button
-                        className="bg-blue-600 hover:bg-blue-700 px-6 py-3 text-white font-semibold"
-                        // onClick={() => handleBookFlight(flight)}
-                        onClick={() => handleViewFlightDetails(flight)}
-                      >
-                        Detail
-                        <ArrowRight className="w-4 h-4 ml-2" />
-                      </Button>
-                    </div>
-                  </div>
+              {/* Mobile Filter Toggle & Filter Tabs */}
+              <div className="flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
+                {/* Mobile Filter Toggle */}
+                <div className="lg:hidden">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-full sm:w-auto"
+                    onClick={() => setShowMobileFilters(!showMobileFilters)}
+                  >
+                    <Filter className="w-4 h-4 mr-2" />
+                    Filters
+                  </Button>
+                </div>
 
-                  {/* Details Toggle */}
-                  <div className="mt-4">
-                    <Button
-                      variant="link"
-                      className="text-blue-600 p-0"
-                      onClick={() => toggleDetails(flight.id)}
-                    >
-                      {expandedFlights.has(flight.id) ? "Hide" : "View more"}
-                    </Button>
-                    {expandedFlights.has(flight.id) && (
-                      <div className="mt-4 border-t pt-4">
-                        <h3 className="text-lg font-semibold mb-4">
-                          Choose Your Fare
-                        </h3>
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                          {fareOptions.map((fare) => (
-                            <div
-                              key={fare.id}
-                              className={`border rounded-lg p-4 cursor-pointer transition-all duration-200 ${
-                                selectedFares[flight.id] === fare.id
-                                  ? "ring-2 ring-blue-500 bg-blue-50"
-                                  : "hover:border-blue-300"
-                              } ${
-                                fare.recommended ? "bg-blue-50 relative" : ""
-                              }`}
-                              onClick={() =>
-                                handleSelectFare(flight.id, fare.id)
-                              }
-                            >
-                              {fare.recommended && (
-                                <Badge className="absolute top-2 right-2 bg-blue-600 text-white">
-                                  Recommended
-                                </Badge>
-                              )}
+                {/* Filter Tabs */}
+                <div className="flex gap-1 sm:gap-2 overflow-x-auto">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className={`whitespace-nowrap text-xs sm:text-sm ${
+                      activeTab === "one-way"
+                        ? "bg-blue-50 text-blue-600 border-blue-200"
+                        : ""
+                    }`}
+                    onClick={() => setActiveTab("one-way")}
+                  >
+                    One Way
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className={`whitespace-nowrap text-xs sm:text-sm ${
+                      activeTab === "domestic"
+                        ? "bg-blue-50 text-blue-600 border-blue-200"
+                        : ""
+                    }`}
+                    onClick={() => setActiveTab("domestic")}
+                  >
+                    Domestic
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className={`whitespace-nowrap text-xs sm:text-sm ${
+                      activeTab === "international"
+                        ? "bg-blue-50 text-blue-600 border-blue-200"
+                        : ""
+                    }`}
+                    onClick={() => setActiveTab("international")}
+                  >
+                    International
+                  </Button>
+                </div>
+              </div>
+            </div>
 
-                              <div className="mb-3">
-                                <h4 className="font-bold text-gray-900">
-                                  {fare.name}
-                                </h4>
-                                <p className="text-xl font-bold text-blue-600">
-                                  ${fare.price}
-                                </p>
-                                <p className="text-xs text-gray-500">
-                                  per person
-                                </p>
-                              </div>
+            {/* Mobile Filters Drawer */}
+            {showMobileFilters && (
+              <div className="lg:hidden mb-4">
+                <div className="bg-white border rounded-lg p-4">
+                  <FlightFilters
+                    filters={filters}
+                    onFiltersChange={setFilters}
+                    onReset={handleResetFilters}
+                  />
+                </div>
+              </div>
+            )}
 
-                              {/* Condensed Features List */}
-                              <div className="space-y-1 mb-4">
-                                {fare.features
-                                  .slice(0, 3)
-                                  .map((feature, idx) => (
-                                    <div
-                                      key={idx}
-                                      className="flex items-center text-sm"
-                                    >
-                                      <span
-                                        className={`mr-2 ${
-                                          feature.included
-                                            ? "text-green-500"
-                                            : "text-red-500"
-                                        }`}
-                                      >
-                                        {feature.included ? "✓" : "✗"}
-                                      </span>
-                                      <span className="text-gray-700">
-                                        {feature.text}
-                                      </span>
-                                    </div>
-                                  ))}
-                                {fare.features.length > 3 && (
-                                  <p className="text-xs text-gray-500 mt-1">
-                                    +{fare.features.length - 3} more features
-                                  </p>
-                                )}
-                              </div>
-
-                              {selectedFares[flight.id] === fare.id ? (
-                                <Button
-                                  className="w-full bg-blue-600 text-white"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleProceedToBooking(flight, fare.id);
-                                  }}
-                                >
-                                  Continue to Booking
-                                </Button>
-                              ) : (
-                                <Button
-                                  variant="outline"
-                                  className="w-full"
-                                  onClick={(e) => e.stopPropagation()}
-                                >
-                                  Select Fare
-                                </Button>
-                              )}
+            {/* Flight Results List */}
+            <div className="space-y-3 sm:space-y-4">
+              {totalFlights === 0 ? (
+                <Card className="p-6 sm:p-8 text-center">
+                  <p className="text-gray-500">
+                    No flights found matching your search criteria.
+                  </p>
+                  <Button
+                    variant="outline"
+                    onClick={handleResetFilters}
+                    className="mt-4 bg-transparent"
+                  >
+                    Reset Filters
+                  </Button>
+                </Card>
+              ) : (
+                currentFlights.map((flight) => (
+                  <Card
+                    key={flight.id}
+                    className="p-3 sm:p-4 hover:shadow-md transition-shadow hover:bg-blue-50/30 transition-bg cursor-pointer"
+                  >
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
+                      {/* Left side - Airline info and route */}
+                      <div className="flex items-center gap-3 sm:gap-4 flex-1 min-w-0">
+                        {/* Airline logo and name */}
+                        <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+                          <img
+                            src={flight.airlineLogo}
+                            alt={flight.airline}
+                            className="w-8 h-8 sm:w-10 sm:h-10 rounded object-contain bg-white p-1 border flex-shrink-0"
+                          />
+                          <div className="min-w-0 flex-1">
+                            <p className="font-medium text-xs sm:text-sm text-gray-900 truncate">
+                              {flight.airline}
+                            </p>
+                            <div className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm text-gray-600">
+                              <span className="font-medium truncate">
+                                {flight.from} ({flight.fromCode})
+                              </span>
+                              <ArrowRight className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />
+                              <span className="font-medium truncate">
+                                {flight.to} ({flight.toCode})
+                              </span>
                             </div>
-                          ))}
+                            <div className="flex items-center gap-2 sm:gap-4 text-xs text-gray-500 mt-1 flex-wrap">
+                              <span className="bg-blue-50 text-blue-600 px-1.5 py-0.5 sm:px-2 sm:py-1 rounded-full whitespace-nowrap">
+                                {formatDate(flight.date)}
+                              </span>
+                              <span className="font-semibold text-blue-600">
+                                {flight.departureTime}
+                              </span>
+                              <span className="bg-gray-100 text-gray-600 px-1.5 py-0.5 sm:px-2 sm:py-1 rounded-full whitespace-nowrap">
+                                {formatFlightDuration(
+                                  parseInt(flight.duration)
+                                )}
+                              </span>
+                            </div>
+                          </div>
                         </div>
+                      </div>
 
-                        {/* Quick Action */}
-                        {selectedFares[flight.id] && (
-                          <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg">
-                            <div className="flex items-center justify-between">
-                              <div>
-                                <p className="text-sm font-medium text-green-800">
-                                  {
-                                    fareOptions.find(
-                                      (f) => f.id === selectedFares[flight.id]
-                                    )?.name
-                                  }{" "}
-                                  selected
-                                </p>
-                                <p className="text-xs text-green-600">
-                                  Total: $
-                                  {
-                                    fareOptions.find(
-                                      (f) => f.id === selectedFares[flight.id]
-                                    )?.price
-                                  }
-                                </p>
-                              </div>
-                              <Button
-                                size="sm"
-                                className="bg-green-600 hover:bg-green-700 text-white"
+                      {/* Right side - Price and booking */}
+                      <div className="flex items-center justify-between sm:justify-end gap-3 sm:gap-4">
+                        <div className="text-left sm:text-right">
+                          <p className="text-xl sm:text-2xl font-bold text-blue-600">
+                            {formatCurrency(flight.priceNumeric)}
+                          </p>
+                          <Badge variant="secondary" className="text-xs mt-1">
+                            {flight.type}
+                          </Badge>
+                        </div>
+                        <Button
+                          className="bg-blue-600 hover:bg-blue-700 px-4 py-2 sm:px-6 sm:py-3 text-white font-semibold text-sm"
+                          onClick={() => handleViewFlightDetails(flight)}
+                        >
+                          Detail
+                          <ArrowRight className="w-3 h-3 sm:w-4 sm:h-4 ml-1 sm:ml-2" />
+                        </Button>
+                      </div>
+                    </div>
+
+                    {/* Details Toggle */}
+                    <div className="mt-4">
+                      <Button
+                        variant="link"
+                        className="text-blue-600 p-0"
+                        onClick={() => toggleDetails(flight.id)}
+                      >
+                        {expandedFlights.has(flight.id) ? "Hide" : "View more"}
+                      </Button>
+                      {expandedFlights.has(flight.id) && (
+                        <div className="mt-4 border-t pt-4">
+                          <h3 className="text-lg font-semibold mb-4">
+                            Choose Your Fare
+                          </h3>
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            {fareOptions.map((fare) => (
+                              <div
+                                key={fare.id}
+                                className={`border rounded-lg p-4 cursor-pointer transition-all duration-200 ${
+                                  selectedFares[flight.id] === fare.id
+                                    ? "ring-2 ring-blue-500 bg-blue-50"
+                                    : "hover:border-blue-300"
+                                } ${
+                                  fare.recommended ? "bg-blue-50 relative" : ""
+                                }`}
                                 onClick={() =>
-                                  handleProceedToBooking(
-                                    flight,
-                                    selectedFares[flight.id]
-                                  )
+                                  handleSelectFare(flight.id, fare.id)
                                 }
                               >
-                                Book Now <ArrowRight className="w-4 h-4 ml-1" />
-                              </Button>
-                            </div>
+                                {fare.recommended && (
+                                  <Badge className="absolute top-2 right-2 bg-blue-600 text-white">
+                                    Recommended
+                                  </Badge>
+                                )}
+
+                                <div className="mb-3">
+                                  <h4 className="font-bold text-gray-900">
+                                    {fare.name}
+                                  </h4>
+                                  <p className="text-xl font-bold text-blue-600">
+                                    ${fare.price}
+                                  </p>
+                                  <p className="text-xs text-gray-500">
+                                    per person
+                                  </p>
+                                </div>
+
+                                {/* Condensed Features List */}
+                                <div className="space-y-1 mb-4">
+                                  {fare.features
+                                    .slice(0, 3)
+                                    .map((feature, idx) => (
+                                      <div
+                                        key={idx}
+                                        className="flex items-center text-sm"
+                                      >
+                                        <span
+                                          className={`mr-2 ${
+                                            feature.included
+                                              ? "text-green-500"
+                                              : "text-red-500"
+                                          }`}
+                                        >
+                                          {feature.included ? "✓" : "✗"}
+                                        </span>
+                                        <span className="text-gray-700">
+                                          {feature.text}
+                                        </span>
+                                      </div>
+                                    ))}
+                                  {fare.features.length > 3 && (
+                                    <p className="text-xs text-gray-500 mt-1">
+                                      +{fare.features.length - 3} more features
+                                    </p>
+                                  )}
+                                </div>
+
+                                {selectedFares[flight.id] === fare.id ? (
+                                  <Button
+                                    className="w-full bg-blue-600 text-white"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleProceedToBooking(flight, fare.id);
+                                    }}
+                                  >
+                                    Continue to Booking
+                                  </Button>
+                                ) : (
+                                  <Button
+                                    variant="outline"
+                                    className="w-full"
+                                    onClick={(e) => e.stopPropagation()}
+                                  >
+                                    Select Fare
+                                  </Button>
+                                )}
+                              </div>
+                            ))}
                           </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                </Card>
-              ))
+
+                          {/* Quick Action */}
+                          {selectedFares[flight.id] && (
+                            <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg">
+                              <div className="flex items-center justify-between">
+                                <div>
+                                  <p className="text-sm font-medium text-green-800">
+                                    {
+                                      fareOptions.find(
+                                        (f) => f.id === selectedFares[flight.id]
+                                      )?.name
+                                    }{" "}
+                                    selected
+                                  </p>
+                                  <p className="text-xs text-green-600">
+                                    Total: $
+                                    {
+                                      fareOptions.find(
+                                        (f) => f.id === selectedFares[flight.id]
+                                      )?.price
+                                    }
+                                  </p>
+                                </div>
+                                <Button
+                                  size="sm"
+                                  className="bg-green-600 hover:bg-green-700 text-white"
+                                  onClick={() =>
+                                    handleProceedToBooking(
+                                      flight,
+                                      selectedFares[flight.id]
+                                    )
+                                  }
+                                >
+                                  Book Now{" "}
+                                  <ArrowRight className="w-4 h-4 ml-1" />
+                                </Button>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </Card>
+                ))
+              )}
+            </div>
+
+            {/* Pagination */}
+            {totalFlights > 0 && totalPages > 1 && (
+              <div className="mt-6 sm:mt-8 flex flex-col sm:flex-row items-center justify-center sm:justify-end gap-3 sm:gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handlePrevious}
+                  disabled={currentPage === 1}
+                  className="px-3 py-2 w-full sm:w-auto"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </Button>
+
+                <div className="flex items-center gap-1 overflow-x-auto">
+                  {Array.from({ length: totalPages }, (_, i) => i + 1).map(
+                    (page) => {
+                      // Show first page, last page, current page, and pages around current page
+                      if (
+                        page === 1 ||
+                        page === totalPages ||
+                        (page >= currentPage - 1 && page <= currentPage + 1)
+                      ) {
+                        return (
+                          <Button
+                            key={page}
+                            variant={
+                              currentPage === page ? "default" : "outline"
+                            }
+                            size="sm"
+                            onClick={() => handlePageChange(page)}
+                            className={`w-8 h-8 sm:w-10 sm:h-10 text-xs sm:text-sm ${
+                              currentPage === page
+                                ? "bg-blue-600 text-white"
+                                : "hover:bg-blue-50"
+                            }`}
+                          >
+                            {page}
+                          </Button>
+                        );
+                      } else if (
+                        page === currentPage - 2 ||
+                        page === currentPage + 2
+                      ) {
+                        return (
+                          <span
+                            key={page}
+                            className="px-1 sm:px-2 text-gray-400 text-xs sm:text-sm"
+                          >
+                            ...
+                          </span>
+                        );
+                      }
+                      return null;
+                    }
+                  )}
+                </div>
+
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleNext}
+                  disabled={currentPage === totalPages}
+                  className="px-3 py-2 w-full sm:w-auto"
+                >
+                  <ChevronRight className="w-4 h-4" />
+                </Button>
+              </div>
             )}
           </div>
         </div>

@@ -2,25 +2,6 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
 
-/**
- * @typedef {Object} DestinationRoute
- * @property {string} from
- * @property {string} fromCode
- * @property {string} to
- * @property {string} toCode
- * @property {string} dateRange
- * @property {string} price
- * @property {string} priceFrom
- */
-
-/**
- * @typedef {Object} Destination
- * @property {string} id
- * @property {string} name
- * @property {string} country
- * @property {string} image
- * @property {DestinationRoute[]} routes
- */
 
 const destinations = [
   {
