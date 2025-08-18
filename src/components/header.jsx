@@ -118,11 +118,11 @@ export function Header() {
                     <span>{user.email || "User"}</span>
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
+                <DropdownMenuContent align="end" className="mt-6" >
                   <DropdownMenuLabel>My Account</DropdownMenuLabel>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem asChild>
-                    <Link to="/profile" className="flex items-center">
+                    <Link to="/profile" className="flex">
                       <User className="w-4 h-4 mr-2" />
                       Profile
                     </Link>

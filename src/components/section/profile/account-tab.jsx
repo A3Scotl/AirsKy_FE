@@ -28,23 +28,38 @@ import {
   Plus,
   Unlink,
   User,
+  Loader2,
+  Eye,
+  EyeOff,
 } from "lucide-react";
+import { toast } from "sonner";
+import { authApi } from "@/apis/auth-api";
+import { userProfileUtils } from "@/hooks/use-user-profile";
 
-const AccountTab = ({ user }) => {
+const AccountTab = ({ userProfile, onProfileUpdate }) => {
   const [editMode, setEditMode] = useState(false);
   const [passwordMode, setPasswordMode] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [showPasswords, setShowPasswords] = useState({
+    current: false,
+    new: false,
+    confirm: false,
+  });
+
   const [formData, setFormData] = useState({
-    name: user.name,
-    email: user.email,
-    phone: user.phone || "",
-    dateOfBirth: user.dateOfBirth || "",
-    address: user.address || "",
-    nationality: user.nationality || "",
-    passportNumber: user.passportNumber || "",
+    firstName: userProfile?.firstName || "",
+    lastName: userProfile?.lastName || "",
+    email: userProfile?.email || "",
+    phone: userProfile?.phone || "",
+    dateOfBirth: userProfile?.dateOfBirth || "",
+    address: userProfile?.address || "",
+    nationality: userProfile?.nationality || "",
+    passportNumber: userProfile?.passportNumber || "",
   });
 
   const [passwordData, setPasswordData] = useState({
-    currentPassword: "",
+    email: userProfile?.email || "",
+    oldPassword: "",
     newPassword: "",
     confirmPassword: "",
   });
@@ -64,23 +79,96 @@ const AccountTab = ({ user }) => {
     setPasswordData({ ...passwordData, [e.target.name]: e.target.value });
   };
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    // Simulate save
-    console.log("Updated:", formData);
-    setEditMode(false);
+  const togglePasswordVisibility = (field) => {
+    setShowPasswords((prev) => ({
+      ...prev,
+      [field]: !prev[field],
+    }));
   };
 
-  const handlePasswordSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    // Simulate password update
-    console.log("Password updated");
-    setPasswordData({
-      currentPassword: "",
-      newPassword: "",
-      confirmPassword: "",
-    });
-    setPasswordMode(false);
+    setLoading(true);
+
+    try {
+      // TODO: Implement profile update API call
+      console.log("Profile update:", formData);
+      toast.success("Profile updated successfully!");
+      setEditMode(false);
+
+      // Refresh profile data
+      if (onProfileUpdate) {
+        onProfileUpdate();
+      }
+    } catch (error) {
+      console.error("Profile update error:", error);
+      toast.error("Failed to update profile. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handlePasswordSubmit = async (e) => {
+    e.preventDefault();
+
+    // Validation
+    if (!passwordData.oldPassword) {
+      toast.error("Please enter your current password");
+      return;
+    }
+
+    if (!passwordData.newPassword) {
+      toast.error("Please enter a new password");
+      return;
+    }
+
+    if (passwordData.newPassword.length < 6) {
+      toast.error("New password must be at least 6 characters long");
+      return;
+    }
+
+    if (passwordData.newPassword !== passwordData.confirmPassword) {
+      toast.error("New passwords do not match");
+      return;
+    }
+
+    if (passwordData.oldPassword === passwordData.newPassword) {
+      toast.error("New password must be different from current password");
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const response = await authApi.changePassword({
+        email: passwordData.email,
+        oldPassword: passwordData.oldPassword,
+        newPassword: passwordData.newPassword,
+      });
+
+      if (response.success) {
+        toast.success("Password changed successfully!");
+        setPasswordData({
+          email: userProfile?.email || "",
+          oldPassword: "",
+          newPassword: "",
+          confirmPassword: "",
+        });
+        setPasswordMode(false);
+      } else {
+        // Handle specific error cases
+        if (response.message.includes("INVALID_CREDENTIALS")) {
+          toast.error("Current password is incorrect");
+        } else {
+          toast.error(response.message || "Failed to change password");
+        }
+      }
+    } catch (error) {
+      console.error("Password change error:", error);
+      toast.error("Failed to change password. Please try again.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleSocialConnect = (socialName) => {
@@ -112,18 +200,36 @@ const AccountTab = ({ user }) => {
               {/* Profile Avatar and Basic Info */}
               <div className="flex items-center gap-6">
                 <Avatar className="w-20 h-20">
-                  <AvatarImage src={user.avatar} alt={user.name} />
-                  <AvatarFallback className="text-lg">
-                    {user.name.charAt(0)}
+                  <AvatarImage
+                    src={userProfileUtils.getAvatarUrl(userProfile)}
+                    alt={userProfileUtils.getDisplayName(userProfile)}
+                  />
+                  <AvatarFallback className="text-lg bg-blue-100 text-blue-600">
+                    {userProfileUtils.getUserInitials(userProfile)}
                   </AvatarFallback>
                 </Avatar>
                 <div>
-                  <h3 className="text-xl font-semibold">{user.name}</h3>
-                  <p className="text-gray-600">{user.email}</p>
-                  <Badge variant="secondary" className="mt-1">
-                    <Verified className="w-3 h-3 mr-1" />
-                    Verified Account
-                  </Badge>
+                  <h3 className="text-xl font-semibold">
+                    {userProfileUtils.getDisplayName(userProfile)}
+                  </h3>
+                  <p className="text-gray-600">{userProfile.email}</p>
+                  <div className="flex gap-2 mt-2 flex-wrap">
+                    <Badge
+                      variant="secondary"
+                      className="bg-green-100 text-green-800"
+                    >
+                      <Verified className="w-3 h-3 mr-1" />
+                      Verified Account
+                    </Badge>
+                    {userProfile.role && (
+                      <Badge
+                        variant="outline"
+                        className="bg-blue-50 text-blue-700"
+                      >
+                        {userProfileUtils.getRoleDisplay(userProfile)}
+                      </Badge>
+                    )}
+                  </div>
                 </div>
               </div>
 
@@ -134,59 +240,77 @@ const AccountTab = ({ user }) => {
                 <div className="space-y-4">
                   <div>
                     <Label className="text-sm font-medium text-gray-500">
-                      Full Name
+                      First Name
                     </Label>
-                    <p className="mt-1">{formData.name}</p>
+                    <p className="mt-1">
+                      {userProfile.firstName || "Not provided"}
+                    </p>
+                  </div>
+                  <div>
+                    <Label className="text-sm font-medium text-gray-500">
+                      Last Name
+                    </Label>
+                    <p className="mt-1">
+                      {userProfile.lastName || "Not provided"}
+                    </p>
                   </div>
                   <div>
                     <Label className="text-sm font-medium text-gray-500">
                       Email Address
                     </Label>
-                    <p className="mt-1">{formData.email}</p>
+                    <p className="mt-1">{userProfile.email}</p>
                   </div>
                   <div>
                     <Label className="text-sm font-medium text-gray-500">
                       Phone Number
                     </Label>
-                    <p className="mt-1">{formData.phone || "Not provided"}</p>
-                  </div>
-                  <div>
-                    <Label className="text-sm font-medium text-gray-500">
-                      Date of Birth
-                    </Label>
                     <p className="mt-1">
-                      {formData.dateOfBirth || "Not provided"}
+                      {userProfileUtils.getFormattedPhone(userProfile) ||
+                        userProfile.phone ||
+                        "Not provided"}
                     </p>
                   </div>
                 </div>
                 <div className="space-y-4">
                   <div>
                     <Label className="text-sm font-medium text-gray-500">
-                      Address
+                      User ID
                     </Label>
-                    <p className="mt-1">{formData.address || "Not provided"}</p>
-                  </div>
-                  <div>
-                    <Label className="text-sm font-medium text-gray-500">
-                      Nationality
-                    </Label>
-                    <p className="mt-1">
-                      {formData.nationality || "Not provided"}
+                    <p className="mt-1 font-mono text-sm">
+                      {userProfile.id || "N/A"}
                     </p>
                   </div>
                   <div>
                     <Label className="text-sm font-medium text-gray-500">
-                      Passport Number
+                      Account Role
                     </Label>
                     <p className="mt-1">
-                      {formData.passportNumber || "Not provided"}
+                      {userProfileUtils.getRoleDisplay(userProfile)}
                     </p>
                   </div>
                   <div>
                     <Label className="text-sm font-medium text-gray-500">
                       Member Since
                     </Label>
-                    <p className="mt-1">{user.joined}</p>
+                    <p className="mt-1">
+                      {userProfileUtils.getJoinDate(userProfile)}
+                    </p>
+                  </div>
+                  <div>
+                    <Label className="text-sm font-medium text-gray-500">
+                      Account Status
+                    </Label>
+                    <p className="mt-1">
+                      {userProfile.isVerified !== false ? (
+                        <span className="text-green-600 font-medium">
+                          ✓ Verified
+                        </span>
+                      ) : (
+                        <span className="text-orange-600 font-medium">
+                          ⚠ Pending Verification
+                        </span>
+                      )}
+                    </p>
                   </div>
                 </div>
               </div>
@@ -206,12 +330,24 @@ const AccountTab = ({ user }) => {
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="name">Full Name</Label>
+                  <Label htmlFor="firstName">First Name</Label>
                   <Input
-                    id="name"
-                    name="name"
-                    value={formData.name}
+                    id="firstName"
+                    name="firstName"
+                    value={formData.firstName}
                     onChange={handleInputChange}
+                    placeholder="Enter your first name"
+                    required
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="lastName">Last Name</Label>
+                  <Input
+                    id="lastName"
+                    name="lastName"
+                    value={formData.lastName}
+                    onChange={handleInputChange}
+                    placeholder="Enter your last name"
                     required
                   />
                 </div>
@@ -223,8 +359,13 @@ const AccountTab = ({ user }) => {
                     type="email"
                     value={formData.email}
                     onChange={handleInputChange}
-                    required
+                    disabled
+                    className="bg-gray-50"
+                    title="Email cannot be changed"
                   />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Email cannot be changed for security reasons
+                  </p>
                 </div>
                 <div>
                   <Label htmlFor="phone">Phone Number</Label>
@@ -233,53 +374,21 @@ const AccountTab = ({ user }) => {
                     name="phone"
                     value={formData.phone}
                     onChange={handleInputChange}
-                    placeholder="+1 (555) 000-0000"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="dateOfBirth">Date of Birth</Label>
-                  <Input
-                    id="dateOfBirth"
-                    name="dateOfBirth"
-                    type="date"
-                    value={formData.dateOfBirth}
-                    onChange={handleInputChange}
-                  />
-                </div>
-                <div className="md:col-span-2">
-                  <Label htmlFor="address">Address</Label>
-                  <Input
-                    id="address"
-                    name="address"
-                    value={formData.address}
-                    onChange={handleInputChange}
-                    placeholder="123 Main Street, City, Country"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="nationality">Nationality</Label>
-                  <Input
-                    id="nationality"
-                    name="nationality"
-                    value={formData.nationality}
-                    onChange={handleInputChange}
-                    placeholder="United States"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="passportNumber">Passport Number</Label>
-                  <Input
-                    id="passportNumber"
-                    name="passportNumber"
-                    value={formData.passportNumber}
-                    onChange={handleInputChange}
-                    placeholder="A12345678"
+                    placeholder="0123456789"
                   />
                 </div>
               </div>
               <div className="flex gap-4">
-                <Button type="submit">Save Changes</Button>
-                <Button variant="outline" onClick={() => setEditMode(false)}>
+                <Button type="submit" disabled={loading}>
+                  {loading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                  Save Changes
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setEditMode(false)}
+                  disabled={loading}
+                >
                   Cancel
                 </Button>
               </div>
@@ -301,43 +410,118 @@ const AccountTab = ({ user }) => {
           <CardContent>
             <form onSubmit={handlePasswordSubmit} className="space-y-4">
               <div>
-                <Label htmlFor="currentPassword">Current Password</Label>
-                <Input
-                  id="currentPassword"
-                  name="currentPassword"
-                  type="password"
-                  value={passwordData.currentPassword}
-                  onChange={handlePasswordChange}
-                  required
-                />
+                <Label htmlFor="oldPassword">Current Password</Label>
+                <div className="relative">
+                  <Input
+                    id="oldPassword"
+                    name="oldPassword"
+                    type={showPasswords.current ? "text" : "password"}
+                    value={passwordData.oldPassword}
+                    onChange={handlePasswordChange}
+                    placeholder="Enter your current password"
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={() => togglePasswordVisibility("current")}
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  >
+                    {showPasswords.current ? (
+                      <EyeOff className="w-4 h-4" />
+                    ) : (
+                      <Eye className="w-4 h-4" />
+                    )}
+                  </button>
+                </div>
               </div>
               <div>
                 <Label htmlFor="newPassword">New Password</Label>
-                <Input
-                  id="newPassword"
-                  name="newPassword"
-                  type="password"
-                  value={passwordData.newPassword}
-                  onChange={handlePasswordChange}
-                  required
-                />
+                <div className="relative">
+                  <Input
+                    id="newPassword"
+                    name="newPassword"
+                    type={showPasswords.new ? "text" : "password"}
+                    value={passwordData.newPassword}
+                    onChange={handlePasswordChange}
+                    placeholder="Enter your new password (min 6 characters)"
+                    minLength={6}
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={() => togglePasswordVisibility("new")}
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  >
+                    {showPasswords.new ? (
+                      <EyeOff className="w-4 h-4" />
+                    ) : (
+                      <Eye className="w-4 h-4" />
+                    )}
+                  </button>
+                </div>
+                {passwordData.newPassword &&
+                  passwordData.newPassword.length < 6 && (
+                    <p className="text-red-500 text-xs mt-1">
+                      Password must be at least 6 characters
+                    </p>
+                  )}
               </div>
               <div>
                 <Label htmlFor="confirmPassword">Confirm New Password</Label>
-                <Input
-                  id="confirmPassword"
-                  name="confirmPassword"
-                  type="password"
-                  value={passwordData.confirmPassword}
-                  onChange={handlePasswordChange}
-                  required
-                />
+                <div className="relative">
+                  <Input
+                    id="confirmPassword"
+                    name="confirmPassword"
+                    type={showPasswords.confirm ? "text" : "password"}
+                    value={passwordData.confirmPassword}
+                    onChange={handlePasswordChange}
+                    placeholder="Confirm your new password"
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={() => togglePasswordVisibility("confirm")}
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  >
+                    {showPasswords.confirm ? (
+                      <EyeOff className="w-4 h-4" />
+                    ) : (
+                      <Eye className="w-4 h-4" />
+                    )}
+                  </button>
+                </div>
+                {passwordData.confirmPassword &&
+                  passwordData.newPassword !== passwordData.confirmPassword && (
+                    <p className="text-red-500 text-xs mt-1">
+                      Passwords do not match
+                    </p>
+                  )}
+                {passwordData.confirmPassword &&
+                  passwordData.newPassword === passwordData.confirmPassword &&
+                  passwordData.confirmPassword.length >= 6 && (
+                    <p className="text-green-500 text-xs mt-1">
+                      Passwords match
+                    </p>
+                  )}
               </div>
               <div className="flex gap-4">
-                <Button type="submit">Update Password</Button>
+                <Button type="submit" disabled={loading}>
+                  {loading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                  Update Password
+                </Button>
                 <Button
+                  type="button"
                   variant="outline"
-                  onClick={() => setPasswordMode(false)}
+                  onClick={() => {
+                    setPasswordMode(false);
+                    setPasswordData({
+                      email: userProfile?.email || "",
+                      oldPassword: "",
+                      newPassword: "",
+                      confirmPassword: "",
+                    });
+                  }}
+                  disabled={loading}
                 >
                   Cancel
                 </Button>
@@ -346,6 +530,103 @@ const AccountTab = ({ user }) => {
           </CardContent>
         </Card>
       )}
+
+      {/* Account Security Info Card */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Lock className="h-5 w-5" />
+            Account Security
+          </CardTitle>
+          <CardDescription>
+            Security information and account details
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-4">
+              <div>
+                <Label className="text-sm font-medium text-gray-500">
+                  Last Updated
+                </Label>
+                <p className="mt-1">
+                  {userProfile.updatedAt
+                    ? new Date(userProfile.updatedAt).toLocaleDateString(
+                        "en-US",
+                        {
+                          year: "numeric",
+                          month: "long",
+                          day: "numeric",
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        }
+                      )
+                    : "Never updated"}
+                </p>
+              </div>
+              <div>
+                <Label className="text-sm font-medium text-gray-500">
+                  Profile Completeness
+                </Label>
+                <div className="mt-1">
+                  {userProfileUtils.isProfileComplete(userProfile) ? (
+                    <span className="text-green-600 font-medium">
+                      ✓ Complete
+                    </span>
+                  ) : (
+                    <div>
+                      <span className="text-orange-600 font-medium">
+                        ⚠ Incomplete
+                      </span>
+                      <p className="text-xs text-gray-500 mt-1">
+                        Missing:{" "}
+                        {userProfileUtils
+                          .getMissingFields(userProfile)
+                          .join(", ")}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+            <div className="space-y-4">
+              <div>
+                <Label className="text-sm font-medium text-gray-500">
+                  Account Created
+                </Label>
+                <p className="mt-1">
+                  {userProfile.createdAt
+                    ? new Date(userProfile.createdAt).toLocaleDateString(
+                        "en-US",
+                        {
+                          year: "numeric",
+                          month: "long",
+                          day: "numeric",
+                        }
+                      )
+                    : "Unknown"}
+                </p>
+              </div>
+              <div>
+                <Label className="text-sm font-medium text-gray-500">
+                  Password Security
+                </Label>
+                <div className="mt-1">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setPasswordMode(true)}
+                    className="text-blue-600 hover:text-blue-700"
+                  >
+                    <Lock className="w-3 h-3 mr-1" />
+                    Change Password
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Social Media Connections Card */}
       <Card>

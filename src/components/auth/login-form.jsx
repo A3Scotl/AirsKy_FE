@@ -17,7 +17,6 @@ export default function LoginForm({ setCurrentView }) {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
-  const { login: loginApi } = authApi;
   const { login, user } = useAuth();
 
   useEffect(() => {
@@ -31,7 +30,7 @@ export default function LoginForm({ setCurrentView }) {
     e.preventDefault();
     setLoading(true);
 
-    const response = await loginApi({ email, password });
+    const response = await authApi.login({ email, password });
 
     if (response.success) {
       const token = response.data?.accessToken;
@@ -48,7 +47,14 @@ export default function LoginForm({ setCurrentView }) {
       toast.success(response.message);
       navigate("/");
     } else {
-      toast.error(response.message);
+      // Xử lý các lỗi cụ thể
+      if (response.message.includes("EMAIL_NOT_VERIFIED")) {
+        toast.error("Please verify your email before logging in.");
+      } else if (response.message.includes("INVALID_CREDENTIALS")) {
+        toast.error("Invalid email or password. Please try again.");
+      } else {
+        toast.error(response.message);
+      }
     }
 
     setLoading(false);
