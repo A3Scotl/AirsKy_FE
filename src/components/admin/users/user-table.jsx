@@ -16,7 +16,9 @@ import {
   CheckCircle,
   XCircle,
   Clock,
+  Users,
 } from "lucide-react";
+import UserDetailsModal from "./user-details-modal";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -54,6 +56,8 @@ const UserTable = ({
   onSuspendUser,
 }) => {
   const [currentPage, setCurrentPage] = useState(1);
+  const [selectedUser, setSelectedUser] = useState(null);
+  const [showDetailsModal, setShowDetailsModal] = useState(false);
   const itemsPerPage = 10;
 
   const getStatusBadge = (status) => {
@@ -276,7 +280,10 @@ const UserTable = ({
                       <DropdownMenuContent align="end">
                         <DropdownMenuLabel>Actions</DropdownMenuLabel>
                         <DropdownMenuItem
-                          onClick={() => onViewUser && onViewUser(user)}
+                          onClick={() => {
+                            setSelectedUser(user);
+                            setShowDetailsModal(true);
+                          }}
                         >
                           <Eye className="mr-2 h-4 w-4" />
                           View Details
@@ -393,6 +400,28 @@ const UserTable = ({
           </p>
         </div>
       )}
+
+      {/* User Details Modal */}
+      <UserDetailsModal
+        open={showDetailsModal}
+        onClose={() => {
+          setShowDetailsModal(false);
+          setSelectedUser(null);
+        }}
+        user={selectedUser}
+        onEditUser={(user) => {
+          setShowDetailsModal(false);
+          onEditUser && onEditUser(user);
+        }}
+        onSuspendUser={(user) => {
+          setShowDetailsModal(false);
+          onSuspendUser && onSuspendUser(user);
+        }}
+        onDeleteUser={(user) => {
+          setShowDetailsModal(false);
+          onDeleteUser && onDeleteUser(user);
+        }}
+      />
     </div>
   );
 };

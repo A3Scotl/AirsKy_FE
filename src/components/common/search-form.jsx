@@ -13,68 +13,63 @@ import {
 import { X, CalendarIcon, MapPin, Plane, ArrowRightLeft } from "lucide-react";
 import { format } from "date-fns";
 
-// Popular destinations data
+// Reduced popular destinations data
 const POPULAR_DESTINATIONS = [
   {
     code: "HAN",
-    city: "Hanoi",
-    country: "Vietnam",
-    airport: "Noi Bai International Airport",
+    city: "Hà Nội",
+    country: "Việt Nam",
+    airport: "Sân bay Quốc tế Nội Bài",
   },
   {
     code: "SGN",
-    city: "Ho Chi Minh City",
-    country: "Vietnam",
-    airport: "Tan Son Nhat Airport",
+    city: "TP. Hồ Chí Minh",
+    country: "Việt Nam",
+    airport: "Sân bay Tân Sơn Nhất",
   },
   {
     code: "DAD",
-    city: "Da Nang",
-    country: "Vietnam",
-    airport: "Da Nang International Airport",
+    city: "Đà Nẵng",
+    country: "Việt Nam",
+    airport: "Sân bay Quốc tế Đà Nẵng",
   },
   {
     code: "CXR",
     city: "Nha Trang",
-    country: "Vietnam",
-    airport: "Cam Ranh International Airport",
+    country: "Việt Nam",
+    airport: "Sân bay Quốc tế Cam Ranh",
   },
   {
     code: "PQC",
-    city: "Phu Quoc",
-    country: "Vietnam",
-    airport: "Phu Quoc International Airport",
-  },
-  {
-    code: "VCA",
-    city: "Can Tho",
-    country: "Vietnam",
-    airport: "Can Tho International Airport",
-  },
-  {
-    code: "HPH",
-    city: "Hai Phong",
-    country: "Vietnam",
-    airport: "Cat Bi International Airport",
+    city: "Phú Quốc",
+    country: "Việt Nam",
+    airport: "Sân bay Quốc tế Phú Quốc",
   },
   {
     code: "HUI",
-    city: "Hue",
-    country: "Vietnam",
-    airport: "Phu Bai International Airport",
+    city: "Huế",
+    country: "Việt Nam",
+    airport: "Sân bay Quốc tế Phú Bài",
   },
-  {
-    code: "BMV",
-    city: "Buon Ma Thuot",
-    country: "Vietnam",
-    airport: "Buon Ma Thuot Airport",
-  },
-  {
-    code: "DLI",
-    city: "Da Lat",
-    country: "Vietnam",
-    airport: "Lien Khuong Airport",
-  },
+];
+
+const TRIP_TYPES = [
+  { key: "roundtrip", label: "Khứ hồi" },
+  { key: "oneway", label: "Một chiều" },
+  { key: "multicity", label: "Nhiều thành phố" },
+];
+
+const PASSENGER_TYPES = [
+  { key: "adults", label: "Người lớn", sub: "12+ tuổi", min: 1 },
+  { key: "children", label: "Trẻ em", sub: "2–11 tuổi", min: 0 },
+  { key: "infants", label: "Em bé", sub: "< 2 tuổi", min: 0 },
+];
+
+const TRAVEL_CLASSES = [
+  "Phổ thông",
+  "Phổ thông cao cấp",
+  "Thương gia",
+  "Hạng nhất",
 ];
 
 // Location Select Component
@@ -90,35 +85,28 @@ function LocationSelect({ placeholder, value, onChange, disabled = false }) {
   }, [value]);
 
   useEffect(() => {
-    function handleClickOutside(event) {
+    const handleClickOutside = (event) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
         setIsOpen(false);
       }
-    }
+    };
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const filteredDestinations = POPULAR_DESTINATIONS.filter(
-    (dest) =>
-      dest.city.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      dest.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      dest.airport.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredDestinations = POPULAR_DESTINATIONS.filter((dest) =>
+    [dest.city, dest.code, dest.airport].some((field) =>
+      field.toLowerCase().includes(searchTerm.toLowerCase())
+    )
   );
 
   const handleLocationSelect = (location) => {
     const isAlreadySelected = selectedLocations.some(
       (loc) => loc.code === location.code
     );
-    let newSelection;
-
-    if (isAlreadySelected) {
-      newSelection = selectedLocations.filter(
-        (loc) => loc.code !== location.code
-      );
-    } else {
-      newSelection = [...selectedLocations, location];
-    }
+    const newSelection = isAlreadySelected
+      ? selectedLocations.filter((loc) => loc.code !== location.code)
+      : [...selectedLocations, location];
 
     setSelectedLocations(newSelection);
     onChange(newSelection);
@@ -136,11 +124,10 @@ function LocationSelect({ placeholder, value, onChange, disabled = false }) {
   const handleKeyPress = (e) => {
     if (e.key === "Enter" && searchTerm.trim()) {
       e.preventDefault();
-      // Create a custom location from search term
       const customLocation = {
         code: searchTerm.toUpperCase(),
         city: searchTerm,
-        country: "Custom",
+        country: "Tùy chỉnh",
         airport: searchTerm,
       };
       handleLocationSelect(customLocation);
@@ -194,7 +181,7 @@ function LocationSelect({ placeholder, value, onChange, disabled = false }) {
             <div className="p-3 border-b bg-gray-50">
               <h4 className="font-medium text-sm text-gray-700 mb-2 flex items-center">
                 <Plane className="w-4 h-4 mr-2" />
-                Popular Destinations
+                Điểm đến phổ biến
               </h4>
             </div>
           )}
@@ -231,7 +218,7 @@ function LocationSelect({ placeholder, value, onChange, disabled = false }) {
             })
           ) : searchTerm ? (
             <div className="p-3 text-sm text-gray-500 text-center">
-              Press Enter to add "{searchTerm}"
+              Nhấn Enter để thêm "{searchTerm}"
             </div>
           ) : null}
         </div>
@@ -253,7 +240,7 @@ function DatePicker({ date, onSelect, placeholder, disabled = false }) {
           disabled={disabled}
         >
           <CalendarIcon className="mr-2 h-4 w-4" />
-          {date ? format(date, "yyyy/MM/dd") : <span>{placeholder}</span>}
+          {date ? format(date, "dd/MM/yyyy") : <span>{placeholder}</span>}
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-auto p-0" align="start">
@@ -271,27 +258,32 @@ function DatePicker({ date, onSelect, placeholder, disabled = false }) {
 
 export function SearchForm() {
   const [tripType, setTripType] = useState("roundtrip");
-
-  // Form data
   const [fromLocations, setFromLocations] = useState([]);
   const [toLocations, setToLocations] = useState([]);
   const [departDate, setDepartDate] = useState();
   const [returnDate, setReturnDate] = useState();
-
-  // Multi-city trips - minimum 2 trips required
   const [multiTrips, setMultiTrips] = useState([
     { from: [], to: [], date: null },
     { from: [], to: [], date: null },
   ]);
-
   const [passengerPopup, setPassengerPopup] = useState(false);
-  const [adults, setAdults] = useState(1);
-  const [children, setChildren] = useState(0);
-  const [infants, setInfants] = useState(0);
-  const [travelClass, setTravelClass] = useState("Economy");
+  const [passengers, setPassengers] = useState({
+    adults: 1,
+    children: 0,
+    infants: 0,
+  });
+  const [travelClass, setTravelClass] = useState("Phổ thông");
+
+  const updatePassenger = (type, value) => {
+    setPassengers((prev) => ({
+      ...prev,
+      [type]: Math.max(type === "adults" ? 1 : 0, value),
+    }));
+  };
 
   const handleAddTrip = () =>
     setMultiTrips([...multiTrips, { from: [], to: [], date: null }]);
+
   const handleRemoveTrip = (i) => {
     if (multiTrips.length > 2) {
       setMultiTrips(multiTrips.filter((_, idx) => idx !== i));
@@ -304,10 +296,10 @@ export function SearchForm() {
     setMultiTrips(updatedTrips);
   };
 
-  const passengerSummary = `${adults} Adult${adults > 1 ? "s" : ""}${
-    children > 0 ? `, ${children} Child${children > 1 ? "ren" : ""}` : ""
+  const passengerSummary = `${passengers.adults} Người lớn${
+    passengers.children > 0 ? `, ${passengers.children} Trẻ em` : ""
   }${
-    infants > 0 ? `, ${infants} Infant${infants > 1 ? "s" : ""}` : ""
+    passengers.infants > 0 ? `, ${passengers.infants} Em bé` : ""
   } - ${travelClass}`;
 
   return (
@@ -316,11 +308,7 @@ export function SearchForm() {
         {/* Tabs + Passenger Selector */}
         <div className="flex flex-col sm:flex-row sm:items-center gap-4">
           <div className="flex items-center flex-wrap gap-1">
-            {[
-              { key: "roundtrip", label: "Round Trip" },
-              { key: "oneway", label: "One Way" },
-              { key: "multicity", label: "Multi-city" },
-            ].map((tab) => (
+            {TRIP_TYPES.map((tab) => (
               <div
                 key={tab.key}
                 onClick={() => setTripType(tab.key)}
@@ -343,7 +331,6 @@ export function SearchForm() {
               className="min-w-[220px] w-full sm:w-auto justify-between"
             >
               {passengerSummary}
-              {/* icon chevron-down */}
               <svg
                 className="w-4 h-4 ml-1"
                 fill="none"
@@ -361,29 +348,9 @@ export function SearchForm() {
 
             {passengerPopup && (
               <div className="absolute top-full mt-2 bg-white border border-gray-200 rounded-lg shadow-lg p-4 w-full sm:w-72 min-w-[280px] z-50 left-0 sm:left-auto right-0 sm:right-auto">
-                {/* Adults */}
-                {[
-                  {
-                    label: "Adults",
-                    value: adults,
-                    setter: setAdults,
-                    sub: "12+ years",
-                  },
-                  {
-                    label: "Children",
-                    value: children,
-                    setter: setChildren,
-                    sub: "2–11 years",
-                  },
-                  {
-                    label: "Infants",
-                    value: infants,
-                    setter: setInfants,
-                    sub: "< 2 years",
-                  },
-                ].map((item) => (
+                {PASSENGER_TYPES.map((item) => (
                   <div
-                    key={item.label}
+                    key={item.key}
                     className="flex justify-between items-center py-2"
                   >
                     <div>
@@ -394,15 +361,21 @@ export function SearchForm() {
                       <Button
                         variant="outline"
                         size="icon"
-                        onClick={() => item.setter(Math.max(0, item.value - 1))}
+                        onClick={() =>
+                          updatePassenger(item.key, passengers[item.key] - 1)
+                        }
                       >
                         –
                       </Button>
-                      <span className="w-6 text-center">{item.value}</span>
+                      <span className="w-6 text-center">
+                        {passengers[item.key]}
+                      </span>
                       <Button
                         variant="outline"
                         size="icon"
-                        onClick={() => item.setter(item.value + 1)}
+                        onClick={() =>
+                          updatePassenger(item.key, passengers[item.key] + 1)
+                        }
                       >
                         +
                       </Button>
@@ -413,26 +386,26 @@ export function SearchForm() {
                 {/* Class Selection */}
                 <div className="mt-3">
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Class
+                    Hạng
                   </label>
                   <select
                     value={travelClass}
                     onChange={(e) => setTravelClass(e.target.value)}
                     className="w-full border border-gray-300 rounded-md p-2"
                   >
-                    <option>Economy</option>
-                    <option>Premium Economy</option>
-                    <option>Business</option>
-                    <option>First</option>
+                    {TRAVEL_CLASSES.map((cls) => (
+                      <option key={cls} value={cls}>
+                        {cls}
+                      </option>
+                    ))}
                   </select>
                 </div>
 
-                {/* Done Button */}
                 <Button
                   className="w-full mt-4 bg-blue-500 text-white hover:bg-blue-600"
                   onClick={() => setPassengerPopup(false)}
                 >
-                  Done
+                  Xong
                 </Button>
               </div>
             )}
@@ -443,28 +416,27 @@ export function SearchForm() {
         {tripType === "roundtrip" && (
           <div className="grid md:grid-cols-5 gap-4">
             <LocationSelect
-              placeholder="From where?"
+              placeholder="Từ đâu?"
               value={fromLocations}
               onChange={setFromLocations}
             />
-
             <LocationSelect
-              placeholder="To where?"
+              placeholder="Đến đâu?"
               value={toLocations}
               onChange={setToLocations}
             />
             <DatePicker
               date={departDate}
               onSelect={setDepartDate}
-              placeholder="Departure date"
+              placeholder="Ngày đi"
             />
             <DatePicker
               date={returnDate}
               onSelect={setReturnDate}
-              placeholder="Return date"
+              placeholder="Ngày về"
             />
             <Button className="bg-blue-500 text-white hover:bg-blue-600">
-              Search Flights
+              Tìm chuyến bay
             </Button>
           </div>
         )}
@@ -473,22 +445,22 @@ export function SearchForm() {
         {tripType === "oneway" && (
           <div className="grid md:grid-cols-4 gap-4">
             <LocationSelect
-              placeholder="From where?"
+              placeholder="Từ đâu?"
               value={fromLocations}
               onChange={setFromLocations}
             />
             <LocationSelect
-              placeholder="To where?"
+              placeholder="Đến đâu?"
               value={toLocations}
               onChange={setToLocations}
             />
             <DatePicker
               date={departDate}
               onSelect={setDepartDate}
-              placeholder="Departure date"
+              placeholder="Ngày đi"
             />
             <Button className="bg-blue-500 text-white hover:bg-blue-600">
-              Search Flights
+              Tìm chuyến bay
             </Button>
           </div>
         )}
@@ -501,10 +473,9 @@ export function SearchForm() {
                 key={index}
                 className="space-y-3 sm:space-y-0 sm:flex sm:gap-4 sm:items-center p-3 sm:p-0 border sm:border-0 rounded-lg sm:rounded-none bg-gray-50 sm:bg-transparent"
               >
-                {/* Trip Number Label (Mobile Only) */}
                 <div className="flex items-center justify-between sm:hidden mb-2">
                   <span className="text-sm font-medium text-gray-700">
-                    Flight {index + 1}
+                    Chuyến bay {index + 1}
                   </span>
                   {multiTrips.length > 2 && (
                     <Button
@@ -518,43 +489,39 @@ export function SearchForm() {
                   )}
                 </div>
 
-                {/* From Location */}
                 <div className="flex-1">
                   <label className="block text-xs font-medium text-gray-600 mb-1 sm:hidden">
-                    From
+                    Từ
                   </label>
                   <LocationSelect
-                    placeholder="From where?"
+                    placeholder="Từ đâu?"
                     value={trip.from}
                     onChange={(value) => updateMultiTrip(index, "from", value)}
                   />
                 </div>
 
-                {/* To Location */}
                 <div className="flex-1">
                   <label className="block text-xs font-medium text-gray-600 mb-1 sm:hidden">
-                    To
+                    Đến
                   </label>
                   <LocationSelect
-                    placeholder="To where?"
+                    placeholder="Đến đâu?"
                     value={trip.to}
                     onChange={(value) => updateMultiTrip(index, "to", value)}
                   />
                 </div>
 
-                {/* Date */}
                 <div className="flex-1">
                   <label className="block text-xs font-medium text-gray-600 mb-1 sm:hidden">
-                    Departure Date
+                    Ngày đi
                   </label>
                   <DatePicker
                     date={trip.date}
                     onSelect={(value) => updateMultiTrip(index, "date", value)}
-                    placeholder="Departure date"
+                    placeholder="Ngày đi"
                   />
                 </div>
 
-                {/* Remove Button (Desktop Only) */}
                 {multiTrips.length > 2 && (
                   <div className="hidden sm:block">
                     <Button
@@ -570,19 +537,17 @@ export function SearchForm() {
               </div>
             ))}
 
-            {/* Add Flight Button */}
             <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 sm:items-center">
               <Button
                 variant="outline"
                 onClick={handleAddTrip}
                 className="text-blue-500 hover:text-blue-600 border-blue-200 hover:bg-blue-50 w-full sm:w-auto"
               >
-                + Add another flight
+                + Thêm chuyến bay
               </Button>
 
-              {/* Search Button */}
               <Button className="bg-blue-500 text-white hover:bg-blue-600 w-full sm:w-auto sm:ml-auto">
-                Search Flights
+                Tìm chuyến bay
               </Button>
             </div>
           </div>

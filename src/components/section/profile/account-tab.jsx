@@ -17,20 +17,16 @@ import {
   AlertCircle,
   Edit,
   Lock,
-  Phone,
-  MapPin,
-  Calendar,
-  Verified,
-  Facebook,
-  Twitter,
-  Instagram,
-  Github,
-  Plus,
-  Unlink,
   User,
   Loader2,
   Eye,
   EyeOff,
+  Plus,
+  Unlink,
+  Verified,
+  Facebook,
+  Twitter,
+  Instagram,
 } from "lucide-react";
 import { toast } from "sonner";
 import { authApi } from "@/apis/auth-api";
@@ -46,6 +42,7 @@ const AccountTab = ({ userProfile, onProfileUpdate }) => {
     confirm: false,
   });
 
+  // Optimized form state
   const [formData, setFormData] = useState({
     firstName: userProfile?.firstName || "",
     lastName: userProfile?.lastName || "",
@@ -64,13 +61,24 @@ const AccountTab = ({ userProfile, onProfileUpdate }) => {
     confirmPassword: "",
   });
 
+  // Vietnamese social accounts data
   const [socialAccounts] = useState([
-    { name: "Facebook", icon: Facebook, connected: true, username: "john.doe" },
-
-    { name: "Twitter", icon: Twitter, connected: false, username: "xdoee" },
+    {
+      name: "Facebook",
+      icon: Facebook,
+      connected: true,
+      username: "nguyen.vana",
+    },
+    {
+      name: "Twitter",
+      icon: Twitter,
+      connected: false,
+      username: "vana_nguyen",
+    },
     { name: "Instagram", icon: Instagram, connected: false, username: "" },
   ]);
 
+  // Optimized handlers
   const handleInputChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
@@ -80,10 +88,7 @@ const AccountTab = ({ userProfile, onProfileUpdate }) => {
   };
 
   const togglePasswordVisibility = (field) => {
-    setShowPasswords((prev) => ({
-      ...prev,
-      [field]: !prev[field],
-    }));
+    setShowPasswords((prev) => ({ ...prev, [field]: !prev[field] }));
   };
 
   const handleSubmit = async (e) => {
@@ -91,18 +96,13 @@ const AccountTab = ({ userProfile, onProfileUpdate }) => {
     setLoading(true);
 
     try {
-      // TODO: Implement profile update API call
-      console.log("Profile update:", formData);
-      toast.success("Profile updated successfully!");
+      console.log("Cập nhật hồ sơ:", formData);
+      toast.success("Cập nhật hồ sơ thành công!");
       setEditMode(false);
-
-      // Refresh profile data
-      if (onProfileUpdate) {
-        onProfileUpdate();
-      }
+      onProfileUpdate?.();
     } catch (error) {
-      console.error("Profile update error:", error);
-      toast.error("Failed to update profile. Please try again.");
+      console.error("Lỗi cập nhật hồ sơ:", error);
+      toast.error("Cập nhật hồ sơ thất bại. Vui lòng thử lại.");
     } finally {
       setLoading(false);
     }
@@ -111,29 +111,25 @@ const AccountTab = ({ userProfile, onProfileUpdate }) => {
   const handlePasswordSubmit = async (e) => {
     e.preventDefault();
 
-    // Validation
+    // Vietnamese validation messages
     if (!passwordData.oldPassword) {
-      toast.error("Please enter your current password");
+      toast.error("Vui lòng nhập mật khẩu hiện tại");
       return;
     }
-
     if (!passwordData.newPassword) {
-      toast.error("Please enter a new password");
+      toast.error("Vui lòng nhập mật khẩu mới");
       return;
     }
-
     if (passwordData.newPassword.length < 6) {
-      toast.error("New password must be at least 6 characters long");
+      toast.error("Mật khẩu mới phải có ít nhất 6 ký tự");
       return;
     }
-
     if (passwordData.newPassword !== passwordData.confirmPassword) {
-      toast.error("New passwords do not match");
+      toast.error("Mật khẩu mới không khớp");
       return;
     }
-
     if (passwordData.oldPassword === passwordData.newPassword) {
-      toast.error("New password must be different from current password");
+      toast.error("Mật khẩu mới phải khác mật khẩu hiện tại");
       return;
     }
 
@@ -147,7 +143,7 @@ const AccountTab = ({ userProfile, onProfileUpdate }) => {
       });
 
       if (response.success) {
-        toast.success("Password changed successfully!");
+        toast.success("Đổi mật khẩu thành công!");
         setPasswordData({
           email: userProfile?.email || "",
           oldPassword: "",
@@ -156,29 +152,26 @@ const AccountTab = ({ userProfile, onProfileUpdate }) => {
         });
         setPasswordMode(false);
       } else {
-        // Handle specific error cases
         if (response.message.includes("INVALID_CREDENTIALS")) {
-          toast.error("Current password is incorrect");
+          toast.error("Mật khẩu hiện tại không đúng");
         } else {
-          toast.error(response.message || "Failed to change password");
+          toast.error(response.message || "Đổi mật khẩu thất bại");
         }
       }
     } catch (error) {
-      console.error("Password change error:", error);
-      toast.error("Failed to change password. Please try again.");
+      console.error("Lỗi đổi mật khẩu:", error);
+      toast.error("Đổi mật khẩu thất bại. Vui lòng thử lại.");
     } finally {
       setLoading(false);
     }
   };
 
   const handleSocialConnect = (socialName) => {
-    // Simulate social media connection
-    console.log(`Connecting to ${socialName}`);
+    console.log(`Kết nối ${socialName}`);
   };
 
   const handleSocialDisconnect = (socialName) => {
-    // Simulate social media disconnection
-    console.log(`Disconnecting from ${socialName}`);
+    console.log(`Ngắt kết nối ${socialName}`);
   };
 
   return (
@@ -188,10 +181,10 @@ const AccountTab = ({ userProfile, onProfileUpdate }) => {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <User className="h-5 w-5" />
-            Personal Information
+            Thông Tin Cá Nhân
           </CardTitle>
           <CardDescription>
-            Manage your personal details and profile
+            Quản lý thông tin cá nhân và hồ sơ của bạn
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -205,7 +198,6 @@ const AccountTab = ({ userProfile, onProfileUpdate }) => {
                       src={userProfileUtils.getBestAvatarUrl(userProfile, 80)}
                       alt={userProfileUtils.getDisplayName(userProfile)}
                       onError={(e) => {
-                        // Fallback if main avatar fails
                         e.target.src = userProfileUtils.getUIAvatarUrl(
                           userProfile,
                           80
@@ -217,7 +209,7 @@ const AccountTab = ({ userProfile, onProfileUpdate }) => {
                     </AvatarFallback>
                   </Avatar>
 
-                  {/* Avatar Source Info */}
+                  {/* Avatar Source Indicator */}
                   <div className="absolute -bottom-2 -right-2 bg-white rounded-full p-1 shadow-lg border">
                     {(() => {
                       const avatarUrl =
@@ -233,7 +225,7 @@ const AccountTab = ({ userProfile, onProfileUpdate }) => {
                         return (
                           <div
                             className="w-4 h-4 bg-purple-500 rounded-full"
-                            title="Generated Avatar"
+                            title="Ảnh đại diện tự tạo"
                           />
                         );
                       } else if (
@@ -243,14 +235,14 @@ const AccountTab = ({ userProfile, onProfileUpdate }) => {
                         return (
                           <div
                             className="w-4 h-4 bg-red-500 rounded-full"
-                            title="Google Avatar"
+                            title="Ảnh Google"
                           />
                         );
                       } else {
                         return (
                           <div
                             className="w-4 h-4 bg-gray-500 rounded-full"
-                            title="Default Avatar"
+                            title="Ảnh mặc định"
                           />
                         );
                       }
@@ -266,21 +258,21 @@ const AccountTab = ({ userProfile, onProfileUpdate }) => {
 
                   {/* Avatar Info */}
                   <div className="mt-2 text-sm text-gray-500">
-                    Avatar:{" "}
+                    Ảnh đại diện:{" "}
                     {(() => {
                       const avatarUrl =
                         userProfileUtils.getBestAvatarUrl(userProfile);
                       if (avatarUrl?.includes("gravatar.com")) {
-                        return "Gravatar (based on email)";
+                        return "Gravatar (dựa trên email)";
                       } else if (avatarUrl?.includes("ui-avatars.com")) {
-                        return "Generated from name";
+                        return "Tạo từ tên";
                       } else if (
                         avatarUrl?.includes("googleapis.com") ||
                         avatarUrl?.includes("googleusercontent.com")
                       ) {
-                        return "Google account photo";
+                        return "Ảnh tài khoản Google";
                       } else {
-                        return "Default avatar";
+                        return "Ảnh mặc định";
                       }
                     })()}
                   </div>
@@ -291,7 +283,7 @@ const AccountTab = ({ userProfile, onProfileUpdate }) => {
                       className="bg-green-100 text-green-800"
                     >
                       <Verified className="w-3 h-3 mr-1" />
-                      Verified Account
+                      Tài khoản đã xác thực
                     </Badge>
                     {userProfile.role && (
                       <Badge
@@ -312,41 +304,41 @@ const AccountTab = ({ userProfile, onProfileUpdate }) => {
                 <div className="space-y-4">
                   <div>
                     <Label className="text-sm font-medium text-gray-500">
-                      First Name
+                      Họ
                     </Label>
                     <p className="mt-1">
-                      {userProfile.firstName || "Not provided"}
+                      {userProfile.firstName || "Chưa cung cấp"}
                     </p>
                   </div>
                   <div>
                     <Label className="text-sm font-medium text-gray-500">
-                      Last Name
+                      Tên
                     </Label>
                     <p className="mt-1">
-                      {userProfile.lastName || "Not provided"}
+                      {userProfile.lastName || "Chưa cung cấp"}
                     </p>
                   </div>
                   <div>
                     <Label className="text-sm font-medium text-gray-500">
-                      Email Address
+                      Địa chỉ Email
                     </Label>
                     <p className="mt-1">{userProfile.email}</p>
                   </div>
                   <div>
                     <Label className="text-sm font-medium text-gray-500">
-                      Phone Number
+                      Số điện thoại
                     </Label>
                     <p className="mt-1">
                       {userProfileUtils.getFormattedPhone(userProfile) ||
                         userProfile.phone ||
-                        "Not provided"}
+                        "Chưa cung cấp"}
                     </p>
                   </div>
                 </div>
                 <div className="space-y-4">
                   <div>
                     <Label className="text-sm font-medium text-gray-500">
-                      User ID
+                      ID Người dùng
                     </Label>
                     <p className="mt-1 font-mono text-sm">
                       {userProfile.id || "N/A"}
@@ -354,7 +346,7 @@ const AccountTab = ({ userProfile, onProfileUpdate }) => {
                   </div>
                   <div>
                     <Label className="text-sm font-medium text-gray-500">
-                      Account Role
+                      Vai trò tài khoản
                     </Label>
                     <p className="mt-1">
                       {userProfileUtils.getRoleDisplay(userProfile)}
@@ -362,7 +354,7 @@ const AccountTab = ({ userProfile, onProfileUpdate }) => {
                   </div>
                   <div>
                     <Label className="text-sm font-medium text-gray-500">
-                      Member Since
+                      Thành viên từ
                     </Label>
                     <p className="mt-1">
                       {userProfileUtils.getJoinDate(userProfile)}
@@ -370,16 +362,16 @@ const AccountTab = ({ userProfile, onProfileUpdate }) => {
                   </div>
                   <div>
                     <Label className="text-sm font-medium text-gray-500">
-                      Account Status
+                      Trạng thái tài khoản
                     </Label>
                     <p className="mt-1">
                       {userProfile.isVerified !== false ? (
                         <span className="text-green-600 font-medium">
-                          ✓ Verified
+                          ✓ Đã xác thực
                         </span>
                       ) : (
                         <span className="text-orange-600 font-medium">
-                          ⚠ Pending Verification
+                          ⚠ Chờ xác thực
                         </span>
                       )}
                     </p>
@@ -390,11 +382,11 @@ const AccountTab = ({ userProfile, onProfileUpdate }) => {
               <div className="flex gap-3">
                 <Button onClick={() => setEditMode(true)}>
                   <Edit className="w-4 h-4 mr-2" />
-                  Edit Profile
+                  Chỉnh sửa hồ sơ
                 </Button>
                 <Button variant="outline" onClick={() => setPasswordMode(true)}>
                   <Lock className="w-4 h-4 mr-2" />
-                  Update Password
+                  Cập nhật mật khẩu
                 </Button>
               </div>
             </div>
@@ -402,29 +394,29 @@ const AccountTab = ({ userProfile, onProfileUpdate }) => {
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="firstName">First Name</Label>
+                  <Label htmlFor="firstName">Họ</Label>
                   <Input
                     id="firstName"
                     name="firstName"
                     value={formData.firstName}
                     onChange={handleInputChange}
-                    placeholder="Enter your first name"
+                    placeholder="Nhập họ của bạn"
                     required
                   />
                 </div>
                 <div>
-                  <Label htmlFor="lastName">Last Name</Label>
+                  <Label htmlFor="lastName">Tên</Label>
                   <Input
                     id="lastName"
                     name="lastName"
                     value={formData.lastName}
                     onChange={handleInputChange}
-                    placeholder="Enter your last name"
+                    placeholder="Nhập tên của bạn"
                     required
                   />
                 </div>
                 <div>
-                  <Label htmlFor="email">Email Address</Label>
+                  <Label htmlFor="email">Địa chỉ Email</Label>
                   <Input
                     id="email"
                     name="email"
@@ -433,14 +425,14 @@ const AccountTab = ({ userProfile, onProfileUpdate }) => {
                     onChange={handleInputChange}
                     disabled
                     className="bg-gray-50"
-                    title="Email cannot be changed"
+                    title="Không thể thay đổi email"
                   />
                   <p className="text-xs text-gray-500 mt-1">
-                    Email cannot be changed for security reasons
+                    Email không thể thay đổi vì lý do bảo mật
                   </p>
                 </div>
                 <div>
-                  <Label htmlFor="phone">Phone Number</Label>
+                  <Label htmlFor="phone">Số điện thoại</Label>
                   <Input
                     id="phone"
                     name="phone"
@@ -453,7 +445,7 @@ const AccountTab = ({ userProfile, onProfileUpdate }) => {
               <div className="flex gap-4">
                 <Button type="submit" disabled={loading}>
                   {loading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                  Save Changes
+                  Lưu thay đổi
                 </Button>
                 <Button
                   type="button"
@@ -461,7 +453,7 @@ const AccountTab = ({ userProfile, onProfileUpdate }) => {
                   onClick={() => setEditMode(false)}
                   disabled={loading}
                 >
-                  Cancel
+                  Hủy
                 </Button>
               </div>
             </form>
@@ -475,14 +467,16 @@ const AccountTab = ({ userProfile, onProfileUpdate }) => {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Lock className="h-5 w-5" />
-              Update Password
+              Cập Nhật Mật Khẩu
             </CardTitle>
-            <CardDescription>Change your account password</CardDescription>
+            <CardDescription>
+              Thay đổi mật khẩu tài khoản của bạn
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handlePasswordSubmit} className="space-y-4">
               <div>
-                <Label htmlFor="oldPassword">Current Password</Label>
+                <Label htmlFor="oldPassword">Mật khẩu hiện tại</Label>
                 <div className="relative">
                   <Input
                     id="oldPassword"
@@ -490,7 +484,7 @@ const AccountTab = ({ userProfile, onProfileUpdate }) => {
                     type={showPasswords.current ? "text" : "password"}
                     value={passwordData.oldPassword}
                     onChange={handlePasswordChange}
-                    placeholder="Enter your current password"
+                    placeholder="Nhập mật khẩu hiện tại"
                     required
                   />
                   <button
@@ -507,7 +501,7 @@ const AccountTab = ({ userProfile, onProfileUpdate }) => {
                 </div>
               </div>
               <div>
-                <Label htmlFor="newPassword">New Password</Label>
+                <Label htmlFor="newPassword">Mật khẩu mới</Label>
                 <div className="relative">
                   <Input
                     id="newPassword"
@@ -515,7 +509,7 @@ const AccountTab = ({ userProfile, onProfileUpdate }) => {
                     type={showPasswords.new ? "text" : "password"}
                     value={passwordData.newPassword}
                     onChange={handlePasswordChange}
-                    placeholder="Enter your new password (min 6 characters)"
+                    placeholder="Nhập mật khẩu mới (tối thiểu 6 ký tự)"
                     minLength={6}
                     required
                   />
@@ -534,12 +528,12 @@ const AccountTab = ({ userProfile, onProfileUpdate }) => {
                 {passwordData.newPassword &&
                   passwordData.newPassword.length < 6 && (
                     <p className="text-red-500 text-xs mt-1">
-                      Password must be at least 6 characters
+                      Mật khẩu phải có ít nhất 6 ký tự
                     </p>
                   )}
               </div>
               <div>
-                <Label htmlFor="confirmPassword">Confirm New Password</Label>
+                <Label htmlFor="confirmPassword">Xác nhận mật khẩu mới</Label>
                 <div className="relative">
                   <Input
                     id="confirmPassword"
@@ -547,7 +541,7 @@ const AccountTab = ({ userProfile, onProfileUpdate }) => {
                     type={showPasswords.confirm ? "text" : "password"}
                     value={passwordData.confirmPassword}
                     onChange={handlePasswordChange}
-                    placeholder="Confirm your new password"
+                    placeholder="Xác nhận mật khẩu mới"
                     required
                   />
                   <button
@@ -565,21 +559,19 @@ const AccountTab = ({ userProfile, onProfileUpdate }) => {
                 {passwordData.confirmPassword &&
                   passwordData.newPassword !== passwordData.confirmPassword && (
                     <p className="text-red-500 text-xs mt-1">
-                      Passwords do not match
+                      Mật khẩu không khớp
                     </p>
                   )}
                 {passwordData.confirmPassword &&
                   passwordData.newPassword === passwordData.confirmPassword &&
                   passwordData.confirmPassword.length >= 6 && (
-                    <p className="text-green-500 text-xs mt-1">
-                      Passwords match
-                    </p>
+                    <p className="text-green-500 text-xs mt-1">Mật khẩu khớp</p>
                   )}
               </div>
               <div className="flex gap-4">
                 <Button type="submit" disabled={loading}>
                   {loading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                  Update Password
+                  Cập nhật mật khẩu
                 </Button>
                 <Button
                   type="button"
@@ -595,7 +587,7 @@ const AccountTab = ({ userProfile, onProfileUpdate }) => {
                   }}
                   disabled={loading}
                 >
-                  Cancel
+                  Hủy
                 </Button>
               </div>
             </form>
@@ -608,10 +600,10 @@ const AccountTab = ({ userProfile, onProfileUpdate }) => {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Lock className="h-5 w-5" />
-            Account Security
+            Bảo Mật Tài Khoản
           </CardTitle>
           <CardDescription>
-            Security information and account details
+            Thông tin bảo mật và chi tiết tài khoản
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -619,12 +611,12 @@ const AccountTab = ({ userProfile, onProfileUpdate }) => {
             <div className="space-y-4">
               <div>
                 <Label className="text-sm font-medium text-gray-500">
-                  Last Updated
+                  Cập nhật lần cuối
                 </Label>
                 <p className="mt-1">
                   {userProfile.updatedAt
                     ? new Date(userProfile.updatedAt).toLocaleDateString(
-                        "en-US",
+                        "vi-VN",
                         {
                           year: "numeric",
                           month: "long",
@@ -633,25 +625,25 @@ const AccountTab = ({ userProfile, onProfileUpdate }) => {
                           minute: "2-digit",
                         }
                       )
-                    : "Never updated"}
+                    : "Chưa từng cập nhật"}
                 </p>
               </div>
               <div>
                 <Label className="text-sm font-medium text-gray-500">
-                  Profile Completeness
+                  Độ hoàn thiện hồ sơ
                 </Label>
                 <div className="mt-1">
                   {userProfileUtils.isProfileComplete(userProfile) ? (
                     <span className="text-green-600 font-medium">
-                      ✓ Complete
+                      ✓ Hoàn thiện
                     </span>
                   ) : (
                     <div>
                       <span className="text-orange-600 font-medium">
-                        ⚠ Incomplete
+                        ⚠ Chưa hoàn thiện
                       </span>
                       <p className="text-xs text-gray-500 mt-1">
-                        Missing:{" "}
+                        Thiếu:{" "}
                         {userProfileUtils
                           .getMissingFields(userProfile)
                           .join(", ")}
@@ -664,24 +656,24 @@ const AccountTab = ({ userProfile, onProfileUpdate }) => {
             <div className="space-y-4">
               <div>
                 <Label className="text-sm font-medium text-gray-500">
-                  Account Created
+                  Tài khoản được tạo
                 </Label>
                 <p className="mt-1">
                   {userProfile.createdAt
                     ? new Date(userProfile.createdAt).toLocaleDateString(
-                        "en-US",
+                        "vi-VN",
                         {
                           year: "numeric",
                           month: "long",
                           day: "numeric",
                         }
                       )
-                    : "Unknown"}
+                    : "Không rõ"}
                 </p>
               </div>
               <div>
                 <Label className="text-sm font-medium text-gray-500">
-                  Password Security
+                  Bảo mật mật khẩu
                 </Label>
                 <div className="mt-1">
                   <Button
@@ -691,7 +683,7 @@ const AccountTab = ({ userProfile, onProfileUpdate }) => {
                     className="text-blue-600 hover:text-blue-700"
                   >
                     <Lock className="w-3 h-3 mr-1" />
-                    Change Password
+                    Đổi mật khẩu
                   </Button>
                 </div>
               </div>
@@ -703,9 +695,9 @@ const AccountTab = ({ userProfile, onProfileUpdate }) => {
       {/* Social Media Connections Card */}
       <Card>
         <CardHeader>
-          <CardTitle>Social Media Connections</CardTitle>
+          <CardTitle>Kết Nối Mạng Xã Hội</CardTitle>
           <CardDescription>
-            Connect your social media accounts for faster login and sharing
+            Kết nối tài khoản mạng xã hội để đăng nhập nhanh hơn và chia sẻ
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -730,7 +722,7 @@ const AccountTab = ({ userProfile, onProfileUpdate }) => {
                   {account.connected ? (
                     <>
                       <Badge variant="success" className="mr-2 bg-green-100">
-                        Connected
+                        Đã kết nối
                       </Badge>
                       <Button
                         variant="outline"
@@ -739,7 +731,7 @@ const AccountTab = ({ userProfile, onProfileUpdate }) => {
                         onClick={() => handleSocialDisconnect(account.name)}
                       >
                         <Unlink className="w-4 h-4 mr-1" />
-                        Disconnect
+                        Ngắt kết nối
                       </Button>
                     </>
                   ) : (
@@ -749,7 +741,7 @@ const AccountTab = ({ userProfile, onProfileUpdate }) => {
                       onClick={() => handleSocialConnect(account.name)}
                     >
                       <Plus className="w-4 h-4 mr-1" />
-                      Connect
+                      Kết nối
                     </Button>
                   )}
                 </div>
@@ -762,21 +754,21 @@ const AccountTab = ({ userProfile, onProfileUpdate }) => {
       {/* Account Actions Card */}
       <Card className="border-red-200">
         <CardHeader>
-          <CardTitle className="text-red-600">Danger Zone</CardTitle>
+          <CardTitle className="text-red-600">Vùng Nguy Hiểm</CardTitle>
           <CardDescription>
-            Irreversible actions that will affect your account
+            Các hành động không thể hoàn tác sẽ ảnh hưởng đến tài khoản của bạn
           </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="flex items-center flex-wrap gap-2 justify-between p-4 bg-red-50 rounded-lg">
             <div>
-              <p className="font-medium text-red-900">Delete Account</p>
+              <p className="font-medium text-red-900">Xóa Tài Khoản</p>
               <p className="text-sm text-red-700">
-                Once you delete your account, there is no going back. Please be
-                certain.
+                Khi bạn xóa tài khoản, không thể khôi phục lại. Vui lòng cân
+                nhắc kỹ.
               </p>
             </div>
-            <Button variant="destructive">Delete Account</Button>
+            <Button variant="destructive">Xóa Tài Khoản</Button>
           </div>
         </CardContent>
         <CardFooter className="flex flex-col items-start space-y-4">
@@ -784,7 +776,7 @@ const AccountTab = ({ userProfile, onProfileUpdate }) => {
           <div className="flex items-center">
             <AlertCircle className="w-5 h-5 mr-2 text-amber-600" />
             <p className="text-sm text-gray-600">
-              Need help? Contact our support team for assistance.
+              Cần hỗ trợ? Liên hệ với đội ngũ hỗ trợ để được trợ giúp.
             </p>
           </div>
         </CardFooter>

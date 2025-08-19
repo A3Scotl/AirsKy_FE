@@ -85,10 +85,10 @@ const AdminPaymentPage = () => {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">
-            Payment Management
+            Quản lý thanh toán
           </h1>
           <p className="text-gray-600 mt-1">
-            Monitor transactions, manage refunds, and analyze payment data
+            Giám sát giao dịch, quản lý hoàn tiền và phân tích dữ liệu thanh toán
           </p>
         </div>
         <div className="flex items-center space-x-3">
@@ -101,7 +101,7 @@ const AdminPaymentPage = () => {
             <RefreshCw
               className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`}
             />
-            <span>Refresh</span>
+            <span>Làm mới</span>
           </Button>
           <Button
             variant="outline"
@@ -109,7 +109,7 @@ const AdminPaymentPage = () => {
             className="flex items-center space-x-2"
           >
             <Download className="h-4 w-4" />
-            <span>Export</span>
+            <span>Xuất</span>
           </Button>
         </div>
       </div>
@@ -126,9 +126,9 @@ const AdminPaymentPage = () => {
                 <p className="text-2xl font-bold text-green-600">
                   ${paymentStats.totalRevenue.toLocaleString()}
                 </p>
-                <p className="text-xs text-gray-500">Total Revenue</p>
+                <p className="text-xs text-gray-500">Tổng doanh thu</p>
                 <p className="text-xs text-green-600">
-                  +{paymentStats.monthlyGrowth}% this month
+                  +{paymentStats.monthlyGrowth}% tháng này
                 </p>
               </div>
             </div>
@@ -145,9 +145,9 @@ const AdminPaymentPage = () => {
                 <p className="text-2xl font-bold">
                   {paymentStats.totalTransactions.toLocaleString()}
                 </p>
-                <p className="text-xs text-gray-500">Total Transactions</p>
+                <p className="text-xs text-gray-500">Tổng giao dịch</p>
                 <p className="text-xs text-blue-600">
-                  +{paymentStats.dailyGrowth}% today
+                  +{paymentStats.dailyGrowth}% hôm nay
                 </p>
               </div>
             </div>
@@ -164,9 +164,9 @@ const AdminPaymentPage = () => {
                 <p className="text-2xl font-bold">
                   ${paymentStats.averageTransaction}
                 </p>
-                <p className="text-xs text-gray-500">Average Transaction</p>
+                <p className="text-xs text-gray-500">Giá trị giao dịch trung bình</p>
                 <p className="text-xs text-purple-600">
-                  {paymentStats.successRate}% success rate
+                  {paymentStats.successRate}% tỷ lệ thành công
                 </p>
               </div>
             </div>
@@ -183,9 +183,9 @@ const AdminPaymentPage = () => {
                 <p className="text-2xl font-bold">
                   ${paymentStats.pendingAmount.toLocaleString()}
                 </p>
-                <p className="text-xs text-gray-500">Pending Amount</p>
+                <p className="text-xs text-gray-500"> Tiền đang chờ</p>
                 <p className="text-xs text-orange-600">
-                  ${paymentStats.refundedAmount.toLocaleString()} refunded
+                  ${paymentStats.refundedAmount.toLocaleString()} hoàn tiền
                 </p>
               </div>
             </div>
@@ -214,12 +214,12 @@ const AdminPaymentPage = () => {
                 <SelectValue placeholder="Status" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Status</SelectItem>
-                <SelectItem value="completed">Completed</SelectItem>
-                <SelectItem value="pending">Pending</SelectItem>
-                <SelectItem value="failed">Failed</SelectItem>
-                <SelectItem value="refunded">Refunded</SelectItem>
-                <SelectItem value="cancelled">Cancelled</SelectItem>
+                <SelectItem value="all">Tất cả</SelectItem>
+                <SelectItem value="completed">Hoàn thành</SelectItem>
+                <SelectItem value="pending">Đang chờ</SelectItem>
+                <SelectItem value="failed">Thất bại</SelectItem>
+                <SelectItem value="refunded">Hoàn tiền</SelectItem>
+                <SelectItem value="cancelled">Đã hủy</SelectItem>
               </SelectContent>
             </Select>
 
@@ -228,13 +228,11 @@ const AdminPaymentPage = () => {
                 <SelectValue placeholder="Payment Method" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Methods</SelectItem>
-                <SelectItem value="credit_card">Credit Card</SelectItem>
-                <SelectItem value="debit_card">Debit Card</SelectItem>
+                <SelectItem value="all">Tất cả</SelectItem>
+                <SelectItem value="credit_card">Thẻ tín dụng</SelectItem>
+                <SelectItem value="debit_card">Thẻ ghi nợ</SelectItem>
                 <SelectItem value="paypal">PayPal</SelectItem>
-                <SelectItem value="apple_pay">Apple Pay</SelectItem>
-                <SelectItem value="google_pay">Google Pay</SelectItem>
-                <SelectItem value="bank_transfer">Bank Transfer</SelectItem>
+                <SelectItem value="bank_transfer">Chuyển khoản ngân hàng</SelectItem>
               </SelectContent>
             </Select>
 
@@ -243,11 +241,11 @@ const AdminPaymentPage = () => {
                 <SelectValue placeholder="Date Range" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="7">Last 7 days</SelectItem>
-                <SelectItem value="30">Last 30 days</SelectItem>
-                <SelectItem value="90">Last 3 months</SelectItem>
-                <SelectItem value="365">Last year</SelectItem>
-                <SelectItem value="custom">Custom range</SelectItem>
+                <SelectItem value="7">7 ngày qua</SelectItem>
+                <SelectItem value="30">30 ngày qua</SelectItem>
+                <SelectItem value="90">3 tháng qua</SelectItem>
+                <SelectItem value="365">1 năm qua</SelectItem>
+                <SelectItem value="custom">Khoảng thời gian tùy chỉnh</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -262,8 +260,8 @@ const AdminPaymentPage = () => {
       >
         <TabsList className="grid w-full grid-cols-2">
           {/* <TabsTrigger value="overview">Overview</TabsTrigger> */}
-          <TabsTrigger value="transactions">Transactions</TabsTrigger>
-          <TabsTrigger value="analytics">Analytics</TabsTrigger>
+          <TabsTrigger value="transactions">Giao dịch</TabsTrigger>
+          <TabsTrigger value="analytics">Phân tích</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="space-y-6">
@@ -271,7 +269,7 @@ const AdminPaymentPage = () => {
             {/* Recent Transactions Summary */}
             <Card>
               <CardHeader>
-                <CardTitle>Recent Activity</CardTitle>
+                <CardTitle>Hoạt động gần đây</CardTitle>
               </CardHeader>
               <CardContent>
                 <PaymentTable
@@ -294,7 +292,7 @@ const AdminPaymentPage = () => {
         <TabsContent value="transactions" className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>All Transactions</CardTitle>
+              <CardTitle>Tất cả giao dịch</CardTitle>
             </CardHeader>
             <CardContent>
               <PaymentTable

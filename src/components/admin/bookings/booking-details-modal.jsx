@@ -8,14 +8,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   CalendarIcon,
   MapPin,
@@ -27,36 +20,71 @@ import {
   Plane,
   Users,
   X,
-  Edit,
   Download,
   MessageSquare,
 } from "lucide-react";
 import { format } from "date-fns";
+import { vi } from "date-fns/locale";
+
+// Vietnamese text constants
+const TEXT = {
+  bookingDetails: "Chi Tiết Đặt Vé",
+  completeInfo: "Thông tin đầy đủ cho đặt vé",
+  flightInfo: "Thông Tin Chuyến Bay",
+  route: "Tuyến Bay",
+  departure: "Khởi Hành",
+  arrival: "Đến Nơi",
+  passengers: "Hành Khách",
+  passenger: "hành khách",
+  totalAmount: "Tổng Tiền",
+  customerInfo: "Thông Tin Khách Hàng",
+  fullName: "Họ và Tên",
+  email: "Email",
+  phone: "Số Điện Thoại",
+  bookingRef: "Mã Đặt Vé",
+  bookingDate: "Ngày Đặt",
+  bookingId: "ID Đặt Vé",
+  additionalInfo: "Thông Tin Bổ Sung",
+  seatPreferences: "Yêu Cầu Chỗ Ngồi",
+  specialRequests: "Yêu Cầu Đặc Biệt",
+  bookingTimeline: "Lịch Sử Đặt Vé",
+  bookingCreated: "Đặt Vé Được Tạo",
+  bookingConfirmed: "Đặt Vé Đã Xác Nhận",
+  paymentProcessed: "Thanh toán đã được xử lý thành công",
+  bookingCancelled: "Đặt Vé Đã Hủy",
+  refundProcessing: "Đang xử lý hoàn tiền",
+  flightDeparture: "Khởi Hành Chuyến Bay",
+  downloadPdf: "Tải PDF",
+  sendEmail: "Gửi Email",
+  close: "Đóng",
+  class: "Hạng",
+};
 
 const BookingDetailsModal = ({ open, onOpenChange, booking, onEdit }) => {
   if (!booking) return null;
 
-  const getStatusBadge = (status) => {
-    const variants = {
+  // Badge styling functions
+  const badgeStyles = {
+    status: {
       Confirmed: "bg-green-100 text-green-800 border-green-200",
       Pending: "bg-yellow-100 text-yellow-800 border-yellow-200",
       Cancelled: "bg-red-100 text-red-800 border-red-200",
-    };
-    return variants[status] || "bg-gray-100 text-gray-800 border-gray-200";
-  };
-
-  const getClassBadge = (flightClass) => {
-    const variants = {
+    },
+    class: {
       Economy: "bg-blue-100 text-blue-800",
       Business: "bg-purple-100 text-purple-800",
       First: "bg-amber-100 text-amber-800",
-    };
-    return variants[flightClass] || "bg-gray-100 text-gray-800";
+    },
   };
+
+  const getBadgeStyle = (type, value) =>
+    badgeStyles[type][value] || "bg-gray-100 text-gray-800 border-gray-200";
 
   const formatDate = (dateString) => {
     try {
-      return format(new Date(dateString), "EEEE, MMMM do, yyyy 'at' h:mm a");
+      return format(new Date(dateString), "EEEE, dd MMMM yyyy 'lúc' HH:mm", {
+        locale: vi,
+      });
     } catch {
       return dateString;
     }
@@ -64,7 +92,7 @@ const BookingDetailsModal = ({ open, onOpenChange, booking, onEdit }) => {
 
   const formatShortDate = (dateString) => {
     try {
-      return format(new Date(dateString), "MMM dd, yyyy");
+      return format(new Date(dateString), "dd/MM/yyyy", { locale: vi });
     } catch {
       return dateString;
     }
@@ -76,29 +104,29 @@ const BookingDetailsModal = ({ open, onOpenChange, booking, onEdit }) => {
         <DialogHeader>
           <div className="flex items-center justify-between">
             <div>
-              <DialogTitle className="text-2xl">Booking Details</DialogTitle>
+              <DialogTitle className="text-2xl">
+                {TEXT.bookingDetails}
+              </DialogTitle>
               <DialogDescription>
-                Complete information for booking {booking.bookingRef}
+                {TEXT.completeInfo} {booking.bookingRef}
               </DialogDescription>
             </div>
-            <div className="flex items-center gap-2">
-              <Badge
-                variant="outline"
-                className={getStatusBadge(booking.status)}
-              >
-                {booking.status}
-              </Badge>
-            </div>
+            <Badge
+              variant="outline"
+              className={getBadgeStyle("status", booking.status)}
+            >
+              {booking.status}
+            </Badge>
           </div>
         </DialogHeader>
 
         <div className="space-y-6">
-          {/* Booking Overview */}
+          {/* Flight Information */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Plane className="h-5 w-5" />
-                Flight Information
+                {TEXT.flightInfo}
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -107,7 +135,7 @@ const BookingDetailsModal = ({ open, onOpenChange, booking, onEdit }) => {
                   <div className="flex items-center gap-3">
                     <MapPin className="h-5 w-5 text-gray-400" />
                     <div>
-                      <p className="text-sm text-gray-600">Route</p>
+                      <p className="text-sm text-gray-600">{TEXT.route}</p>
                       <p className="font-semibold">{booking.route}</p>
                     </div>
                   </div>
@@ -115,7 +143,7 @@ const BookingDetailsModal = ({ open, onOpenChange, booking, onEdit }) => {
                   <div className="flex items-center gap-3">
                     <CalendarIcon className="h-5 w-5 text-gray-400" />
                     <div>
-                      <p className="text-sm text-gray-600">Departure</p>
+                      <p className="text-sm text-gray-600">{TEXT.departure}</p>
                       <p className="font-semibold">
                         {formatDate(booking.departure)}
                       </p>
@@ -126,7 +154,7 @@ const BookingDetailsModal = ({ open, onOpenChange, booking, onEdit }) => {
                     <div className="flex items-center gap-3">
                       <Clock className="h-5 w-5 text-gray-400" />
                       <div>
-                        <p className="text-sm text-gray-600">Arrival</p>
+                        <p className="text-sm text-gray-600">{TEXT.arrival}</p>
                         <p className="font-semibold">
                           {formatDate(booking.arrival)}
                         </p>
@@ -139,10 +167,9 @@ const BookingDetailsModal = ({ open, onOpenChange, booking, onEdit }) => {
                   <div className="flex items-center gap-3">
                     <Users className="h-5 w-5 text-gray-400" />
                     <div>
-                      <p className="text-sm text-gray-600">Passengers</p>
+                      <p className="text-sm text-gray-600">{TEXT.passengers}</p>
                       <p className="font-semibold">
-                        {booking.passengers} passenger
-                        {booking.passengers > 1 ? "s" : ""}
+                        {booking.passengers} {TEXT.passenger}
                       </p>
                     </div>
                   </div>
@@ -150,16 +177,18 @@ const BookingDetailsModal = ({ open, onOpenChange, booking, onEdit }) => {
                   <div className="flex items-center gap-3">
                     <Badge
                       variant="outline"
-                      className={getClassBadge(booking.class)}
+                      className={getBadgeStyle("class", booking.class)}
                     >
-                      {booking.class} Class
+                      {TEXT.class} {booking.class}
                     </Badge>
                   </div>
 
                   <div className="flex items-center gap-3">
                     <CreditCard className="h-5 w-5 text-gray-400" />
                     <div>
-                      <p className="text-sm text-gray-600">Total Amount</p>
+                      <p className="text-sm text-gray-600">
+                        {TEXT.totalAmount}
+                      </p>
                       <p className="text-2xl font-bold text-green-600">
                         {booking.amount}
                       </p>
@@ -175,21 +204,21 @@ const BookingDetailsModal = ({ open, onOpenChange, booking, onEdit }) => {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <User className="h-5 w-5" />
-                Customer Information
+                {TEXT.customerInfo}
               </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-4">
                   <div>
-                    <p className="text-sm text-gray-600">Full Name</p>
+                    <p className="text-sm text-gray-600">{TEXT.fullName}</p>
                     <p className="font-semibold text-lg">{booking.customer}</p>
                   </div>
 
                   <div className="flex items-center gap-3">
                     <Mail className="h-4 w-4 text-gray-400" />
                     <div>
-                      <p className="text-sm text-gray-600">Email</p>
+                      <p className="text-sm text-gray-600">{TEXT.email}</p>
                       <p className="font-medium">{booking.email}</p>
                     </div>
                   </div>
@@ -198,7 +227,7 @@ const BookingDetailsModal = ({ open, onOpenChange, booking, onEdit }) => {
                     <div className="flex items-center gap-3">
                       <Phone className="h-4 w-4 text-gray-400" />
                       <div>
-                        <p className="text-sm text-gray-600">Phone</p>
+                        <p className="text-sm text-gray-600">{TEXT.phone}</p>
                         <p className="font-medium">{booking.phone}</p>
                       </div>
                     </div>
@@ -207,21 +236,21 @@ const BookingDetailsModal = ({ open, onOpenChange, booking, onEdit }) => {
 
                 <div className="space-y-4">
                   <div>
-                    <p className="text-sm text-gray-600">Booking Reference</p>
+                    <p className="text-sm text-gray-600">{TEXT.bookingRef}</p>
                     <p className="font-bold text-lg text-blue-600">
                       {booking.bookingRef}
                     </p>
                   </div>
 
                   <div>
-                    <p className="text-sm text-gray-600">Booking Date</p>
+                    <p className="text-sm text-gray-600">{TEXT.bookingDate}</p>
                     <p className="font-medium">
                       {formatShortDate(booking.bookingDate)}
                     </p>
                   </div>
 
                   <div>
-                    <p className="text-sm text-gray-600">Booking ID</p>
+                    <p className="text-sm text-gray-600">{TEXT.bookingId}</p>
                     <p className="font-medium font-mono text-sm">
                       {booking.id}
                     </p>
@@ -237,14 +266,14 @@ const BookingDetailsModal = ({ open, onOpenChange, booking, onEdit }) => {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <MessageSquare className="h-5 w-5" />
-                  Additional Information
+                  {TEXT.additionalInfo}
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 {booking.seatPreferences && (
                   <div>
                     <p className="text-sm text-gray-600 font-medium">
-                      Seat Preferences
+                      {TEXT.seatPreferences}
                     </p>
                     <p className="text-sm bg-gray-50 p-3 rounded-md">
                       {booking.seatPreferences}
@@ -255,7 +284,7 @@ const BookingDetailsModal = ({ open, onOpenChange, booking, onEdit }) => {
                 {booking.specialRequests && (
                   <div>
                     <p className="text-sm text-gray-600 font-medium">
-                      Special Requests
+                      {TEXT.specialRequests}
                     </p>
                     <p className="text-sm bg-gray-50 p-3 rounded-md">
                       {booking.specialRequests}
@@ -271,7 +300,7 @@ const BookingDetailsModal = ({ open, onOpenChange, booking, onEdit }) => {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Clock className="h-5 w-5" />
-                Booking Timeline
+                {TEXT.bookingTimeline}
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -279,7 +308,7 @@ const BookingDetailsModal = ({ open, onOpenChange, booking, onEdit }) => {
                 <div className="flex items-start gap-4">
                   <div className="w-2 h-2 bg-blue-600 rounded-full mt-2"></div>
                   <div>
-                    <p className="font-medium">Booking Created</p>
+                    <p className="font-medium">{TEXT.bookingCreated}</p>
                     <p className="text-sm text-gray-600">
                       {formatDate(booking.bookingDate)}
                     </p>
@@ -290,9 +319,9 @@ const BookingDetailsModal = ({ open, onOpenChange, booking, onEdit }) => {
                   <div className="flex items-start gap-4">
                     <div className="w-2 h-2 bg-green-600 rounded-full mt-2"></div>
                     <div>
-                      <p className="font-medium">Booking Confirmed</p>
+                      <p className="font-medium">{TEXT.bookingConfirmed}</p>
                       <p className="text-sm text-gray-600">
-                        Payment processed successfully
+                        {TEXT.paymentProcessed}
                       </p>
                     </div>
                   </div>
@@ -302,8 +331,10 @@ const BookingDetailsModal = ({ open, onOpenChange, booking, onEdit }) => {
                   <div className="flex items-start gap-4">
                     <div className="w-2 h-2 bg-red-600 rounded-full mt-2"></div>
                     <div>
-                      <p className="font-medium">Booking Cancelled</p>
-                      <p className="text-sm text-gray-600">Refund processing</p>
+                      <p className="font-medium">{TEXT.bookingCancelled}</p>
+                      <p className="text-sm text-gray-600">
+                        {TEXT.refundProcessing}
+                      </p>
                     </div>
                   </div>
                 )}
@@ -312,7 +343,7 @@ const BookingDetailsModal = ({ open, onOpenChange, booking, onEdit }) => {
                   <div className="w-2 h-2 bg-gray-300 rounded-full mt-2"></div>
                   <div>
                     <p className="font-medium text-gray-500">
-                      Flight Departure
+                      {TEXT.flightDeparture}
                     </p>
                     <p className="text-sm text-gray-400">
                       {formatDate(booking.departure)}
@@ -328,20 +359,18 @@ const BookingDetailsModal = ({ open, onOpenChange, booking, onEdit }) => {
             <div className="flex gap-2">
               <Button variant="outline" size="sm">
                 <Download className="h-4 w-4 mr-2" />
-                Download PDF
+                {TEXT.downloadPdf}
               </Button>
               <Button variant="outline" size="sm">
                 <Mail className="h-4 w-4 mr-2" />
-                Send Email
+                {TEXT.sendEmail}
               </Button>
             </div>
 
-            <div className="flex gap-2">
-              <Button variant="outline" onClick={() => onOpenChange(false)}>
-                <X className="h-4 w-4 mr-2" />
-                Close
-              </Button>
-            </div>
+            <Button variant="outline" onClick={() => onOpenChange(false)}>
+              <X className="h-4 w-4 mr-2" />
+              {TEXT.close}
+            </Button>
           </div>
         </div>
       </DialogContent>

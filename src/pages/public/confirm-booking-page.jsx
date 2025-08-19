@@ -102,7 +102,7 @@ const BookingConfirmation = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
+    <div className="min-h-screen bg-gray-50 py-8 pt-20">
       <div className="max-w-4xl mx-auto px-4">
         {/* Confirmation Header */}
         <Card className="mb-6 text-center">
@@ -111,15 +111,17 @@ const BookingConfirmation = () => {
               <CheckCircle className="h-16 w-16 text-green-500" />
             </div>
             <CardTitle className="text-[1.8rem] font-semibold">
-              Booking Confirmed!
+              Đơn đặt đã xác nhận!
             </CardTitle>
             <CardDescription className="text-gray-600">
-              You’re all set! Your flight has been successfully booked.
+              Bạn đã sẵn sàng! Chuyến bay của bạn đã được đặt thành công.
             </CardDescription>
           </CardHeader>
           <CardContent className="flex justify-center">
             <p className="text-green-600 mb-2 bg-green-100 p-3 rounded-2xl inline-block">
-              <span className="font-medium">Confirmation email sent to</span>{" "}
+              <span className="font-medium">
+                Email xác nhận đã được gửi đến
+              </span>{" "}
               <span className="underline">{bookingDetails.email}</span>
             </p>
           </CardContent>
@@ -129,7 +131,7 @@ const BookingConfirmation = () => {
         <Card className="mb-6 flex flex-col justify-center items-center p-4">
           <CardHeader className="p-0">
             <CardTitle className="text-lg font-semibold mb-4">
-              Booking Reference
+              Mã Đặt Chỗ
             </CardTitle>
           </CardHeader>
           <CardContent className="border-2 w-full p-4 rounded-lg justify-center flex flex-col items-center">
@@ -145,11 +147,11 @@ const BookingConfirmation = () => {
                   copied ? "bg-green-600 hover:bg-green-700 text-white" : ""
                 }
               >
-                {copied ? "Copied!" : "Copy"}
+                {copied ? "Đã sao chép!" : "Sao chép"}
               </Button>
             </div>
             <p className="text-sm text-gray-500 mt-1">
-              Save this reference number for future use
+              Lưu ý: Mã đặt chỗ này sẽ được sử dụng để quản lý đặt chỗ của bạn.
             </p>
           </CardContent>
         </Card>
@@ -157,7 +159,7 @@ const BookingConfirmation = () => {
         {/* Trip Summary */}
         <Card className="mb-6">
           <CardHeader>
-            <CardTitle>Trip Summary</CardTitle>
+            <CardTitle>Tóm Tắt Chuyến Đi</CardTitle>
           </CardHeader>
           <CardContent>
             {/* Outbound Flight */}
@@ -176,7 +178,7 @@ const BookingConfirmation = () => {
                     {bookingDetails.outbound.departure.date}
                   </p>
                   <p className="text-xs text-gray-500">
-                    Terminal: {bookingDetails.outbound.terminal}
+                    Ga: {bookingDetails.outbound.terminal}
                   </p>
                 </div>
 
@@ -193,16 +195,16 @@ const BookingConfirmation = () => {
 
                   <div className="mt-8 md:mt-4">
                     <p className="font-semibold">
-                      Flight {bookingDetails.outbound.flightNumber}
+                      Chuyến bay {bookingDetails.outbound.flightNumber}
                     </p>
                     <p className="text-sm">
                       {bookingDetails.outbound.duration}
                     </p>
                     <p className="text-sm text-gray-600">
-                      Aircraft: {bookingDetails.outbound.aircraft}
+                      Máy bay: {bookingDetails.outbound.aircraft}
                     </p>
                     <p className="text-xs text-gray-500">
-                      Gate: {bookingDetails.outbound.gate}
+                      Cổng: {bookingDetails.outbound.gate}
                     </p>
                   </div>
                 </div>
@@ -220,7 +222,7 @@ const BookingConfirmation = () => {
                     {bookingDetails.outbound.arrival.date}
                   </p>
                   <p className="text-xs text-gray-500">
-                    Terminal: {bookingDetails.outbound.terminal}
+                    Ga: {bookingDetails.outbound.terminal}
                   </p>
                   <Badge variant="secondary" className="mt-2">
                     {bookingDetails.outbound.class}
@@ -231,13 +233,13 @@ const BookingConfirmation = () => {
 
             {/* Passenger Info */}
             <div className="mt-4 p-4 border rounded-lg bg-white shadow-sm">
-              <p className="font-semibold">Passenger Information</p>
+              <p className="font-semibold">Thông tin hành khách</p>
               <p>
                 {bookingDetails.passenger.name} -{" "}
                 {bookingDetails.passenger.type}
               </p>
               <p className="text-sm text-gray-600">
-                Seat: {bookingDetails.passenger.seat}
+                Chỗ ngồi: {bookingDetails.passenger.seat}
               </p>
             </div>
           </CardContent>
@@ -246,21 +248,21 @@ const BookingConfirmation = () => {
         {/* Price Summary */}
         <Card className="mb-6">
           <CardHeader>
-            <CardTitle>Price Summary</CardTitle>
+            <CardTitle>Tóm Tắt Giá</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
               <p className="flex justify-between">
-                <span>Base Fare</span>
+                <span>Giá Cơ Bản</span>
                 <span>${bookingDetails.price.breakdown.baseFare}</span>
               </p>
               <p className="flex justify-between">
-                <span>Taxes & Fees</span>
+                <span>Thuế & Phí</span>
                 <span>${bookingDetails.price.breakdown.taxesFees}</span>
               </p>
               <Separator />
               <p className="flex justify-between font-semibold">
-                <span>Total</span>
+                <span>Tổng Cộng</span>
                 <span>${bookingDetails.price.total}</span>
               </p>
             </div>
@@ -270,7 +272,7 @@ const BookingConfirmation = () => {
         {/* What's Next */}
         <Card className="mb-6">
           <CardHeader>
-            <CardTitle>What’s Next?</CardTitle>
+            <CardTitle>Tiếp Theo Là Gì?</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -279,16 +281,16 @@ const BookingConfirmation = () => {
                 className="w-full bg-green-600 hover:bg-green-700"
                 onClick={handleManageBooking}
               >
-                Manage Booking
+                Quản Lý Đặt Chỗ
               </Button>
               <Button variant="outline" className="w-full">
-                Add to Calendar
+                Thêm vào Lịch
               </Button>
               <Button variant="outline" className="w-full">
-                Print Itinerary
+                In Lịch Trình
               </Button>
               <Button variant="outline" className="w-full mt-2">
-                Share Trip Details
+                Chia Sẻ Chi Tiết Chuyến Đi
               </Button>
             </div>
           </CardContent>
@@ -297,14 +299,16 @@ const BookingConfirmation = () => {
         {/* Important Reminders */}
         <Card className="bg-blue-100/50">
           <CardHeader>
-            <CardTitle className="text-blue-600">Important Reminders</CardTitle>
+            <CardTitle className="text-blue-600">
+              Những Lưu Ý Quan Trọng
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <ul className="space-y-2 text-sm text-blue-600 font-semibold">
-              <li>✔ Check in 24 hours before departure</li>
-              <li>✔ Arrive at airport 2 hours before flight</li>
-              <li>✔ Ensure your ID/passport is valid for travel</li>
-              <li>✔ Review baggage allowance and restrictions</li>
+              <li>✔ Làm thủ tục 24 giờ trước khi khởi hành</li>
+              <li>✔ Đến sân bay 2 giờ trước giờ bay</li>
+              <li>✔ Đảm bảo CMND/hộ chiếu của bạn còn hiệu lực để đi lại</li>
+              <li>✔ Xem lại quy định và hạn chế về hành lý</li>
             </ul>
           </CardContent>
         </Card>

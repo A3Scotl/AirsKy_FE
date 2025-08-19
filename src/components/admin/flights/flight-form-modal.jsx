@@ -30,13 +30,78 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 
+// Vietnamese text constants
+const TEXT = {
+  addFlight: "Thêm Chuyến Bay Mới",
+  editFlight: "Sửa Chuyến Bay",
+  updateFlightInfo: "Cập nhật thông tin chuyến bay",
+  enterFlightDetails: "Nhập chi tiết chuyến bay để tạo chuyến bay mới",
+  basicFlightInfo: "Thông Tin Cơ Bản Chuyến Bay",
+  essentialFlightDetails:
+    "Chi tiết chuyến bay và thông tin nhận dạng cần thiết",
+  flightNumber: "Số Chuyến Bay",
+  aircraftType: "Loại Máy Bay",
+  capacity: "Sức Chứa",
+  flightStatus: "Trạng Thái Chuyến Bay",
+  bookedSeats: "Ghế Đã Đặt",
+  availableSeats: "Ghế Còn Trống",
+  routeInfo: "Thông Tin Tuyến Bay",
+  departureArrivalDetails: "Chi tiết sân bay đi và đến",
+  departureAirport: "Sân Bay Đi",
+  arrivalAirport: "Sân Bay Đến",
+  scheduleInfo: "Thông Tin Lịch Trình",
+  flightTiming: "Thời gian và lịch trình chuyến bay",
+  departureDate: "Ngày Khởi Hành",
+  departureTime: "Giờ Khởi Hành",
+  arrivalDate: "Ngày Đến",
+  arrivalTime: "Giờ Đến",
+  operationalInfo: "Thông Tin Vận Hành",
+  gateTerminalCrew: "Cổng, nhà ga và phi hành đoàn",
+  gate: "Cổng",
+  pilot: "Phi Công",
+  terminal: "Nhà Ga",
+  checkInCounter: "Quầy Check-in",
+  pricingInfo: "Thông Tin Giá Vé",
+  fareClasses: "Giá vé theo hạng",
+  economyPrice: "Giá Hạng Phổ Thông",
+  businessPrice: "Giá Hạng Thương Gia",
+  firstPrice: "Giá Hạng Nhất",
+  additionalServices: "Dịch Vụ Bổ Sung",
+  servicesAmenities: "Dịch vụ và tiện ích trên chuyến bay",
+  baggage: "Hành Lý",
+  mealService: "Dịch Vụ Ăn Uống",
+  entertainment: "Giải Trí",
+  wifiAvailable: "Có WiFi",
+  delayReason: "Lý Do Hoãn Bay",
+  remarks: "Ghi Chú",
+  requiredField: "Trường này là bắt buộc",
+  flightNumberFormat: "Số chuyến bay phải có định dạng: AB123 hoặc AB1234",
+  arrivalAfterDeparture: "Thời gian đến phải sau thời gian khởi hành",
+  capacityGreaterZero: "Sức chứa phải lớn hơn 0",
+  bookedExceedCapacity: "Ghế đã đặt không thể vượt quá sức chứa",
+  priceGreaterZero: "Giá phải lớn hơn 0",
+  selectAircraft: "Chọn loại máy bay",
+  selectDepartureAirport: "Chọn sân bay đi",
+  selectArrivalAirport: "Chọn sân bay đến",
+  selectPilot: "Chọn phi công",
+  save: "Lưu",
+  reset: "Đặt Lại",
+  cancel: "Hủy",
+  scheduled: "Đã Lên Lịch",
+  boarding: "Đang Lên Máy Bay",
+  departed: "Đã Khởi Hành",
+  delayed: "Hoãn",
+  cancelled: "Đã Hủy",
+  completed: "Hoàn Thành",
+};
+
 const FlightFormModal = ({
   open,
   onClose,
   onSave,
   aircraftTypes = [],
-  flight = null, // Flight data for edit mode
-  mode = "add", // "add" or "edit"
+  flight = null,
+  mode = "add",
 }) => {
   const isEditMode = mode === "edit" && flight;
 
@@ -132,10 +197,9 @@ const FlightFormModal = ({
     }
   };
 
+  // Form validation with Vietnamese error messages
   const validateForm = () => {
     const newErrors = {};
-
-    // Required fields for both add and edit
     const requiredFields = [
       "flightNumber",
       "aircraft",
@@ -149,14 +213,13 @@ const FlightFormModal = ({
       "economyPrice",
     ];
 
-    // Additional required fields for add mode
     if (!isEditMode) {
       requiredFields.push("gate", "pilot");
     }
 
     requiredFields.forEach((field) => {
       if (!formData[field]) {
-        newErrors[field] = "This field is required";
+        newErrors[field] = TEXT.requiredField;
       }
     });
 
@@ -165,39 +228,37 @@ const FlightFormModal = ({
       formData.flightNumber &&
       !/^[A-Z]{2}\d{3,4}$/.test(formData.flightNumber)
     ) {
-      newErrors.flightNumber =
-        "Flight number should be in format: AB123 or AB1234";
+      newErrors.flightNumber = TEXT.flightNumberFormat;
     }
 
     // Date validation
     if (formData.departureDate && formData.arrivalDate) {
       const depDate = new Date(
-        formData.departureDate + " " + formData.departureTime
+        `${formData.departureDate} ${formData.departureTime}`
       );
       const arrDate = new Date(
-        formData.arrivalDate + " " + formData.arrivalTime
+        `${formData.arrivalDate} ${formData.arrivalTime}`
       );
-
       if (arrDate <= depDate) {
-        newErrors.arrivalDate = "Arrival time must be after departure time";
+        newErrors.arrivalDate = TEXT.arrivalAfterDeparture;
       }
     }
 
     // Capacity validation
     if (formData.capacity && parseInt(formData.capacity) <= 0) {
-      newErrors.capacity = "Capacity must be greater than 0";
+      newErrors.capacity = TEXT.capacityGreaterZero;
     }
 
     // Seat validation for edit mode
     if (isEditMode && formData.bookedSeats && formData.capacity) {
       if (parseInt(formData.bookedSeats) > parseInt(formData.capacity)) {
-        newErrors.bookedSeats = "Booked seats cannot exceed capacity";
+        newErrors.bookedSeats = TEXT.bookedExceedCapacity;
       }
     }
 
     // Price validation
     if (formData.economyPrice && parseFloat(formData.economyPrice) <= 0) {
-      newErrors.economyPrice = "Price must be greater than 0";
+      newErrors.economyPrice = TEXT.priceGreaterZero;
     }
 
     setErrors(newErrors);
@@ -297,12 +358,12 @@ const FlightFormModal = ({
   ];
 
   const statusOptions = [
-    { value: "scheduled", label: "Scheduled" },
-    { value: "boarding", label: "Boarding" },
-    { value: "departed", label: "Departed" },
-    { value: "delayed", label: "Delayed" },
-    { value: "cancelled", label: "Cancelled" },
-    { value: "completed", label: "Completed" },
+    { value: "scheduled", label: TEXT.scheduled },
+    { value: "boarding", label: TEXT.boarding },
+    { value: "departed", label: TEXT.departed },
+    { value: "delayed", label: TEXT.delayed },
+    { value: "cancelled", label: TEXT.cancelled },
+    { value: "completed", label: TEXT.completed },
   ];
 
   if (!open) return null;
@@ -320,12 +381,12 @@ const FlightFormModal = ({
             )}
             <div>
               <h2 className="text-xl font-semibold text-gray-900">
-                {isEditMode ? "Edit Flight" : "Add New Flight"}
+                {isEditMode ? TEXT.editFlight : TEXT.addFlight}
               </h2>
               <p className="text-sm text-gray-500">
                 {isEditMode
-                  ? `Update flight ${flight?.flightNumber || ""} information`
-                  : "Enter flight details to create a new flight"}
+                  ? `${TEXT.updateFlightInfo} ${flight?.flightNumber || ""}`
+                  : TEXT.enterFlightDetails}
               </p>
             </div>
           </div>
@@ -346,15 +407,13 @@ const FlightFormModal = ({
             <CardHeader className="pb-4">
               <CardTitle className="flex items-center text-lg">
                 <Plane className="h-5 w-5 mr-2 text-blue-600" />
-                Basic Flight Information
+                {TEXT.basicFlightInfo}
               </CardTitle>
-              <CardDescription>
-                Essential flight details and identification
-              </CardDescription>
+              <CardDescription>{TEXT.essentialFlightDetails}</CardDescription>
             </CardHeader>
             <CardContent className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               <div>
-                <Label htmlFor="flightNumber">Flight Number *</Label>
+                <Label htmlFor="flightNumber">{TEXT.flightNumber} *</Label>
                 <Input
                   id="flightNumber"
                   value={formData.flightNumber}
@@ -366,7 +425,7 @@ const FlightFormModal = ({
                   }
                   placeholder="VN123"
                   className={errors.flightNumber ? "border-red-500" : ""}
-                  disabled={isEditMode} // Usually flight number shouldn't be editable
+                  disabled={isEditMode}
                 />
                 {errors.flightNumber && (
                   <p className="text-red-500 text-xs mt-1">
@@ -376,7 +435,7 @@ const FlightFormModal = ({
               </div>
 
               <div>
-                <Label htmlFor="aircraft">Aircraft Type *</Label>
+                <Label htmlFor="aircraft">{TEXT.aircraftType} *</Label>
                 <Select
                   value={formData.aircraft}
                   onValueChange={(value) =>
@@ -386,7 +445,7 @@ const FlightFormModal = ({
                   <SelectTrigger
                     className={errors.aircraft ? "border-red-500" : ""}
                   >
-                    <SelectValue placeholder="Select aircraft" />
+                    <SelectValue placeholder={TEXT.selectAircraft} />
                   </SelectTrigger>
                   <SelectContent>
                     {aircraftTypes.map((aircraft) => (
@@ -402,7 +461,7 @@ const FlightFormModal = ({
               </div>
 
               <div>
-                <Label htmlFor="capacity">Capacity *</Label>
+                <Label htmlFor="capacity">{TEXT.capacity} *</Label>
                 <Input
                   id="capacity"
                   type="number"
@@ -421,7 +480,7 @@ const FlightFormModal = ({
               {/* Status field - only show in edit mode */}
               {isEditMode && (
                 <div>
-                  <Label htmlFor="status">Flight Status</Label>
+                  <Label htmlFor="status">{TEXT.flightStatus}</Label>
                   <Select
                     value={formData.status}
                     onValueChange={(value) =>
@@ -461,7 +520,7 @@ const FlightFormModal = ({
               {isEditMode && (
                 <>
                   <div>
-                    <Label htmlFor="bookedSeats">Booked Seats</Label>
+                    <Label htmlFor="bookedSeats">{TEXT.bookedSeats}</Label>
                     <Input
                       id="bookedSeats"
                       type="number"
@@ -480,7 +539,9 @@ const FlightFormModal = ({
                   </div>
 
                   <div>
-                    <Label htmlFor="availableSeats">Available Seats</Label>
+                    <Label htmlFor="availableSeats">
+                      {TEXT.availableSeats}
+                    </Label>
                     <Input
                       id="availableSeats"
                       type="number"
@@ -501,15 +562,15 @@ const FlightFormModal = ({
             <CardHeader className="pb-4">
               <CardTitle className="flex items-center text-lg">
                 <MapPin className="h-5 w-5 mr-2 text-green-600" />
-                Route Information
+                {TEXT.routeInfo}
               </CardTitle>
-              <CardDescription>
-                Departure and arrival airport details
-              </CardDescription>
+              <CardDescription>{TEXT.departureArrivalDetails}</CardDescription>
             </CardHeader>
             <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="departureAirport">Departure Airport *</Label>
+                <Label htmlFor="departureAirport">
+                  {TEXT.departureAirport} *
+                </Label>
                 <Select
                   value={formData.departureAirport}
                   onValueChange={(value) =>
@@ -519,7 +580,7 @@ const FlightFormModal = ({
                   <SelectTrigger
                     className={errors.departureAirport ? "border-red-500" : ""}
                   >
-                    <SelectValue placeholder="Select departure airport" />
+                    <SelectValue placeholder={TEXT.selectDepartureAirport} />
                   </SelectTrigger>
                   <SelectContent>
                     {airports.map((airport) => (
@@ -537,7 +598,7 @@ const FlightFormModal = ({
               </div>
 
               <div>
-                <Label htmlFor="arrivalAirport">Arrival Airport *</Label>
+                <Label htmlFor="arrivalAirport">{TEXT.arrivalAirport} *</Label>
                 <Select
                   value={formData.arrivalAirport}
                   onValueChange={(value) =>
@@ -547,7 +608,7 @@ const FlightFormModal = ({
                   <SelectTrigger
                     className={errors.arrivalAirport ? "border-red-500" : ""}
                   >
-                    <SelectValue placeholder="Select arrival airport" />
+                    <SelectValue placeholder={TEXT.selectArrivalAirport} />
                   </SelectTrigger>
                   <SelectContent>
                     {airports.map((airport) => (
@@ -571,15 +632,13 @@ const FlightFormModal = ({
             <CardHeader className="pb-4">
               <CardTitle className="flex items-center text-lg">
                 <Calendar className="h-5 w-5 mr-2 text-purple-600" />
-                Schedule Information
+                {TEXT.scheduleInfo}
               </CardTitle>
-              <CardDescription>
-                Flight timing and schedule details
-              </CardDescription>
+              <CardDescription>{TEXT.flightTiming}</CardDescription>
             </CardHeader>
             <CardContent className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               <div>
-                <Label htmlFor="departureDate">Departure Date *</Label>
+                <Label htmlFor="departureDate">{TEXT.departureDate} *</Label>
                 <Input
                   id="departureDate"
                   type="date"
@@ -597,7 +656,7 @@ const FlightFormModal = ({
               </div>
 
               <div>
-                <Label htmlFor="departureTime">Departure Time *</Label>
+                <Label htmlFor="departureTime">{TEXT.departureTime} *</Label>
                 <Input
                   id="departureTime"
                   type="time"
@@ -615,7 +674,7 @@ const FlightFormModal = ({
               </div>
 
               <div>
-                <Label htmlFor="arrivalDate">Arrival Date *</Label>
+                <Label htmlFor="arrivalDate">{TEXT.arrivalDate} *</Label>
                 <Input
                   id="arrivalDate"
                   type="date"
@@ -633,7 +692,7 @@ const FlightFormModal = ({
               </div>
 
               <div>
-                <Label htmlFor="arrivalTime">Arrival Time *</Label>
+                <Label htmlFor="arrivalTime">{TEXT.arrivalTime} *</Label>
                 <Input
                   id="arrivalTime"
                   type="time"
@@ -657,15 +716,15 @@ const FlightFormModal = ({
             <CardHeader className="pb-4">
               <CardTitle className="flex items-center text-lg">
                 <Users className="h-5 w-5 mr-2 text-orange-600" />
-                Operational Details
+                {TEXT.operationalInfo}
               </CardTitle>
-              <CardDescription>
-                Flight crew and operational information
-              </CardDescription>
+              <CardDescription>{TEXT.gateTerminalCrew}</CardDescription>
             </CardHeader>
             <CardContent className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               <div>
-                <Label htmlFor="pilot">Pilot {!isEditMode && "*"}</Label>
+                <Label htmlFor="pilot">
+                  {TEXT.pilot} {!isEditMode && "*"}
+                </Label>
                 <Select
                   value={formData.pilot}
                   onValueChange={(value) => handleInputChange("pilot", value)}
@@ -673,7 +732,7 @@ const FlightFormModal = ({
                   <SelectTrigger
                     className={errors.pilot ? "border-red-500" : ""}
                   >
-                    <SelectValue placeholder="Select pilot" />
+                    <SelectValue placeholder={TEXT.selectPilot} />
                   </SelectTrigger>
                   <SelectContent>
                     {pilots.map((pilot) => (
@@ -689,7 +748,9 @@ const FlightFormModal = ({
               </div>
 
               <div>
-                <Label htmlFor="gate">Gate {!isEditMode && "*"}</Label>
+                <Label htmlFor="gate">
+                  {TEXT.gate} {!isEditMode && "*"}
+                </Label>
                 <Input
                   id="gate"
                   value={formData.gate}
@@ -706,7 +767,7 @@ const FlightFormModal = ({
               {isEditMode && (
                 <>
                   <div>
-                    <Label htmlFor="terminal">Terminal</Label>
+                    <Label htmlFor="terminal">{TEXT.terminal}</Label>
                     <Input
                       id="terminal"
                       value={formData.terminal}
@@ -718,7 +779,9 @@ const FlightFormModal = ({
                   </div>
 
                   <div>
-                    <Label htmlFor="checkInCounter">Check-in Counter</Label>
+                    <Label htmlFor="checkInCounter">
+                      {TEXT.checkInCounter}
+                    </Label>
                     <Input
                       id="checkInCounter"
                       value={formData.checkInCounter}
@@ -730,7 +793,7 @@ const FlightFormModal = ({
                   </div>
 
                   <div>
-                    <Label htmlFor="baggage">Baggage Policy</Label>
+                    <Label htmlFor="baggage">{TEXT.baggage}</Label>
                     <Input
                       id="baggage"
                       value={formData.baggage}
@@ -742,7 +805,7 @@ const FlightFormModal = ({
                   </div>
 
                   <div>
-                    <Label htmlFor="mealService">Meal Service</Label>
+                    <Label htmlFor="mealService">{TEXT.mealService}</Label>
                     <Select
                       value={formData.mealService}
                       onValueChange={(value) =>
@@ -750,19 +813,23 @@ const FlightFormModal = ({
                       }
                     >
                       <SelectTrigger>
-                        <SelectValue placeholder="Select meal service" />
+                        <SelectValue placeholder="Chọn dịch vụ ăn uống" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="none">No Meal Service</SelectItem>
-                        <SelectItem value="snack">Snack Service</SelectItem>
-                        <SelectItem value="meal">Full Meal Service</SelectItem>
-                        <SelectItem value="premium">Premium Dining</SelectItem>
+                        <SelectItem value="none">
+                          Không có dịch vụ ăn uống
+                        </SelectItem>
+                        <SelectItem value="snack">Dịch vụ đồ ăn nhẹ</SelectItem>
+                        <SelectItem value="meal">
+                          Dịch vụ ăn uống đầy đủ
+                        </SelectItem>
+                        <SelectItem value="premium">Ăn uống cao cấp</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
 
                   <div>
-                    <Label htmlFor="entertainment">Entertainment</Label>
+                    <Label htmlFor="entertainment">{TEXT.entertainment}</Label>
                     <Select
                       value={formData.entertainment}
                       onValueChange={(value) =>
@@ -770,17 +837,15 @@ const FlightFormModal = ({
                       }
                     >
                       <SelectTrigger>
-                        <SelectValue placeholder="Select entertainment" />
+                        <SelectValue placeholder="Chọn dịch vụ giải trí" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="none">No Entertainment</SelectItem>
-                        <SelectItem value="basic">
-                          Basic Entertainment
-                        </SelectItem>
+                        <SelectItem value="none">Không có giải trí</SelectItem>
+                        <SelectItem value="basic">Giải trí cơ bản</SelectItem>
                         <SelectItem value="premium">
-                          Premium Entertainment
+                          Giải trí cao cấp
                         </SelectItem>
-                        <SelectItem value="live_tv">Live TV</SelectItem>
+                        <SelectItem value="live_tv">TV trực tiếp</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -795,33 +860,33 @@ const FlightFormModal = ({
                       }
                       className="rounded border-gray-300"
                     />
-                    <Label htmlFor="wifiAvailable">WiFi Available</Label>
+                    <Label htmlFor="wifiAvailable">{TEXT.wifiAvailable}</Label>
                   </div>
 
                   {/* Delay reason - only show if status is delayed */}
                   {formData.status === "delayed" && (
                     <div className="col-span-full">
-                      <Label htmlFor="delayReason">Delay Reason</Label>
+                      <Label htmlFor="delayReason">{TEXT.delayReason}</Label>
                       <Input
                         id="delayReason"
                         value={formData.delayReason}
                         onChange={(e) =>
                           handleInputChange("delayReason", e.target.value)
                         }
-                        placeholder="Weather conditions, technical issues, etc."
+                        placeholder="Điều kiện thời tiết, sự cố kỹ thuật, v.v."
                       />
                     </div>
                   )}
 
                   <div className="col-span-full">
-                    <Label htmlFor="remarks">Remarks</Label>
+                    <Label htmlFor="remarks">{TEXT.remarks}</Label>
                     <textarea
                       id="remarks"
                       value={formData.remarks}
                       onChange={(e) =>
                         handleInputChange("remarks", e.target.value)
                       }
-                      placeholder="Additional notes or remarks about the flight..."
+                      placeholder="Ghi chú bổ sung về chuyến bay..."
                       className="w-full p-2 border border-gray-300 rounded-md resize-none"
                       rows={3}
                     />
@@ -836,15 +901,13 @@ const FlightFormModal = ({
             <CardHeader className="pb-4">
               <CardTitle className="flex items-center text-lg">
                 <DollarSign className="h-5 w-5 mr-2 text-yellow-600" />
-                Pricing Information
+                {TEXT.pricingInfo}
               </CardTitle>
-              <CardDescription>
-                Set prices for different class categories
-              </CardDescription>
+              <CardDescription>{TEXT.fareClasses}</CardDescription>
             </CardHeader>
             <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
-                <Label htmlFor="economyPrice">Economy Price ($) *</Label>
+                <Label htmlFor="economyPrice">{TEXT.economyPrice} ($) *</Label>
                 <Input
                   id="economyPrice"
                   type="number"
@@ -863,7 +926,7 @@ const FlightFormModal = ({
               </div>
 
               <div>
-                <Label htmlFor="businessPrice">Business Price ($)</Label>
+                <Label htmlFor="businessPrice">{TEXT.businessPrice} ($)</Label>
                 <Input
                   id="businessPrice"
                   type="number"
@@ -876,7 +939,7 @@ const FlightFormModal = ({
               </div>
 
               <div>
-                <Label htmlFor="firstPrice">First Class Price ($)</Label>
+                <Label htmlFor="firstPrice">{TEXT.firstPrice} ($)</Label>
                 <Input
                   id="firstPrice"
                   type="number"
@@ -893,23 +956,14 @@ const FlightFormModal = ({
           {/* Form Actions */}
           <div className="flex items-center justify-end space-x-3 pt-6 border-t border-gray-200">
             <Button type="button" variant="outline" onClick={handleReset}>
-              Reset
+              {TEXT.reset}
             </Button>
             <Button type="button" variant="outline" onClick={onClose}>
-              Cancel
+              {TEXT.cancel}
             </Button>
             <Button type="submit" className="bg-blue-600 hover:bg-blue-700">
-              {isEditMode ? (
-                <>
-                  <Save className="h-4 w-4 mr-2" />
-                  Update Flight
-                </>
-              ) : (
-                <>
-                  <Save className="h-4 w-4 mr-2" />
-                  Save Flight
-                </>
-              )}
+              <Save className="h-4 w-4 mr-2" />
+              {isEditMode ? "Cập Nhật Chuyến Bay" : TEXT.save}
             </Button>
           </div>
         </form>

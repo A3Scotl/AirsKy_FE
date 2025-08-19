@@ -31,7 +31,7 @@ const FavouritesTab = () => {
       flight: "VN1234",
       airline: "Vietnam Airlines",
       from: "Hanoi",
-      fromCode: "HAN", 
+      fromCode: "HAN",
       to: "Da Nang",
       toCode: "DAD",
       price: 80,
@@ -99,28 +99,35 @@ const FavouritesTab = () => {
   ]);
 
   const handleRemoveFavourite = (id) => {
-    setFavourites(favourites.filter(fav => fav.id !== id));
+    setFavourites(favourites.filter((fav) => fav.id !== id));
   };
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Favourite Flights</CardTitle>
-        <CardDescription>Your saved flights for quick booking</CardDescription>
+        <CardTitle>Chuyến bay yêu thích</CardTitle>
+        <CardDescription>
+          Các chuyến bay đã lưu của bạn để đặt nhanh
+        </CardDescription>
       </CardHeader>
       <CardContent>
         {favourites.length === 0 ? (
           <div className="text-center py-12">
             <Heart className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-            <p className="text-lg text-gray-600 mb-2">No favourite flights yet</p>
+            <p className="text-lg text-gray-600 mb-2">
+              Chưa có chuyến bay yêu thích
+            </p>
             <p className="text-sm text-gray-500">
-              Start adding flights to your favourites for quick access
+              Hãy thêm chuyến bay vào danh sách yêu thích để truy cập nhanh
             </p>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {favourites.map((flight) => (
-              <Card key={flight.id} className="relative hover:shadow-lg transition-shadow duration-200 hover:bg-blue-100/30 cursor-pointer">
+              <Card
+                key={flight.id}
+                className="relative hover:shadow-lg transition-shadow duration-200 hover:bg-blue-100/30 cursor-pointer"
+              >
                 {/* Remove Favourite Button */}
                 <Button
                   variant="ghost"
@@ -148,7 +155,7 @@ const FavouritesTab = () => {
                       <p className="text-xs text-gray-500">{flight.from}</p>
                       <p className="text-sm font-medium">{flight.departure}</p>
                     </div>
-                    
+
                     <div className="flex flex-col items-center mx-4">
                       <div className="flex items-center">
                         <div className="h-0.5 w-8 bg-gray-300"></div>
@@ -157,10 +164,12 @@ const FavouritesTab = () => {
                       </div>
                       <div className="flex items-center mt-1">
                         <Clock className="h-3 w-3 text-gray-400 mr-1" />
-                        <span className="text-xs text-gray-500">{flight.duration}</span>
+                        <span className="text-xs text-gray-500">
+                          {flight.duration}
+                        </span>
                       </div>
                     </div>
-                    
+
                     <div className="text-center">
                       <p className="text-lg font-semibold">{flight.toCode}</p>
                       <p className="text-xs text-gray-500">{flight.to}</p>
@@ -176,11 +185,13 @@ const FavouritesTab = () => {
                   {/* Price and Actions */}
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-2xl font-bold text-blue-600">${flight.price}</p>
+                      <p className="text-2xl font-bold text-blue-600">
+                        ${flight.price}
+                      </p>
                       <p className="text-xs text-gray-500">per person</p>
                     </div>
                     <Button className="bg-blue-600 hover:bg-blue-700">
-                      Book Now
+                      Đặt ngay
                     </Button>
                   </div>
                 </CardContent>

@@ -107,7 +107,7 @@ const AdminFlights = () => {
   // Flight statistics
   const flightStats = [
     {
-      title: "Total Flights Today",
+      title: "Tổng chuyến bay hôm nay",
       value: "156",
       change: "+8.2%",
       isPositive: true,
@@ -115,7 +115,7 @@ const AdminFlights = () => {
       color: "bg-blue-500",
     },
     {
-      title: "On Time Performance",
+      title: "Hiệu suất đúng giờ",
       value: "94.2%",
       change: "+2.1%",
       isPositive: true,
@@ -123,7 +123,7 @@ const AdminFlights = () => {
       color: "bg-green-500",
     },
     {
-      title: "Average Load Factor",
+      title: "Hệ số tải trung bình",
       value: "87.5%",
       change: "+5.3%",
       isPositive: true,
@@ -131,7 +131,7 @@ const AdminFlights = () => {
       color: "bg-purple-500",
     },
     {
-      title: "Delayed Flights",
+      title: "Chuyến bay bị trì hoãn",
       value: "9",
       change: "-15.2%",
       isPositive: true,
@@ -192,23 +192,23 @@ const AdminFlights = () => {
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">
-            Flight Management
+            Quản lý chuyến bay
           </h1>
           <p className="text-gray-600">
-            Manage flights, schedules, and operations
+            Quản lý chuyến bay, lịch trình và hoạt động
           </p>
         </div>
         <div className="flex space-x-3">
           <Button variant="outline" className="hidden sm:flex">
             <Download className="h-4 w-4 mr-2" />
-            Export
+            Xuất
           </Button>
           <Button
             className="bg-blue-600 hover:bg-blue-700"
             onClick={handleAddFlight}
           >
             <Plus className="h-4 w-4 mr-2" />
-            Add Flight
+            Thêm chuyến bay
           </Button>
         </div>
       </div>
@@ -241,7 +241,9 @@ const AdminFlights = () => {
                       >
                         {stat.change}
                       </span>
-                      <span className="text-gray-500 ml-1">vs last week</span>
+                      <span className="text-gray-500 ml-1">
+                        so với tuần trước
+                      </span>
                     </div>
                   </div>
                   <div
@@ -259,17 +261,16 @@ const AdminFlights = () => {
       {/* Main Content Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="schedule">Schedule</TabsTrigger>
-          <TabsTrigger value="operations">Operations</TabsTrigger>
+          <TabsTrigger value="overview">Tổng quan</TabsTrigger>
+          <TabsTrigger value="schedule">Lịch trình</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>Flight Operations</CardTitle>
+              <CardTitle>Tổng quan</CardTitle>
               <CardDescription>
-                Manage all flights, view real-time status and make updates
+                Quản lý tất cả các chuyến bay, xem trạng thái theo thời gian thực và thực hiện các cập nhật
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -290,12 +291,12 @@ const AdminFlights = () => {
                     <SelectValue placeholder="Filter by status" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">All Status</SelectItem>
-                    <SelectItem value="on-time">On Time</SelectItem>
-                    <SelectItem value="delayed">Delayed</SelectItem>
-                    <SelectItem value="boarding">Boarding</SelectItem>
-                    <SelectItem value="departed">Departed</SelectItem>
-                    <SelectItem value="cancelled">Cancelled</SelectItem>
+                    <SelectItem value="all">Tất cả</SelectItem>
+                    <SelectItem value="on-time">Đúng giờ</SelectItem>
+                    <SelectItem value="delayed">Trễ</SelectItem>
+                    <SelectItem value="boarding">Đang lên máy bay</SelectItem>
+                    <SelectItem value="departed">Đã khởi hành</SelectItem>
+                    <SelectItem value="cancelled">Đã hủy</SelectItem>
                   </SelectContent>
                 </Select>
 
@@ -335,28 +336,6 @@ const AdminFlights = () => {
 
         <TabsContent value="schedule" className="space-y-6">
           <FlightSchedule flights={flights} />
-        </TabsContent>
-
-        <TabsContent value="operations" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Flight Operations Center</CardTitle>
-              <CardDescription>
-                Real-time flight monitoring and operational controls
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="text-center py-12">
-                <Plane className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-gray-900 mb-2">
-                  Operations Dashboard
-                </h3>
-                <p className="text-gray-600">
-                  Real-time flight operations monitoring coming soon
-                </p>
-              </div>
-            </CardContent>
-          </Card>
         </TabsContent>
       </Tabs>
 

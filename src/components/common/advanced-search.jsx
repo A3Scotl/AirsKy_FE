@@ -17,8 +17,8 @@ import { format } from "date-fns";
 const AdvancedSearch = ({
   onSearch,
   onFilterChange,
-  placeholder = "Search...",
-  filterConfigs = [], // Array of filter configurations
+  placeholder = "Tìm kiếm...",
+  filterConfigs = [],
   showFilters = true,
   className = "",
   debounceDelay = 300,
@@ -26,9 +26,8 @@ const AdvancedSearch = ({
   const [searchValue, setSearchValue] = useState("");
   const [activeFilters, setActiveFilters] = useState({});
   const [showAdvanced, setShowAdvanced] = useState(false);
-  const [dateFilters, setDateFilters] = useState({}); // For date range filters
+  const [dateFilters, setDateFilters] = useState({});
 
-  // Debounced search
   useEffect(() => {
     const timer = setTimeout(() => {
       onSearch(searchValue);
@@ -79,7 +78,6 @@ const AdvancedSearch = ({
     return Object.keys(activeFilters).length + (searchValue ? 1 : 0);
   };
 
-  // Render different filter types based on configuration
   const renderFilter = (filterConfig) => {
     const { key, label, type, options, placeholder } = filterConfig;
 
@@ -93,10 +91,10 @@ const AdvancedSearch = ({
               onValueChange={(value) => handleFilterChange(key, value)}
             >
               <SelectTrigger>
-                <SelectValue placeholder={placeholder || `All ${label}`} />
+                <SelectValue placeholder={placeholder || `Tất cả ${label}`} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All {label}</SelectItem>
+                <SelectItem value="all">Tất cả {label}</SelectItem>
                 {options.map((option) => (
                   <SelectItem key={option.value} value={option.value}>
                     {option.label}
@@ -121,9 +119,7 @@ const AdvancedSearch = ({
                   {dateFilters[key] ? (
                     format(dateFilters[key], "PPP")
                   ) : (
-                    <span>
-                      {placeholder || `Select ${label.toLowerCase()}`}
-                    </span>
+                    <span>{placeholder || `Chọn ${label.toLowerCase()}`}</span>
                   )}
                 </Button>
               </PopoverTrigger>
@@ -149,11 +145,11 @@ const AdvancedSearch = ({
             >
               <SelectTrigger>
                 <SelectValue
-                  placeholder={placeholder || `Any ${label.toLowerCase()}`}
+                  placeholder={placeholder || `Bất kỳ ${label.toLowerCase()}`}
                 />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Any {label}</SelectItem>
+                <SelectItem value="all">Bất kỳ {label}</SelectItem>
                 {options.map((option) => (
                   <SelectItem key={option.value} value={option.value}>
                     {option.label}
@@ -171,7 +167,6 @@ const AdvancedSearch = ({
 
   return (
     <div className={`space-y-4 ${className}`}>
-      {/* Search Bar */}
       <div className="relative flex gap-2">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
@@ -198,7 +193,7 @@ const AdvancedSearch = ({
             <PopoverTrigger asChild>
               <Button variant="outline" className="relative">
                 <Filter className="h-4 w-4 mr-2" />
-                Filters
+                Bộ lọc
                 {getActiveFilterCount() > 0 && (
                   <Badge
                     variant="destructive"
@@ -212,18 +207,17 @@ const AdvancedSearch = ({
             <PopoverContent className="w-80 p-4" align="end">
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
-                  <h4 className="font-medium">Advanced Filters</h4>
+                  <h4 className="font-medium">Bộ lọc nâng cao</h4>
                   <Button
                     variant="ghost"
                     size="sm"
                     onClick={clearAllFilters}
                     className="h-6 px-2 text-xs"
                   >
-                    Clear All
+                    Xóa tất cả
                   </Button>
                 </div>
 
-                {/* Dynamic Filters based on configuration */}
                 {filterConfigs.map((filterConfig) =>
                   renderFilter(filterConfig)
                 )}

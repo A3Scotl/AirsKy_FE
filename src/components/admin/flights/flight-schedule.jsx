@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import {
   Calendar,
   Clock,
@@ -26,37 +26,77 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
+// Text constants for Vietnamese interface
+const TEXT = {
+  title: "Lịch Trình Chuyến Bay",
+  description: "Hoạt động bay hàng ngày và quản lý lịch trình",
+  filterPlaceholder: "Lọc theo máy bay",
+  allAircraft: "Tất Cả Máy Bay",
+  addFlight: "Thêm Chuyến Bay",
+  previousDay: "Ngày Trước",
+  nextDay: "Ngày Tiếp",
+  flightsScheduled: "chuyến bay đã lên lịch",
+  dailyTimeline: "Lịch Trình Hàng Ngày",
+  flights: "chuyến bay",
+  noFlightsScheduled: "Không có chuyến bay nào được lên lịch",
+  totalFlights: "Tổng Chuyến Bay",
+  onTime: "Đúng Giờ",
+  loadFactor: "Tỷ Lệ Lấp Đầy",
+  passengers: "hành khách",
+  noFlightsTitle: "Không có chuyến bay nào được lên lịch",
+  noFlightsDescription: "Không có chuyến bay nào được lên lịch cho",
+  with: "với",
+  scheduleAFlight: "Lên Lịch Chuyến Bay",
+  gate: "Cửa",
+  status: {
+    "On Time": "Đúng Giờ",
+    Delayed: "Hoãn",
+    Boarding: "Đang Lên Máy Bay",
+    Departed: "Đã Khởi Hành",
+    Cancelled: "Đã Hủy",
+  },
+};
+
 const FlightSchedule = ({ flights }) => {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [viewMode, setViewMode] = useState("day"); // day, week, month
   const [filterAircraft, setFilterAircraft] = useState("all");
 
-  // Generate time slots for the day view
-  const generateTimeSlots = () => {
+  // Status color configuration
+  const statusColors = {
+    "On Time": "bg-green-100 text-green-800 border-green-200",
+    Delayed: "bg-red-100 text-red-800 border-red-200",
+    Boarding: "bg-blue-100 text-blue-800 border-blue-200",
+    Departed: "bg-gray-100 text-gray-800 border-gray-200",
+    Cancelled: "bg-red-100 text-red-800 border-red-200",
+  };
+
+  // Memoized calculations
+  const timeSlots = useMemo(() => {
     const slots = [];
     for (let hour = 0; hour < 24; hour++) {
       slots.push(`${hour.toString().padStart(2, "0")}:00`);
     }
     return slots;
-  };
+  }, []);
 
-  const timeSlots = generateTimeSlots();
-
-  // Get flights for selected date
-  const getFlightsForDate = (date) => {
-    const dateStr = date.toISOString().split("T")[0];
+  const dailyFlights = useMemo(() => {
+    const dateStr = selectedDate.toISOString().split("T")[0];
     return flights.filter((flight) => {
       const flightDate = new Date(flight.departure).toISOString().split("T")[0];
       return flightDate === dateStr;
     });
-  };
+  }, [flights, selectedDate]);
 
-  const dailyFlights = getFlightsForDate(selectedDate);
+  const filteredFlights = useMemo(() => {
+    return filterAircraft === "all"
+      ? dailyFlights
+      : dailyFlights.filter((f) => f.aircraft === filterAircraft);
+  }, [dailyFlights, filterAircraft]);
 
-  // Group flights by hour
-  const groupFlightsByHour = (flights) => {
+  const flightsByHour = useMemo(() => {
     const grouped = {};
-    flights.forEach((flight) => {
+    dailyFlights.forEach((flight) => {
       const hour = new Date(flight.departure).getHours();
       const hourKey = `${hour.toString().padStart(2, "0")}:00`;
       if (!grouped[hourKey]) {
@@ -65,9 +105,11 @@ const FlightSchedule = ({ flights }) => {
       grouped[hourKey].push(flight);
     });
     return grouped;
-  };
+  }, [dailyFlights]);
 
-  const flightsByHour = groupFlightsByHour(dailyFlights);
+  const aircraftTypes = useMemo(() => {
+    return [...new Set(flights.map((f) => f.aircraft))];
+  }, [flights]);
 
   // Navigate dates
   const navigateDate = (direction) => {
@@ -81,7 +123,7 @@ const FlightSchedule = ({ flights }) => {
   };
 
   const formatDate = (date) => {
-    return date.toLocaleDateString("en-US", {
+    return date.toLocaleDateString("vi-VN", {
       weekday: "long",
       year: "numeric",
       month: "long",
@@ -97,23 +139,8 @@ const FlightSchedule = ({ flights }) => {
   };
 
   const getStatusColor = (status) => {
-    const colors = {
-      "On Time": "bg-green-100 text-green-800 border-green-200",
-      Delayed: "bg-red-100 text-red-800 border-red-200",
-      Boarding: "bg-blue-100 text-blue-800 border-blue-200",
-      Departed: "bg-gray-100 text-gray-800 border-gray-200",
-      Cancelled: "bg-red-100 text-red-800 border-red-200",
-    };
-    return colors[status] || "bg-gray-100 text-gray-800 border-gray-200";
+    return statusColors[status] || "bg-gray-100 text-gray-800 border-gray-200";
   };
-
-  // Aircraft types for filtering
-  const aircraftTypes = [...new Set(flights.map((f) => f.aircraft))];
-
-  const filteredFlights =
-    filterAircraft === "all"
-      ? dailyFlights
-      : dailyFlights.filter((f) => f.aircraft === filterAircraft);
 
   return (
     <div className="space-y-6">
@@ -124,19 +151,17 @@ const FlightSchedule = ({ flights }) => {
             <div>
               <CardTitle className="flex items-center space-x-2">
                 <Calendar className="h-5 w-5" />
-                <span>Flight Schedule</span>
+                <span>{TEXT.title}</span>
               </CardTitle>
-              <CardDescription>
-                Daily flight operations and schedule management
-              </CardDescription>
+              <CardDescription>{TEXT.description}</CardDescription>
             </div>
             <div className="flex items-center space-x-3">
               <Select value={filterAircraft} onValueChange={setFilterAircraft}>
                 <SelectTrigger className="w-48">
-                  <SelectValue placeholder="Filter by aircraft" />
+                  <SelectValue placeholder={TEXT.filterPlaceholder} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Aircraft</SelectItem>
+                  <SelectItem value="all">{TEXT.allAircraft}</SelectItem>
                   {aircraftTypes.map((aircraft) => (
                     <SelectItem key={aircraft} value={aircraft}>
                       {aircraft}
@@ -146,7 +171,7 @@ const FlightSchedule = ({ flights }) => {
               </Select>
               <Button variant="outline" size="sm">
                 <Plus className="h-4 w-4 mr-2" />
-                Add Flight
+                {TEXT.addFlight}
               </Button>
             </div>
           </div>
@@ -163,7 +188,7 @@ const FlightSchedule = ({ flights }) => {
               onClick={() => navigateDate("prev")}
             >
               <ChevronLeft className="h-4 w-4" />
-              Previous Day
+              {TEXT.previousDay}
             </Button>
 
             <div className="text-center">
@@ -171,7 +196,7 @@ const FlightSchedule = ({ flights }) => {
                 {formatDate(selectedDate)}
               </h2>
               <p className="text-sm text-gray-600">
-                {filteredFlights.length} flights scheduled
+                {filteredFlights.length} {TEXT.flightsScheduled}
               </p>
             </div>
 
@@ -180,7 +205,7 @@ const FlightSchedule = ({ flights }) => {
               size="sm"
               onClick={() => navigateDate("next")}
             >
-              Next Day
+              {TEXT.nextDay}
               <ChevronRight className="h-4 w-4" />
             </Button>
           </div>
@@ -191,9 +216,9 @@ const FlightSchedule = ({ flights }) => {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center justify-between">
-            <span>Daily Timeline</span>
+            <span>{TEXT.dailyTimeline}</span>
             <Badge variant="outline" className="text-sm">
-              {filteredFlights.length} flights
+              {filteredFlights.length} {TEXT.flights}
             </Badge>
           </CardTitle>
         </CardHeader>
@@ -252,7 +277,7 @@ const FlightSchedule = ({ flights }) => {
                                   {formatTime(flight.arrival)}
                                 </div>
                                 <div className="text-xs text-gray-500">
-                                  Gate {flight.gate} • {flight.duration}
+                                  {TEXT.gate} {flight.gate} • {flight.duration}
                                 </div>
                               </div>
 
@@ -260,7 +285,7 @@ const FlightSchedule = ({ flights }) => {
                                 variant="outline"
                                 className={getStatusColor(flight.status)}
                               >
-                                {flight.status}
+                                {TEXT.status[flight.status] || flight.status}
                               </Badge>
 
                               <div className="text-sm text-gray-600">
@@ -272,7 +297,7 @@ const FlightSchedule = ({ flights }) => {
                       </div>
                     ) : (
                       <div className="text-sm text-gray-400 italic">
-                        No flights scheduled
+                        {TEXT.noFlightsScheduled}
                       </div>
                     )}
                   </div>
@@ -290,7 +315,7 @@ const FlightSchedule = ({ flights }) => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-600">
-                  Total Flights
+                  {TEXT.totalFlights}
                 </p>
                 <p className="text-2xl font-bold text-gray-900">
                   {filteredFlights.length}
@@ -305,7 +330,9 @@ const FlightSchedule = ({ flights }) => {
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">On Time</p>
+                <p className="text-sm font-medium text-gray-600">
+                  {TEXT.onTime}
+                </p>
                 <p className="text-2xl font-bold text-green-600">
                   {filteredFlights.filter((f) => f.status === "On Time").length}
                 </p>
@@ -329,7 +356,9 @@ const FlightSchedule = ({ flights }) => {
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">Load Factor</p>
+                <p className="text-sm font-medium text-gray-600">
+                  {TEXT.loadFactor}
+                </p>
                 <p className="text-2xl font-bold text-purple-600">
                   {filteredFlights.length > 0
                     ? `${(
@@ -344,7 +373,7 @@ const FlightSchedule = ({ flights }) => {
                 </p>
                 <p className="text-xs text-gray-500">
                   {filteredFlights.reduce((sum, f) => sum + f.booked, 0)}{" "}
-                  passengers
+                  {TEXT.passengers}
                 </p>
               </div>
               <div className="h-8 w-8 bg-purple-500 rounded-lg flex items-center justify-center">
@@ -362,15 +391,15 @@ const FlightSchedule = ({ flights }) => {
             <div className="text-center">
               <Calendar className="h-12 w-12 text-gray-400 mx-auto mb-4" />
               <h3 className="text-lg font-medium text-gray-900 mb-2">
-                No flights scheduled
+                {TEXT.noFlightsTitle}
               </h3>
               <p className="text-gray-600 mb-4">
-                No flights are scheduled for {formatDate(selectedDate)}
-                {filterAircraft !== "all" && ` with ${filterAircraft}`}
+                {TEXT.noFlightsDescription} {formatDate(selectedDate)}
+                {filterAircraft !== "all" && ` ${TEXT.with} ${filterAircraft}`}
               </p>
               <Button className="bg-blue-600 hover:bg-blue-700">
                 <Plus className="h-4 w-4 mr-2" />
-                Schedule a Flight
+                {TEXT.scheduleAFlight}
               </Button>
             </div>
           </CardContent>

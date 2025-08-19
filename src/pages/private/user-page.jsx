@@ -156,7 +156,7 @@ const AdminUsers = () => {
   // User statistics
   const userStats = [
     {
-      title: "Total Users",
+      title: "Tổng người dùng",
       value: "8,429",
       change: "+12.3%",
       isPositive: true,
@@ -164,7 +164,7 @@ const AdminUsers = () => {
       color: "bg-blue-500",
     },
     {
-      title: "Active Users",
+      title: "Người dùng hoạt động",
       value: "7,892",
       change: "+8.1%",
       isPositive: true,
@@ -173,7 +173,7 @@ const AdminUsers = () => {
     },
 
     {
-      title: "New Registrations",
+      title: "Đăng ký mới",
       value: "156",
       change: "+23.4%",
       isPositive: true,
@@ -226,22 +226,22 @@ const AdminUsers = () => {
       {/* Page Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">User Management</h1>
+          <h1 className="text-2xl font-bold text-gray-900">Quản lý người dùng</h1>
           <p className="text-gray-600">
-            Manage users, roles, and account settings
+            Quản lý người dùng, vai trò và cài đặt tài khoản
           </p>
         </div>
         <div className="flex space-x-3">
           <Button variant="outline" className="hidden sm:flex">
             <Download className="h-4 w-4 mr-2" />
-            Export
+            Xuất
           </Button>
           <Button
             className="bg-blue-600 hover:bg-blue-700"
             onClick={handleAddUser}
           >
             <Plus className="h-4 w-4 mr-2" />
-            Add User
+            Thêm người dùng
           </Button>
         </div>
       </div>
@@ -274,7 +274,7 @@ const AdminUsers = () => {
                       >
                         {stat.change}
                       </span>
-                      <span className="text-gray-500 ml-1">vs last month</span>
+                      <span className="text-gray-500 ml-1">so với tháng trước</span>
                     </div>
                   </div>
                   <div
@@ -292,15 +292,15 @@ const AdminUsers = () => {
       {/* Main Content Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="grid w-full grid-cols-1">
-          <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsTrigger value="overview">Tổng quan</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>User Management</CardTitle>
+              <CardTitle>Quản lý người dùng</CardTitle>
               <CardDescription>
-                View and manage all user accounts and their details
+                Xem và quản lý tất cả tài khoản người dùng và chi tiết của họ
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -321,10 +321,10 @@ const AdminUsers = () => {
                     <SelectValue placeholder="Filter by status" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">All Status</SelectItem>
-                    <SelectItem value="active">Active</SelectItem>
-                    <SelectItem value="suspended">Suspended</SelectItem>
-                    <SelectItem value="pending">Pending</SelectItem>
+                    <SelectItem value="all">Tất cả trạng thái</SelectItem>
+                    <SelectItem value="active">Đang hoạt động</SelectItem>
+                    <SelectItem value="suspended">Bị đình chỉ</SelectItem>
+                    <SelectItem value="pending">Đang chờ</SelectItem>
                   </SelectContent>
                 </Select>
 
@@ -333,10 +333,10 @@ const AdminUsers = () => {
                     <SelectValue placeholder="Filter by role" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">All Roles</SelectItem>
-                    <SelectItem value="customer">Customer</SelectItem>
-                    <SelectItem value="premium">Premium</SelectItem>
-                    <SelectItem value="admin">Admin</SelectItem>
+                    <SelectItem value="all">Tất cả vai trò</SelectItem>
+                    <SelectItem value="customer">Khách hàng</SelectItem>
+                    <SelectItem value="premium">Cao cấp</SelectItem>
+                    <SelectItem value="admin">Quản trị viên</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

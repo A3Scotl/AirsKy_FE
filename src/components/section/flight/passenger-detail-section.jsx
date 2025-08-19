@@ -44,9 +44,9 @@ const formatDate = (date, formatString) => {
 
 const PassengerDetails = ({ formData, updateFormData, updatePassenger }) => (
   <div className="w-full">
-    <h2 className="text-lg sm:text-xl font-bold mb-4">Passenger Information</h2>
+    <h2 className="text-lg sm:text-xl font-bold mb-4">Thông tin hành khách</h2>
     <p className="text-xs sm:text-sm text-gray-500 mb-4 sm:mb-6">
-      Please provide the required information for all passengers
+      Vui lòng cung cấp thông tin cần thiết cho tất cả hành khách
     </p>
 
     {/* Contact Person */}
@@ -55,16 +55,16 @@ const PassengerDetails = ({ formData, updateFormData, updatePassenger }) => (
         <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-blue-100 flex items-center justify-center">
           <span className="text-blue-600 text-xs sm:text-sm">👤</span>
         </div>
-        <h3 className="font-semibold text-sm sm:text-base">Contact Person</h3>
+        <h3 className="font-semibold text-sm sm:text-base">Người liên hệ</h3>
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
         <div>
           <Label htmlFor="contact-fullname" className="text-xs sm:text-sm">
-            Full Name *
+            Họ và tên *
           </Label>
           <Input
             id="contact-fullname"
-            placeholder="Enter your full name"
+            placeholder="Nhập họ và tên của bạn"
             className="text-sm"
             value={formData.contact.fullName}
             onChange={(e) =>
@@ -74,11 +74,11 @@ const PassengerDetails = ({ formData, updateFormData, updatePassenger }) => (
         </div>
         <div>
           <Label htmlFor="contact-phone" className="text-xs sm:text-sm">
-            Phone Number *
+            Số điện thoại *
           </Label>
           <Input
             id="contact-phone"
-            placeholder="Enter phone number"
+            placeholder="Nhập số điện thoại"
             className="text-sm"
             value={formData.contact.phone}
             onChange={(e) => updateFormData("contact", "phone", e.target.value)}
@@ -86,11 +86,11 @@ const PassengerDetails = ({ formData, updateFormData, updatePassenger }) => (
         </div>
         <div>
           <Label htmlFor="contact-email" className="text-xs sm:text-sm">
-            Email Address *
+            Email *
           </Label>
           <Input
             id="contact-email"
-            placeholder="Enter your email address"
+            placeholder="Nhập địa chỉ email của bạn"
             className="text-sm"
             value={formData.contact.email}
             onChange={(e) => updateFormData("contact", "email", e.target.value)}
@@ -98,11 +98,11 @@ const PassengerDetails = ({ formData, updateFormData, updatePassenger }) => (
         </div>
         <div>
           <Label htmlFor="contact-confirm-email" className="text-xs sm:text-sm">
-            Confirm Email *
+            Xác nhận Email *
           </Label>
           <Input
             id="contact-confirm-email"
-            placeholder="Confirm your email address"
+            placeholder="Xác nhận địa chỉ email của bạn"
             className="text-sm"
             value={formData.contact.confirmEmail}
             onChange={(e) =>
@@ -111,18 +111,7 @@ const PassengerDetails = ({ formData, updateFormData, updatePassenger }) => (
           />
         </div>
       </div>
-      <div className="flex items-center gap-2 mt-3 sm:mt-4">
-        <Checkbox
-          id="is-passenger"
-          checked={formData.contact.isPassenger}
-          onCheckedChange={(checked) =>
-            updateFormData("contact", "isPassenger", checked)
-          }
-        />
-        <Label htmlFor="is-passenger" className="text-xs sm:text-sm">
-          I am one of the passengers.
-        </Label>
-      </div>
+      
     </div>
 
     {/* Passenger 1: Adult */}
@@ -132,17 +121,17 @@ const PassengerDetails = ({ formData, updateFormData, updatePassenger }) => (
           <span className="text-green-600 text-xs sm:text-sm">👤</span>
         </div>
         <h3 className="font-semibold text-sm sm:text-base">
-          Passenger 1: Adult
+          Hành khách 1: Người lớn
         </h3>
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
         <div>
           <Label htmlFor="p1-fullname" className="text-xs sm:text-sm">
-            Full Name *
+            Tên đầy đủ *
           </Label>
           <Input
             id="p1-fullname"
-            placeholder="As on passport/ID"
+            placeholder="Nhập tên đầy đủ"
             className="text-sm"
             value={formData.passengers[0].fullName}
             onChange={(e) => updatePassenger(0, "fullName", e.target.value)}
@@ -150,25 +139,25 @@ const PassengerDetails = ({ formData, updateFormData, updatePassenger }) => (
         </div>
         <div>
           <Label htmlFor="p1-gender" className="text-xs sm:text-sm">
-            Gender *
+            Giới tính *
           </Label>
           <Select
             value={formData.passengers[0].gender}
             onValueChange={(value) => updatePassenger(0, "gender", value)}
           >
             <SelectTrigger className="text-sm">
-              <SelectValue placeholder="Select Gender" />
+              <SelectValue placeholder="Chọn giới tính" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="Male">Male</SelectItem>
-              <SelectItem value="Female">Female</SelectItem>
-              <SelectItem value="Other">Other</SelectItem>
+              <SelectItem value="Male">Nam</SelectItem>
+              <SelectItem value="Female">Nữ</SelectItem>
+              <SelectItem value="Other">Khác</SelectItem>
             </SelectContent>
           </Select>
         </div>
         <div className="sm:col-span-2 lg:col-span-1">
           <Label htmlFor="p1-dob" className="text-xs sm:text-sm">
-            Date of Birth *
+            Ngày sinh *
           </Label>
           <Popover>
             <PopoverTrigger asChild>
@@ -199,11 +188,11 @@ const PassengerDetails = ({ formData, updateFormData, updatePassenger }) => (
         </div>
         <div className="sm:col-span-2 lg:col-span-2">
           <Label htmlFor="p1-passport" className="text-xs sm:text-sm">
-            Passport Number (Optional)
+            Số hộ chiếu (tùy chọn)
           </Label>
           <Input
             id="p1-passport"
-            placeholder="Enter passport number"
+            placeholder="Nhập số hộ chiếu"
             className="text-sm"
             value={formData.passengers[0].passport}
             onChange={(e) => updatePassenger(0, "passport", e.target.value)}
@@ -211,11 +200,11 @@ const PassengerDetails = ({ formData, updateFormData, updatePassenger }) => (
         </div>
         <div className="sm:col-span-2 lg:col-span-1">
           <Label htmlFor="p1-ffn" className="text-xs sm:text-sm">
-            Frequent Flyer Number (Optional)
+            Mã số khách hàng (tùy chọn)
           </Label>
           <Input
             id="p1-ffn"
-            placeholder="Enter frequent flyer number"
+            placeholder="Nhập mã số khách hàng"
             className="text-sm"
             value={formData.passengers[0].frequentFlyer}
             onChange={(e) =>

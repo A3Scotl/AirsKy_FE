@@ -17,37 +17,37 @@ const AdminSidebar = ({ sidebarOpen, setSidebarOpen }) => {
 
   const navigation = [
     {
-      name: "Dashboard",
+      name: "Trang chính",
       href: "/admin/dashboard",
       icon: LayoutDashboard,
       current: location.pathname === "/admin/dashboard",
     },
     {
-      name: "Bookings",
+      name: "Quản lý đặt vé",
       href: "/admin/bookings",
       icon: Calendar,
       current: location.pathname === "/admin/bookings",
     },
     {
-      name: "Flights",
+      name: "Quản lý chuyến bay",
       href: "/admin/flights",
       icon: Plane,
       current: location.pathname === "/admin/flights",
     },
     {
-      name: "Users",
+      name: "Quản lý người dùng",
       href: "/admin/users",
       icon: Users,
       current: location.pathname === "/admin/users",
     },
     {
-      name: "Payments",
+      name: "Quản lý thanh toán",
       href: "/admin/payments",
       icon: CreditCard,
       current: location.pathname === "/admin/payments",
     },
     {
-      name: "Reports & Analytics",
+      name: "Báo cáo & Phân tích",
       href: "/admin/reports",
       icon: BarChart3,
       current: location.pathname === "/admin/reports",

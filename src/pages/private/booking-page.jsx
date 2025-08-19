@@ -1,19 +1,14 @@
 import React, { useState, useMemo } from "react";
 import {
-  Search,
-  Filter,
   Download,
   Eye,
-  Edit,
   Trash2,
-  Plus,
   MapPin,
   User,
   FileText,
   BarChart3,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import {
   Card,
@@ -30,13 +25,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -57,88 +45,138 @@ import BookingDetailsModal from "@/components/admin/bookings/booking-details-mod
 import BookingMetrics from "@/components/admin/bookings/booking-metrics";
 import AdvancedSearch from "@/components/common/advanced-search";
 
-const AdminBookings = () => {
-  const [searchQuery, setSearchQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
-  const [advancedFilters, setAdvancedFilters] = useState({});
-  const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(10);
-  const [showDetailsModal, setShowDetailsModal] = useState(false);
-  const [selectedBooking, setSelectedBooking] = useState(null);
+// Vietnamese text constants
+const TEXT = {
+  pageTitle: "Quản Lý Đặt Vé",
+  pageDescription: "Quản lý và theo dõi tất cả các đặt vé máy bay",
+  allBookings: "Tất Cả Đặt Vé",
+  cardDescription: "Xem và quản lý tất cả các đặt vé máy bay trong hệ thống",
+  export: "Xuất File",
+  exportCSV: "Xuất CSV",
+  exportJSON: "Xuất JSON",
+  exportSummary: "Xuất Báo Cáo",
+  bookingRef: "Mã Đặt Vé",
+  customer: "Khách Hàng",
+  route: "Tuyến Bay",
+  departure: "Khởi Hành",
+  passengers: "Hành Khách",
+  class: "Hạng Vé",
+  status: "Trạng Thái",
+  amount: "Số Tiền",
+  actions: "Thao Tác",
+  viewDetails: "Xem Chi Tiết",
+  deleteBooking: "Xóa Đặt Vé",
+  confirmDelete: "Bạn có chắc chắn muốn xóa đặt vé",
+  deleteSuccess: "Xóa đặt vé thành công",
+  exportSuccess: "Xuất file thành công dưới định dạng",
+  searchPlaceholder:
+    "Tìm kiếm theo tên khách hàng, mã đặt vé, email hoặc tuyến bay...",
+  statusConfirmed: "Đã Xác Nhận",
+  statusPending: "Chờ Xử Lý",
+  statusCancelled: "Đã Hủy",
+  classEconomy: "Phổ Thông",
+  classBusiness: "Thương Gia",
+  classFirst: "Hạng Nhất",
+};
 
-  // Mock booking data
+const AdminBookings = () => {
+  // Consolidated state
+  const [state, setState] = useState({
+    searchQuery: "",
+    statusFilter: "all",
+    advancedFilters: {},
+    currentPage: 1,
+    itemsPerPage: 10,
+    showDetailsModal: false,
+    selectedBooking: null,
+  });
+
+  // Mock booking data with Vietnamese content
   const [bookings, setBookings] = useState([
     {
       id: "BK001",
       bookingRef: "AS24001",
-      customer: "John Smith",
-      email: "john.smith@email.com",
-      route: "New York (NYC) → Los Angeles (LAX)",
+      customer: "Nguyễn Văn Minh",
+      email: "nguyen.van.minh@email.com",
+      route: "Hà Nội (HAN) → Hồ Chí Minh (SGN)",
       departure: "2024-01-20 08:30",
       arrival: "2024-01-20 11:45",
       passengers: 2,
       class: "Economy",
       status: "Confirmed",
-      amount: "$450.00",
+      amount: "2.500.000 VNĐ",
       bookingDate: "2024-01-15 14:30",
     },
     {
       id: "BK002",
       bookingRef: "AS24002",
-      customer: "Sarah Johnson",
-      email: "sarah.j@email.com",
-      route: "Chicago (CHI) → Miami (MIA)",
+      customer: "Trần Thị Lan",
+      email: "tran.thi.lan@email.com",
+      route: "Đà Nẵng (DAD) → Hà Nội (HAN)",
       departure: "2024-01-22 15:20",
       arrival: "2024-01-22 19:35",
       passengers: 1,
       class: "Business",
       status: "Pending",
-      amount: "$780.00",
+      amount: "4.200.000 VNĐ",
       bookingDate: "2024-01-16 09:15",
     },
     {
       id: "BK003",
       bookingRef: "AS24003",
-      customer: "Mike Davis",
-      email: "mike.davis@email.com",
-      route: "Seattle (SEA) → Boston (BOS)",
+      customer: "Phạm Minh Tuấn",
+      email: "pham.minh.tuan@email.com",
+      route: "Cần Thơ (VCA) → Hà Nội (HAN)",
       departure: "2024-01-25 12:00",
       arrival: "2024-01-25 20:15",
       passengers: 3,
       class: "Economy",
       status: "Cancelled",
-      amount: "$920.00",
+      amount: "3.600.000 VNĐ",
       bookingDate: "2024-01-14 16:45",
     },
     {
       id: "BK004",
       bookingRef: "AS24004",
-      customer: "Emma Wilson",
-      email: "emma.wilson@email.com",
-      route: "Los Angeles (LAX) → New York (NYC)",
+      customer: "Lê Thị Hương",
+      email: "le.thi.huong@email.com",
+      route: "Hồ Chí Minh (SGN) → Hà Nội (HAN)",
       departure: "2024-01-28 10:15",
       arrival: "2024-01-28 18:30",
       passengers: 1,
       class: "First",
       status: "Confirmed",
-      amount: "$1,250.00",
+      amount: "6.800.000 VNĐ",
       bookingDate: "2024-01-17 11:20",
     },
     {
       id: "BK005",
       bookingRef: "AS24005",
-      customer: "Alex Brown",
-      email: "alex.brown@email.com",
-      route: "Denver (DEN) → Atlanta (ATL)",
+      customer: "Hoàng Văn Đức",
+      email: "hoang.van.duc@email.com",
+      route: "Nha Trang (CXR) → Hồ Chí Minh (SGN)",
       departure: "2024-01-30 07:45",
       arrival: "2024-01-30 12:50",
       passengers: 2,
       class: "Economy",
       status: "Confirmed",
-      amount: "$580.00",
+      amount: "1.800.000 VNĐ",
       bookingDate: "2024-01-18 13:10",
     },
   ]);
+
+  // Status and class mapping
+  const statusMap = {
+    Confirmed: TEXT.statusConfirmed,
+    Pending: TEXT.statusPending,
+    Cancelled: TEXT.statusCancelled,
+  };
+
+  const classMap = {
+    Economy: TEXT.classEconomy,
+    Business: TEXT.classBusiness,
+    First: TEXT.classFirst,
+  };
 
   const getStatusBadge = (status) => {
     const variants = {
@@ -158,115 +196,113 @@ const AdminBookings = () => {
     return variants[flightClass] || "bg-gray-100 text-gray-800";
   };
 
+  // Event handlers
   const handleViewBooking = (booking) => {
-    setSelectedBooking(booking);
-    setShowDetailsModal(true);
+    setState((prev) => ({
+      ...prev,
+      selectedBooking: booking,
+      showDetailsModal: true,
+    }));
   };
 
   const handleDeleteBooking = (booking) => {
-    if (
-      window.confirm(
-        `Are you sure you want to delete booking ${booking.bookingRef}?`
-      )
-    ) {
+    if (window.confirm(`${TEXT.confirmDelete} ${booking.bookingRef}?`)) {
       setBookings((prev) => prev.filter((b) => b.id !== booking.id));
-      toast.success("Booking deleted successfully");
+      toast.success(TEXT.deleteSuccess);
     }
   };
 
-  const handleSaveBooking = (bookingData, isEdit) => {
-    if (isEdit) {
-      setBookings((prev) =>
-        prev.map((b) => (b.id === bookingData.id ? bookingData : b))
-      );
-    } else {
-      setBookings((prev) => [...prev, bookingData]);
-    }
-  };
-
-  // Enhanced pagination handlers
   const handlePageChange = (page) => {
-    setCurrentPage(page);
+    setState((prev) => ({ ...prev, currentPage: page }));
   };
 
   const handlePageSizeChange = (newPageSize) => {
-    setItemsPerPage(newPageSize);
-    setCurrentPage(1); // Reset to first page when changing page size
+    setState((prev) => ({
+      ...prev,
+      itemsPerPage: newPageSize,
+      currentPage: 1,
+    }));
   };
 
-  // Export handlers
   const handleExport = (format) => {
     const filters = {
-      status: statusFilter,
-      searchQuery: searchQuery,
+      status: state.statusFilter,
+      searchQuery: state.searchQuery,
     };
-
     exportBookings(filteredBookings, format, filters);
-    toast.success(`Bookings exported as ${format.toUpperCase()}`);
+    toast.success(`${TEXT.exportSuccess} ${format.toUpperCase()}`);
   };
 
-  const handleExportSummary = () => {
-    exportBookingSummary(filteredBookings);
-    toast.success("Booking summary exported");
-  };
-
-  // Advanced search handlers
   const handleAdvancedSearch = (query) => {
-    setSearchQuery(query);
-    setCurrentPage(1); // Reset to first page on search
+    setState((prev) => ({
+      ...prev,
+      searchQuery: query,
+      currentPage: 1,
+    }));
   };
 
   const handleAdvancedFilterChange = (filters) => {
-    setAdvancedFilters(filters);
-    setCurrentPage(1); // Reset to first page on filter change
+    setState((prev) => ({
+      ...prev,
+      advancedFilters: filters,
+      currentPage: 1,
+    }));
   };
 
   // Filter and pagination logic
-  const filteredBookings = bookings.filter((booking) => {
-    // Basic search filter
-    const matchesSearch =
-      !searchQuery ||
-      booking.customer.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      booking.bookingRef.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      booking.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      booking.route.toLowerCase().includes(searchQuery.toLowerCase());
+  const filteredBookings = useMemo(() => {
+    return bookings.filter((booking) => {
+      const searchFields = [
+        booking.customer,
+        booking.bookingRef,
+        booking.email,
+        booking.route,
+      ]
+        .join(" ")
+        .toLowerCase();
 
-    // Status filter (legacy support)
-    const matchesStatus =
-      statusFilter === "all" ||
-      booking.status.toLowerCase() === statusFilter.toLowerCase();
+      const matchesSearch =
+        !state.searchQuery ||
+        searchFields.includes(state.searchQuery.toLowerCase());
 
-    // Advanced filters
-    const matchesAdvancedStatus =
-      !advancedFilters.status ||
-      advancedFilters.status === "all" ||
-      booking.status.toLowerCase() === advancedFilters.status.toLowerCase();
+      const matchesStatus =
+        state.statusFilter === "all" ||
+        booking.status.toLowerCase() === state.statusFilter.toLowerCase();
 
-    const matchesClass =
-      !advancedFilters.class ||
-      advancedFilters.class === "all" ||
-      booking.class.toLowerCase() === advancedFilters.class.toLowerCase();
+      const matchesAdvancedStatus =
+        !state.advancedFilters.status ||
+        state.advancedFilters.status === "all" ||
+        booking.status.toLowerCase() ===
+          state.advancedFilters.status.toLowerCase();
 
-    const matchesPassengers =
-      !advancedFilters.passengers ||
-      advancedFilters.passengers === "all" ||
-      (advancedFilters.passengers === "4+" && booking.passengers >= 4) ||
-      (advancedFilters.passengers !== "4+" &&
-        booking.passengers === parseInt(advancedFilters.passengers));
+      const matchesClass =
+        !state.advancedFilters.class ||
+        state.advancedFilters.class === "all" ||
+        booking.class.toLowerCase() ===
+          state.advancedFilters.class.toLowerCase();
 
-    return (
-      matchesSearch &&
-      matchesStatus &&
-      matchesAdvancedStatus &&
-      matchesClass &&
-      matchesPassengers
-    );
-  });
+      const matchesPassengers =
+        !state.advancedFilters.passengers ||
+        state.advancedFilters.passengers === "all" ||
+        (state.advancedFilters.passengers === "4+" &&
+          booking.passengers >= 4) ||
+        (state.advancedFilters.passengers !== "4+" &&
+          booking.passengers === parseInt(state.advancedFilters.passengers));
 
-  const totalPages = Math.ceil(filteredBookings.length / itemsPerPage);
+      return (
+        matchesSearch &&
+        matchesStatus &&
+        matchesAdvancedStatus &&
+        matchesClass &&
+        matchesPassengers
+      );
+    });
+  }, [bookings, state.searchQuery, state.statusFilter, state.advancedFilters]);
+
+  const totalPages = Math.ceil(filteredBookings.length / state.itemsPerPage);
   const paginatedBookings = filteredBookings.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
+    (state.currentPage - 1) * state.itemsPerPage,
+    state.currentPage * state.itemsPerPage
   );
 
   return (
@@ -274,10 +310,8 @@ const AdminBookings = () => {
       {/* Page Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">
-            Booking Management
-          </h1>
-          <p className="text-gray-600">Manage and track all flight bookings</p>
+          <h1 className="text-2xl font-bold text-gray-900">{TEXT.pageTitle}</h1>
+          <p className="text-gray-600">{TEXT.pageDescription}</p>
         </div>
       </div>
 
@@ -287,10 +321,8 @@ const AdminBookings = () => {
       {/* Filters and Search */}
       <Card>
         <CardHeader>
-          <CardTitle>All Bookings</CardTitle>
-          <CardDescription>
-            View and manage all flight bookings in the system
-          </CardDescription>
+          <CardTitle>{TEXT.allBookings}</CardTitle>
+          <CardDescription>{TEXT.cardDescription}</CardDescription>
         </CardHeader>
         <CardContent>
           {/* Advanced Search and Filters */}
@@ -299,7 +331,7 @@ const AdminBookings = () => {
               <AdvancedSearch
                 onSearch={handleAdvancedSearch}
                 onFilterChange={handleAdvancedFilterChange}
-                placeholder="Search by customer name, booking reference, email, or route..."
+                placeholder={TEXT.searchPlaceholder}
                 filterConfigs={bookingFilters}
                 showFilters={true}
                 className="w-full"
@@ -311,7 +343,7 @@ const AdminBookings = () => {
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" className="whitespace-nowrap">
                   <Download className="h-4 w-4 mr-2" />
-                  Export
+                  {TEXT.export}
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
@@ -319,17 +351,22 @@ const AdminBookings = () => {
                   onClick={() => handleExport(exportFormats.CSV)}
                 >
                   <FileText className="h-4 w-4 mr-2" />
-                  Export as CSV
+                  {TEXT.exportCSV}
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   onClick={() => handleExport(exportFormats.JSON)}
                 >
                   <FileText className="h-4 w-4 mr-2" />
-                  Export as JSON
+                  {TEXT.exportJSON}
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={handleExportSummary}>
+                <DropdownMenuItem
+                  onClick={() => {
+                    exportBookingSummary(filteredBookings);
+                    toast.success("Xuất báo cáo tổng hợp thành công");
+                  }}
+                >
                   <BarChart3 className="h-4 w-4 mr-2" />
-                  Export Summary
+                  {TEXT.exportSummary}
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -340,15 +377,15 @@ const AdminBookings = () => {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Booking Ref</TableHead>
-                  <TableHead>Customer</TableHead>
-                  <TableHead>Route</TableHead>
-                  <TableHead>Departure</TableHead>
-                  <TableHead>Passengers</TableHead>
-                  <TableHead>Class</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Amount</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+                  <TableHead>{TEXT.bookingRef}</TableHead>
+                  <TableHead>{TEXT.customer}</TableHead>
+                  <TableHead>{TEXT.route}</TableHead>
+                  <TableHead>{TEXT.departure}</TableHead>
+                  <TableHead>{TEXT.passengers}</TableHead>
+                  <TableHead>{TEXT.class}</TableHead>
+                  <TableHead>{TEXT.status}</TableHead>
+                  <TableHead>{TEXT.amount}</TableHead>
+                  <TableHead className="text-right">{TEXT.actions}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -374,13 +411,18 @@ const AdminBookings = () => {
                     <TableCell>
                       <div className="text-sm">
                         <div>
-                          {new Date(booking.departure).toLocaleDateString()}
+                          {new Date(booking.departure).toLocaleDateString(
+                            "vi-VN"
+                          )}
                         </div>
                         <div className="text-gray-500">
-                          {new Date(booking.departure).toLocaleTimeString([], {
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          })}
+                          {new Date(booking.departure).toLocaleTimeString(
+                            "vi-VN",
+                            {
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            }
+                          )}
                         </div>
                       </div>
                     </TableCell>
@@ -395,7 +437,7 @@ const AdminBookings = () => {
                         variant="outline"
                         className={getClassBadge(booking.class)}
                       >
-                        {booking.class}
+                        {classMap[booking.class] || booking.class}
                       </Badge>
                     </TableCell>
                     <TableCell>
@@ -403,7 +445,7 @@ const AdminBookings = () => {
                         variant="outline"
                         className={getStatusBadge(booking.status)}
                       >
-                        {booking.status}
+                        {statusMap[booking.status] || booking.status}
                       </Badge>
                     </TableCell>
                     <TableCell className="font-medium">
@@ -415,17 +457,16 @@ const AdminBookings = () => {
                           variant="ghost"
                           size="sm"
                           onClick={() => handleViewBooking(booking)}
-                          title="View Details"
+                          title={TEXT.viewDetails}
                         >
                           <Eye className="h-4 w-4" />
                         </Button>
-
                         <Button
                           variant="ghost"
                           size="sm"
                           className="text-red-600 hover:text-red-700"
                           onClick={() => handleDeleteBooking(booking)}
-                          title="Delete Booking"
+                          title={TEXT.deleteBooking}
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>
@@ -439,9 +480,9 @@ const AdminBookings = () => {
 
           {/* Enhanced Pagination */}
           <Pagination
-            currentPage={currentPage}
+            currentPage={state.currentPage}
             totalPages={totalPages}
-            itemsPerPage={itemsPerPage}
+            itemsPerPage={state.itemsPerPage}
             totalItems={filteredBookings.length}
             onPageChange={handlePageChange}
             onPageSizeChange={handlePageSizeChange}
@@ -455,9 +496,11 @@ const AdminBookings = () => {
       </Card>
 
       <BookingDetailsModal
-        open={showDetailsModal}
-        onOpenChange={setShowDetailsModal}
-        booking={selectedBooking}
+        open={state.showDetailsModal}
+        onOpenChange={(open) =>
+          setState((prev) => ({ ...prev, showDetailsModal: open }))
+        }
+        booking={state.selectedBooking}
       />
     </div>
   );

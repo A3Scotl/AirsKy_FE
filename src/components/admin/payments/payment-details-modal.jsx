@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import {
   X,
   CreditCard,
@@ -23,8 +23,116 @@ import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
+// Text constants for Vietnamese interface
+const TEXT = {
+  paymentDetails: "Chi Tiết Thanh Toán",
+  receipt: "Biên Lai",
+  overview: "Tổng Quan",
+  customer: "Khách Hàng",
+  booking: "Đặt Chỗ",
+  paymentSummary: "Tóm Tắt Thanh Toán",
+  transactionInfo: "Thông Tin Giao Dịch",
+  transactionTimeline: "Lịch Sử Giao Dịch",
+  customerInformation: "Thông Tin Khách Hàng",
+  riskAssessment: "Đánh Giá Rủi Ro",
+  bookingDetails: "Chi Tiết Đặt Chỗ",
+  gatewayDetails: "Chi Tiết Cổng Thanh Toán",
+  rawTransactionData: "Dữ Liệu Giao Dịch Thô",
+  fields: {
+    amount: "Số Tiền",
+    processingFee: "Phí Xử Lý",
+    netAmount: "Số Tiền Thực",
+    paymentMethod: "Phương Thức Thanh Toán",
+    methodDetails: "Chi Tiết Phương Thức",
+    transactionId: "Mã Giao Dịch",
+    gatewayReference: "Tham Chiếu Cổng",
+    processingTime: "Thời Gian Xử Lý",
+    riskScore: "Điểm Rủi Ro",
+    country: "Quốc Gia",
+    registrationDate: "Ngày Đăng Ký",
+    totalBookings: "Tổng Đặt Chỗ",
+    totalSpent: "Tổng Chi Tiêu",
+    lastLogin: "Đăng Nhập Cuối",
+    bookingReference: "Mã Đặt Chỗ",
+    flightRoute: "Tuyến Bay",
+    departureDate: "Ngày Khởi Hành",
+    passengers: "Hành Khách",
+    class: "Hạng",
+    airline: "Hãng Hàng Không",
+    baseFare: "Giá Cơ Bản",
+    taxesAndFees: "Thuế Và Phí",
+    totalAmount: "Tổng Tiền",
+    gateway: "Cổng",
+    merchantId: "Mã Thương Gia",
+    gatewayFee: "Phí Cổng",
+    interchangeFee: "Phí Hoán Đổi",
+    totalFees: "Tổng Phí",
+  },
+  statuses: {
+    completed: "Hoàn Thành",
+    pending: "Đang Chờ",
+    failed: "Thất Bại",
+    refunded: "Đã Hoàn Tiền",
+    cancelled: "Đã Hủy",
+  },
+  riskLabels: {
+    low: "THẤP",
+    medium: "TRUNG BÌNH",
+    high: "CAO",
+  },
+  timelineEvents: {
+    "Payment Initiated": "Bắt Đầu Thanh Toán",
+    "Payment Processing": "Xử Lý Thanh Toán",
+    "Payment Completed": "Hoàn Thành Thanh Toán",
+  },
+  timelineDescriptions: {
+    "Customer initiated payment process":
+      "Khách hàng bắt đầu quá trình thanh toán",
+    "Payment gateway processing transaction":
+      "Cổng thanh toán đang xử lý giao dịch",
+    "Payment successfully processed": "Thanh toán được xử lý thành công",
+  },
+  riskAssessmentText:
+    "Giao dịch này đã được đánh giá là rủi ro {risk} dựa trên nhiều yếu tố.",
+  riskFactors: "Yếu Tố Rủi Ro",
+  paymentBreakdown: "Phân Tích Thanh Toán",
+  bookingInformation: "Thông Tin Đặt Chỗ",
+  paymentProcessor: "Bộ Xử Lý Thanh Toán",
+  feeBreakdown: "Phân Tích Phí",
+};
+
 const PaymentDetailsModal = ({ open, onClose, paymentData }) => {
   const [copied, setCopied] = useState("");
+
+  // Memoized color configurations
+  const statusConfig = useMemo(
+    () => ({
+      colors: {
+        completed: "bg-green-100 text-green-800",
+        pending: "bg-yellow-100 text-yellow-800",
+        failed: "bg-red-100 text-red-800",
+        refunded: "bg-purple-100 text-purple-800",
+        cancelled: "bg-gray-100 text-gray-800",
+      },
+      icons: {
+        completed: <CheckCircle className="h-4 w-4 text-green-600" />,
+        pending: <Clock className="h-4 w-4 text-yellow-600" />,
+        failed: <AlertTriangle className="h-4 w-4 text-red-600" />,
+        refunded: <RefreshCw className="h-4 w-4 text-purple-600" />,
+        cancelled: <X className="h-4 w-4 text-gray-600" />,
+      },
+    }),
+    []
+  );
+
+  const riskColors = useMemo(
+    () => ({
+      low: "text-green-600 bg-green-50",
+      medium: "text-yellow-600 bg-yellow-50",
+      high: "text-red-600 bg-red-50",
+    }),
+    []
+  );
 
   const copyToClipboard = (text, type) => {
     navigator.clipboard.writeText(text);
@@ -35,38 +143,19 @@ const PaymentDetailsModal = ({ open, onClose, paymentData }) => {
   if (!open || !paymentData) return null;
 
   const getStatusColor = (status) => {
-    const colors = {
-      completed: "bg-green-100 text-green-800",
-      pending: "bg-yellow-100 text-yellow-800",
-      failed: "bg-red-100 text-red-800",
-      refunded: "bg-purple-100 text-purple-800",
-      cancelled: "bg-gray-100 text-gray-800",
-    };
-    return colors[status] || "bg-gray-100 text-gray-800";
+    return statusConfig.colors[status] || "bg-gray-100 text-gray-800";
   };
 
   const getStatusIcon = (status) => {
-    const icons = {
-      completed: <CheckCircle className="h-4 w-4 text-green-600" />,
-      pending: <Clock className="h-4 w-4 text-yellow-600" />,
-      failed: <AlertTriangle className="h-4 w-4 text-red-600" />,
-      refunded: <RefreshCw className="h-4 w-4 text-purple-600" />,
-      cancelled: <X className="h-4 w-4 text-gray-600" />,
-    };
-    return icons[status] || <Clock className="h-4 w-4" />;
+    return statusConfig.icons[status] || <Clock className="h-4 w-4" />;
   };
 
   const getRiskScoreColor = (score) => {
-    const colors = {
-      low: "text-green-600 bg-green-50",
-      medium: "text-yellow-600 bg-yellow-50",
-      high: "text-red-600 bg-red-50",
-    };
-    return colors[score] || "text-gray-600 bg-gray-50";
+    return riskColors[score] || "text-gray-600 bg-gray-50";
   };
 
   const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleString("en-US", {
+    return new Date(dateString).toLocaleString("vi-VN", {
       year: "numeric",
       month: "long",
       day: "numeric",
@@ -77,7 +166,13 @@ const PaymentDetailsModal = ({ open, onClose, paymentData }) => {
   };
 
   const formatCurrency = (amount, currency = "USD") => {
-    return new Intl.NumberFormat("en-US", {
+    if (currency === "USD") {
+      return new Intl.NumberFormat("vi-VN", {
+        style: "currency",
+        currency: "VND",
+      }).format(amount * 24000); // Convert USD to VND
+    }
+    return new Intl.NumberFormat("vi-VN", {
       style: "currency",
       currency: currency,
     }).format(amount);
@@ -151,7 +246,7 @@ const PaymentDetailsModal = ({ open, onClose, paymentData }) => {
             </div>
             <div>
               <h2 className="text-xl font-bold text-gray-900">
-                Payment Details
+                {TEXT.paymentDetails}
               </h2>
               <p className="text-sm text-gray-500">
                 {paymentData.transactionId}
@@ -160,15 +255,16 @@ const PaymentDetailsModal = ({ open, onClose, paymentData }) => {
             <Badge className={getStatusColor(paymentData.status)}>
               {getStatusIcon(paymentData.status)}
               <span className="ml-1">
-                {paymentData.status.charAt(0).toUpperCase() +
-                  paymentData.status.slice(1)}
+                {TEXT.statuses[paymentData.status] ||
+                  paymentData.status.charAt(0).toUpperCase() +
+                    paymentData.status.slice(1)}
               </span>
             </Badge>
           </div>
           <div className="flex items-center space-x-2">
             <Button variant="outline" size="sm">
               <Download className="h-4 w-4 mr-2" />
-              Receipt
+              {TEXT.receipt}
             </Button>
             <Button variant="ghost" size="sm" onClick={onClose}>
               <X className="h-5 w-5" />
@@ -179,11 +275,10 @@ const PaymentDetailsModal = ({ open, onClose, paymentData }) => {
         {/* Content */}
         <div className="p-6">
           <Tabs defaultValue="overview" className="space-y-6">
-            <TabsList className="grid w-full grid-cols-4">
-              <TabsTrigger value="overview">Overview</TabsTrigger>
-              <TabsTrigger value="customer">Customer</TabsTrigger>
-              <TabsTrigger value="booking">Booking</TabsTrigger>
-              <TabsTrigger value="technical">Technical</TabsTrigger>
+            <TabsList className="grid w-full grid-cols-3">
+              <TabsTrigger value="overview">{TEXT.overview}</TabsTrigger>
+              <TabsTrigger value="customer">{TEXT.customer}</TabsTrigger>
+              <TabsTrigger value="booking">{TEXT.booking}</TabsTrigger>
             </TabsList>
 
             {/* Overview Tab */}
@@ -194,12 +289,14 @@ const PaymentDetailsModal = ({ open, onClose, paymentData }) => {
                   <CardHeader>
                     <CardTitle className="flex items-center space-x-2">
                       <DollarSign className="h-4 w-4" />
-                      <span>Payment Summary</span>
+                      <span>{TEXT.paymentSummary}</span>
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <div className="flex justify-between items-center">
-                      <span className="text-gray-600">Amount</span>
+                      <span className="text-gray-600">
+                        {TEXT.fields.amount}
+                      </span>
                       <span className="text-2xl font-bold text-green-600">
                         {formatCurrency(
                           paymentData.amount,
@@ -208,13 +305,17 @@ const PaymentDetailsModal = ({ open, onClose, paymentData }) => {
                       </span>
                     </div>
                     <div className="flex justify-between items-center">
-                      <span className="text-gray-600">Processing Fee</span>
+                      <span className="text-gray-600">
+                        {TEXT.fields.processingFee}
+                      </span>
                       <span className="font-medium">
                         {formatCurrency(paymentData.fees, paymentData.currency)}
                       </span>
                     </div>
                     <div className="flex justify-between items-center">
-                      <span className="text-gray-600">Net Amount</span>
+                      <span className="text-gray-600">
+                        {TEXT.fields.netAmount}
+                      </span>
                       <span className="font-medium">
                         {formatCurrency(
                           paymentData.netAmount,
@@ -225,13 +326,17 @@ const PaymentDetailsModal = ({ open, onClose, paymentData }) => {
                     <Separator />
                     <div className="space-y-2">
                       <div className="flex justify-between items-center">
-                        <span className="text-gray-600">Payment Method</span>
+                        <span className="text-gray-600">
+                          {TEXT.fields.paymentMethod}
+                        </span>
                         <span className="font-medium capitalize">
                           {paymentData.method.replace("_", " ")}
                         </span>
                       </div>
                       <div className="flex justify-between items-center">
-                        <span className="text-gray-600">Method Details</span>
+                        <span className="text-gray-600">
+                          {TEXT.fields.methodDetails}
+                        </span>
                         <span className="font-medium">
                           {paymentData.methodDetails}
                         </span>
@@ -245,13 +350,15 @@ const PaymentDetailsModal = ({ open, onClose, paymentData }) => {
                   <CardHeader>
                     <CardTitle className="flex items-center space-x-2">
                       <Shield className="h-4 w-4" />
-                      <span>Transaction Info</span>
+                      <span>{TEXT.transactionInfo}</span>
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <div className="space-y-3">
                       <div className="flex justify-between items-center">
-                        <span className="text-gray-600">Transaction ID</span>
+                        <span className="text-gray-600">
+                          {TEXT.fields.transactionId}
+                        </span>
                         <div className="flex items-center space-x-2">
                           <code className="text-sm bg-gray-100 px-2 py-1 rounded">
                             {paymentData.transactionId}
@@ -276,7 +383,9 @@ const PaymentDetailsModal = ({ open, onClose, paymentData }) => {
                       </div>
 
                       <div className="flex justify-between items-center">
-                        <span className="text-gray-600">Gateway Reference</span>
+                        <span className="text-gray-600">
+                          {TEXT.fields.gatewayReference}
+                        </span>
                         <div className="flex items-center space-x-2">
                           <code className="text-sm bg-gray-100 px-2 py-1 rounded">
                             {paymentData.gatewayReference}
@@ -301,23 +410,30 @@ const PaymentDetailsModal = ({ open, onClose, paymentData }) => {
                       </div>
 
                       <div className="flex justify-between items-center">
-                        <span className="text-gray-600">Processing Time</span>
+                        <span className="text-gray-600">
+                          {TEXT.fields.processingTime}
+                        </span>
                         <span className="font-medium">
                           {paymentData.processingTime}
                         </span>
                       </div>
 
                       <div className="flex justify-between items-center">
-                        <span className="text-gray-600">Risk Score</span>
+                        <span className="text-gray-600">
+                          {TEXT.fields.riskScore}
+                        </span>
                         <Badge
                           className={getRiskScoreColor(paymentData.riskScore)}
                         >
-                          {paymentData.riskScore.toUpperCase()}
+                          {TEXT.riskLabels[paymentData.riskScore] ||
+                            paymentData.riskScore.toUpperCase()}
                         </Badge>
                       </div>
 
                       <div className="flex justify-between items-center">
-                        <span className="text-gray-600">Country</span>
+                        <span className="text-gray-600">
+                          {TEXT.fields.country}
+                        </span>
                         <span className="font-medium">
                           {paymentData.country}
                         </span>
@@ -332,7 +448,7 @@ const PaymentDetailsModal = ({ open, onClose, paymentData }) => {
                 <CardHeader>
                   <CardTitle className="flex items-center space-x-2">
                     <Clock className="h-4 w-4" />
-                    <span>Transaction Timeline</span>
+                    <span>{TEXT.transactionTimeline}</span>
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
@@ -350,13 +466,16 @@ const PaymentDetailsModal = ({ open, onClose, paymentData }) => {
                         />
                         <div className="flex-1">
                           <div className="flex items-center justify-between">
-                            <p className="font-medium">{event.event}</p>
+                            <p className="font-medium">
+                              {TEXT.timelineEvents[event.event] || event.event}
+                            </p>
                             <span className="text-sm text-gray-500">
                               {formatDate(event.timestamp)}
                             </span>
                           </div>
                           <p className="text-sm text-gray-600">
-                            {event.description}
+                            {TEXT.timelineDescriptions[event.description] ||
+                              event.description}
                           </p>
                         </div>
                       </div>
@@ -373,7 +492,7 @@ const PaymentDetailsModal = ({ open, onClose, paymentData }) => {
                   <CardHeader>
                     <CardTitle className="flex items-center space-x-2">
                       <User className="h-4 w-4" />
-                      <span>Customer Information</span>
+                      <span>{TEXT.customerInformation}</span>
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
@@ -403,21 +522,27 @@ const PaymentDetailsModal = ({ open, onClose, paymentData }) => {
 
                     <div className="space-y-3">
                       <div className="flex justify-between">
-                        <span className="text-gray-600">Registration Date</span>
+                        <span className="text-gray-600">
+                          {TEXT.fields.registrationDate}
+                        </span>
                         <span className="font-medium">
                           {new Date(
                             extendedData.customerDetails.registrationDate
-                          ).toLocaleDateString()}
+                          ).toLocaleDateString("vi-VN")}
                         </span>
                       </div>
                       <div className="flex justify-between">
-                        <span className="text-gray-600">Total Bookings</span>
+                        <span className="text-gray-600">
+                          {TEXT.fields.totalBookings}
+                        </span>
                         <span className="font-medium">
                           {extendedData.customerDetails.totalBookings}
                         </span>
                       </div>
                       <div className="flex justify-between">
-                        <span className="text-gray-600">Total Spent</span>
+                        <span className="text-gray-600">
+                          {TEXT.fields.totalSpent}
+                        </span>
                         <span className="font-medium">
                           {formatCurrency(
                             extendedData.customerDetails.totalSpent
@@ -425,11 +550,13 @@ const PaymentDetailsModal = ({ open, onClose, paymentData }) => {
                         </span>
                       </div>
                       <div className="flex justify-between">
-                        <span className="text-gray-600">Last Login</span>
+                        <span className="text-gray-600">
+                          {TEXT.fields.lastLogin}
+                        </span>
                         <span className="font-medium">
                           {new Date(
                             extendedData.customerDetails.lastLogin
-                          ).toLocaleDateString()}
+                          ).toLocaleDateString("vi-VN")}
                         </span>
                       </div>
                     </div>
@@ -440,7 +567,7 @@ const PaymentDetailsModal = ({ open, onClose, paymentData }) => {
                   <CardHeader>
                     <CardTitle className="flex items-center space-x-2">
                       <Shield className="h-4 w-4" />
-                      <span>Risk Assessment</span>
+                      <span>{TEXT.riskAssessment}</span>
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
@@ -453,29 +580,35 @@ const PaymentDetailsModal = ({ open, onClose, paymentData }) => {
                         <Shield className="h-8 w-8" />
                       </div>
                       <h3 className="text-lg font-semibold mb-2">
-                        {paymentData.riskScore.toUpperCase()} Risk
+                        Rủi Ro{" "}
+                        {TEXT.riskLabels[paymentData.riskScore] ||
+                          paymentData.riskScore.toUpperCase()}
                       </h3>
                       <p className="text-sm text-gray-600">
-                        This transaction has been assessed as{" "}
-                        {paymentData.riskScore} risk based on multiple factors.
+                        {TEXT.riskAssessmentText.replace(
+                          "{risk}",
+                          TEXT.riskLabels[
+                            paymentData.riskScore
+                          ]?.toLowerCase() || paymentData.riskScore
+                        )}
                       </p>
                     </div>
 
                     <div className="space-y-2">
-                      <h4 className="font-medium">Risk Factors</h4>
+                      <h4 className="font-medium">{TEXT.riskFactors}</h4>
                       <ul className="text-sm text-gray-600 space-y-1">
                         <li>
-                          • Payment method:{" "}
+                          • {TEXT.fields.paymentMethod}:{" "}
                           {paymentData.method.replace("_", " ")}
                         </li>
-                        <li>• Geographic location: {paymentData.country}</li>
+                        <li>• Vị trí địa lý: {paymentData.country}</li>
                         <li>
-                          • Customer history:{" "}
-                          {extendedData.customerDetails.totalBookings} previous
-                          bookings
+                          • Lịch sử khách hàng:{" "}
+                          {extendedData.customerDetails.totalBookings} lần đặt
+                          chỗ trước đó
                         </li>
                         <li>
-                          • Transaction amount:{" "}
+                          • Số tiền giao dịch:{" "}
                           {formatCurrency(paymentData.amount)}
                         </li>
                       </ul>
@@ -491,50 +624,62 @@ const PaymentDetailsModal = ({ open, onClose, paymentData }) => {
                 <CardHeader>
                   <CardTitle className="flex items-center space-x-2">
                     <Plane className="h-4 w-4" />
-                    <span>Booking Details</span>
+                    <span>{TEXT.bookingDetails}</span>
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="space-y-4">
-                      <h4 className="font-semibold">Booking Information</h4>
+                      <h4 className="font-semibold">
+                        {TEXT.bookingInformation}
+                      </h4>
                       <div className="space-y-3">
                         <div className="flex justify-between">
                           <span className="text-gray-600">
-                            Booking Reference
+                            {TEXT.fields.bookingReference}
                           </span>
                           <span className="font-medium">
                             {paymentData.bookingReference}
                           </span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-gray-600">Flight Route</span>
+                          <span className="text-gray-600">
+                            {TEXT.fields.flightRoute}
+                          </span>
                           <span className="font-medium">
                             {extendedData.bookingDetails.flightRoute}
                           </span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-gray-600">Departure Date</span>
+                          <span className="text-gray-600">
+                            {TEXT.fields.departureDate}
+                          </span>
                           <span className="font-medium">
                             {new Date(
                               extendedData.bookingDetails.departureDate
-                            ).toLocaleDateString()}
+                            ).toLocaleDateString("vi-VN")}
                           </span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-gray-600">Passengers</span>
+                          <span className="text-gray-600">
+                            {TEXT.fields.passengers}
+                          </span>
                           <span className="font-medium">
                             {extendedData.bookingDetails.passengers}
                           </span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-gray-600">Class</span>
+                          <span className="text-gray-600">
+                            {TEXT.fields.class}
+                          </span>
                           <span className="font-medium">
                             {extendedData.bookingDetails.class}
                           </span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-gray-600">Airline</span>
+                          <span className="text-gray-600">
+                            {TEXT.fields.airline}
+                          </span>
                           <span className="font-medium">
                             {extendedData.bookingDetails.airline}
                           </span>
@@ -543,107 +688,32 @@ const PaymentDetailsModal = ({ open, onClose, paymentData }) => {
                     </div>
 
                     <div className="space-y-4">
-                      <h4 className="font-semibold">Payment Breakdown</h4>
+                      <h4 className="font-semibold">{TEXT.paymentBreakdown}</h4>
                       <div className="space-y-3">
                         <div className="flex justify-between">
-                          <span className="text-gray-600">Base Fare</span>
+                          <span className="text-gray-600">
+                            {TEXT.fields.baseFare}
+                          </span>
                           <span className="font-medium">
                             {formatCurrency(paymentData.amount - 50)}
                           </span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-gray-600">Taxes & Fees</span>
+                          <span className="text-gray-600">
+                            {TEXT.fields.taxesAndFees}
+                          </span>
                           <span className="font-medium">
                             {formatCurrency(50)}
                           </span>
                         </div>
                         <Separator />
                         <div className="flex justify-between font-semibold">
-                          <span>Total Amount</span>
+                          <span>{TEXT.fields.totalAmount}</span>
                           <span>{formatCurrency(paymentData.amount)}</span>
                         </div>
                       </div>
                     </div>
                   </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
-
-            {/* Technical Tab */}
-            <TabsContent value="technical" className="space-y-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center space-x-2">
-                    <ExternalLink className="h-4 w-4" />
-                    <span>Gateway Details</span>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="space-y-3">
-                      <h4 className="font-semibold">Payment Processor</h4>
-                      <div className="space-y-2">
-                        <div className="flex justify-between">
-                          <span className="text-gray-600">Gateway</span>
-                          <span className="font-medium">
-                            {extendedData.gatewayDetails.processor}
-                          </span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-gray-600">Merchant ID</span>
-                          <code className="text-sm bg-gray-100 px-2 py-1 rounded">
-                            {extendedData.gatewayDetails.merchantId}
-                          </code>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-gray-600">Gateway Fee</span>
-                          <span className="font-medium">
-                            {formatCurrency(
-                              extendedData.gatewayDetails.gatewayFee
-                            )}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="space-y-3">
-                      <h4 className="font-semibold">Fee Breakdown</h4>
-                      <div className="space-y-2">
-                        <div className="flex justify-between">
-                          <span className="text-gray-600">Interchange Fee</span>
-                          <span className="font-medium">
-                            {formatCurrency(
-                              extendedData.gatewayDetails.interchangeFee
-                            )}
-                          </span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-gray-600">Processing Fee</span>
-                          <span className="font-medium">
-                            {formatCurrency(
-                              extendedData.gatewayDetails.processingFee
-                            )}
-                          </span>
-                        </div>
-                        <Separator />
-                        <div className="flex justify-between font-semibold">
-                          <span>Total Fees</span>
-                          <span>{formatCurrency(paymentData.fees)}</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle>Raw Transaction Data</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <pre className="bg-gray-100 p-4 rounded-lg text-sm overflow-x-auto">
-                    {JSON.stringify(paymentData, null, 2)}
-                  </pre>
                 </CardContent>
               </Card>
             </TabsContent>

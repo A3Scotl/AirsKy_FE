@@ -15,18 +15,20 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Menu, User, LogOut } from "lucide-react";
-
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/auth-context";
-
 import { useEffect, useRef, useState } from "react";
+
+const MENU_ITEMS = [
+  { label: "Chuyến bay", path: "flights" },
+  { label: "Ưu đãi", path: "deals" },
+  { label: "Blog", path: "blogs" },
+];
 
 export function Header() {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, logout } = useAuth();
-
-  // State for header visibility
   const [showHeader, setShowHeader] = useState(true);
   const lastScrollY = useRef(window.scrollY);
 
@@ -36,11 +38,9 @@ export function Header() {
       if (!ticking) {
         window.requestAnimationFrame(() => {
           const currentScrollY = window.scrollY;
-          if (currentScrollY > lastScrollY.current && currentScrollY > 60) {
-            setShowHeader(false); // scroll down
-          } else {
-            setShowHeader(true); // scroll up
-          }
+          setShowHeader(
+            !(currentScrollY > lastScrollY.current && currentScrollY > 60)
+          );
           lastScrollY.current = currentScrollY;
           ticking = false;
         });
@@ -56,9 +56,8 @@ export function Header() {
     navigate("/");
   };
 
-  // Function to check if current path matches menu item
   const isActive = (item) => {
-    const path = `/${item.toLowerCase()}`;
+    const path = `/${item.path}`;
     return (
       location.pathname === path || location.pathname.startsWith(path + "/")
     );
@@ -79,10 +78,9 @@ export function Header() {
               <img
                 className="h-12 w-12 object-cover"
                 src="https://res.cloudinary.com/dzwjgfd7t/image/upload/v1755141382/flight%20booking/main_logo-removebg_xyofym.png"
-                alt="Workflow"
+                alt="AirsSky"
               />
             </div>
-
             <span className="text-xl font-bold bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent ml-2">
               AirsSky
             </span>
@@ -90,17 +88,17 @@ export function Header() {
 
           {/* Menu desktop */}
           <nav className="hidden md:flex space-x-8">
-            {["Flights", "Deals", "Blogs"].map((item) => (
+            {MENU_ITEMS.map((item) => (
               <Link
-                key={item}
-                to={`/${item.toLowerCase()}`}
+                key={item.path}
+                to={`/${item.path}`}
                 className={`font-medium transition-colors duration-200 ${
                   isActive(item)
                     ? "text-[#2563eb] font-bold"
                     : "text-gray-700 hover:text-[#2563eb]"
                 }`}
               >
-                {item}
+                {item.label}
               </Link>
             ))}
           </nav>
@@ -115,16 +113,16 @@ export function Header() {
                     className="flex items-center space-x-2"
                   >
                     <User className="w-5 h-5" />
-                    <span>{user.email || "User"}</span>
+                    <span>{user.email || "Người dùng"}</span>
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="mt-6" >
-                  <DropdownMenuLabel>My Account</DropdownMenuLabel>
+                <DropdownMenuContent align="end" className="mt-6">
+                  <DropdownMenuLabel>Tài khoản của tôi</DropdownMenuLabel>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem asChild>
                     <Link to="/profile" className="flex">
                       <User className="w-4 h-4 mr-2" />
-                      Profile
+                      Hồ sơ
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem
@@ -132,7 +130,7 @@ export function Header() {
                     className="flex items-center"
                   >
                     <LogOut className="w-4 h-4 mr-2" />
-                    Logout
+                    Đăng xuất
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -142,7 +140,7 @@ export function Header() {
                 className="bg-[#2563eb] hover:bg-[#1e40af] text-white w-full"
                 onClick={() => navigate("/auth")}
               >
-                Sign In
+                Đăng nhập
               </Button>
             )}
           </div>
@@ -162,17 +160,17 @@ export function Header() {
                   </SheetTitle>
                 </SheetHeader>
                 <nav className="flex flex-col space-y-4 p-4">
-                  {["Flights", "Deals", "Blogs"].map((item) => (
+                  {MENU_ITEMS.map((item) => (
                     <Link
-                      key={item}
-                      to={`/${item.toLowerCase()}`}
+                      key={item.path}
+                      to={`/${item.path}`}
                       className={`font-medium transition-colors duration-200 ${
                         isActive(item)
                           ? "text-[#2563eb] font-semibold bg-blue-50 px-3 py-2 rounded-md"
                           : "text-[#374151] hover:text-[#2563eb] px-3 py-2 rounded-md hover:bg-gray-50"
                       }`}
                     >
-                      {item}
+                      {item.label}
                     </Link>
                   ))}
                 </nav>
@@ -185,7 +183,7 @@ export function Header() {
                         onClick={() => navigate("/profile")}
                       >
                         <User className="w-5 h-5" />
-                        <span>Profile</span>
+                        <span>Hồ sơ</span>
                       </Button>
                       <Button
                         variant="ghost"
@@ -193,7 +191,7 @@ export function Header() {
                         onClick={handleLogout}
                       >
                         <LogOut className="w-5 h-5" />
-                        <span>Logout</span>
+                        <span>Đăng xuất</span>
                       </Button>
                     </>
                   ) : (
@@ -202,7 +200,7 @@ export function Header() {
                       className="bg-[#2563eb] hover:bg-[#1e40af] text-white w-full"
                       onClick={() => navigate("/auth")}
                     >
-                      Sign In
+                      Đăng nhập
                     </Button>
                   )}
                 </div>

@@ -1,6 +1,5 @@
 import React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "../../ui/card";
-import { Badge } from "../../ui/badge";
 import {
   Users,
   Calendar,
@@ -25,7 +24,7 @@ const BookingMetrics = ({ bookings = [] }) => {
   const totalRevenue = bookings
     .filter((b) => b.status === "Confirmed")
     .reduce((sum, booking) => {
-      const amount = parseFloat(booking.amount.replace(/[^0-9.-]+/g, ""));
+      const amount = parseFloat(booking.amount.replace(/[^0-9]/g, "")) || 0;
       return sum + amount;
     }, 0);
 
@@ -44,44 +43,44 @@ const BookingMetrics = ({ bookings = [] }) => {
 
   const metrics = [
     {
-      title: "Total Bookings",
+      title: "Tổng Đặt Vé",
       value: totalBookings.toLocaleString(),
       icon: Calendar,
       color: "text-blue-600",
       bgColor: "bg-blue-50",
-      description: "All time bookings",
+      description: "Tất cả các đặt vé",
     },
     {
-      title: "Confirmed Bookings",
+      title: "Đặt Vé Đã Xác Nhận",
       value: confirmedBookings.toLocaleString(),
       icon: Plane,
       color: "text-green-600",
       bgColor: "bg-green-50",
-      description: `${confirmedRate.toFixed(1)}% of total`,
+      description: `${confirmedRate.toFixed(1)}% của tổng số`,
     },
     {
-      title: "Total Revenue",
-      value: `$${totalRevenue.toLocaleString()}`,
+      title: "Tổng Doanh Thu",
+      value: `${totalRevenue.toLocaleString("vi-VN")} VNĐ`,
       icon: DollarSign,
       color: "text-emerald-600",
       bgColor: "bg-emerald-50",
-      description: "From confirmed bookings",
+      description: "Từ các đặt vé đã xác nhận",
     },
     {
-      title: "Avg. Booking Value",
-      value: `$${averageBookingValue.toFixed(0)}`,
+      title: "Giá Trị Đặt Vé Trung Bình",
+      value: `${Math.round(averageBookingValue).toLocaleString("vi-VN")} VNĐ`,
       icon: TrendingUp,
       color: "text-orange-600",
       bgColor: "bg-orange-50",
-      description: "Per confirmed booking",
+      description: "Trên mỗi đặt vé đã xác nhận",
     },
     {
-      title: "Pending Bookings",
+      title: "Đặt Vé Đang Chờ",
       value: pendingBookings.toLocaleString(),
       icon: Clock,
       color: "text-yellow-600",
       bgColor: "bg-yellow-50",
-      description: "Awaiting confirmation",
+      description: "Đang chờ xác nhận",
     },
   ];
 

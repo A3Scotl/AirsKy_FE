@@ -290,10 +290,10 @@ export function SuggestionDestination() {
       {/* Header */}
       <div className="mb-8">
         <h2 className="text-2xl font-bold text-gray-900 mb-2">
-          Flight Deals From Vietnam To Popular Destinations
+          Những chuyến đi từ Việt Nam đến một số điểm đến phổ biến
         </h2>
         <p className="text-gray-600">
-          Discover Special Flight Deals To Top Global Destinations.
+          Khám phá các ưu đãi chuyến bay đặc biệt đến những điểm đến hàng đầu toàn cầu.
         </p>
       </div>
 
@@ -320,7 +320,7 @@ export function SuggestionDestination() {
                   size="sm"
                   className="bg-blue-600 hover:bg-blue-700 text-white"
                 >
-                  Explore Flights
+                  Khám Phá Chuyến Bay
                 </Button>
               </div>
               <div className="absolute bottom-4 left-4">
@@ -360,7 +360,7 @@ export function SuggestionDestination() {
                     onClick={() => handleShowMore(destination.id)}
                     className="text-blue-600 hover:text-blue-700 text-sm font-medium transition-colors duration-200 flex items-center gap-1"
                   >
-                    Show More Flights
+                    Xem Thêm Chuyến Bay
                   </button>
                 </div>
               )}
@@ -378,7 +378,7 @@ export function SuggestionDestination() {
                       }
                       className="text-gray-500 hover:text-gray-700 text-sm font-medium transition-colors duration-200"
                     >
-                      Show Less
+                      Xem Ít Hơn
                     </button>
                   </div>
                 )}
@@ -395,7 +395,7 @@ export function SuggestionDestination() {
             variant="outline"
             className="px-8 py-2 text-blue-600 border-blue-600 hover:bg-blue-50"
           >
-            See More Destinations
+            Xem Thêm Điểm Đến
           </Button>
         </div>
       )}

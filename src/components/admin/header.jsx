@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { Menu, Search, Bell, User, LogOut, ChevronDown } from "lucide-react";
+import { Menu, Bell, User, LogOut, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -13,7 +13,6 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 const AdminHeader = ({ setSidebarOpen }) => {
-  const [searchQuery, setSearchQuery] = useState("");
 
   const handleLogout = () => {
     // Handle logout logic here
@@ -34,27 +33,12 @@ const AdminHeader = ({ setSidebarOpen }) => {
             <Menu className="h-5 w-5" />
           </Button>
 
-          {/* Search */}
-          <div className="relative hidden sm:block">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <Search className="h-4 w-4 text-gray-400" />
-            </div>
-            <Input
-              type="text"
-              placeholder="Search..."
-              className="pl-10 pr-4 py-2 w-64 text-sm"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-          </div>
+         
         </div>
 
         {/* Right side - Notifications and user menu */}
         <div className="flex items-center space-x-4">
-          {/* Search button for mobile */}
-          <Button variant="ghost" size="sm" className="sm:hidden">
-            <Search className="h-5 w-5" />
-          </Button>
+         
 
           {/* Notifications */}
           <div className="relative">
@@ -98,14 +82,14 @@ const AdminHeader = ({ setSidebarOpen }) => {
               <DropdownMenuItem asChild>
                 <Link to="/admin/profile" className="flex items-center">
                   <User className="mr-2 h-4 w-4" />
-                  <span>Profile</span>
+                  <span>Quản lý tài khoản</span>
                 </Link>
               </DropdownMenuItem>
 
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={handleLogout}>
                 <LogOut className="mr-2 h-4 w-4" />
-                <span>Log out</span>
+                <span>Đăng xuất</span>
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>

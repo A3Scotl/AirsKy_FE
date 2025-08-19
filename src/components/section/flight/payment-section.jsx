@@ -8,35 +8,46 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 
+// Format currency function
+const formatCurrency = (amount) => {
+  return new Intl.NumberFormat("vi-VN", {
+    style: "currency",
+    currency: "VND",
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(amount * 24000);
+};
+
 const Payment = () => {
   const [activeTab, setActiveTab] = useState("card");
   const [saveCard, setSaveCard] = useState(false);
   const [termsAccepted, setTermsAccepted] = useState(false);
 
+  // Optimized Vietnamese flight data
   const flightDetails = {
     outbound: {
-      time: "9:15 AM",
-      from: "New York (JFK)",
-      to: "Los Angeles (LAX)",
-      duration: "5h 45m",
-      arrival: "3:00 PM",
-      date: "March 15, 2024",
-      airline: "American Airlines - Economy",
+      time: "09:15",
+      from: "TP. Hồ Chí Minh (SGN)",
+      to: "Hà Nội (HAN)",
+      duration: "2g 05p",
+      arrival: "11:20",
+      date: "15 tháng 3, 2024",
+      airline: "Vietnam Airlines - Phổ thông",
     },
     return: {
-      time: "7:30 PM",
-      from: "Los Angeles (LAX)",
-      to: "New York (JFK)",
-      duration: "5h 20m",
-      arrival: "4:00 AM",
-      date: "March 22, 2024",
-      airline: "American Airlines - Economy",
+      time: "19:30",
+      from: "Hà Nội (HAN)",
+      to: "TP. Hồ Chí Minh (SGN)",
+      duration: "2g 10p",
+      arrival: "21:40",
+      date: "22 tháng 3, 2024",
+      airline: "Vietnam Airlines - Phổ thông",
     },
   };
 
   const passengers = [
-    { name: "John Smith", type: "Adult" },
-    { name: "Jane Smith", type: "Adult" },
+    { name: "Nguyễn Văn A", type: "Người lớn" },
+    { name: "Nguyễn Thị B", type: "Người lớn" },
   ];
 
   const selectedExtras = {
@@ -45,35 +56,39 @@ const Payment = () => {
   };
 
   const priceBreakdown = {
-    baseFare: 598.00,
-    taxesFees: 80.00,
-    seatSelection: 40.00,
-    extraBaggage: 80.00,
-    total: 798.00,
+    baseFare: 598,
+    taxesFees: 80,
+    seatSelection: 40,
+    extraBaggage: 80,
+    total: 798,
   };
 
+  // Optimized payment handler
   const handlePayment = () => {
-    if (termsAccepted) {
-      // Handle payment logic here
-      alert("Payment processed successfully! Total: $" + priceBreakdown.total);
-    } else {
-      alert("Please accept the Terms and Conditions.");
+    if (!termsAccepted) {
+      alert("Vui lòng chấp nhận Điều khoản và Điều kiện.");
+      return;
     }
+    alert(
+      `Thanh toán thành công! Tổng cộng: ${formatCurrency(
+        priceBreakdown.total
+      )}`
+    );
   };
 
   return (
     <div className="max-w-7xl mx-auto py-8">
-      <h2 className="text-2xl font-bold mb-4">Review & Payment</h2>
-      <p className="text-gray-600 mb-6">Please review your booking details and complete payment</p>
+      <h2 className="text-2xl font-bold mb-4">Xem Lại & Thanh Toán</h2>
+      <p className="text-gray-600 mb-6">
+        Vui lòng xem lại thông tin đặt vé và hoàn tất thanh toán
+      </p>
 
       <div className="flex flex-col md:flex-row gap-6">
         {/* Left Section: Flight and Passenger Details */}
         <div className="w-full md:w-1/2 space-y-6">
-         
-
           <Card>
             <CardHeader>
-              <CardTitle>Flight Details</CardTitle>
+              <CardTitle>Chi Tiết Chuyến Bay</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex justify-between items-center border-b pb-4">
@@ -81,13 +96,16 @@ const Payment = () => {
                   <p className="font-semibold">{flightDetails.outbound.time}</p>
                   <p>{flightDetails.outbound.from}</p>
                   <p className="text-sm text-gray-500">
-                    {flightDetails.outbound.date} - {flightDetails.outbound.airline}
+                    {flightDetails.outbound.date} -{" "}
+                    {flightDetails.outbound.airline}
                   </p>
                 </div>
                 <div className="text-center">
                   <p>{flightDetails.outbound.duration}</p>
-                  <p className="text-sm text-gray-500">Non-stop</p>
-                  <p className="font-semibold">{flightDetails.outbound.arrival}</p>
+                  <p className="text-sm text-gray-500">Bay thẳng</p>
+                  <p className="font-semibold">
+                    {flightDetails.outbound.arrival}
+                  </p>
                   <p>{flightDetails.outbound.to}</p>
                 </div>
               </div>
@@ -101,8 +119,10 @@ const Payment = () => {
                 </div>
                 <div className="text-center">
                   <p>{flightDetails.return.duration}</p>
-                  <p className="text-sm text-gray-500">Non-stop</p>
-                  <p className="font-semibold">{flightDetails.return.arrival}</p>
+                  <p className="text-sm text-gray-500">Bay thẳng</p>
+                  <p className="font-semibold">
+                    {flightDetails.return.arrival}
+                  </p>
                   <p>{flightDetails.return.to}</p>
                 </div>
               </div>
@@ -111,12 +131,13 @@ const Payment = () => {
 
           <Card>
             <CardHeader>
-              <CardTitle>Passenger Information</CardTitle>
+              <CardTitle>Thông Tin Hành Khách</CardTitle>
             </CardHeader>
             <CardContent>
               {passengers.map((passenger, index) => (
                 <p key={index} className="mb-2">
-                  {passenger.name} <span className="text-gray-500">({passenger.type})</span>
+                  {passenger.name}{" "}
+                  <span className="text-gray-500">({passenger.type})</span>
                 </p>
               ))}
             </CardContent>
@@ -124,41 +145,50 @@ const Payment = () => {
 
           <Card>
             <CardHeader>
-              <CardTitle>Selected Extras</CardTitle>
+              <CardTitle>Dịch Vụ Đã Chọn</CardTitle>
             </CardHeader>
             <CardContent>
-              <p>Seat Selection: {selectedExtras.seatSelection}</p>
-              <p>Extra Baggage: {selectedExtras.extraBaggage}</p>
+              <p>Chọn chỗ ngồi: {selectedExtras.seatSelection}</p>
+              <p>Hành lý thêm: {selectedExtras.extraBaggage}</p>
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader>
-              <CardTitle>Price Breakdown</CardTitle>
+              <CardTitle>Chi Tiết Giá</CardTitle>
             </CardHeader>
             <CardContent className="space-y-2">
-              <p>Base Fare (2 passengers): ${priceBreakdown.baseFare.toFixed(2)}</p>
-              <p>Taxes & Fees: ${priceBreakdown.taxesFees.toFixed(2)}</p>
-              <p>Seat Selection: ${priceBreakdown.seatSelection.toFixed(2)}</p>
-              <p>Extra Baggage: ${priceBreakdown.extraBaggage.toFixed(2)}</p>
-              <p className="font-bold">Total: ${priceBreakdown.total.toFixed(2)}</p>
+              <p>
+                Giá vé cơ bản (2 hành khách):{" "}
+                {formatCurrency(priceBreakdown.baseFare)}
+              </p>
+              <p>Thuế & Phí: {formatCurrency(priceBreakdown.taxesFees)}</p>
+              <p>
+                Chọn chỗ ngồi: {formatCurrency(priceBreakdown.seatSelection)}
+              </p>
+              <p>Hành lý thêm: {formatCurrency(priceBreakdown.extraBaggage)}</p>
+              <p className="font-bold">
+                Tổng cộng: {formatCurrency(priceBreakdown.total)}
+              </p>
             </CardContent>
           </Card>
         </div>
 
-        {/* Right Section: Payment Method and Price Breakdown */}
+        {/* Right Section: Payment Method */}
         <div className="w-full md:w-1/2 space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>Payment Method</CardTitle>
+              <CardTitle>Phương Thức Thanh Toán</CardTitle>
             </CardHeader>
             <CardContent>
-              <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                <TabsList className="grid w-full grid-cols-4 mb-4">
-                  <TabsTrigger value="card">Card</TabsTrigger>
+              <Tabs
+                value={activeTab}
+                onValueChange={setActiveTab}
+                className="w-full"
+              >
+                <TabsList className="grid w-full grid-cols-2 mb-4">
+                  <TabsTrigger value="card">Thẻ Tín Dụng</TabsTrigger>
                   <TabsTrigger value="paypal">PayPal</TabsTrigger>
-                  <TabsTrigger value="googlepay">Google Pay</TabsTrigger>
-                  <TabsTrigger value="applepay">Apple Pay</TabsTrigger>
                 </TabsList>
 
                 {/* Card Payment */}
@@ -166,7 +196,7 @@ const Payment = () => {
                   <div className="space-y-4">
                     <div className="flex space-x-2">
                       <button className="flex-1 p-2 border rounded-md bg-blue-50 text-blue-600">
-                        Card
+                        Thẻ Tín Dụng/Ghi Nợ
                       </button>
                     </div>
                     <Input
@@ -177,7 +207,7 @@ const Payment = () => {
                     <div className="grid grid-cols-2 gap-4">
                       <Input
                         type="text"
-                        placeholder="Cardholder Name"
+                        placeholder="Tên chủ thẻ"
                         className="w-full"
                       />
                       <Input
@@ -186,18 +216,16 @@ const Payment = () => {
                         className="w-full"
                       />
                     </div>
-                    <Input
-                      type="text"
-                      placeholder="CVV"
-                      className="w-1/4"
-                    />
+                    <Input type="text" placeholder="CVV" className="w-1/4" />
                     <div className="flex items-center space-x-2">
                       <Checkbox
                         id="save-card"
                         checked={saveCard}
                         onCheckedChange={setSaveCard}
                       />
-                      <Label htmlFor="save-card">Save this card for future payments</Label>
+                      <Label htmlFor="save-card">
+                        Lưu thẻ này cho các lần thanh toán sau
+                      </Label>
                     </div>
                   </div>
                 </TabsContent>
@@ -210,61 +238,45 @@ const Payment = () => {
                         PayPal
                       </button>
                     </div>
-                    <p className="text-gray-600">You will be redirected to PayPal to complete your payment.</p>
-                    <Button className="w-full bg-blue-500 text-white">Continue with PayPal</Button>
-                  </div>
-                </TabsContent>
-
-                {/* Google Pay Payment */}
-                <TabsContent value="googlepay">
-                  <div className="space-y-4">
-                    <div className="flex space-x-2">
-                      <button className="flex-1 p-2 border rounded-md bg-gray-800 text-white">
-                        Google Pay
-                      </button>
-                    </div>
-                    <p className="text-gray-600">Select your Google Pay account to proceed.</p>
-                    <Button className="w-full bg-gray-800 text-white">Pay with Google Pay</Button>
-                  </div>
-                </TabsContent>
-
-                {/* Apple Pay Payment */}
-                <TabsContent value="applepay">
-                  <div className="space-y-4">
-                    <div className="flex space-x-2">
-                      <button className="flex-1 p-2 border rounded-md bg-black text-white">
-                        Apple Pay
-                      </button>
-                    </div>
-                    <p className="text-gray-600">Use Apple Pay with your default card.</p>
-                    <Button className="w-full bg-black text-white">Pay with Apple Pay</Button>
+                    <p className="text-gray-600">
+                      Bạn sẽ được chuyển đến PayPal để hoàn tất thanh toán.
+                    </p>
+                    <Button className="w-full bg-blue-500 text-white">
+                      Tiếp tục với PayPal
+                    </Button>
                   </div>
                 </TabsContent>
               </Tabs>
 
               <div className="mt-4 p-2 bg-green-50 text-green-700 rounded-md flex items-center">
                 <span className="mr-2">🛡️</span>
-                <span>Secure Payment: Your payment information is encrypted and secure</span>
+                <span>
+                  Thanh toán bảo mật: Thông tin thanh toán của bạn được mã hóa
+                  và bảo mật
+                </span>
               </div>
+
               <div className="flex items-center space-x-2 mt-4">
                 <Checkbox
                   id="terms"
                   checked={termsAccepted}
                   onCheckedChange={setTermsAccepted}
                 />
-                <Label htmlFor="terms">I agree to the Terms and Conditions and Fare Rules</Label>
+                <Label htmlFor="terms">
+                  Tôi đồng ý với Điều khoản và Điều kiện cũng như Quy định giá
+                  vé
+                </Label>
               </div>
+
               <Button
                 className="w-full bg-blue-600 text-white mt-4"
                 onClick={handlePayment}
                 disabled={!termsAccepted}
               >
-                Pay Now - ${priceBreakdown.total.toFixed(2)}
+                Thanh toán ngay - {formatCurrency(priceBreakdown.total)}
               </Button>
             </CardContent>
           </Card>
-
-          
         </div>
       </div>
     </div>

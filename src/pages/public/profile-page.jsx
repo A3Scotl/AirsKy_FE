@@ -38,7 +38,7 @@ const UserProfile = () => {
       <div className="min-h-screen bg-gray-50 pt-16 flex items-center justify-center">
         <div className="text-center">
           <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4 text-blue-600" />
-          <p className="text-gray-600">Loading your profile...</p>
+          <p className="text-gray-600">Đang tải...</p>
         </div>
       </div>
     );
@@ -52,14 +52,14 @@ const UserProfile = () => {
           <div className="text-center max-w-md mx-auto p-6">
             <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
             <h3 className="text-lg font-semibold text-gray-900 mb-2">
-              Unable to load profile
+              không thể tải thông tin hồ sơ
             </h3>
             <p className="text-gray-600 mb-6">
-              {error || "There was an error loading your profile information."}
+              {error || "Đã xảy ra lỗi khi tải thông tin hồ sơ của bạn."}
             </p>
             <Button onClick={refetch} className="bg-blue-600 hover:bg-blue-700">
               <RefreshCw className="w-4 h-4 mr-2" />
-              Try Again
+              Thử lại
             </Button>
           </div>
         </div>
@@ -98,7 +98,7 @@ const UserProfile = () => {
                   {userProfile.email}
                 </CardDescription>
                 <p className="text-sm text-gray-500 mt-2">
-                  Member since {userProfileUtils.getJoinDate(userProfile)}
+                  Thành viên từ {userProfileUtils.getJoinDate(userProfile)}
                 </p>
                 {userProfile.phone && (
                   <p className="text-sm text-gray-500">
@@ -127,7 +127,7 @@ const UserProfile = () => {
                     onClick={() => setActiveTab("my-booking")}
                   >
                     <Plane className="mr-2 h-4 w-4" />
-                    My Bookings
+                    Chuyến bay của tôi
                   </Button>
                   <Button
                     variant="ghost"
@@ -139,7 +139,7 @@ const UserProfile = () => {
                     onClick={() => setActiveTab("favourite")}
                   >
                     <Heart className="mr-2 h-4 w-4" />
-                    Favourites
+                    Yêu thích
                   </Button>
                   <Button
                     variant="ghost"
@@ -149,7 +149,7 @@ const UserProfile = () => {
                     onClick={() => setActiveTab("account")}
                   >
                     <User className="mr-2 h-4 w-4" />
-                    Account
+                    Tài khoản
                   </Button>
                   <Button
                     variant="ghost"
@@ -159,7 +159,7 @@ const UserProfile = () => {
                     onClick={() => setActiveTab("setting")}
                   >
                     <Settings className="mr-2 h-4 w-4" />
-                    Settings
+                    Cài đặt
                   </Button>
                 </nav>
               </div>

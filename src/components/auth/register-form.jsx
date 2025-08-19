@@ -8,21 +8,45 @@ import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import { authApi } from "@/apis/auth-api";
 
+const formLabels = {
+  firstName: "Họ",
+  lastName: "Tên",
+  phone: "Số điện thoại",
+  email: "Địa chỉ Email",
+  password: "Mật khẩu",
+  confirmPassword: "Xác nhận mật khẩu",
+  otpCode: "Mã OTP",
+};
+
+const formPlaceholders = {
+  firstName: "Nhập họ của bạn",
+  lastName: "Nhập tên của bạn",
+  phone: "Nhập số điện thoại của bạn",
+  email: "Nhập địa chỉ email của bạn",
+  password: "Tạo mật khẩu",
+  confirmPassword: "Xác nhận mật khẩu của bạn",
+  otpCode: "Nhập mã OTP",
+};
+
 export default function RegisterForm({ setCurrentView }) {
   const [step, setStep] = useState(1);
-  const [firstName, setFirstName] = useState("");
-  const [lastName, setLastName] = useState("");
-  const [phone, setPhone] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [otpCode, setOtpCode] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [formData, setFormData] = useState({
+    firstName: "",
+    lastName: "",
+    phone: "",
+    email: "",
+    password: "",
+    confirmPassword: "",
+    otpCode: "",
+  });
+  const [showPassword, setShowPassword] = useState({
+    password: false,
+    confirmPassword: false,
+  });
   const [agreeTerms, setAgreeTerms] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [countdown, setCountdown] = useState(0); 
-  const [isResendDisabled, setIsResendDisabled] = useState(false); 
+  const [countdown, setCountdown] = useState(0);
+  const [isResendDisabled, setIsResendDisabled] = useState(false);
   const navigate = useNavigate();
 
   // Countdown effect
@@ -39,30 +63,37 @@ export default function RegisterForm({ setCurrentView }) {
         });
       }, 1000);
     }
-    return () => clearInterval(timer); // Cleanup timer on unmount
+    return () => clearInterval(timer);
   }, [countdown]);
 
-  const handleBackClick = () => {
-    window.history.back();
+  const handleInputChange = (field) => (e) => {
+    setFormData((prev) => ({ ...prev, [field]: e.target.value }));
+  };
+
+  const togglePasswordVisibility = (field) => {
+    setShowPassword((prev) => ({ ...prev, [field]: !prev[field] }));
   };
 
   const handleRegister = async (e) => {
     e.preventDefault();
-    if (password !== confirmPassword) {
-      toast.error("Passwords do not match");
+    if (formData.password !== formData.confirmPassword) {
+      toast.error("Mật khẩu không khớp");
       return;
     }
     if (!agreeTerms) {
-      toast.error("You must agree to the terms and conditions");
+      toast.error("Bạn phải đồng ý với các điều khoản và điều kiện");
       return;
     }
+
     setLoading(true);
-    const response = await authApi.register({ email, password, firstName, lastName, phone });
+    const response = await authApi.register(formData);
     if (response.success) {
-      toast.success("Registration successful. Please enter the OTP sent to your email.");
+      toast.success(
+        "Đăng ký thành công. Vui lòng nhập mã OTP được gửi đến email của bạn."
+      );
       setStep(2);
-      setCountdown(60); // Start 60-second countdown
-      setIsResendDisabled(true); // Disable resend button
+      setCountdown(60);
+      setIsResendDisabled(true);
     } else {
       toast.error(response.message);
     }
@@ -72,9 +103,12 @@ export default function RegisterForm({ setCurrentView }) {
   const handleVerify = async (e) => {
     e.preventDefault();
     setLoading(true);
-    const response = await authApi.verifyOtpRegistration({ email, otpCode });
+    const response = await authApi.verifyOtpRegistration({
+      email: formData.email,
+      otpCode: formData.otpCode,
+    });
     if (response.success) {
-      toast.success("Account verified successfully.");
+      toast.success("Tài khoản đã được xác minh thành công.");
       setCurrentView("login");
     } else {
       toast.error(response.message);
@@ -84,16 +118,56 @@ export default function RegisterForm({ setCurrentView }) {
 
   const handleResend = async () => {
     setLoading(true);
-    const response = await authApi.resendOtpCode({ email });
+    const response = await authApi.resendOtpCode({ email: formData.email });
     if (response.success) {
-      toast.success("OTP resent successfully.");
-      setCountdown(60); // Reset countdown
-      setIsResendDisabled(true); // Disable button again
+      toast.success("Mã OTP đã được gửi lại thành công.");
+      setCountdown(60);
+      setIsResendDisabled(true);
     } else {
       toast.error(response.message);
     }
     setLoading(false);
   };
+
+  const renderFormField = (field, type = "text") => (
+    <div key={field}>
+      <label className="block text-sm font-medium text-gray-700 mb-2">
+        {formLabels[field]}
+      </label>
+      {field === "password" || field === "confirmPassword" ? (
+        <div className="relative">
+          <Input
+            type={showPassword[field] ? "text" : "password"}
+            placeholder={formPlaceholders[field]}
+            className="w-full pr-10"
+            value={formData[field]}
+            onChange={handleInputChange(field)}
+            required
+          />
+          <button
+            type="button"
+            onClick={() => togglePasswordVisibility(field)}
+            className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400"
+          >
+            {showPassword[field] ? (
+              <EyeOff className="w-5 h-5" />
+            ) : (
+              <Eye className="w-5 h-5" />
+            )}
+          </button>
+        </div>
+      ) : (
+        <Input
+          type={type}
+          placeholder={formPlaceholders[field]}
+          className="w-full"
+          value={formData[field]}
+          onChange={handleInputChange(field)}
+          required
+        />
+      )}
+    </div>
+  );
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -102,14 +176,14 @@ export default function RegisterForm({ setCurrentView }) {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <button
-              onClick={handleBackClick}
+              onClick={() => window.history.back()}
               className="flex items-center text-gray-600 hover:text-gray-900 transition-colors"
             >
               <ArrowLeft className="w-5 h-5 mr-2" />
-              Back
+              Quay lại
             </button>
             <h1 className="text-xl font-bold text-blue-600">AirSky</h1>
-            <div className="w-16"></div> {/* Spacer for center alignment */}
+            <div className="w-16" />
           </div>
         </div>
       </div>
@@ -120,105 +194,46 @@ export default function RegisterForm({ setCurrentView }) {
           <Card className="shadow-lg border-0">
             <CardContent className="p-8">
               <div className="text-center mb-8">
-                <h2 className="text-2xl font-bold text-gray-900 mb-2">Create Account</h2>
-                <p className="text-gray-600">Join AirSky and start your journey</p>
+                <h2 className="text-2xl font-bold text-gray-900 mb-2">
+                  {step === 1 ? "Tạo tài khoản" : "Xác minh tài khoản"}
+                </h2>
+                <p className="text-gray-600">
+                  {step === 1
+                    ? "Tham gia AirSky và bắt đầu hành trình của bạn"
+                    : "Nhập mã OTP để xác minh tài khoản"}
+                </p>
               </div>
 
               {step === 1 ? (
                 <form className="space-y-6" onSubmit={handleRegister}>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">First Name</label>
-                    <Input
-                      type="text"
-                      placeholder="Enter your first name"
-                      className="w-full"
-                      value={firstName}
-                      onChange={(e) => setFirstName(e.target.value)}
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Last Name</label>
-                    <Input
-                      type="text"
-                      placeholder="Enter your last name"
-                      className="w-full"
-                      value={lastName}
-                      onChange={(e) => setLastName(e.target.value)}
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Phone Number</label>
-                    <Input
-                      type="tel"
-                      placeholder="Enter your phone number"
-                      className="w-full"
-                      value={phone}
-                      onChange={(e) => setPhone(e.target.value)}
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Email Address</label>
-                    <Input
-                      type="email"
-                      placeholder="Enter your email"
-                      className="w-full"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      required
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Password</label>
-                    <div className="relative">
-                      <Input
-                        type={showPassword ? "text" : "password"}
-                        placeholder="Create a password"
-                        className="w-full pr-10"
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        required
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400"
-                      >
-                        {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                      </button>
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Confirm Password</label>
-                    <div className="relative">
-                      <Input
-                        type={showConfirmPassword ? "text" : "password"}
-                        placeholder="Confirm your password"
-                        className="w-full pr-10"
-                        value={confirmPassword}
-                        onChange={(e) => setConfirmPassword(e.target.value)}
-                        required
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400"
-                      >
-                        {showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                      </button>
-                    </div>
-                  </div>
+                  {[
+                    "firstName",
+                    "lastName",
+                    "phone",
+                    "email",
+                    "password",
+                    "confirmPassword",
+                  ].map((field) =>
+                    renderFormField(
+                      field,
+                      field === "email"
+                        ? "email"
+                        : field === "phone"
+                        ? "tel"
+                        : "text"
+                    )
+                  )}
 
                   <div className="flex items-center space-x-2">
-                    <Checkbox id="terms" checked={agreeTerms} onCheckedChange={setAgreeTerms} />
+                    <Checkbox
+                      id="terms"
+                      checked={agreeTerms}
+                      onCheckedChange={setAgreeTerms}
+                    />
                     <label htmlFor="terms" className="text-sm text-gray-600">
-                      I agree to the{" "}
+                      Tôi đồng ý với{" "}
                       <a href="#" className="text-blue-600 hover:underline">
-                        Terms & Conditions
+                        Điều khoản & Điều kiện
                       </a>
                     </label>
                   </div>
@@ -228,50 +243,44 @@ export default function RegisterForm({ setCurrentView }) {
                     className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3"
                     disabled={loading}
                   >
-                    {loading ? "Creating..." : "Create Account"}
+                    {loading ? "Đang tạo..." : "Tạo tài khoản"}
                   </Button>
 
                   <div className="text-center mt-6">
-                    <span className="text-gray-600">Already have an account? </span>
+                    <span className="text-gray-600">Đã có tài khoản? </span>
                     <button
                       type="button"
                       onClick={() => setCurrentView("login")}
                       className="text-blue-600 hover:underline font-medium"
                     >
-                      Sign In
+                      Đăng nhập
                     </button>
                   </div>
                 </form>
               ) : (
                 <form className="space-y-6" onSubmit={handleVerify}>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">OTP Code</label>
-                    <Input
-                      type="text"
-                      placeholder="Enter OTP code"
-                      className="w-full"
-                      value={otpCode}
-                      onChange={(e) => setOtpCode(e.target.value)}
-                      required
-                    />
-                  </div>
+                  {renderFormField("otpCode")}
 
                   <Button
                     type="submit"
                     className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3"
                     disabled={loading}
                   >
-                    {loading ? "Verifying..." : "Verify"}
+                    {loading ? "Đang xác minh..." : "Xác minh"}
                   </Button>
 
                   <div className="text-center mt-4">
                     <button
                       type="button"
                       onClick={handleResend}
-                      className={`text-blue-600 hover:underline ${isResendDisabled ? "opacity-50 cursor-not-allowed" : ""}`}
+                      className={`text-blue-600 hover:underline ${
+                        isResendDisabled ? "opacity-50 cursor-not-allowed" : ""
+                      }`}
                       disabled={loading || isResendDisabled}
                     >
-                      {isResendDisabled ? `Resend OTP in ${countdown}s` : "Resend OTP"}
+                      {isResendDisabled
+                        ? `Gửi lại OTP trong ${countdown}s`
+                        : "Gửi lại OTP"}
                     </button>
                   </div>
                 </form>

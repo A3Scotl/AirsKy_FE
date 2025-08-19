@@ -69,7 +69,7 @@ export function AuthProvider({ children }) {
     localStorage.removeItem("user");
     localStorage.removeItem("token");
     toast.info("You have been logged out");
-    navigate("/login");
+    navigate("/");
   };
 
   return (

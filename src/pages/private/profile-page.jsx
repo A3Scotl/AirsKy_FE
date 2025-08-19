@@ -195,9 +195,9 @@ const AdminProfilePage = () => {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Admin Profile</h1>
+            <h1 className="text-3xl font-bold text-gray-900">Trang cá nhân</h1>
             <p className="text-gray-600 mt-1">
-              Manage your administrator account settings and preferences
+              Quản lý cài đặt và tùy chọn tài khoản quản trị viên của bạn
             </p>
           </div>
           <Badge className={getRoleColor(profileData.role)}>
@@ -258,22 +258,22 @@ const AdminProfilePage = () => {
           <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="profile" className="flex items-center gap-2">
               <User className="h-4 w-4" />
-              Profile Info
+              Thông tin cá nhân
             </TabsTrigger>
             <TabsTrigger value="security" className="flex items-center gap-2">
               <Lock className="h-4 w-4" />
-              Security
+              Bảo mật
             </TabsTrigger>
             <TabsTrigger
               value="notifications"
               className="flex items-center gap-2"
             >
               <Bell className="h-4 w-4" />
-              Notifications
+              Thông báo
             </TabsTrigger>
             <TabsTrigger value="settings" className="flex items-center gap-2">
               <Settings className="h-4 w-4" />
-              Settings
+              Cài đặt
             </TabsTrigger>
           </TabsList>
 
@@ -284,17 +284,17 @@ const AdminProfilePage = () => {
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <User className="h-5 w-5" />
-                    Personal Information
+                    Thông tin cá nhân
                   </CardTitle>
                   <CardDescription>
-                    Update your personal details and contact information
+                    Cập nhật thông tin cá nhân và thông tin liên hệ của bạn
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
                   <form onSubmit={handleProfileUpdate} className="space-y-4">
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
-                        <Label htmlFor="firstName">First Name</Label>
+                        <Label htmlFor="firstName">Họ</Label>
                         <Input
                           id="firstName"
                           value={profileData.firstName}
@@ -307,7 +307,7 @@ const AdminProfilePage = () => {
                         />
                       </div>
                       <div className="space-y-2">
-                        <Label htmlFor="lastName">Last Name</Label>
+                        <Label htmlFor="lastName">Tên</Label>
                         <Input
                           id="lastName"
                           value={profileData.lastName}
@@ -322,7 +322,7 @@ const AdminProfilePage = () => {
                     </div>
 
                     <div className="space-y-2">
-                      <Label htmlFor="email">Email Address</Label>
+                      <Label htmlFor="email">Email</Label>
                       <Input
                         id="email"
                         type="email"
@@ -337,7 +337,7 @@ const AdminProfilePage = () => {
                     </div>
 
                     <div className="space-y-2">
-                      <Label htmlFor="phone">Phone Number</Label>
+                      <Label htmlFor="phone">Số điện thoại</Label>
                       <Input
                         id="phone"
                         value={profileData.phone}
@@ -351,7 +351,7 @@ const AdminProfilePage = () => {
                     </div>
 
                     <div className="space-y-2">
-                      <Label htmlFor="address">Address</Label>
+                      <Label htmlFor="address">Địa chỉ</Label>
                       <Textarea
                         id="address"
                         value={profileData.address}
@@ -381,17 +381,17 @@ const AdminProfilePage = () => {
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <Shield className="h-5 w-5" />
-                    Administrative Details
+                    Thông tin quản trị
                   </CardTitle>
                   <CardDescription>
-                    Your role and permissions information
+                    Thông tin về vai trò và quyền hạn của bạn
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <Label className="text-sm font-medium text-gray-600">
-                        Department
+                        Phòng ban
                       </Label>
                       <p className="text-sm font-semibold">
                         {profileData.department}
@@ -402,7 +402,7 @@ const AdminProfilePage = () => {
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <Label className="text-sm font-medium text-gray-600">
-                        Join Date
+                        Ngày tham gia
                       </Label>
                       <p className="text-sm font-semibold flex items-center gap-1">
                         <Calendar className="h-4 w-4" />
@@ -411,7 +411,7 @@ const AdminProfilePage = () => {
                     </div>
                     <div>
                       <Label className="text-sm font-medium text-gray-600">
-                        Last Login
+                        Lần đăng nhập cuối
                       </Label>
                       <p className="text-sm font-semibold flex items-center gap-1">
                         <Clock className="h-4 w-4" />
@@ -424,7 +424,7 @@ const AdminProfilePage = () => {
 
                   <div>
                     <Label className="text-sm font-medium text-gray-600 mb-2 block">
-                      Permissions
+                      Quyền hạn
                     </Label>
                     <div className="flex flex-wrap gap-2">
                       {profileData.permissions.map((permission, index) => (
@@ -451,16 +451,17 @@ const AdminProfilePage = () => {
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <Key className="h-5 w-5" />
-                    Change Password
+                    Đổi mật khẩu
                   </CardTitle>
                   <CardDescription>
-                    Update your password to keep your account secure
+                    Cập nhật mật khẩu của bạn để giữ cho tài khoản của bạn an
+                    toàn
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
                   <form onSubmit={handlePasswordChange} className="space-y-4">
                     <div className="space-y-2">
-                      <Label htmlFor="currentPassword">Current Password</Label>
+                      <Label htmlFor="currentPassword">Mật khẩu hiện tại</Label>
                       <div className="relative">
                         <Input
                           id="currentPassword"
@@ -493,7 +494,7 @@ const AdminProfilePage = () => {
                     </div>
 
                     <div className="space-y-2">
-                      <Label htmlFor="newPassword">New Password</Label>
+                      <Label htmlFor="newPassword">Mật khẩu mới</Label>
                       <div className="relative">
                         <Input
                           id="newPassword"
@@ -526,7 +527,7 @@ const AdminProfilePage = () => {
 
                     <div className="space-y-2">
                       <Label htmlFor="confirmPassword">
-                        Confirm New Password
+                        Xác nhận mật khẩu mới
                       </Label>
                       <div className="relative">
                         <Input
@@ -561,12 +562,12 @@ const AdminProfilePage = () => {
                     </div>
 
                     <div className="text-xs text-gray-500 bg-gray-50 p-3 rounded-md">
-                      <p>Password requirements:</p>
+                      <p>Yêu cầu mật khẩu:</p>
                       <ul className="list-disc list-inside mt-1 space-y-1">
-                        <li>At least 8 characters long</li>
-                        <li>Include uppercase and lowercase letters</li>
-                        <li>Include at least one number</li>
-                        <li>Include at least one special character</li>
+                        <li>Ít nhất 8 ký tự</li>
+                        <li>Bao gồm chữ hoa và chữ thường</li>
+                        <li>Bao gồm ít nhất một số</li>
+                        <li>Bao gồm ít nhất một ký tự đặc biệt</li>
                       </ul>
                     </div>
 
@@ -590,22 +591,22 @@ const AdminProfilePage = () => {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Bell className="h-5 w-5" />
-                  Notification Preferences
+                  Tùy chọn thông báo
                 </CardTitle>
                 <CardDescription>
-                  Configure how you want to receive notifications
+                  Cấu hình cách bạn muốn nhận thông báo
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-4">
-                    <h4 className="font-medium">Communication Preferences</h4>
+                    <h4 className="font-medium">Tùy chọn giao tiếp</h4>
 
                     <div className="flex items-center justify-between">
                       <div className="space-y-0.5">
                         <Label>Email Notifications</Label>
                         <p className="text-sm text-gray-600">
-                          Receive notifications via email
+                          Nhận thông báo qua email
                         </p>
                       </div>
                       <Switch
@@ -623,7 +624,7 @@ const AdminProfilePage = () => {
                       <div className="space-y-0.5">
                         <Label>SMS Notifications</Label>
                         <p className="text-sm text-gray-600">
-                          Receive notifications via SMS
+                          Nhận thông báo qua SMS
                         </p>
                       </div>
                       <Switch
@@ -636,34 +637,16 @@ const AdminProfilePage = () => {
                         }
                       />
                     </div>
-
-                    <div className="flex items-center justify-between">
-                      <div className="space-y-0.5">
-                        <Label>Marketing Emails</Label>
-                        <p className="text-sm text-gray-600">
-                          Receive promotional content
-                        </p>
-                      </div>
-                      <Switch
-                        checked={notificationSettings.marketingEmails}
-                        onCheckedChange={(checked) =>
-                          setNotificationSettings({
-                            ...notificationSettings,
-                            marketingEmails: checked,
-                          })
-                        }
-                      />
-                    </div>
                   </div>
 
                   <div className="space-y-4">
-                    <h4 className="font-medium">System Alerts</h4>
+                    <h4 className="font-medium">Thông báo hệ thống</h4>
 
                     <div className="flex items-center justify-between">
                       <div className="space-y-0.5">
-                        <Label>Flight Alerts</Label>
+                        <Label>Thông báo chuyến bay</Label>
                         <p className="text-sm text-gray-600">
-                          Flight delays, cancellations, updates
+                          Thông báo về sự chậm trễ, hủy chuyến, cập nhật
                         </p>
                       </div>
                       <Switch
@@ -676,51 +659,8 @@ const AdminProfilePage = () => {
                         }
                       />
                     </div>
-
-                    <div className="flex items-center justify-between">
-                      <div className="space-y-0.5">
-                        <Label>System Alerts</Label>
-                        <p className="text-sm text-gray-600">
-                          System maintenance, updates
-                        </p>
-                      </div>
-                      <Switch
-                        checked={notificationSettings.systemAlerts}
-                        onCheckedChange={(checked) =>
-                          setNotificationSettings({
-                            ...notificationSettings,
-                            systemAlerts: checked,
-                          })
-                        }
-                      />
-                    </div>
-
-                    <div className="flex items-center justify-between">
-                      <div className="space-y-0.5">
-                        <Label>Security Alerts</Label>
-                        <p className="text-sm text-gray-600">
-                          Login attempts, security events
-                        </p>
-                      </div>
-                      <Switch
-                        checked={notificationSettings.securityAlerts}
-                        onCheckedChange={(checked) =>
-                          setNotificationSettings({
-                            ...notificationSettings,
-                            securityAlerts: checked,
-                          })
-                        }
-                      />
-                    </div>
                   </div>
                 </div>
-
-                <Separator />
-
-                <Button className="w-full">
-                  <Save className="h-4 w-4 mr-2" />
-                  Save Notification Preferences
-                </Button>
               </CardContent>
             </Card>
           </TabsContent>
@@ -731,10 +671,10 @@ const AdminProfilePage = () => {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Settings className="h-5 w-5" />
-                  Account Settings
+                  Tùy chọn tài khoản
                 </CardTitle>
                 <CardDescription>
-                  Configure your account preferences and system settings
+                  Cấu hình sở thích tài khoản và cài đặt hệ thống
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
@@ -756,16 +696,14 @@ const AdminProfilePage = () => {
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="UTC-8">
-                            Pacific Time (UTC-8)
+                            Giờ Thái Bình Dương (UTC-8)
                           </SelectItem>
-                          <SelectItem value="UTC-7">
-                            Mountain Time (UTC-7)
-                          </SelectItem>
+                          <SelectItem value="UTC-7">Giờ Núi (UTC-7)</SelectItem>
                           <SelectItem value="UTC-6">
-                            Central Time (UTC-6)
+                            Giờ Trung (UTC-6)
                           </SelectItem>
                           <SelectItem value="UTC-5">
-                            Eastern Time (UTC-5)
+                            Giờ Miền Đông (UTC-5)
                           </SelectItem>
                           <SelectItem value="UTC+0">UTC</SelectItem>
                         </SelectContent>
@@ -773,7 +711,7 @@ const AdminProfilePage = () => {
                     </div>
 
                     <div className="space-y-2">
-                      <Label>Language</Label>
+                      <Label>Ngôn ngữ</Label>
                       <Select
                         value={accountSettings.language}
                         onValueChange={(value) =>
@@ -787,9 +725,10 @@ const AdminProfilePage = () => {
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="English">English</SelectItem>
-                          <SelectItem value="Spanish">Vietnam</SelectItem>
-                         
+                          <SelectItem value="English">Tiếng Anh</SelectItem>
+                          <SelectItem value="Spanish">
+                            Tiếng Tây Ban Nha
+                          </SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
@@ -797,7 +736,7 @@ const AdminProfilePage = () => {
 
                   <div className="space-y-4">
                     <div className="space-y-2">
-                      <Label>Theme</Label>
+                      <Label>Chủ đề</Label>
                       <Select
                         value={accountSettings.theme}
                         onValueChange={(value) =>
@@ -811,9 +750,11 @@ const AdminProfilePage = () => {
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="light">Light</SelectItem>
-                          <SelectItem value="dark">Dark</SelectItem>
-                          <SelectItem value="system">System</SelectItem>
+                          <SelectItem value="light">Sáng</SelectItem>
+                          <SelectItem value="dark">Tối</SelectItem>
+                          <SelectItem value="system">
+                            Tùy Chọn Hệ thống
+                          </SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
@@ -825,30 +766,24 @@ const AdminProfilePage = () => {
                 <div className="space-y-4">
                   <h4 className="font-medium text-red-600 flex items-center gap-2">
                     <AlertTriangle className="h-4 w-4" />
-                    Danger Zone
+                    Cảnh báo quan trọng
                   </h4>
                   <div className="border border-red-200 rounded-lg p-4 space-y-3">
                     <div>
-                      <h5 className="font-medium">Deactivate Account</h5>
+                      <h5 className="font-medium">Vô hiệu hóa tài khoản</h5>
                       <p className="text-sm text-gray-600">
-                        Temporarily disable your administrator access
+                        Tạm thời vô hiệu hóa quyền truy cập quản trị viên của
+                        bạn
                       </p>
                     </div>
                     <Button
                       variant="outline"
                       className="border-red-200 text-red-600 hover:bg-red-50"
                     >
-                      Request Account Deactivation
+                      Yêu cầu vô hiệu hóa tài khoản
                     </Button>
                   </div>
                 </div>
-
-                <Separator />
-
-                <Button className="w-full">
-                  <Save className="h-4 w-4 mr-2" />
-                  Save Settings
-                </Button>
               </CardContent>
             </Card>
           </TabsContent>

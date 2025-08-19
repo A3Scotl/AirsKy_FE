@@ -7,10 +7,10 @@ import Extras from "@/components/section/flight/extras-section";
 import Payment from "@/components/section/flight/payment-section";
 
 const steps = [
-  { title: "Flight Selection" },
-  { title: "Passenger Details" },
-  { title: "Extras" },
-  { title: "Payment" },
+  { title: "Chọn chuyến bay" },
+  { title: "Thông tin hành khách" },
+  { title: "Tiện ích" },
+  { title: "Thanh toán" },
 ];
 
 const FlightInfo = ({ flightDetails }) => (
@@ -24,7 +24,7 @@ const FlightInfo = ({ flightDetails }) => (
       </p>
     </div>
     <div className="text-2xl sm:text-3xl font-bold text-blue-600 sm:text-gray-900">
-      ${flightDetails.price}
+      {flightDetails.price} đ
     </div>
   </div>
 );
@@ -118,10 +118,10 @@ export function FlightBookingStepper() {
           flightDetails={{
             from: "New York (JFK)",
             to: "Los Angeles (LAX)",
-            date: "Sep 15, 2025",
+            date: "Ngày 15 tháng 9, 2025",
             airline: "Delta DL476",
             fare: "Main Cabin",
-            price: 299,
+            price: 150000000,
           }}
         />
         {renderStepContent()}
@@ -132,7 +132,7 @@ export function FlightBookingStepper() {
             onClick={handleBack}
             disabled={currentStep === 1}
           >
-            Back
+            Quay lại
           </button>
           <button
             type="button"
@@ -140,7 +140,7 @@ export function FlightBookingStepper() {
             onClick={handleNext}
             disabled={currentStep === steps.length}
           >
-            {currentStep === steps.length ? "Complete" : "Continue →"}
+            {currentStep === steps.length ? "Hoàn tất" : "Tiếp tục →"}
           </button>
         </div>
       </main>

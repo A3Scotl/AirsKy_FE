@@ -2,6 +2,7 @@ import {
   BrowserRouter as Router,
   Routes,
   Route,
+  Navigate,
   useLocation,
 } from "react-router-dom";
 import { lazy, Suspense } from "react";
@@ -11,16 +12,26 @@ import { AuthProvider, useAuth } from "@/contexts/auth-context";
 import { Toaster } from "sonner";
 import LoadingPage from "@/pages/loading/loading-page";
 import PageTransition from "@/components/common/page-transition";
+import AdminRoute from "@/routes/admin-route";
 
 // Lazy load tất cả page
 const HomePage = lazy(() => import("@/pages/public/home-page"));
 const AuthPage = lazy(() => import("@/pages/public/auth/auth-page"));
 const FlightPage = lazy(() => import("@/pages/public/flight-page"));
-const FlightBookingStepper = lazy(() => import("@/pages/public/booking-stepper-page"));
-const ConfirmBookingPage = lazy(() => import("@/pages/public/confirm-booking-page"));
-const FlightDetail = lazy(() => import("@/pages/public/detail/flight-detail-page"));
+const FlightBookingStepper = lazy(() =>
+  import("@/pages/public/booking-stepper-page")
+);
+const ConfirmBookingPage = lazy(() =>
+  import("@/pages/public/confirm-booking-page")
+);
+const FlightDetail = lazy(() =>
+  import("@/pages/public/detail/flight-detail-page")
+);
 const ProfilePage = lazy(() => import("@/pages/public/profile-page"));
-const NotFoundPage = lazy(() => import("@/pages/public/not-found/not-found-page"));
+
+const NotFoundPage = lazy(() =>
+  import("@/pages/public/not-found/not-found-page")
+);
 const PublicLayout = lazy(() => import("@/layouts/public-layout"));
 const AuthLayout = lazy(() => import("@/layouts/auth-layout"));
 const PrivateLayout = lazy(() => import("@/layouts/admin-layout"));
@@ -60,6 +71,7 @@ function AppRoutes() {
                 </PageTransition>
               }
             />
+
             <Route
               path="/booking-stepper"
               element={
@@ -106,14 +118,22 @@ function AppRoutes() {
             />
           </Route>
 
-          <Route path="/admin" element={<PrivateLayout />}>
-            <Route path="/admin/dashboard" element={<AdminDashboard />} />
-            <Route path="/admin/bookings" element={<AdminBooking />} />
-            <Route path="/admin/flights" element={<AdminFlights />} />
-            <Route path="/admin/users" element={<AdminUsers />} />
-            <Route path="/admin/payments" element={<AdminPayments />} />
-            <Route path="/admin/reports" element={<AdminReports />} />
-            <Route path="/admin/profile" element={<AdminProfile />} />
+          <Route
+            path="/admin"
+            element={
+              <AdminRoute>
+                <PrivateLayout />
+              </AdminRoute>
+            }
+          >
+            <Route index element={<Navigate to="/admin/dashboard" replace />} />
+            <Route path="dashboard" element={<AdminDashboard />} />
+            <Route path="bookings" element={<AdminBooking />} />
+            <Route path="flights" element={<AdminFlights />} />
+            <Route path="users" element={<AdminUsers />} />
+            <Route path="payments" element={<AdminPayments />} />
+            <Route path="reports" element={<AdminReports />} />
+            <Route path="profile" element={<AdminProfile />} />
           </Route>
 
           {/* 404 Route - Must be last */}

@@ -12,17 +12,17 @@ import DealsSection from "./deal-section";
 
 // Formatting utilities
 const formatCurrency = (amount) => {
-  return new Intl.NumberFormat("en-US", {
+  return new Intl.NumberFormat("vi-VN", {
     style: "currency",
-    currency: "USD",
+    currency: "VND",
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
-  }).format(amount);
+  }).format(amount * 24000); // Convert USD to VND approx
 };
 
 const formatDate = (dateString) => {
   const date = new Date(dateString);
-  return date.toLocaleDateString("en-US", {
+  return date.toLocaleDateString("vi-VN", {
     weekday: "short",
     day: "2-digit",
     month: "2-digit",
@@ -33,189 +33,190 @@ const formatDate = (dateString) => {
 const formatFlightDuration = (minutes) => {
   const hours = Math.floor(minutes / 60);
   const mins = minutes % 60;
-  return `${hours}h ${mins}m`;
+  return `${hours}g ${mins}p`;
 };
 
+// Reduced flight data with Vietnamese cities
 const allFlights = [
   {
     id: "1",
     airline: "VietJet Air",
     airlineLogo:
       "https://logos-world.net/wp-content/uploads/2021/02/VietJet-Air-Logo.png",
-    from: "Ho Chi Minh City",
+    from: "TP. Hồ Chí Minh",
     fromCode: "SGN",
     to: "Bangkok",
     toCode: "BKK",
     date: "2025-08-26",
     priceNumeric: 57,
-    type: "One Way",
+    type: "Một chiều",
     departureTime: "08:30",
     duration: "80",
   },
   {
     id: "2",
-    airline: "Scoot",
-    airlineLogo:
-      "https://logos-world.net/wp-content/uploads/2020/03/Scoot-Logo.png",
-    from: "Ho Chi Minh City",
-    fromCode: "SGN",
-    to: "Singapore",
-    toCode: "SIN",
-    date: "2025-08-23",
-    priceNumeric: 45,
-    type: "One Way",
-    departureTime: "14:15",
-    duration: "125",
-  },
-  {
-    id: "3",
-    airline: "AirAsia",
-    airlineLogo:
-      "https://logos-world.net/wp-content/uploads/2020/03/AirAsia-Logo.png",
-    from: "Ho Chi Minh City",
-    fromCode: "SGN",
-    to: "Kuala Lumpur",
-    toCode: "KUL",
-    date: "2025-09-10",
-    priceNumeric: 51,
-    type: "One Way",
-    departureTime: "19:45",
-    duration: "135",
-  },
-  {
-    id: "4",
     airline: "Vietnam Airlines",
     airlineLogo:
       "https://logos-world.net/wp-content/uploads/2021/02/Vietnam-Airlines-Logo.png",
-    from: "Hanoi",
+    from: "Hà Nội",
     fromCode: "HAN",
     to: "Singapore",
     toCode: "SIN",
     date: "2025-08-30",
     priceNumeric: 86,
-    type: "One Way",
+    type: "Một chiều",
     departureTime: "06:20",
     duration: "180",
   },
   {
-    id: "5",
+    id: "3",
     airline: "Jetstar Pacific",
     airlineLogo:
       "https://logos-world.net/wp-content/uploads/2020/03/Jetstar-Logo.png",
-    from: "Ho Chi Minh City",
+    from: "TP. Hồ Chí Minh",
     fromCode: "SGN",
-    to: "Da Nang",
+    to: "Đà Nẵng",
     toCode: "DAD",
     date: "2025-08-20",
     priceNumeric: 33,
-    type: "One Way",
+    type: "Một chiều",
     departureTime: "11:30",
     duration: "75",
   },
   {
-    id: "6",
-    airline: "Thai AirAsia",
-    airlineLogo:
-      "https://logos-world.net/wp-content/uploads/2020/03/Thai-AirAsia-Logo.png",
-    from: "Bangkok",
-    fromCode: "DMK",
-    to: "Ho Chi Minh City",
-    toCode: "SGN",
-    date: "2025-09-11",
-    priceNumeric: 50,
-    type: "One Way",
-    departureTime: "16:40",
-    duration: "90",
-  },
-  {
-    id: "7",
-    airline: "Emirates",
-    airlineLogo:
-      "https://logos-world.net/wp-content/uploads/2020/03/Emirates-Logo.png",
-    from: "Ho Chi Minh City",
-    fromCode: "SGN",
-    to: "Dubai",
-    toCode: "DXB",
-    date: "2025-08-15",
-    priceNumeric: 504,
-    type: "One Way",
-    departureTime: "22:15",
-    duration: "420",
-  },
-  {
-    id: "8",
-    airline: "Singapore Airlines",
-    airlineLogo:
-      "https://logos-world.net/wp-content/uploads/2020/03/Singapore-Airlines-Logo.png",
-    from: "Singapore",
-    fromCode: "SIN",
-    to: "Tokyo",
-    toCode: "NRT",
-    date: "2025-08-20",
-    priceNumeric: 342,
-    type: "One Way",
-    departureTime: "13:25",
-    duration: "390",
-  },
-  {
-    id: "9",
-    airline: "VietJet Air",
-    airlineLogo:
-      "https://logos-world.net/wp-content/uploads/2021/02/VietJet-Air-Logo.png",
-    from: "Hanoi",
-    fromCode: "HAN",
-    to: "Ho Chi Minh City",
-    toCode: "SGN",
-    date: "2025-08-25",
-    priceNumeric: 48,
-    type: "One Way",
-    departureTime: "07:00",
-    duration: "120",
-  },
-  {
-    id: "10",
+    id: "4",
     airline: "Bamboo Airways",
     airlineLogo:
       "https://upload.wikimedia.org/wikipedia/commons/thumb/d/dd/Bamboo_Airways_logo.svg/1024px-Bamboo_Airways_logo.svg.png",
-    from: "Da Nang",
+    from: "Đà Nẵng",
     fromCode: "DAD",
     to: "Seoul",
     toCode: "ICN",
     date: "2025-09-05",
     priceNumeric: 196,
-    type: "One Way",
+    type: "Một chiều",
     departureTime: "09:45",
     duration: "240",
   },
   {
-    id: "11",
-    airline: "Qatar Airways",
+    id: "5",
+    airline: "VietJet Air",
     airlineLogo:
-      "https://logos-world.net/wp-content/uploads/2020/03/Qatar-Airways-Logo.png",
-    from: "Ho Chi Minh City",
+      "https://logos-world.net/wp-content/uploads/2021/02/VietJet-Air-Logo.png",
+    from: "Hà Nội",
+    fromCode: "HAN",
+    to: "TP. Hồ Chí Minh",
+    toCode: "SGN",
+    date: "2025-08-25",
+    priceNumeric: 48,
+    type: "Một chiều",
+    departureTime: "07:00",
+    duration: "120",
+  },
+  {
+    id: "6",
+    airline: "Bamboo Airways",
+    airlineLogo:
+      "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e9/Bamboo_Airways_logo.svg/1200px-Bamboo_Airways_logo.svg.png",
+    from: "Đà Nẵng",
+    fromCode: "DAD",
+    to: "Seoul",
+    toCode: "ICN",
+    date: "2025-08-27",
+    priceNumeric: 220,
+    type: "Một chiều",
+    departureTime: "15:30",
+    duration: "300",
+  },
+  {
+    id: "7",
+    airline: "Vietnam Airlines",
+    airlineLogo:
+      "https://logos-world.net/wp-content/uploads/2021/02/Vietnam-Airlines-Logo.png",
+    from: "TP. Hồ Chí Minh",
     fromCode: "SGN",
-    to: "Doha",
-    toCode: "DOH",
+    to: "Tokyo",
+    toCode: "NRT",
     date: "2025-08-28",
-    priceNumeric: 608,
-    type: "One Way",
+    priceNumeric: 380,
+    type: "Một chiều",
+    departureTime: "23:45",
+    duration: "360",
+  },
+  {
+    id: "8",
+    airline: "VietJet Air",
+    airlineLogo:
+      "https://logos-world.net/wp-content/uploads/2021/02/VietJet-Air-Logo.png",
+    from: "Hà Nội",
+    fromCode: "HAN",
+    to: "Singapore",
+    toCode: "SIN",
+    date: "2025-08-29",
+    priceNumeric: 165,
+    type: "Một chiều",
+    departureTime: "11:20",
+    duration: "210",
+  },
+  {
+    id: "9",
+    airline: "Jetstar Pacific",
+    airlineLogo:
+      "https://upload.wikimedia.org/wikipedia/commons/thumb/9/9a/Jetstar_Airways_logo.svg/1200px-Jetstar_Airways_logo.svg.png",
+    from: "Cần Thơ",
+    fromCode: "VCA",
+    to: "Bangkok",
+    toCode: "BKK",
+    date: "2025-08-30",
+    priceNumeric: 95,
+    type: "Một chiều",
+    departureTime: "14:15",
+    duration: "90",
+  },
+  {
+    id: "10",
+    airline: "Vietnam Airlines",
+    airlineLogo:
+      "https://logos-world.net/wp-content/uploads/2021/02/Vietnam-Airlines-Logo.png",
+    from: "TP. Hồ Chí Minh",
+    fromCode: "SGN",
+    to: "Paris",
+    toCode: "CDG",
+    date: "2025-08-31",
+    priceNumeric: 650,
+    type: "Một chiều",
     departureTime: "01:30",
-    duration: "480",
+    duration: "780",
+  },
+  {
+    id: "11",
+    airline: "Bamboo Airways",
+    airlineLogo:
+      "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e9/Bamboo_Airways_logo.svg/1200px-Bamboo_Airways_logo.svg.png",
+    from: "Phú Quốc",
+    fromCode: "PQC",
+    to: "Kuala Lumpur",
+    toCode: "KUL",
+    date: "2025-09-01",
+    priceNumeric: 140,
+    type: "Một chiều",
+    departureTime: "08:45",
+    duration: "150",
   },
   {
     id: "12",
-    airline: "AirAsia",
+    airline: "VietJet Air",
     airlineLogo:
-      "https://logos-world.net/wp-content/uploads/2020/03/AirAsia-Logo.png",
-    from: "Kuala Lumpur",
-    fromCode: "KUL",
-    to: "Bangkok",
-    toCode: "BKK",
-    date: "2025-09-01",
-    priceNumeric: 27,
-    type: "One Way",
-    departureTime: "18:20",
-    duration: "95",
+      "https://logos-world.net/wp-content/uploads/2021/02/VietJet-Air-Logo.png",
+    from: "Hà Nội",
+    fromCode: "HAN",
+    to: "Melbourne",
+    toCode: "MEL",
+    date: "2025-09-02",
+    priceNumeric: 420,
+    type: "Một chiều",
+    departureTime: "17:20",
+    duration: "540",
   },
 ];
 
@@ -233,84 +234,65 @@ export function FlightSearchResults() {
   const [expandedFlights, setExpandedFlights] = useState(new Set());
   const [selectedFares, setSelectedFares] = useState({});
   const [showMobileFilters, setShowMobileFilters] = useState(false);
-
-  // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
-  const [flightsPerPage] = useState(5); // Show 5 flights per page
+  const [flightsPerPage] = useState(4); // Giảm xuống 4 để có nhiều trang hơn
 
   // Reset page when filters change
   useEffect(() => {
     setCurrentPage(1);
   }, [filters, searchCriteria, activeTab]);
 
-  // Fare options data
+  // Simplified fare options data with Vietnamese text
   const fareOptions = [
     {
       id: "basic",
-      name: "Basic Economy",
-      price: 298,
+      name: "Phổ thông cơ bản",
+      price: 1200000,
       features: [
-        { included: true, text: "Personal item" },
-        { included: false, text: "Carry-on" },
-        { included: false, text: "Checked bag" },
-        { included: false, text: "Seat selection" },
-        { included: false, text: "Changes/cancellations" },
+        { included: true, text: "Hành lý xách tay" },
+        { included: false, text: "Hành lý ký gửi" },
+        { included: false, text: "Chọn chỗ ngồi" },
+        { included: false, text: "Đổi/hủy vé" },
       ],
     },
     {
       id: "main",
-      name: "Main Cabin",
-      price: 398,
+      name: "Phổ thông tiêu chuẩn",
+      price: 1800000,
       recommended: true,
       features: [
-        { included: true, text: "Personal item" },
-        { included: true, text: "Carry-on" },
-        { included: true, text: "1 checked bag" },
-        { included: true, text: "Advance seat selection" },
-        { included: true, text: "Changes (fees apply)" },
+        { included: true, text: "Hành lý xách tay" },
+        { included: true, text: "1 hành lý ký gửi" },
+        { included: true, text: "Chọn chỗ ngồi trước" },
+        { included: true, text: "Đổi vé (có phí)" },
       ],
     },
     {
       id: "first",
-      name: "First Class",
-      price: 1298,
+      name: "Thương gia",
+      price: 4200000,
       features: [
-        { included: true, text: "Personal item" },
-        { included: true, text: "Carry-on" },
-        { included: true, text: "2 checked bags" },
-        { included: true, text: "Free seat selection" },
-        { included: true, text: "Free changes & cancellations" },
-        { included: true, text: "Premium meals, drinks" },
+        { included: true, text: "Hành lý xách tay" },
+        { included: true, text: "2 hành lý ký gửi" },
+        { included: true, text: "Chọn chỗ ngồi miễn phí" },
+        { included: true, text: "Đổi/hủy vé miễn phí" },
+        { included: true, text: "Suất ăn cao cấp" },
       ],
     },
   ];
 
-  const handleSearch = (criteria) => {
-    setSearchCriteria(criteria);
-  };
-
-  const handleBookFlight = (flight) => {
-    setSelectedFlight(flight);
-  };
-
-  const handleViewFlightDetails = (flight) => {
-    // setSelectedFlight(flight);
-    navigate("/detail");
-  };
+  const handleSearch = (criteria) => setSearchCriteria(criteria);
+  const handleBookFlight = (flight) => setSelectedFlight(flight);
+  const handleViewFlightDetails = (flight) => navigate("/detail");
 
   const handleSelectFare = (flightId, fareId) => {
-    setSelectedFares((prev) => ({
-      ...prev,
-      [flightId]: fareId,
-    }));
+    setSelectedFares((prev) => ({ ...prev, [flightId]: fareId }));
   };
 
   const handleProceedToBooking = (flight, fareId) => {
     const selectedFare = fareOptions.find((fare) => fare.id === fareId);
-    // Store flight and fare data for the booking process
     localStorage.setItem("selectedFlight", JSON.stringify(flight));
     localStorage.setItem("selectedFare", JSON.stringify(selectedFare));
-    // Navigate to booking stepper
     navigate("/booking-stepper");
   };
 
@@ -321,7 +303,7 @@ export function FlightSearchResults() {
       departureTime: [],
       sortBy: "price-asc",
     });
-    setCurrentPage(1); // Reset to first page
+    setCurrentPage(1);
   };
 
   const toggleDetails = (flightId) => {
@@ -433,56 +415,44 @@ export function FlightSearchResults() {
   const totalFlights = filteredAndSortedFlights.length;
   const totalPages = Math.ceil(totalFlights / flightsPerPage);
   const startIndex = (currentPage - 1) * flightsPerPage;
-  const endIndex = startIndex + flightsPerPage;
-  const currentFlights = filteredAndSortedFlights.slice(startIndex, endIndex);
+  const currentFlights = filteredAndSortedFlights.slice(
+    startIndex,
+    startIndex + flightsPerPage
+  );
 
-  // Reset to first page when filters change
-  const resetCurrentPage = () => setCurrentPage(1);
-
-  // Pagination handlers
   const handlePageChange = (page) => {
     setCurrentPage(page);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  const handlePrevious = () => {
-    if (currentPage > 1) {
-      handlePageChange(currentPage - 1);
-    }
-  };
-
-  const handleNext = () => {
-    if (currentPage < totalPages) {
-      handlePageChange(currentPage + 1);
-    }
-  };
+  const handlePrevious = () =>
+    currentPage > 1 && handlePageChange(currentPage - 1);
+  const handleNext = () =>
+    currentPage < totalPages && handlePageChange(currentPage + 1);
 
   return (
-    <div className=" mx-auto ">
+    <div className="mx-auto">
       {/* Search Form with Background Image */}
       <div className="relative mb-12">
-        {/* Background Image with Overlay */}
         <div
           className="h-80 bg-cover bg-center bg-no-repeat relative"
           style={{
             backgroundImage: `url('https://images.unsplash.com/photo-1713396124163-21d4ea332d90?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1yZWxhdGVkfDIyfHx8ZW58MHx8fHx8')`,
           }}
         >
-          {/* Dark overlay for better text readability */}
           <div className="absolute inset-0 bg-opacity-50"></div>
-
-          {/* Content over background */}
           <div className="relative z-10 h-full flex items-center justify-center">
             <div className="text-center text-white">
-              <h1 className="text-3xl font-bold mb-2">Find your flights</h1>
+              <h1 className="text-3xl font-bold mb-2">
+                Tìm chuyến bay của bạn
+              </h1>
               <p className="text-lg opacity-90">
-                Explore the world with amazing deals
+                Khám phá thế giới với những ưu đãi tuyệt vời
               </p>
             </div>
           </div>
         </div>
 
-        {/* Search Form positioned at bottom border */}
         <div className="absolute left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-full max-w-5xl px-4 z-20">
           <div className="bg-white rounded-2xl shadow-2xl p-6 border border-gray-200">
             <SearchForm />
@@ -495,7 +465,6 @@ export function FlightSearchResults() {
       {/* Results Section */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex flex-col lg:flex-row gap-4 lg:gap-6">
-          {/* Filters Sidebar - Hidden on mobile, visible on desktop */}
           <div className="hidden lg:block w-80 flex-shrink-0">
             <FlightFilters
               filters={filters}
@@ -504,29 +473,26 @@ export function FlightSearchResults() {
             />
           </div>
 
-          {/* Flight Results */}
           <div className="flex-1 min-w-0">
             {/* Results Header */}
             <div className="mb-4 sm:mb-6">
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-3 sm:mb-4 gap-2">
                 <h2 className="text-lg sm:text-xl font-bold text-gray-900">
                   {searchCriteria
-                    ? `Flights From ${searchCriteria.from} To ${searchCriteria.to}`
-                    : "Find Cheap Flight Deals From Vietnam"}
+                    ? `Chuyến bay từ ${searchCriteria.from} đến ${searchCriteria.to}`
+                    : "Tìm ưu đãi chuyến bay giá rẻ từ Việt Nam"}
                 </h2>
                 <p className="text-xs sm:text-sm text-gray-600">
-                  {totalFlights} flights found
+                  {totalFlights} chuyến bay tìm thấy
                   {totalFlights > 0 && (
                     <span className="ml-2">
-                      (Page {currentPage} of {totalPages})
+                      (Trang {currentPage} / {totalPages})
                     </span>
                   )}
                 </p>
               </div>
 
-              {/* Mobile Filter Toggle & Filter Tabs */}
               <div className="flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
-                {/* Mobile Filter Toggle */}
                 <div className="lg:hidden">
                   <Button
                     variant="outline"
@@ -535,48 +501,30 @@ export function FlightSearchResults() {
                     onClick={() => setShowMobileFilters(!showMobileFilters)}
                   >
                     <Filter className="w-4 h-4 mr-2" />
-                    Filters
+                    Bộ lọc
                   </Button>
                 </div>
 
-                {/* Filter Tabs */}
                 <div className="flex gap-1 sm:gap-2 overflow-x-auto">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className={`whitespace-nowrap text-xs sm:text-sm ${
-                      activeTab === "one-way"
-                        ? "bg-blue-50 text-blue-600 border-blue-200"
-                        : ""
-                    }`}
-                    onClick={() => setActiveTab("one-way")}
-                  >
-                    One Way
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className={`whitespace-nowrap text-xs sm:text-sm ${
-                      activeTab === "domestic"
-                        ? "bg-blue-50 text-blue-600 border-blue-200"
-                        : ""
-                    }`}
-                    onClick={() => setActiveTab("domestic")}
-                  >
-                    Domestic
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className={`whitespace-nowrap text-xs sm:text-sm ${
-                      activeTab === "international"
-                        ? "bg-blue-50 text-blue-600 border-blue-200"
-                        : ""
-                    }`}
-                    onClick={() => setActiveTab("international")}
-                  >
-                    International
-                  </Button>
+                  {[
+                    { key: "one-way", label: "Một chiều" },
+                    { key: "domestic", label: "Nội địa" },
+                    { key: "international", label: "Quốc tế" },
+                  ].map((tab) => (
+                    <Button
+                      key={tab.key}
+                      variant="outline"
+                      size="sm"
+                      className={`whitespace-nowrap text-xs sm:text-sm ${
+                        activeTab === tab.key
+                          ? "bg-blue-50 text-blue-600 border-blue-200"
+                          : ""
+                      }`}
+                      onClick={() => setActiveTab(tab.key)}
+                    >
+                      {tab.label}
+                    </Button>
+                  ))}
                 </div>
               </div>
             </div>
@@ -598,15 +546,15 @@ export function FlightSearchResults() {
             <div className="space-y-3 sm:space-y-4">
               {totalFlights === 0 ? (
                 <Card className="p-6 sm:p-8 text-center">
-                  <p className="text-gray-500">
-                    No flights found matching your search criteria.
+                  <Plane className="w-12 h-12 mx-auto text-gray-400 mb-4" />
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                    Không tìm thấy chuyến bay
+                  </h3>
+                  <p className="text-sm text-gray-600 mb-4">
+                    Hãy thử điều chỉnh bộ lọc hoặc tìm kiếm khác
                   </p>
-                  <Button
-                    variant="outline"
-                    onClick={handleResetFilters}
-                    className="mt-4 bg-transparent"
-                  >
-                    Reset Filters
+                  <Button variant="outline" onClick={handleResetFilters}>
+                    Đặt lại bộ lọc
                   </Button>
                 </Card>
               ) : (
@@ -669,8 +617,7 @@ export function FlightSearchResults() {
                           className="bg-blue-600 hover:bg-blue-700 px-4 py-2 sm:px-6 sm:py-3 text-white font-semibold text-sm"
                           onClick={() => handleViewFlightDetails(flight)}
                         >
-                          Detail
-                          <ArrowRight className="w-3 h-3 sm:w-4 sm:h-4 ml-1 sm:ml-2" />
+                          Đặt vé
                         </Button>
                       </div>
                     </div>
@@ -679,15 +626,23 @@ export function FlightSearchResults() {
                     <div className="mt-4">
                       <Button
                         variant="link"
-                        className="text-blue-600 p-0"
+                        className="text-blue-600 p-0 hover:text-blue-800"
                         onClick={() => toggleDetails(flight.id)}
                       >
-                        {expandedFlights.has(flight.id) ? "Hide" : "View more"}
+                        {expandedFlights.has(flight.id)
+                          ? "Ẩn chi tiết"
+                          : "Xem chi tiết"}
+                        <ChevronRight
+                          className={`w-4 h-4 ml-1 transition-transform ${
+                            expandedFlights.has(flight.id) ? "rotate-90" : ""
+                          }`}
+                        />
                       </Button>
+
                       {expandedFlights.has(flight.id) && (
-                        <div className="mt-4 border-t pt-4">
-                          <h3 className="text-lg font-semibold mb-4">
-                            Choose Your Fare
+                        <div className="mt-4 border-t pt-4 bg-gray-50 -mx-3 sm:-mx-4 px-3 sm:px-4 pb-4 rounded-b-lg">
+                          <h3 className="text-lg font-semibold mb-4 text-gray-900">
+                            Chọn loại vé phù hợp
                           </h3>
                           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                             {fareOptions.map((fare) => (
@@ -695,89 +650,91 @@ export function FlightSearchResults() {
                                 key={fare.id}
                                 className={`border rounded-lg p-4 cursor-pointer transition-all duration-200 ${
                                   selectedFares[flight.id] === fare.id
-                                    ? "ring-2 ring-blue-500 bg-blue-50"
-                                    : "hover:border-blue-300"
+                                    ? "ring-2 ring-blue-500 bg-blue-50 border-blue-200"
+                                    : "hover:border-blue-300 hover:shadow-sm"
                                 } ${
-                                  fare.recommended ? "bg-blue-50 relative" : ""
+                                  fare.recommended
+                                    ? "bg-gradient-to-br from-blue-50 to-indigo-50 relative"
+                                    : "bg-white"
                                 }`}
                                 onClick={() =>
                                   handleSelectFare(flight.id, fare.id)
                                 }
                               >
                                 {fare.recommended && (
-                                  <Badge className="absolute top-2 right-2 bg-blue-600 text-white">
-                                    Recommended
+                                  <Badge className="absolute -top-2 right-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-sm">
+                                    Khuyến nghị
                                   </Badge>
                                 )}
 
-                                <div className="mb-3">
-                                  <h4 className="font-bold text-gray-900">
+                                <div className="mb-4">
+                                  <h4 className="font-bold text-gray-900 text-lg mb-1">
                                     {fare.name}
                                   </h4>
-                                  <p className="text-xl font-bold text-blue-600">
-                                    ${fare.price}
+                                  <p className="text-2xl font-bold text-blue-600 mb-1">
+                                    {formatCurrency(fare.price / 24000)}
                                   </p>
                                   <p className="text-xs text-gray-500">
-                                    per person
+                                    mỗi hành khách
                                   </p>
                                 </div>
 
-                                {/* Condensed Features List */}
-                                <div className="space-y-1 mb-4">
-                                  {fare.features
-                                    .slice(0, 3)
-                                    .map((feature, idx) => (
-                                      <div
-                                        key={idx}
-                                        className="flex items-center text-sm"
+                                {/* Features List */}
+                                <div className="space-y-2 mb-4">
+                                  {fare.features.map((feature, idx) => (
+                                    <div
+                                      key={idx}
+                                      className="flex items-start text-sm"
+                                    >
+                                      <span
+                                        className={`mr-2 mt-0.5 font-bold ${
+                                          feature.included
+                                            ? "text-green-500"
+                                            : "text-red-400"
+                                        }`}
                                       >
-                                        <span
-                                          className={`mr-2 ${
-                                            feature.included
-                                              ? "text-green-500"
-                                              : "text-red-500"
-                                          }`}
-                                        >
-                                          {feature.included ? "✓" : "✗"}
-                                        </span>
-                                        <span className="text-gray-700">
-                                          {feature.text}
-                                        </span>
-                                      </div>
-                                    ))}
-                                  {fare.features.length > 3 && (
-                                    <p className="text-xs text-gray-500 mt-1">
-                                      +{fare.features.length - 3} more features
-                                    </p>
-                                  )}
+                                        {feature.included ? "✓" : "✗"}
+                                      </span>
+                                      <span
+                                        className={`${
+                                          feature.included
+                                            ? "text-gray-700"
+                                            : "text-gray-500"
+                                        }`}
+                                      >
+                                        {feature.text}
+                                      </span>
+                                    </div>
+                                  ))}
                                 </div>
 
                                 {selectedFares[flight.id] === fare.id ? (
                                   <Button
-                                    className="w-full bg-blue-600 text-white"
+                                    className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold"
                                     onClick={(e) => {
                                       e.stopPropagation();
                                       handleProceedToBooking(flight, fare.id);
                                     }}
                                   >
-                                    Continue to Booking
+                                    Tiếp tục đặt vé
+                                    <ArrowRight className="w-4 h-4 ml-2" />
                                   </Button>
                                 ) : (
                                   <Button
                                     variant="outline"
-                                    className="w-full"
+                                    className="w-full border-gray-300 hover:border-blue-400 hover:text-blue-600"
                                     onClick={(e) => e.stopPropagation()}
                                   >
-                                    Select Fare
+                                    Chọn loại vé này
                                   </Button>
                                 )}
                               </div>
                             ))}
                           </div>
 
-                          {/* Quick Action */}
+                          {/* Selected Fare Summary */}
                           {selectedFares[flight.id] && (
-                            <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg">
+                            <div className="mt-6 p-4 bg-green-50 border border-green-200 rounded-lg">
                               <div className="flex items-center justify-between">
                                 <div>
                                   <p className="text-sm font-medium text-green-800">
@@ -786,20 +743,20 @@ export function FlightSearchResults() {
                                         (f) => f.id === selectedFares[flight.id]
                                       )?.name
                                     }{" "}
-                                    selected
+                                    đã được chọn
                                   </p>
-                                  <p className="text-xs text-green-600">
-                                    Total: $
-                                    {
+                                  <p className="text-xs text-green-600 mt-1">
+                                    Tổng cộng:{" "}
+                                    {formatCurrency(
                                       fareOptions.find(
                                         (f) => f.id === selectedFares[flight.id]
-                                      )?.price
-                                    }
+                                      )?.price / 24000
+                                    )}
                                   </p>
                                 </div>
                                 <Button
                                   size="sm"
-                                  className="bg-green-600 hover:bg-green-700 text-white"
+                                  className="bg-green-600 hover:bg-green-700 text-white font-semibold"
                                   onClick={() =>
                                     handleProceedToBooking(
                                       flight,
@@ -807,7 +764,7 @@ export function FlightSearchResults() {
                                     )
                                   }
                                 >
-                                  Book Now{" "}
+                                  Đặt ngay
                                   <ArrowRight className="w-4 h-4 ml-1" />
                                 </Button>
                               </div>
@@ -823,70 +780,63 @@ export function FlightSearchResults() {
 
             {/* Pagination */}
             {totalFlights > 0 && totalPages > 1 && (
-              <div className="mt-6 sm:mt-8 flex flex-col sm:flex-row items-center justify-center sm:justify-end gap-3 sm:gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handlePrevious}
-                  disabled={currentPage === 1}
-                  className="px-3 py-2 w-full sm:w-auto"
-                >
-                  <ChevronLeft className="w-4 h-4" />
-                </Button>
-
-                <div className="flex items-center gap-1 overflow-x-auto">
-                  {Array.from({ length: totalPages }, (_, i) => i + 1).map(
-                    (page) => {
-                      // Show first page, last page, current page, and pages around current page
-                      if (
-                        page === 1 ||
-                        page === totalPages ||
-                        (page >= currentPage - 1 && page <= currentPage + 1)
-                      ) {
-                        return (
-                          <Button
-                            key={page}
-                            variant={
-                              currentPage === page ? "default" : "outline"
-                            }
-                            size="sm"
-                            onClick={() => handlePageChange(page)}
-                            className={`w-8 h-8 sm:w-10 sm:h-10 text-xs sm:text-sm ${
-                              currentPage === page
-                                ? "bg-blue-600 text-white"
-                                : "hover:bg-blue-50"
-                            }`}
-                          >
-                            {page}
-                          </Button>
-                        );
-                      } else if (
-                        page === currentPage - 2 ||
-                        page === currentPage + 2
-                      ) {
-                        return (
-                          <span
-                            key={page}
-                            className="px-1 sm:px-2 text-gray-400 text-xs sm:text-sm"
-                          >
-                            ...
-                          </span>
-                        );
-                      }
-                      return null;
-                    }
-                  )}
+              <div className="mt-6 sm:mt-8 flex flex-col sm:flex-row items-center justify-between gap-4">
+                <div className="text-xs sm:text-sm text-gray-600">
+                  Hiển thị {startIndex + 1}-
+                  {Math.min(startIndex + flightsPerPage, totalFlights)}
+                  trong tổng số {totalFlights} chuyến bay
                 </div>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handlePrevious}
+                    disabled={currentPage === 1}
+                    className="text-xs sm:text-sm"
+                  >
+                    <ChevronLeft className="w-4 h-4 mr-1" />
+                    Trước
+                  </Button>
 
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleNext}
-                  disabled={currentPage === totalPages}
-                  className="px-3 py-2 w-full sm:w-auto"
-                >
-                  <ChevronRight className="w-4 h-4" />
-                </Button>
+                  <div className="flex gap-1">
+                    {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                      let pageNumber;
+                      if (totalPages <= 5) {
+                        pageNumber = i + 1;
+                      } else {
+                        const start = Math.max(1, currentPage - 2);
+                        const end = Math.min(totalPages, start + 4);
+                        const adjustedStart = Math.max(1, end - 4);
+                        pageNumber = adjustedStart + i;
+                      }
+
+                      return (
+                        <Button
+                          key={pageNumber}
+                          variant={
+                            currentPage === pageNumber ? "default" : "outline"
+                          }
+                          size="sm"
+                          onClick={() => handlePageChange(pageNumber)}
+                          className="w-8 h-8 p-0 text-xs"
+                        >
+                          {pageNumber}
+                        </Button>
+                      );
+                    })}
+                  </div>
+
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleNext}
+                    disabled={currentPage === totalPages}
+                    className="text-xs sm:text-sm"
+                  >
+                    Sau
+                    <ChevronRight className="w-4 h-4 ml-1" />
+                  </Button>
+                </div>
               </div>
             )}
           </div>
@@ -895,3 +845,5 @@ export function FlightSearchResults() {
     </div>
   );
 }
+
+export default FlightSearchResults;

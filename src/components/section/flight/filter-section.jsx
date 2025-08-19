@@ -28,22 +28,22 @@ export function FlightFilters({ filters, onFiltersChange, onReset }) {
   ];
 
   const departureTimeSlots = [
-    { value: "early-morning", label: "Early Morning (00:00 - 06:00)" },
-    { value: "morning", label: "Morning (06:00 - 12:00)" },
-    { value: "afternoon", label: "Afternoon (12:00 - 18:00)" },
-    { value: "evening", label: "Evening (18:00 - 24:00)" },
+    { value: "early-morning", label: "Sáng sớm (00:00 - 06:00)" },
+    { value: "morning", label: "Buổi sáng (06:00 - 12:00)" },
+    { value: "afternoon", label: "Buổi chiều (12:00 - 18:00)" },
+    { value: "evening", label: "Buổi tối (18:00 - 24:00)" },
   ];
 
   const stopsOptions = [
-    { value: "non-stop", label: "Non-stop" },
-    { value: "1-stop", label: "1 Stop" },
-    { value: "2-stops", label: "2+ Stops" },
+    { value: "non-stop", label: "Không quá cảnh" },
+    { value: "1-stop", label: "1 điểm dừng" },
+    { value: "2-stops", label: "2+ điểm dừng" },
   ];
 
   const durationOptions = [
-    { value: "short", label: "Short (0-3 hours)" },
-    { value: "medium", label: "Medium (3-6 hours)" },
-    { value: "long", label: "Long (6+ hours)" },
+    { value: "short", label: "Ngắn (0-3 hours)" },
+    { value: "medium", label: "Vừa (3-6 hours)" },
+    { value: "long", label: "Dài (6+ hours)" },
   ];
 
   const aircraftOptions = [
@@ -54,12 +54,12 @@ export function FlightFilters({ filters, onFiltersChange, onReset }) {
   ];
 
   const sortOptions = [
-    { value: "price-asc", label: "Lowest Price" },
-    { value: "price-desc", label: "Highest Price" },
-    { value: "departure-asc", label: "Earliest Departure" },
-    { value: "departure-desc", label: "Latest Departure" },
-    { value: "duration-asc", label: "Shortest Duration" },
-    { value: "duration-desc", label: "Longest Duration" },
+    { value: "price-asc", label: "Gía thấp" },
+    { value: "price-desc", label: "Gía cao" },
+    { value: "departure-asc", label: "Khởi hành sớm nhất" },
+    { value: "departure-desc", label: "Khởi hành muộn nhất" },
+    { value: "duration-asc", label: "Thời gian bay ngắn nhất" },
+    { value: "duration-desc", label: "Thời gian bay dài nhất" },
   ];
 
   const handleAirlineChange = (airline, checked) => {
@@ -102,7 +102,7 @@ export function FlightFilters({ filters, onFiltersChange, onReset }) {
       <div className="flex items-center justify-between mb-3 sm:mb-4">
         <h3 className="font-semibold flex items-center gap-2 text-sm sm:text-base">
           <Filter className="w-3 h-3 sm:w-4 sm:h-4" />
-          Filter Flights
+          Lọc chuyến bay
         </h3>
         <Button
           variant="ghost"
@@ -111,7 +111,7 @@ export function FlightFilters({ filters, onFiltersChange, onReset }) {
           className="text-xs sm:text-sm"
         >
           <RotateCcw className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
-          Reset
+          Đặt lại
         </Button>
       </div>
 
@@ -119,7 +119,7 @@ export function FlightFilters({ filters, onFiltersChange, onReset }) {
         {/* Sort By */}
         <div>
           <Label className="text-xs sm:text-sm font-medium mb-2 block">
-            Sort By
+            Sắp xếp theo
           </Label>
           <Select
             value={filters.sortBy}
@@ -147,7 +147,7 @@ export function FlightFilters({ filters, onFiltersChange, onReset }) {
         {/* Price Range */}
         <div>
           <Label className="text-xs sm:text-sm font-medium mb-2 sm:mb-3 block">
-            Price Range: ${filters.priceRange[0]} - ${filters.priceRange[1]}
+            Khoảng giá: ${filters.priceRange[0]} - ${filters.priceRange[1]}
           </Label>
           <Slider
             value={filters.priceRange}
@@ -164,7 +164,7 @@ export function FlightFilters({ filters, onFiltersChange, onReset }) {
         {/* Airlines */}
         <div>
           <Label className="text-xs sm:text-sm font-medium mb-2 sm:mb-3 block">
-            Airlines
+            Hãng hàng không
           </Label>
           <div className="space-y-1 sm:space-y-2 max-h-32 sm:max-h-48 overflow-y-auto">
             {airlines.map((airline) => (
@@ -191,7 +191,7 @@ export function FlightFilters({ filters, onFiltersChange, onReset }) {
         {/* Stops */}
         <div>
           <Label className="text-xs sm:text-sm font-medium mb-2 sm:mb-3 block">
-            Number of Stops
+            Số điểm dừng
           </Label>
           <div className="space-y-1 sm:space-y-2">
             {stopsOptions.map((stop) => (
@@ -218,7 +218,7 @@ export function FlightFilters({ filters, onFiltersChange, onReset }) {
         {/* Departure Time */}
         <div>
           <Label className="text-xs sm:text-sm font-medium mb-2 sm:mb-3 block">
-            Departure Time
+            Thời gian khởi hành
           </Label>
           <div className="space-y-1 sm:space-y-2">
             {departureTimeSlots.map((slot) => (
@@ -245,7 +245,7 @@ export function FlightFilters({ filters, onFiltersChange, onReset }) {
         {/* Flight Duration */}
         <div>
           <Label className="text-xs sm:text-sm font-medium mb-2 sm:mb-3 block">
-            Flight Duration
+            Thời gian bay
           </Label>
           <div className="space-y-1 sm:space-y-2">
             {durationOptions.map((duration) => (
@@ -272,7 +272,7 @@ export function FlightFilters({ filters, onFiltersChange, onReset }) {
         {/* Aircraft Type */}
         <div>
           <Label className="text-sm font-medium mb-2 sm:mb-3 block">
-            Aircraft Type
+            Loại máy bay
           </Label>
           <div className="space-y-1 sm:space-y-2">
             {aircraftOptions.map((aircraft) => (

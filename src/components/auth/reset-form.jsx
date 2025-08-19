@@ -7,14 +7,42 @@ import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import { authApi } from "@/apis/auth-api";
 
+const errorMessages = {
+  email: {
+    notFound: "Không tìm thấy tài khoản với địa chỉ email này.",
+    invalid: "Vui lòng nhập địa chỉ email hợp lệ",
+  },
+  otp: {
+    invalid: "Mã OTP không hợp lệ hoặc đã hết hạn. Vui lòng yêu cầu mã mới.",
+    expired: "Mã OTP đã hết hạn. Vui lòng yêu cầu mã mới.",
+    short: "Vui lòng nhập mã OTP hợp lệ",
+  },
+  password: {
+    mismatch: "Mật khẩu không khớp",
+    short: "Mật khẩu phải có ít nhất 6 ký tự",
+  },
+};
+
+const successMessages = {
+  otpSent:
+    "Mã xác minh đã được gửi đến email của bạn. Vui lòng kiểm tra hộp thư.",
+  passwordReset:
+    "Đặt lại mật khẩu thành công! Bạn có thể đăng nhập bằng mật khẩu mới.",
+  otpResent: "Mã xác minh mới đã được gửi đến email của bạn thành công.",
+};
+
 export default function ResetForm({ setCurrentView }) {
   const [step, setStep] = useState(1);
-  const [email, setEmail] = useState("");
-  const [otpCode, setOtpCode] = useState("");
-  const [newPassword, setNewPassword] = useState("");
-  const [confirmNewPassword, setConfirmNewPassword] = useState("");
-  const [showNewPassword, setShowNewPassword] = useState(false);
-  const [showConfirmNewPassword, setShowConfirmNewPassword] = useState(false);
+  const [formData, setFormData] = useState({
+    email: "",
+    otpCode: "",
+    newPassword: "",
+    confirmNewPassword: "",
+  });
+  const [showPassword, setShowPassword] = useState({
+    newPassword: false,
+    confirmNewPassword: false,
+  });
   const [loading, setLoading] = useState(false);
   const [countdown, setCountdown] = useState(0);
   const [isResendDisabled, setIsResendDisabled] = useState(false);
@@ -37,45 +65,79 @@ export default function ResetForm({ setCurrentView }) {
     return () => clearInterval(timer);
   }, [countdown]);
 
-  const handleBackClick = () => {
-    window.history.back();
+  const handleInputChange = (field) => (e) => {
+    let value = e.target.value;
+    if (field === "otpCode") {
+      value = value.replace(/\D/g, "").slice(0, 6);
+    }
+    setFormData((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const togglePasswordVisibility = (field) => {
+    setShowPassword((prev) => ({ ...prev, [field]: !prev[field] }));
+  };
+
+  const handleError = (response, defaultMessage) => {
+    const message = response.message?.toLowerCase() || "";
+
+    if (
+      message.includes("user not found") ||
+      message.includes("email not found")
+    ) {
+      toast.error(errorMessages.email.notFound);
+    } else if (message.includes("invalid") && message.includes("otp")) {
+      toast.error(errorMessages.otp.invalid);
+    } else if (message.includes("expired")) {
+      toast.error(errorMessages.otp.expired);
+    } else {
+      toast.error(response.message || defaultMessage);
+    }
+  };
+
+  const validateStep1 = () => {
+    if (!formData.email || !formData.email.includes("@")) {
+      toast.error(errorMessages.email.invalid);
+      return false;
+    }
+    return true;
+  };
+
+  const validateStep2 = () => {
+    if (!formData.otpCode || formData.otpCode.length < 4) {
+      toast.error(errorMessages.otp.short);
+      return false;
+    }
+    if (!formData.newPassword || formData.newPassword.length < 6) {
+      toast.error(errorMessages.password.short);
+      return false;
+    }
+    if (formData.newPassword !== formData.confirmNewPassword) {
+      toast.error(errorMessages.password.mismatch);
+      return false;
+    }
+    return true;
   };
 
   const handleSendReset = async (e) => {
     e.preventDefault();
-
-    // Basic email validation
-    if (!email || !email.includes("@")) {
-      toast.error("Please enter a valid email address");
-      return;
-    }
+    if (!validateStep1()) return;
 
     setLoading(true);
     try {
-      const response = await authApi.forgotPasswordRequest({ email });
+      const response = await authApi.forgotPasswordRequest({
+        email: formData.email,
+      });
       if (response.success) {
-        toast.success(
-          "Verification code sent to your email. Please check your inbox."
-        );
+        toast.success(successMessages.otpSent);
         setStep(2);
         setCountdown(60);
         setIsResendDisabled(true);
       } else {
-        // Handle specific error cases
-        if (
-          response.message.toLowerCase().includes("user not found") ||
-          response.message.toLowerCase().includes("email not found")
-        ) {
-          toast.error("No account found with this email address.");
-        } else {
-          toast.error(response.message || "Failed to send verification code");
-        }
+        handleError(response, "Không thể gửi mã xác minh");
       }
     } catch (error) {
       console.error("Forgot password error:", error);
-      toast.error(
-        "An error occurred while sending verification code. Please try again."
-      );
+      toast.error("Đã xảy ra lỗi khi gửi mã xác minh. Vui lòng thử lại.");
     } finally {
       setLoading(false);
     }
@@ -83,54 +145,25 @@ export default function ResetForm({ setCurrentView }) {
 
   const handleReset = async (e) => {
     e.preventDefault();
-
-    // Validation
-    if (!otpCode || otpCode.length < 4) {
-      toast.error("Please enter a valid OTP code");
-      return;
-    }
-
-    if (!newPassword || newPassword.length < 6) {
-      toast.error("Password must be at least 6 characters long");
-      return;
-    }
-
-    if (newPassword !== confirmNewPassword) {
-      toast.error("Passwords do not match");
-      return;
-    }
+    if (!validateStep2()) return;
 
     setLoading(true);
     try {
       const response = await authApi.resetPassword({
-        email,
-        otpCode: otpCode.trim(),
-        newPassword,
+        email: formData.email,
+        otpCode: formData.otpCode.trim(),
+        newPassword: formData.newPassword,
       });
 
       if (response.success) {
-        toast.success(
-          "Password reset successfully! You can now log in with your new password."
-        );
+        toast.success(successMessages.passwordReset);
         setCurrentView("login");
       } else {
-        // Handle specific error cases
-        if (
-          response.message.toLowerCase().includes("invalid") &&
-          response.message.toLowerCase().includes("otp")
-        ) {
-          toast.error("Invalid or expired OTP code. Please request a new one.");
-        } else if (response.message.toLowerCase().includes("expired")) {
-          toast.error("OTP code has expired. Please request a new one.");
-        } else {
-          toast.error(response.message || "Failed to reset password");
-        }
+        handleError(response, "Không thể đặt lại mật khẩu");
       }
     } catch (error) {
       console.error("Reset password error:", error);
-      toast.error(
-        "An error occurred while resetting password. Please try again."
-      );
+      toast.error("Đã xảy ra lỗi khi đặt lại mật khẩu. Vui lòng thử lại.");
     } finally {
       setLoading(false);
     }
@@ -139,23 +172,76 @@ export default function ResetForm({ setCurrentView }) {
   const handleResend = async () => {
     setLoading(true);
     try {
-      const response = await authApi.resendOtpCode({ email });
+      const response = await authApi.resendOtpCode({ email: formData.email });
       if (response.success) {
-        toast.success("New verification code sent to your email successfully.");
+        toast.success(successMessages.otpResent);
         setCountdown(60);
         setIsResendDisabled(true);
       } else {
-        toast.error(response.message || "Failed to resend verification code");
+        handleError(response, "Không thể gửi lại mã xác minh");
       }
     } catch (error) {
       console.error("Resend OTP error:", error);
-      toast.error(
-        "An error occurred while resending verification code. Please try again."
-      );
+      toast.error("Đã xảy ra lỗi khi gửi lại mã xác minh. Vui lòng thử lại.");
     } finally {
       setLoading(false);
     }
   };
+
+  const renderPasswordField = (field, label, placeholder) => (
+    <div>
+      <label className="block text-sm font-medium text-gray-700 mb-2">
+        {label}
+      </label>
+      <div className="relative">
+        <Input
+          type={showPassword[field] ? "text" : "password"}
+          placeholder={placeholder}
+          className="w-full pr-10"
+          value={formData[field]}
+          onChange={handleInputChange(field)}
+          required
+          minLength={6}
+        />
+        <button
+          type="button"
+          onClick={() => togglePasswordVisibility(field)}
+          className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400"
+        >
+          {showPassword[field] ? (
+            <EyeOff className="w-5 h-5" />
+          ) : (
+            <Eye className="w-5 h-5" />
+          )}
+        </button>
+      </div>
+      {/* Validation messages */}
+      {field === "newPassword" &&
+        formData[field] &&
+        formData[field].length < 6 && (
+          <p className="text-red-500 text-xs mt-1">
+            Mật khẩu phải có ít nhất 6 ký tự
+          </p>
+        )}
+      {field === "confirmNewPassword" && formData[field] && (
+        <p
+          className={`text-xs mt-1 ${
+            formData.newPassword !== formData[field]
+              ? "text-red-500"
+              : formData[field].length >= 6
+              ? "text-green-500"
+              : "text-red-500"
+          }`}
+        >
+          {formData.newPassword !== formData[field]
+            ? "Mật khẩu không khớp"
+            : formData[field].length >= 6
+            ? "Mật khẩu khớp"
+            : "Mật khẩu phải có ít nhất 6 ký tự"}
+        </p>
+      )}
+    </div>
+  );
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -163,14 +249,14 @@ export default function ResetForm({ setCurrentView }) {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <button
-              onClick={handleBackClick}
+              onClick={() => window.history.back()}
               className="flex items-center text-gray-600 hover:text-gray-900 transition-colors"
             >
               <ArrowLeft className="w-5 h-5 mr-2" />
-              Back
+              Quay lại
             </button>
             <h1 className="text-xl font-bold text-blue-600">AirSky</h1>
-            <div className="w-16"></div>
+            <div className="w-16" />
           </div>
         </div>
       </div>
@@ -181,12 +267,12 @@ export default function ResetForm({ setCurrentView }) {
             <CardContent className="p-8">
               <div className="text-center mb-8">
                 <h2 className="text-2xl font-bold text-gray-900 mb-4">
-                  Reset Your Password
+                  Đặt lại mật khẩu
                 </h2>
                 <p className="text-gray-600">
                   {step === 1
-                    ? "Enter your email address and we'll send you a verification code to reset your password."
-                    : `We've sent a verification code to ${email}. Please check your email and enter the code below.`}
+                    ? "Nhập địa chỉ email của bạn và chúng tôi sẽ gửi cho bạn mã xác minh để đặt lại mật khẩu."
+                    : `Chúng tôi đã gửi mã xác minh đến ${formData.email}. Vui lòng kiểm tra email của bạn và nhập mã bên dưới.`}
                 </p>
               </div>
 
@@ -194,14 +280,14 @@ export default function ResetForm({ setCurrentView }) {
                 <form className="space-y-6" onSubmit={handleSendReset}>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Email Address
+                      Email
                     </label>
                     <Input
                       type="email"
-                      placeholder="Enter your email address"
+                      placeholder="Nhập địa chỉ email của bạn"
                       className="w-full"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
+                      value={formData.email}
+                      onChange={handleInputChange("email")}
                       required
                     />
                   </div>
@@ -210,7 +296,7 @@ export default function ResetForm({ setCurrentView }) {
                     className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3"
                     disabled={loading}
                   >
-                    {loading ? "Sending..." : "Send Reset Link"}
+                    {loading ? "Đang gửi..." : "Gửi liên kết đặt lại"}
                   </Button>
                   <div className="text-center mt-6">
                     <button
@@ -219,7 +305,7 @@ export default function ResetForm({ setCurrentView }) {
                       className="text-blue-600 hover:underline font-medium inline-flex items-center"
                     >
                       <ArrowLeft className="w-4 h-4 mr-2" />
-                      Back to Log In
+                      Quay lại đăng nhập
                     </button>
                   </div>
                 </form>
@@ -227,105 +313,40 @@ export default function ResetForm({ setCurrentView }) {
                 <form className="space-y-6" onSubmit={handleReset}>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      OTP Code
+                      Mã OTP
                     </label>
                     <Input
                       type="text"
-                      placeholder="Enter 6-digit verification code"
+                      placeholder="Nhập mã xác minh 6 chữ số"
                       className="w-full"
-                      value={otpCode}
-                      onChange={(e) =>
-                        setOtpCode(
-                          e.target.value.replace(/\D/g, "").slice(0, 6)
-                        )
-                      }
+                      value={formData.otpCode}
+                      onChange={handleInputChange("otpCode")}
                       maxLength={6}
                       required
                     />
                     <p className="text-gray-500 text-xs mt-1">
-                      Check your email for the verification code. It may take a
-                      few minutes to arrive.
+                      Kiểm tra email của bạn để biết mã xác minh. Có thể mất vài
+                      phút để đến nơi.
                     </p>
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      New Password
-                    </label>
-                    <div className="relative">
-                      <Input
-                        type={showNewPassword ? "text" : "password"}
-                        placeholder="Enter new password (min 6 characters)"
-                        className="w-full pr-10"
-                        value={newPassword}
-                        onChange={(e) => setNewPassword(e.target.value)}
-                        required
-                        minLength={6}
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowNewPassword(!showNewPassword)}
-                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400"
-                      >
-                        {showNewPassword ? (
-                          <EyeOff className="w-5 h-5" />
-                        ) : (
-                          <Eye className="w-5 h-5" />
-                        )}
-                      </button>
-                    </div>
-                    {newPassword && newPassword.length < 6 && (
-                      <p className="text-red-500 text-xs mt-1">
-                        Password must be at least 6 characters
-                      </p>
-                    )}
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Confirm New Password
-                    </label>
-                    <div className="relative">
-                      <Input
-                        type={showConfirmNewPassword ? "text" : "password"}
-                        placeholder="Confirm new password"
-                        className="w-full pr-10"
-                        value={confirmNewPassword}
-                        onChange={(e) => setConfirmNewPassword(e.target.value)}
-                        required
-                      />
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setShowConfirmNewPassword(!showConfirmNewPassword)
-                        }
-                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400"
-                      >
-                        {showConfirmNewPassword ? (
-                          <EyeOff className="w-5 h-5" />
-                        ) : (
-                          <Eye className="w-5 h-5" />
-                        )}
-                      </button>
-                    </div>
-                    {confirmNewPassword &&
-                      newPassword !== confirmNewPassword && (
-                        <p className="text-red-500 text-xs mt-1">
-                          Passwords do not match
-                        </p>
-                      )}
-                    {confirmNewPassword &&
-                      newPassword === confirmNewPassword &&
-                      confirmNewPassword.length >= 6 && (
-                        <p className="text-green-500 text-xs mt-1">
-                          Passwords match
-                        </p>
-                      )}
-                  </div>
+
+                  {renderPasswordField(
+                    "newPassword",
+                    "Mật khẩu mới",
+                    "Nhập mật khẩu mới (tối thiểu 6 ký tự)"
+                  )}
+                  {renderPasswordField(
+                    "confirmNewPassword",
+                    "Xác nhận mật khẩu mới",
+                    "Xác nhận mật khẩu mới"
+                  )}
+
                   <Button
                     type="submit"
                     className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3"
                     disabled={loading}
                   >
-                    {loading ? "Resetting..." : "Reset Password"}
+                    {loading ? "Đang đặt lại..." : "Đặt lại mật khẩu"}
                   </Button>
                   <div className="text-center mt-4">
                     <button
@@ -337,8 +358,8 @@ export default function ResetForm({ setCurrentView }) {
                       disabled={loading || isResendDisabled}
                     >
                       {isResendDisabled
-                        ? `Resend OTP in ${countdown}s`
-                        : "Resend OTP"}
+                        ? `Gửi lại OTP trong ${countdown}s`
+                        : "Gửi lại OTP"}
                     </button>
                   </div>
                 </form>

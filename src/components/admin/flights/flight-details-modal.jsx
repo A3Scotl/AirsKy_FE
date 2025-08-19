@@ -6,58 +6,85 @@ import {
   Users,
   Edit,
   Trash2,
-  Calendar,
   DollarSign,
   AlertCircle,
   CheckCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
+
+// Vietnamese text constants
+const TEXT = {
+  flightDetails: "Chi Tiết Chuyến Bay",
+  flightSchedule: "Lịch Trình Bay",
+  departure: "Khởi Hành",
+  arrival: "Đến Nơi",
+  passengerInfo: "Thông Tin Hành Khách",
+  bookedSeats: "Ghế Đã Đặt",
+  totalCapacity: "Tổng Sức Chứa",
+  availableSeats: "Ghế Còn Trống",
+  loadFactor: "Tỷ Lệ Lấp Đầy",
+  aircraftDetails: "Chi Tiết Máy Bay",
+  aircraftType: "Loại Máy Bay",
+  gate: "Cổng",
+  pilot: "Phi Công",
+  pricingRevenue: "Giá Vé & Doanh Thu",
+  economyClass: "Hạng Phổ Thông",
+  businessClass: "Hạng Thương Gia",
+  firstClass: "Hạng Nhất",
+  estimatedRevenue: "Doanh Thu Ước Tính",
+  routeInfo: "Thông Tin Tuyến Bay",
+  flightId: "ID Chuyến Bay",
+  lastUpdated: "Cập nhật lần cuối",
+  editFlight: "Sửa Chuyến Bay",
+  cancelFlight: "Hủy Chuyến Bay",
+};
 
 const FlightDetailsModal = ({ flight, open, onClose, onEdit, onDelete }) => {
   if (!open || !flight) return null;
 
-  const getStatusColor = (status) => {
-    const colors = {
-      "On Time": "bg-green-100 text-green-800 border-green-200",
-      Delayed: "bg-red-100 text-red-800 border-red-200",
-      Boarding: "bg-blue-100 text-blue-800 border-blue-200",
-      Departed: "bg-gray-100 text-gray-800 border-gray-200",
-      Cancelled: "bg-red-100 text-red-800 border-red-200",
-    };
-    return colors[status] || "bg-gray-100 text-gray-800 border-gray-200";
+  // Status configuration
+  const statusConfig = {
+    "On Time": {
+      style: "bg-green-100 text-green-800 border-green-200",
+      icon: CheckCircle,
+    },
+    Delayed: {
+      style: "bg-red-100 text-red-800 border-red-200",
+      icon: AlertCircle,
+    },
+    Boarding: {
+      style: "bg-blue-100 text-blue-800 border-blue-200",
+      icon: Clock,
+    },
+    Departed: {
+      style: "bg-gray-100 text-gray-800 border-gray-200",
+      icon: Plane,
+    },
+    Cancelled: {
+      style: "bg-red-100 text-red-800 border-red-200",
+      icon: AlertCircle,
+    },
   };
 
-  const getStatusIcon = (status) => {
-    const icons = {
-      "On Time": CheckCircle,
-      Delayed: AlertCircle,
-      Boarding: Clock,
-      Departed: Plane,
-      Cancelled: AlertCircle,
-    };
-    const Icon = icons[status] || CheckCircle;
-    return <Icon className="h-4 w-4" />;
-  };
+  const currentStatus = statusConfig[flight.status] || statusConfig["On Time"];
+  const StatusIcon = currentStatus.icon;
 
   const formatDateTime = (dateTimeString) => {
     const date = new Date(dateTimeString);
     return {
-      date: date.toLocaleDateString("en-US", {
+      date: date.toLocaleDateString("vi-VN", {
         weekday: "long",
         year: "numeric",
         month: "long",
         day: "numeric",
       }),
-      time: date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+      time: date.toLocaleTimeString("vi-VN", {
+        hour: "2-digit",
+        minute: "2-digit",
+      }),
     };
   };
 
@@ -71,6 +98,12 @@ const FlightDetailsModal = ({ flight, open, onClose, onEdit, onDelete }) => {
     flight.booked * 0.7 * flight.price.economy +
     flight.booked * 0.25 * flight.price.business +
     flight.booked * 0.05 * flight.price.first;
+
+  const getLoadFactorStyle = (factor) => {
+    if (factor >= 90) return "bg-red-100 text-red-800";
+    if (factor >= 80) return "bg-yellow-100 text-yellow-800";
+    return "bg-green-100 text-green-800";
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
@@ -88,7 +121,7 @@ const FlightDetailsModal = ({ flight, open, onClose, onEdit, onDelete }) => {
             <Plane className="h-6 w-6 text-blue-600" />
             <div>
               <h2 className="text-xl font-bold text-gray-900">
-                Flight {flight.flightNumber}
+                {TEXT.flightDetails} {flight.flightNumber}
               </h2>
               <p className="text-sm text-gray-600">{flight.route}</p>
             </div>
@@ -96,11 +129,9 @@ const FlightDetailsModal = ({ flight, open, onClose, onEdit, onDelete }) => {
           <div className="flex items-center space-x-2">
             <Badge
               variant="outline"
-              className={`${getStatusColor(
-                flight.status
-              )} flex items-center space-x-1`}
+              className={`${currentStatus.style} flex items-center space-x-1`}
             >
-              {getStatusIcon(flight.status)}
+              <StatusIcon className="h-4 w-4" />
               <span>{flight.status}</span>
             </Badge>
             <Button variant="ghost" size="sm" onClick={onClose}>
@@ -117,14 +148,14 @@ const FlightDetailsModal = ({ flight, open, onClose, onEdit, onDelete }) => {
               <CardHeader>
                 <CardTitle className="flex items-center space-x-2">
                   <Clock className="h-4 w-4" />
-                  <span>Flight Schedule</span>
+                  <span>{TEXT.flightSchedule}</span>
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="flex justify-between items-center">
                   <div>
                     <p className="text-sm font-medium text-gray-600">
-                      Departure
+                      {TEXT.departure}
                     </p>
                     <p className="text-lg font-semibold">
                       {departureDateTime.time}
@@ -142,7 +173,9 @@ const FlightDetailsModal = ({ flight, open, onClose, onEdit, onDelete }) => {
                     </p>
                   </div>
                   <div className="text-right">
-                    <p className="text-sm font-medium text-gray-600">Arrival</p>
+                    <p className="text-sm font-medium text-gray-600">
+                      {TEXT.arrival}
+                    </p>
                     <p className="text-lg font-semibold">
                       {arrivalDateTime.time}
                     </p>
@@ -158,36 +191,38 @@ const FlightDetailsModal = ({ flight, open, onClose, onEdit, onDelete }) => {
               <CardHeader>
                 <CardTitle className="flex items-center space-x-2">
                   <Users className="h-4 w-4" />
-                  <span>Passenger Information</span>
+                  <span>{TEXT.passengerInfo}</span>
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="flex justify-between items-center">
-                  <span className="text-sm text-gray-600">Booked Seats</span>
+                  <span className="text-sm text-gray-600">
+                    {TEXT.bookedSeats}
+                  </span>
                   <span className="font-semibold">{flight.booked}</span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="text-sm text-gray-600">Total Capacity</span>
+                  <span className="text-sm text-gray-600">
+                    {TEXT.totalCapacity}
+                  </span>
                   <span className="font-semibold">{flight.capacity}</span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="text-sm text-gray-600">Available Seats</span>
+                  <span className="text-sm text-gray-600">
+                    {TEXT.availableSeats}
+                  </span>
                   <span className="font-semibold text-green-600">
                     {availableSeats}
                   </span>
                 </div>
                 <Separator />
                 <div className="flex justify-between items-center">
-                  <span className="text-sm text-gray-600">Load Factor</span>
+                  <span className="text-sm text-gray-600">
+                    {TEXT.loadFactor}
+                  </span>
                   <Badge
                     variant="outline"
-                    className={`${
-                      loadFactor >= 90
-                        ? "bg-red-100 text-red-800"
-                        : loadFactor >= 80
-                        ? "bg-yellow-100 text-yellow-800"
-                        : "bg-green-100 text-green-800"
-                    }`}
+                    className={getLoadFactorStyle(loadFactor)}
                   >
                     {loadFactor}%
                   </Badge>
@@ -202,20 +237,22 @@ const FlightDetailsModal = ({ flight, open, onClose, onEdit, onDelete }) => {
               <CardHeader>
                 <CardTitle className="flex items-center space-x-2">
                   <Plane className="h-4 w-4" />
-                  <span>Aircraft Details</span>
+                  <span>{TEXT.aircraftDetails}</span>
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
                 <div className="flex justify-between">
-                  <span className="text-sm text-gray-600">Aircraft Type</span>
+                  <span className="text-sm text-gray-600">
+                    {TEXT.aircraftType}
+                  </span>
                   <span className="font-medium">{flight.aircraft}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-sm text-gray-600">Gate</span>
+                  <span className="text-sm text-gray-600">{TEXT.gate}</span>
                   <span className="font-medium">{flight.gate}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-sm text-gray-600">Pilot</span>
+                  <span className="text-sm text-gray-600">{TEXT.pilot}</span>
                   <span className="font-medium">{flight.pilot}</span>
                 </div>
               </CardContent>
@@ -225,26 +262,32 @@ const FlightDetailsModal = ({ flight, open, onClose, onEdit, onDelete }) => {
               <CardHeader>
                 <CardTitle className="flex items-center space-x-2">
                   <DollarSign className="h-4 w-4" />
-                  <span>Pricing & Revenue</span>
+                  <span>{TEXT.pricingRevenue}</span>
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
                 <div className="flex justify-between">
-                  <span className="text-sm text-gray-600">Economy Class</span>
+                  <span className="text-sm text-gray-600">
+                    {TEXT.economyClass}
+                  </span>
                   <span className="font-medium">${flight.price.economy}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-sm text-gray-600">Business Class</span>
+                  <span className="text-sm text-gray-600">
+                    {TEXT.businessClass}
+                  </span>
                   <span className="font-medium">${flight.price.business}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-sm text-gray-600">First Class</span>
+                  <span className="text-sm text-gray-600">
+                    {TEXT.firstClass}
+                  </span>
                   <span className="font-medium">${flight.price.first}</span>
                 </div>
                 <Separator />
                 <div className="flex justify-between">
                   <span className="text-sm text-gray-600">
-                    Estimated Revenue
+                    {TEXT.estimatedRevenue}
                   </span>
                   <span className="font-semibold text-green-600">
                     ${estimatedRevenue.toLocaleString()}
@@ -259,7 +302,7 @@ const FlightDetailsModal = ({ flight, open, onClose, onEdit, onDelete }) => {
             <CardHeader>
               <CardTitle className="flex items-center space-x-2">
                 <MapPin className="h-4 w-4" />
-                <span>Route Information</span>
+                <span>{TEXT.routeInfo}</span>
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -272,7 +315,7 @@ const FlightDetailsModal = ({ flight, open, onClose, onEdit, onDelete }) => {
                     {flight.route.split(" → ")[0].match(/\((.*?)\)/)?.[1] ||
                       flight.route.split(" → ")[0]}
                   </p>
-                  <p className="text-sm text-gray-600">Departure</p>
+                  <p className="text-sm text-gray-600">{TEXT.departure}</p>
                 </div>
 
                 <div className="flex-1 relative">
@@ -290,7 +333,7 @@ const FlightDetailsModal = ({ flight, open, onClose, onEdit, onDelete }) => {
                     {flight.route.split(" → ")[1].match(/\((.*?)\)/)?.[1] ||
                       flight.route.split(" → ")[1]}
                   </p>
-                  <p className="text-sm text-gray-600">Arrival</p>
+                  <p className="text-sm text-gray-600">{TEXT.arrival}</p>
                 </div>
               </div>
             </CardContent>
@@ -300,12 +343,13 @@ const FlightDetailsModal = ({ flight, open, onClose, onEdit, onDelete }) => {
         {/* Footer Actions */}
         <div className="flex items-center justify-between p-6 border-t border-gray-200 bg-gray-50">
           <div className="text-sm text-gray-600">
-            Flight ID: {flight.id} • Last updated: {new Date().toLocaleString()}
+            {TEXT.flightId}: {flight.id} • {TEXT.lastUpdated}:{" "}
+            {new Date().toLocaleString("vi-VN")}
           </div>
           <div className="flex items-center space-x-3">
             <Button variant="outline" onClick={() => onEdit(flight)}>
               <Edit className="h-4 w-4 mr-2" />
-              Edit Flight
+              {TEXT.editFlight}
             </Button>
             <Button
               variant="outline"
@@ -313,7 +357,7 @@ const FlightDetailsModal = ({ flight, open, onClose, onEdit, onDelete }) => {
               onClick={() => onDelete(flight)}
             >
               <Trash2 className="h-4 w-4 mr-2" />
-              Cancel Flight
+              {TEXT.cancelFlight}
             </Button>
           </div>
         </div>

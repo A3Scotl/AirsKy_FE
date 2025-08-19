@@ -52,15 +52,16 @@ function HomePage() {
               "url('https://plus.unsplash.com/premium_photo-1661962354730-cda54fa4f9f1?q=80&w=1170&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D')",
           }}
         ></div>
-        <div className="absolute inset-0 bg-black/40"></div>
+        <div className="absolute inset-0 bg-black/60"></div>
+
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 w-full">
           <div className="text-center mb-12">
             <h1 className="text-4xl md:text-6xl font-bold mb-6 leading-tight">
-              Find Your Perfect Flight
+              Tìm chuyến bay hoàn hảo của bạn
             </h1>
-            <p className="text-xl md:text-2xl text-blue-100 max-w-3xl mx-auto mb-4">
-              Compare and book flights at unbeatable prices with trusted
-              airlines worldwide
+            <p className="text-xl md:text-2xl text-blue-300 max-w-3xl mx-auto mb-4">
+              So sánh và đặt vé máy bay với giá không thể tốt hơn từ các hãng
+              hàng không uy tín trong nước và trên toàn thế giới
             </p>
           </div>
 
@@ -70,9 +71,12 @@ function HomePage() {
 
       <section className="py-16 bg-gradient-to-b from-blue-100 to-white">
         <div className="text-center mb-8">
-          <h3 className="text-2xl font-bold mb-2">Trusted by Top Airlines</h3>
+          <h3 className="text-2xl font-bold mb-2">
+            Được tin cậy bởi các hãng hàng không hàng đầu
+          </h3>
           <p className="">
-            Partner with leading airlines for your perfect journey
+            Hợp tác với các hãng hàng không hàng đầu cho hành trình hoàn hảo của
+            bạn
           </p>
         </div>
 
@@ -121,7 +125,7 @@ function HomePage() {
       <DestinationSection />
 
       {/* Reviews Section */}
-      <ReviewsSection />
+      {/* <ReviewsSection /> */}
     </div>
   );
 }

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import {
   TrendingUp,
   TrendingDown,
@@ -12,6 +12,32 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
+
+// Text constants for Vietnamese interface
+const TEXT = {
+  revenueMetrics: "Chỉ Số Doanh Thu",
+  transactionStatus: "Trạng Thái Giao Dịch",
+  paymentMethods: "Phương Thức Thanh Toán",
+  failureAnalysis: "Phân Tích Thất Bại",
+  dailyRevenue: "Doanh Thu Hàng Ngày",
+  successRate: "Tỷ Lệ Thành Công",
+  topPaymentMethod: "Phương Thức Thanh Toán Hàng Đầu",
+  periods: {
+    daily: "hàng ngày",
+    weekly: "hàng tuần",
+    monthly: "hàng tháng",
+    yearly: "hàng năm",
+  },
+  statuses: {
+    successful: "Thành Công",
+    failed: "Thất Bại",
+    pending: "Đang Chờ",
+    refunded: "Đã Hoàn Tiền",
+  },
+  totalFailedTransactions: "Tổng Giao Dịch Thất Bại:",
+  failureRate: "tỷ lệ thất bại",
+  vsPrevious: "so với",
+};
 
 const PaymentAnalytics = ({ preview = false }) => {
   // Mock analytics data
@@ -74,6 +100,25 @@ const PaymentAnalytics = ({ preview = false }) => {
     },
   };
 
+  // Memoized calculations for better performance
+  const failureRate = useMemo(() => {
+    return (
+      (analyticsData.transactionMetrics.failed /
+        analyticsData.transactionMetrics.total) *
+      100
+    ).toFixed(1);
+  }, [
+    analyticsData.transactionMetrics.failed,
+    analyticsData.transactionMetrics.total,
+  ]);
+
+  const formatCurrency = (amount) => {
+    return new Intl.NumberFormat("vi-VN", {
+      style: "currency",
+      currency: "VND",
+    }).format(amount * 24000); // Convert USD to VND approximate
+  };
+
   const getGrowthIcon = (growth) => {
     return growth >= 0 ? (
       <TrendingUp className="h-4 w-4 text-green-600" />
@@ -92,10 +137,10 @@ const PaymentAnalytics = ({ preview = false }) => {
         {/* Revenue Trend Preview */}
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-2">
-            <p className="text-sm text-gray-600">Daily Revenue</p>
+            <p className="text-sm text-gray-600">{TEXT.dailyRevenue}</p>
             <div className="flex items-center space-x-2">
               <span className="text-lg font-bold">
-                ${analyticsData.revenueMetrics.daily.current.toLocaleString()}
+                {formatCurrency(analyticsData.revenueMetrics.daily.current)}
               </span>
               {getGrowthIcon(analyticsData.revenueMetrics.daily.growth)}
               <span
@@ -109,7 +154,7 @@ const PaymentAnalytics = ({ preview = false }) => {
           </div>
 
           <div className="space-y-2">
-            <p className="text-sm text-gray-600">Success Rate</p>
+            <p className="text-sm text-gray-600">{TEXT.successRate}</p>
             <div className="flex items-center space-x-2">
               <span className="text-lg font-bold text-green-600">
                 {analyticsData.transactionMetrics.successRate}%
@@ -124,7 +169,7 @@ const PaymentAnalytics = ({ preview = false }) => {
 
         {/* Top Payment Method */}
         <div className="space-y-2">
-          <p className="text-sm text-gray-600">Top Payment Method</p>
+          <p className="text-sm text-gray-600">{TEXT.topPaymentMethod}</p>
           <div className="flex items-center justify-between">
             <span className="font-medium">
               {analyticsData.paymentMethods[0].method}
@@ -145,7 +190,7 @@ const PaymentAnalytics = ({ preview = false }) => {
         <CardHeader>
           <CardTitle className="flex items-center space-x-2">
             <DollarSign className="h-5 w-5" />
-            <span>Revenue Metrics</span>
+            <span>{TEXT.revenueMetrics}</span>
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -153,14 +198,17 @@ const PaymentAnalytics = ({ preview = false }) => {
             {Object.entries(analyticsData.revenueMetrics).map(
               ([period, data]) => (
                 <div key={period} className="space-y-2">
-                  <p className="text-sm text-gray-600 capitalize">{period}</p>
+                  <p className="text-sm text-gray-600 capitalize">
+                    {TEXT.periods[period] || period}
+                  </p>
                   <p className="text-xl font-bold">
-                    ${data.current.toLocaleString()}
+                    {formatCurrency(data.current)}
                   </p>
                   <div className="flex items-center space-x-1">
                     {getGrowthIcon(data.growth)}
                     <span className={`text-sm ${getGrowthColor(data.growth)}`}>
-                      {data.growth}% vs previous {period}
+                      {data.growth}% {TEXT.vsPrevious}{" "}
+                      {TEXT.periods[period] || period}
                     </span>
                   </div>
                 </div>
@@ -176,12 +224,14 @@ const PaymentAnalytics = ({ preview = false }) => {
           <CardHeader>
             <CardTitle className="flex items-center space-x-2">
               <Activity className="h-5 w-5" />
-              <span>Transaction Status</span>
+              <span>{TEXT.transactionStatus}</span>
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex items-center justify-between">
-              <span className="text-sm text-gray-600">Successful</span>
+              <span className="text-sm text-gray-600">
+                {TEXT.statuses.successful}
+              </span>
               <div className="flex items-center space-x-2">
                 <span className="font-medium">
                   {analyticsData.transactionMetrics.successful.toLocaleString()}
@@ -192,19 +242,25 @@ const PaymentAnalytics = ({ preview = false }) => {
               </div>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-sm text-gray-600">Failed</span>
+              <span className="text-sm text-gray-600">
+                {TEXT.statuses.failed}
+              </span>
               <span className="font-medium text-red-600">
                 {analyticsData.transactionMetrics.failed.toLocaleString()}
               </span>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-sm text-gray-600">Pending</span>
+              <span className="text-sm text-gray-600">
+                {TEXT.statuses.pending}
+              </span>
               <span className="font-medium text-orange-600">
                 {analyticsData.transactionMetrics.pending.toLocaleString()}
               </span>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-sm text-gray-600">Refunded</span>
+              <span className="text-sm text-gray-600">
+                {TEXT.statuses.refunded}
+              </span>
               <span className="font-medium text-purple-600">
                 {analyticsData.transactionMetrics.refunded.toLocaleString()}
               </span>
@@ -216,7 +272,7 @@ const PaymentAnalytics = ({ preview = false }) => {
           <CardHeader>
             <CardTitle className="flex items-center space-x-2">
               <CreditCard className="h-5 w-5" />
-              <span>Payment Methods</span>
+              <span>{TEXT.paymentMethods}</span>
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
@@ -244,22 +300,17 @@ const PaymentAnalytics = ({ preview = false }) => {
           <CardHeader>
             <CardTitle className="flex items-center space-x-2">
               <BarChart3 className="h-5 w-5" />
-              <span>Failure Analysis</span>
+              <span>{TEXT.failureAnalysis}</span>
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="bg-red-50 p-3 rounded-lg">
               <p className="text-sm font-medium text-red-800">
-                Total Failed Transactions:{" "}
+                {TEXT.totalFailedTransactions}{" "}
                 {analyticsData.transactionMetrics.failed}
               </p>
               <p className="text-xs text-red-600">
-                {(
-                  (analyticsData.transactionMetrics.failed /
-                    analyticsData.transactionMetrics.total) *
-                  100
-                ).toFixed(1)}
-                % failure rate
+                {failureRate}% {TEXT.failureRate}
               </p>
             </div>
 

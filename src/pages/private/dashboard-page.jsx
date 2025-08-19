@@ -6,7 +6,6 @@ import {
   TrendingUp,
   TrendingDown,
   ArrowUpRight,
-  ArrowDownRight,
   MapPin,
 } from "lucide-react";
 import {
@@ -19,142 +18,140 @@ import {
 import { Badge } from "@/components/ui/badge";
 
 const AdminDashboard = () => {
-  // Mock data for demonstration
-  const stats = [
+  // Dữ liệu thống kê
+  const thongKe = [
     {
-      title: "Total Bookings",
-      value: "2,847",
-      change: "+12.5%",
-      isPositive: true,
+      tieuDe: "Tổng Đặt Vé",
+      giaTri: "2,847",
+      thayDoi: "+12.5%",
+      duong: true,
       icon: Calendar,
-      description: "vs last month",
+      moTa: "so với tháng trước",
     },
     {
-      title: "Active Flights",
-      value: "156",
-      change: "+3.2%",
-      isPositive: true,
+      tieuDe: "Chuyến Bay Hoạt Động",
+      giaTri: "156",
+      thayDoi: "+3.2%",
+      duong: true,
       icon: Plane,
-      description: "currently scheduled",
+      moTa: "đang được lên lịch",
     },
     {
-      title: "Total Users",
-      value: "8,429",
-      change: "+8.1%",
-      isPositive: true,
+      tieuDe: "Tổng Người Dùng",
+      giaTri: "8,429",
+      thayDoi: "+8.1%",
+      duong: true,
       icon: Users,
-      description: "registered users",
+      moTa: "người dùng đã đăng ký",
     },
     {
-      title: "Revenue",
-      value: "$342,890",
-      change: "-2.4%",
-      isPositive: false,
+      tieuDe: "Doanh Thu",
+      giaTri: "8,572,250,000₫",
+      thayDoi: "-2.4%",
+      duong: false,
       icon: CreditCard,
-      description: "this month",
+      moTa: "tháng này",
     },
   ];
 
-  const recentBookings = [
+  const datVeGanDay = [
     {
       id: "BK001",
-      customer: "John Smith",
-      route: "NYC → LAX",
-      date: "2024-01-15",
-      status: "Confirmed",
-      amount: "$450",
+      khachHang: "Nguyễn Văn An",
+      tuyen: "HAN → SGN",
+      ngay: "15/01/2024",
+      trangThai: "Đã Xác Nhận",
+      soTien: "2,450,000₫",
     },
     {
       id: "BK002",
-      customer: "Sarah Johnson",
-      route: "CHI → MIA",
-      date: "2024-01-15",
-      status: "Pending",
-      amount: "$320",
+      khachHang: "Trần Thị Bình",
+      tuyen: "DAD → HAN",
+      ngay: "15/01/2024",
+      trangThai: "Chờ Xử Lý",
+      soTien: "1,820,000₫",
     },
     {
       id: "BK003",
-      customer: "Mike Davis",
-      route: "SEA → BOS",
-      date: "2024-01-14",
-      status: "Confirmed",
-      amount: "$680",
+      khachHang: "Lê Minh Cường",
+      tuyen: "SGN → PQC",
+      ngay: "14/01/2024",
+      trangThai: "Đã Xác Nhận",
+      soTien: "3,200,000₫",
     },
     {
       id: "BK004",
-      customer: "Emma Wilson",
-      route: "LAX → NYC",
-      date: "2024-01-14",
-      status: "Cancelled",
-      amount: "$420",
+      khachHang: "Phạm Thu Dung",
+      tuyen: "CXR → HAN",
+      ngay: "14/01/2024",
+      trangThai: "Đã Hủy",
+      soTien: "1,950,000₫",
     },
     {
       id: "BK005",
-      customer: "Alex Brown",
-      route: "DEN → ATL",
-      date: "2024-01-13",
-      status: "Confirmed",
-      amount: "$290",
+      khachHang: "Hoàng Văn Em",
+      tuyen: "HPH → SGN",
+      ngay: "13/01/2024",
+      trangThai: "Đã Xác Nhận",
+      soTien: "2,100,000₫",
     },
   ];
 
-  const topRoutes = [
-    { route: "NYC → LAX", bookings: 234, revenue: "$105,300" },
-    { route: "CHI → MIA", bookings: 189, revenue: "$85,680" },
-    { route: "SEA → BOS", bookings: 156, revenue: "$89,420" },
-    { route: "LAX → NYC", bookings: 145, revenue: "$92,800" },
-    { route: "DEN → ATL", bookings: 132, revenue: "$67,440" },
+  const tuyenHangDau = [
+    { tuyen: "HAN → SGN", datVe: 234, doanhThu: "520,300,000₫" },
+    { tuyen: "SGN → DAD", datVe: 189, doanhThu: "425,680,000₫" },
+    { tuyen: "HAN → PQC", datVe: 156, doanhThu: "445,420,000₫" },
+    { tuyen: "SGN → HAN", datVe: 145, doanhThu: "462,800,000₫" },
+    { tuyen: "DAD → SGN", datVe: 132, doanhThu: "336,440,000₫" },
   ];
 
-  const getStatusBadge = (status) => {
-    const variants = {
-      Confirmed: "bg-green-100 text-green-800",
-      Pending: "bg-yellow-100 text-yellow-800",
-      Cancelled: "bg-red-100 text-red-800",
+  const layBadgeTrangThai = (trangThai) => {
+    const styles = {
+      "Đã Xác Nhận": "bg-green-100 text-green-800",
+      "Chờ Xử Lý": "bg-yellow-100 text-yellow-800",
+      "Đã Hủy": "bg-red-100 text-red-800",
     };
-    return variants[status] || "bg-gray-100 text-gray-800";
+    return styles[trangThai] || "bg-gray-100 text-gray-800";
   };
 
   return (
     <div className="space-y-6">
-      {/* Page Header */}
+      {/* Tiêu đề trang */}
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
+        <h1 className="text-2xl font-bold text-gray-900">Bảng Điều Khiển</h1>
         <p className="text-gray-600">
-          Welcome back! Here's what's happening with your airline today.
+          Chào mừng trở lại! Đây là tình hình hôm nay của hãng hàng không.
         </p>
       </div>
 
-      {/* Stats Grid */}
+      {/* Lưới thống kê */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {stats.map((stat, index) => {
+        {thongKe.map((stat, index) => {
           const Icon = stat.icon;
           return (
             <Card key={index}>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium text-gray-600">
-                  {stat.title}
+                  {stat.tieuDe}
                 </CardTitle>
                 <Icon className="h-4 w-4 text-gray-400" />
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-gray-900">
-                  {stat.value}
+                  {stat.giaTri}
                 </div>
                 <div className="flex items-center text-xs text-gray-600 mt-1">
-                  {stat.isPositive ? (
+                  {stat.duong ? (
                     <TrendingUp className="h-3 w-3 text-green-500 mr-1" />
                   ) : (
                     <TrendingDown className="h-3 w-3 text-red-500 mr-1" />
                   )}
                   <span
-                    className={
-                      stat.isPositive ? "text-green-600" : "text-red-600"
-                    }
+                    className={stat.duong ? "text-green-600" : "text-red-600"}
                   >
-                    {stat.change}
+                    {stat.thayDoi}
                   </span>
-                  <span className="ml-1">{stat.description}</span>
+                  <span className="ml-1">{stat.moTa}</span>
                 </div>
               </CardContent>
             </Card>
@@ -162,24 +159,24 @@ const AdminDashboard = () => {
         })}
       </div>
 
-      {/* Main Content Grid */}
+      {/* Nội dung chính */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Recent Bookings */}
+        {/* Đặt vé gần đây */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center justify-between">
-              Recent Bookings
+              Đặt Vé Gần Đây
               <Badge variant="outline" className="ml-2">
-                {recentBookings.length} new
+                {datVeGanDay.length} mới
               </Badge>
             </CardTitle>
             <CardDescription>
-              Latest booking activities and status updates
+              Hoạt động đặt vé mới nhất và cập nhật trạng thái
             </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {recentBookings.map((booking) => (
+              {datVeGanDay.map((booking) => (
                 <div
                   key={booking.id}
                   className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
@@ -187,26 +184,28 @@ const AdminDashboard = () => {
                   <div className="flex-1">
                     <div className="flex items-center space-x-2">
                       <span className="font-medium text-sm">
-                        {booking.customer}
+                        {booking.khachHang}
                       </span>
                       <Badge
                         variant="outline"
-                        className={`text-xs ${getStatusBadge(booking.status)}`}
+                        className={`text-xs ${layBadgeTrangThai(
+                          booking.trangThai
+                        )}`}
                       >
-                        {booking.status}
+                        {booking.trangThai}
                       </Badge>
                     </div>
                     <div className="flex items-center text-sm text-gray-600 mt-1">
                       <MapPin className="h-3 w-3 mr-1" />
-                      {booking.route}
+                      {booking.tuyen}
                     </div>
                     <div className="text-xs text-gray-500 mt-1">
-                      {booking.date} • {booking.id}
+                      {booking.ngay} • {booking.id}
                     </div>
                   </div>
                   <div className="text-right">
                     <div className="font-semibold text-sm">
-                      {booking.amount}
+                      {booking.soTien}
                     </div>
                   </div>
                 </div>
@@ -215,17 +214,17 @@ const AdminDashboard = () => {
           </CardContent>
         </Card>
 
-        {/* Top Routes */}
+        {/* Tuyến hàng đầu */}
         <Card>
           <CardHeader>
-            <CardTitle>Top Routes</CardTitle>
+            <CardTitle>Tuyến Hàng Đầu</CardTitle>
             <CardDescription>
-              Most popular flight routes by bookings
+              Các tuyến bay phổ biến nhất theo số lượng đặt vé
             </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {topRoutes.map((route, index) => (
+              {tuyenHangDau.map((route, index) => (
                 <div
                   key={index}
                   className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
@@ -235,14 +234,16 @@ const AdminDashboard = () => {
                       {index + 1}
                     </div>
                     <div>
-                      <div className="font-medium text-sm">{route.route}</div>
+                      <div className="font-medium text-sm">{route.tuyen}</div>
                       <div className="text-xs text-gray-500">
-                        {route.bookings} bookings
+                        {route.datVe} đặt vé
                       </div>
                     </div>
                   </div>
                   <div className="text-right">
-                    <div className="font-semibold text-sm">{route.revenue}</div>
+                    <div className="font-semibold text-sm">
+                      {route.doanhThu}
+                    </div>
                     <div className="flex items-center text-xs text-green-600">
                       <ArrowUpRight className="h-3 w-3 mr-1" />
                       +5.2%
