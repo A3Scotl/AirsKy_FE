@@ -3,6 +3,7 @@ import { authApi } from "@/apis/auth-api";
 import { useAuth } from "@/contexts/auth-context";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
+import { jwtDecode } from "jwt-decode";
 
 /**
  * Custom hook để quản lý user profile data
@@ -132,11 +133,113 @@ export const userProfileUtils = {
   },
 
   /**
-   * Get avatar URL or fallback
+   * Get avatar URL with multiple fallback options
    */
   getAvatarUrl: (userProfile) => {
     if (!userProfile) return null;
-    return userProfile.avatar || userProfile.profilePicture || null;
+
+    // Try database avatar first
+    if (userProfile.avatar) return userProfile.avatar;
+    if (userProfile.profilePicture) return userProfile.profilePicture;
+
+    // Try to get from token (if available)
+    const token = localStorage.getItem("token");
+    if (token) {
+      try {
+        const decoded = jwtDecode(token);
+
+        // Check for Google avatar fields
+        if (decoded.picture) return decoded.picture;
+        if (decoded.avatar) return decoded.avatar;
+        if (decoded.avatar_url) return decoded.avatar_url;
+        if (decoded.photo) return decoded.photo;
+      } catch (error) {
+        console.warn("Failed to decode token for avatar:", error);
+      }
+    }
+
+    // Fallback to Gravatar based on email
+    if (userProfile.email) {
+      return userProfileUtils.getGravatarUrl(userProfile.email);
+    }
+
+    return null;
+  },
+
+  /**
+   * Generate Gravatar URL from email
+   */
+  getGravatarUrl: (email, size = 80) => {
+    if (!email) return null;
+
+    // Create MD5-like hash for Gravatar (simplified version)
+    let hash = 0;
+    const cleanEmail = email.toLowerCase().trim();
+
+    for (let i = 0; i < cleanEmail.length; i++) {
+      const char = cleanEmail.charCodeAt(i);
+      hash = (hash << 5) - hash + char;
+      hash = hash & hash; // Convert to 32-bit integer
+    }
+
+    // Convert to hex and pad
+    const hexHash = Math.abs(hash).toString(16).padStart(8, "0");
+
+    // Return Gravatar URL with identicon fallback
+    return `https://www.gravatar.com/avatar/${hexHash}?d=identicon&s=${size}`;
+  },
+
+  /**
+   * Get UI Avatars fallback (alternative to Gravatar)
+   */
+  getUIAvatarUrl: (userProfile, size = 80) => {
+    if (!userProfile) return null;
+
+    const name = userProfileUtils.getDisplayName(userProfile);
+    const backgroundColor = userProfileUtils.getAvatarColor(userProfile);
+
+    return `https://ui-avatars.com/api/?name=${encodeURIComponent(
+      name
+    )}&size=${size}&background=${backgroundColor}&color=fff&bold=true`;
+  },
+
+  /**
+   * Generate consistent color for avatar based on email
+   */
+  getAvatarColor: (userProfile) => {
+    if (!userProfile || !userProfile.email) return "007bff";
+
+    const colors = [
+      "007bff",
+      "28a745",
+      "dc3545",
+      "ffc107",
+      "17a2b8",
+      "6f42c1",
+      "e83e8c",
+      "fd7e14",
+      "20c997",
+      "6c757d",
+    ];
+
+    let hash = 0;
+    for (let i = 0; i < userProfile.email.length; i++) {
+      hash = userProfile.email.charCodeAt(i) + ((hash << 5) - hash);
+    }
+
+    return colors[Math.abs(hash) % colors.length];
+  },
+
+  /**
+   * Get best available avatar URL with all fallbacks
+   */
+  getBestAvatarUrl: (userProfile, size = 80) => {
+    // Try main avatar methods
+    const avatarUrl = userProfileUtils.getAvatarUrl(userProfile);
+    if (avatarUrl) return avatarUrl;
+
+    // Try UI Avatars as final fallback
+    return userProfileUtils.getUIAvatarUrl(userProfile, size);
   },
 
   /**

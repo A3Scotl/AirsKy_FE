@@ -53,7 +53,7 @@ export function Header() {
 
   const handleLogout = () => {
     logout();
-    navigate("/auth");
+    navigate("/");
   };
 
   // Function to check if current path matches menu item

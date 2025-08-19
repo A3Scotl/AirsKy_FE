@@ -80,4 +80,13 @@ export const authApi = {
   me: async () => {
     return apiHandler("get", "/auth/profile/me");
   },
+
+  /**
+   * Đăng nhập bằng Google
+   * @param {{ idToken: string }} credentials - Thông tin đăng nhập Google
+   * @returns {Promise<{ success: boolean, data?: any, message: string }>}
+   */
+  googleLogin: async (credentials) => {
+    return apiHandler("post", "/auth/google-login", credentials);
+  }
 };

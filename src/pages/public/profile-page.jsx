@@ -47,19 +47,21 @@ const UserProfile = () => {
   // Show error state
   if (error || !userProfile) {
     return (
-      <div className="min-h-screen bg-gray-50 pt-16 flex items-center justify-center">
-        <div className="text-center max-w-md mx-auto p-6">
-          <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
-          <h3 className="text-lg font-semibold text-gray-900 mb-2">
-            Unable to load profile
-          </h3>
-          <p className="text-gray-600 mb-6">
-            {error || "There was an error loading your profile information."}
-          </p>
-          <Button onClick={refetch} className="bg-blue-600 hover:bg-blue-700">
-            <RefreshCw className="w-4 h-4 mr-2" />
-            Try Again
-          </Button>
+      <div className="min-h-screen bg-gray-50 pt-16">
+        <div className="flex items-center justify-center">
+          <div className="text-center max-w-md mx-auto p-6">
+            <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">
+              Unable to load profile
+            </h3>
+            <p className="text-gray-600 mb-6">
+              {error || "There was an error loading your profile information."}
+            </p>
+            <Button onClick={refetch} className="bg-blue-600 hover:bg-blue-700">
+              <RefreshCw className="w-4 h-4 mr-2" />
+              Try Again
+            </Button>
+          </div>
         </div>
       </div>
     );
@@ -75,8 +77,15 @@ const UserProfile = () => {
               <CardHeader className="text-center">
                 <Avatar className="w-24 h-24 mx-auto mb-4">
                   <AvatarImage
-                    src={userProfileUtils.getAvatarUrl(userProfile)}
+                    src={userProfileUtils.getBestAvatarUrl(userProfile, 96)}
                     alt={userProfileUtils.getDisplayName(userProfile)}
+                    onError={(e) => {
+                      // Fallback if main avatar fails
+                      e.target.src = userProfileUtils.getUIAvatarUrl(
+                        userProfile,
+                        96
+                      );
+                    }}
                   />
                   <AvatarFallback className="bg-blue-100 text-blue-600 text-lg font-semibold">
                     {userProfileUtils.getUserInitials(userProfile)}

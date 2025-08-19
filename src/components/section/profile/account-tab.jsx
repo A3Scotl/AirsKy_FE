@@ -199,20 +199,92 @@ const AccountTab = ({ userProfile, onProfileUpdate }) => {
             <div className="space-y-6">
               {/* Profile Avatar and Basic Info */}
               <div className="flex items-center gap-6">
-                <Avatar className="w-20 h-20">
-                  <AvatarImage
-                    src={userProfileUtils.getAvatarUrl(userProfile)}
-                    alt={userProfileUtils.getDisplayName(userProfile)}
-                  />
-                  <AvatarFallback className="text-lg bg-blue-100 text-blue-600">
-                    {userProfileUtils.getUserInitials(userProfile)}
-                  </AvatarFallback>
-                </Avatar>
-                <div>
+                <div className="relative">
+                  <Avatar className="w-20 h-20">
+                    <AvatarImage
+                      src={userProfileUtils.getBestAvatarUrl(userProfile, 80)}
+                      alt={userProfileUtils.getDisplayName(userProfile)}
+                      onError={(e) => {
+                        // Fallback if main avatar fails
+                        e.target.src = userProfileUtils.getUIAvatarUrl(
+                          userProfile,
+                          80
+                        );
+                      }}
+                    />
+                    <AvatarFallback className="text-lg bg-blue-100 text-blue-600">
+                      {userProfileUtils.getUserInitials(userProfile)}
+                    </AvatarFallback>
+                  </Avatar>
+
+                  {/* Avatar Source Info */}
+                  <div className="absolute -bottom-2 -right-2 bg-white rounded-full p-1 shadow-lg border">
+                    {(() => {
+                      const avatarUrl =
+                        userProfileUtils.getBestAvatarUrl(userProfile);
+                      if (avatarUrl?.includes("gravatar.com")) {
+                        return (
+                          <div
+                            className="w-4 h-4 bg-blue-500 rounded-full"
+                            title="Gravatar"
+                          />
+                        );
+                      } else if (avatarUrl?.includes("ui-avatars.com")) {
+                        return (
+                          <div
+                            className="w-4 h-4 bg-purple-500 rounded-full"
+                            title="Generated Avatar"
+                          />
+                        );
+                      } else if (
+                        avatarUrl?.includes("googleapis.com") ||
+                        avatarUrl?.includes("googleusercontent.com")
+                      ) {
+                        return (
+                          <div
+                            className="w-4 h-4 bg-red-500 rounded-full"
+                            title="Google Avatar"
+                          />
+                        );
+                      } else {
+                        return (
+                          <div
+                            className="w-4 h-4 bg-gray-500 rounded-full"
+                            title="Default Avatar"
+                          />
+                        );
+                      }
+                    })()}
+                  </div>
+                </div>
+
+                <div className="flex-1">
                   <h3 className="text-xl font-semibold">
                     {userProfileUtils.getDisplayName(userProfile)}
                   </h3>
                   <p className="text-gray-600">{userProfile.email}</p>
+
+                  {/* Avatar Info */}
+                  <div className="mt-2 text-sm text-gray-500">
+                    Avatar:{" "}
+                    {(() => {
+                      const avatarUrl =
+                        userProfileUtils.getBestAvatarUrl(userProfile);
+                      if (avatarUrl?.includes("gravatar.com")) {
+                        return "Gravatar (based on email)";
+                      } else if (avatarUrl?.includes("ui-avatars.com")) {
+                        return "Generated from name";
+                      } else if (
+                        avatarUrl?.includes("googleapis.com") ||
+                        avatarUrl?.includes("googleusercontent.com")
+                      ) {
+                        return "Google account photo";
+                      } else {
+                        return "Default avatar";
+                      }
+                    })()}
+                  </div>
+
                   <div className="flex gap-2 mt-2 flex-wrap">
                     <Badge
                       variant="secondary"
