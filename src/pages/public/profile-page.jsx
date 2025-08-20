@@ -27,6 +27,7 @@ import MyBookingsTab from "../../components/section/profile/my-bookings-tab";
 import FavouritesTab from "@/components/section/profile/favourites-tab";
 import AccountTab from "@/components/section/profile/account-tab";
 import SettingsTab from "@/components/section/profile/settings-tab";
+import { Navigate } from "react-router-dom";
 
 const UserProfile = () => {
   const [activeTab, setActiveTab] = useState("my-booking");
@@ -46,25 +47,7 @@ const UserProfile = () => {
 
   // Show error state
   if (error || !userProfile) {
-    return (
-      <div className="min-h-screen bg-gray-50 pt-16">
-        <div className="flex items-center justify-center">
-          <div className="text-center max-w-md mx-auto p-6">
-            <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">
-              không thể tải thông tin hồ sơ
-            </h3>
-            <p className="text-gray-600 mb-6">
-              {error || "Đã xảy ra lỗi khi tải thông tin hồ sơ của bạn."}
-            </p>
-            <Button onClick={refetch} className="bg-blue-600 hover:bg-blue-700">
-              <RefreshCw className="w-4 h-4 mr-2" />
-              Thử lại
-            </Button>
-          </div>
-        </div>
-      </div>
-    );
+    return <Navigate to="/" />;
   }
 
   return (

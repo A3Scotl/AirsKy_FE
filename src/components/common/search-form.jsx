@@ -1,5 +1,3 @@
-"use client";
-
 import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,48 +8,16 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { X, CalendarIcon, MapPin, Plane, ArrowRightLeft } from "lucide-react";
+import {
+  X,
+  CalendarIcon,
+  MapPin,
+  Plane,
+  ArrowRightLeft,
+  Loader2,
+} from "lucide-react";
 import { format } from "date-fns";
-
-// Reduced popular destinations data
-const POPULAR_DESTINATIONS = [
-  {
-    code: "HAN",
-    city: "Hà Nội",
-    country: "Việt Nam",
-    airport: "Sân bay Quốc tế Nội Bài",
-  },
-  {
-    code: "SGN",
-    city: "TP. Hồ Chí Minh",
-    country: "Việt Nam",
-    airport: "Sân bay Tân Sơn Nhất",
-  },
-  {
-    code: "DAD",
-    city: "Đà Nẵng",
-    country: "Việt Nam",
-    airport: "Sân bay Quốc tế Đà Nẵng",
-  },
-  {
-    code: "CXR",
-    city: "Nha Trang",
-    country: "Việt Nam",
-    airport: "Sân bay Quốc tế Cam Ranh",
-  },
-  {
-    code: "PQC",
-    city: "Phú Quốc",
-    country: "Việt Nam",
-    airport: "Sân bay Quốc tế Phú Quốc",
-  },
-  {
-    code: "HUI",
-    city: "Huế",
-    country: "Việt Nam",
-    airport: "Sân bay Quốc tế Phú Bài",
-  },
-];
+import AirportAutocomplete from "./airport-autocomplete";
 
 const TRIP_TYPES = [
   { key: "roundtrip", label: "Khứ hồi" },
@@ -71,161 +37,6 @@ const TRAVEL_CLASSES = [
   "Thương gia",
   "Hạng nhất",
 ];
-
-// Location Select Component
-function LocationSelect({ placeholder, value, onChange, disabled = false }) {
-  const [isOpen, setIsOpen] = useState(false);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [selectedLocations, setSelectedLocations] = useState(value || []);
-  const inputRef = useRef(null);
-  const dropdownRef = useRef(null);
-
-  useEffect(() => {
-    setSelectedLocations(value || []);
-  }, [value]);
-
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
-        setIsOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
-
-  const filteredDestinations = POPULAR_DESTINATIONS.filter((dest) =>
-    [dest.city, dest.code, dest.airport].some((field) =>
-      field.toLowerCase().includes(searchTerm.toLowerCase())
-    )
-  );
-
-  const handleLocationSelect = (location) => {
-    const isAlreadySelected = selectedLocations.some(
-      (loc) => loc.code === location.code
-    );
-    const newSelection = isAlreadySelected
-      ? selectedLocations.filter((loc) => loc.code !== location.code)
-      : [...selectedLocations, location];
-
-    setSelectedLocations(newSelection);
-    onChange(newSelection);
-    setSearchTerm("");
-  };
-
-  const handleRemoveLocation = (codeToRemove) => {
-    const newSelection = selectedLocations.filter(
-      (loc) => loc.code !== codeToRemove
-    );
-    setSelectedLocations(newSelection);
-    onChange(newSelection);
-  };
-
-  const handleKeyPress = (e) => {
-    if (e.key === "Enter" && searchTerm.trim()) {
-      e.preventDefault();
-      const customLocation = {
-        code: searchTerm.toUpperCase(),
-        city: searchTerm,
-        country: "Tùy chỉnh",
-        airport: searchTerm,
-      };
-      handleLocationSelect(customLocation);
-    }
-  };
-
-  return (
-    <div className="relative" ref={dropdownRef}>
-      <div
-        className={`min-h-[40px] w-full border border-gray-300 rounded-md px-3 py-2 bg-white cursor-text ${
-          disabled ? "bg-gray-50 cursor-not-allowed" : ""
-        }`}
-        onClick={() => !disabled && setIsOpen(true)}
-      >
-        <div className="flex flex-wrap gap-1 mb-1">
-          {selectedLocations.map((location) => (
-            <span
-              key={location.code}
-              className="inline-flex items-center bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full"
-            >
-              <MapPin className="w-3 h-3 mr-1" />
-              {location.city} ({location.code})
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleRemoveLocation(location.code);
-                }}
-                className="ml-1 hover:bg-blue-200 rounded-full"
-              >
-                <X className="w-3 h-3" />
-              </button>
-            </span>
-          ))}
-        </div>
-        <input
-          ref={inputRef}
-          type="text"
-          placeholder={selectedLocations.length === 0 ? placeholder : ""}
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          onKeyPress={handleKeyPress}
-          onFocus={() => !disabled && setIsOpen(true)}
-          disabled={disabled}
-          className="w-full border-none outline-none bg-transparent text-sm"
-        />
-      </div>
-
-      {isOpen && !disabled && (
-        <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-50 max-h-60 overflow-y-auto">
-          {searchTerm === "" && (
-            <div className="p-3 border-b bg-gray-50">
-              <h4 className="font-medium text-sm text-gray-700 mb-2 flex items-center">
-                <Plane className="w-4 h-4 mr-2" />
-                Điểm đến phổ biến
-              </h4>
-            </div>
-          )}
-
-          {filteredDestinations.length > 0 ? (
-            filteredDestinations.map((destination) => {
-              const isSelected = selectedLocations.some(
-                (loc) => loc.code === destination.code
-              );
-              return (
-                <div
-                  key={destination.code}
-                  onClick={() => handleLocationSelect(destination)}
-                  className={`p-3 hover:bg-gray-50 cursor-pointer border-b last:border-b-0 ${
-                    isSelected ? "bg-blue-50" : ""
-                  }`}
-                >
-                  <div className="flex items-start">
-                    <MapPin className="w-4 h-4 mr-3 mt-0.5 text-gray-400" />
-                    <div className="flex-1">
-                      <div className="font-medium text-sm">
-                        {destination.city} ({destination.code})
-                      </div>
-                      <div className="text-xs text-gray-500">
-                        {destination.airport}, {destination.country}
-                      </div>
-                    </div>
-                    {isSelected && (
-                      <div className="text-blue-500 text-xs font-medium">✓</div>
-                    )}
-                  </div>
-                </div>
-              );
-            })
-          ) : searchTerm ? (
-            <div className="p-3 text-sm text-gray-500 text-center">
-              Nhấn Enter để thêm "{searchTerm}"
-            </div>
-          ) : null}
-        </div>
-      )}
-    </div>
-  );
-}
 
 // Date Picker Component
 function DatePicker({ date, onSelect, placeholder, disabled = false }) {
@@ -415,12 +226,13 @@ export function SearchForm() {
         {/* Round Trip Form */}
         {tripType === "roundtrip" && (
           <div className="grid md:grid-cols-5 gap-4">
-            <LocationSelect
+            <AirportAutocomplete
               placeholder="Từ đâu?"
               value={fromLocations}
               onChange={setFromLocations}
+              // country="Vietnam"
             />
-            <LocationSelect
+            <AirportAutocomplete
               placeholder="Đến đâu?"
               value={toLocations}
               onChange={setToLocations}
@@ -444,12 +256,13 @@ export function SearchForm() {
         {/* One Way Form */}
         {tripType === "oneway" && (
           <div className="grid md:grid-cols-4 gap-4">
-            <LocationSelect
+            <AirportAutocomplete
               placeholder="Từ đâu?"
               value={fromLocations}
               onChange={setFromLocations}
+              country="Vietnam"
             />
-            <LocationSelect
+            <AirportAutocomplete
               placeholder="Đến đâu?"
               value={toLocations}
               onChange={setToLocations}
@@ -493,7 +306,7 @@ export function SearchForm() {
                   <label className="block text-xs font-medium text-gray-600 mb-1 sm:hidden">
                     Từ
                   </label>
-                  <LocationSelect
+                  <AirportAutocomplete
                     placeholder="Từ đâu?"
                     value={trip.from}
                     onChange={(value) => updateMultiTrip(index, "from", value)}
@@ -504,7 +317,7 @@ export function SearchForm() {
                   <label className="block text-xs font-medium text-gray-600 mb-1 sm:hidden">
                     Đến
                   </label>
-                  <LocationSelect
+                  <AirportAutocomplete
                     placeholder="Đến đâu?"
                     value={trip.to}
                     onChange={(value) => updateMultiTrip(index, "to", value)}

@@ -1,4 +1,5 @@
 import { Button } from "@/components/ui/button";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   Sheet,
   SheetContent,
@@ -14,7 +15,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Menu, User, LogOut } from "lucide-react";
+import { Menu, User, LogOut, Calendar, Moon, Sun } from "lucide-react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/auth-context";
 import { useEffect, useRef, useState } from "react";
@@ -30,7 +31,46 @@ export function Header() {
   const location = useLocation();
   const { user, logout } = useAuth();
   const [showHeader, setShowHeader] = useState(true);
+  const [isDarkMode, setIsDarkMode] = useState(false);
   const lastScrollY = useRef(window.scrollY);
+
+  // Load theme from localStorage
+  useEffect(() => {
+    const savedTheme = localStorage.getItem("theme");
+    if (savedTheme === "dark") {
+      setIsDarkMode(true);
+      document.documentElement.classList.add("dark");
+    }
+  }, []);
+
+  // Toggle theme function
+  const toggleTheme = () => {
+    const newTheme = !isDarkMode;
+    setIsDarkMode(newTheme);
+
+    if (newTheme) {
+      document.documentElement.classList.add("dark");
+      localStorage.setItem("theme", "dark");
+    } else {
+      document.documentElement.classList.remove("dark");
+      localStorage.setItem("theme", "light");
+    }
+  };
+
+  // Get user initials for avatar fallback
+  const getUserInitials = () => {
+    if (user?.fullName) {
+      return user.fullName
+        .split(" ")
+        .map((name) => name[0])
+        .join("")
+        .toUpperCase();
+    }
+    if (user?.email) {
+      return user.email.substring(0, 2).toUpperCase();
+    }
+    return "U";
+  };
 
   useEffect(() => {
     let ticking = false;
@@ -110,26 +150,64 @@ export function Header() {
                 <DropdownMenuTrigger asChild>
                   <Button
                     variant="ghost"
-                    className="flex items-center space-x-2"
+                    className="flex items-center space-x-3 hover:bg-gray-100 px-3 py-2 rounded-lg"
                   >
-                    <User className="w-5 h-5" />
-                    <span>{user.email || "Người dùng"}</span>
+                    <Avatar className="w-8 h-8">
+                      <AvatarImage
+                        src={user.avatar || user.picture}
+                        alt={user.fullName || user.email}
+                      />
+                      <AvatarFallback className="bg-blue-500 text-white text-sm">
+                        {getUserInitials()}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="text-left">
+                      <div className="text-sm font-medium">
+                        {user.fullName || user.email || "Người dùng"}
+                      </div>
+                      {user.fullName && user.email && (
+                        <div className="text-xs text-gray-500">
+                          {user.email}
+                        </div>
+                      )}
+                    </div>
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="mt-6">
-                  <DropdownMenuLabel>Tài khoản của tôi</DropdownMenuLabel>
-                  <DropdownMenuSeparator />
+                <DropdownMenuContent align="end" className="mt-6 w-64">
+            
                   <DropdownMenuItem asChild>
-                    <Link to="/profile" className="flex">
-                      <User className="w-4 h-4 mr-2" />
-                      Hồ sơ
+                    <Link to="/profile" className="flex items-center w-full">
+                      <User className="w-4 h-4 mr-3" />
+                      Hồ sơ cá nhân
                     </Link>
                   </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link
+                      to="/my-bookings"
+                      className="flex items-center w-full"
+                    >
+                      <Calendar className="w-4 h-4 mr-3" />
+                      Đơn đặt chỗ của tôi
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
                   <DropdownMenuItem
-                    onClick={handleLogout}
+                    onClick={toggleTheme}
                     className="flex items-center"
                   >
-                    <LogOut className="w-4 h-4 mr-2" />
+                    {isDarkMode ? (
+                      <Sun className="w-4 h-4 mr-3" />
+                    ) : (
+                      <Moon className="w-4 h-4 mr-3" />
+                    )}
+                    {isDarkMode ? "Chế độ sáng" : "Chế độ tối"}
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onClick={handleLogout}
+                    className="flex items-center text-red-600 focus:text-red-600"
+                  >
+                    <LogOut className="w-4 h-4 mr-3" />
                     Đăng xuất
                   </DropdownMenuItem>
                 </DropdownMenuContent>
@@ -177,17 +255,58 @@ export function Header() {
                 <div className="p-4 border-t flex flex-col space-y-2">
                   {user ? (
                     <>
+                      <div className="flex items-center space-x-3 mb-4 p-2 rounded-lg bg-gray-50">
+                        <Avatar className="w-10 h-10">
+                          <AvatarImage
+                            src={user.avatar || user.picture}
+                            alt={user.fullName || user.email}
+                          />
+                          <AvatarFallback className="bg-blue-500 text-white">
+                            {getUserInitials()}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <div className="font-medium text-sm">
+                            {user.fullName || user.email}
+                          </div>
+                          {user.fullName && user.email && (
+                            <div className="text-xs text-gray-500">
+                              {user.email}
+                            </div>
+                          )}
+                        </div>
+                      </div>
                       <Button
                         variant="ghost"
-                        className="flex items-center justify-start space-x-2"
+                        className="flex items-center justify-start space-x-3 w-full"
                         onClick={() => navigate("/profile")}
                       >
                         <User className="w-5 h-5" />
-                        <span>Hồ sơ</span>
+                        <span>Hồ sơ cá nhân</span>
                       </Button>
                       <Button
                         variant="ghost"
-                        className="flex items-center justify-start space-x-2"
+                        className="flex items-center justify-start space-x-3 w-full"
+                        onClick={() => navigate("/my-bookings")}
+                      >
+                        <Calendar className="w-5 h-5" />
+                        <span>Đơn đặt chỗ của tôi</span>
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        className="flex items-center justify-start space-x-3 w-full"
+                        onClick={toggleTheme}
+                      >
+                        {isDarkMode ? (
+                          <Sun className="w-5 h-5" />
+                        ) : (
+                          <Moon className="w-5 h-5" />
+                        )}
+                        <span>{isDarkMode ? "Chế độ sáng" : "Chế độ tối"}</span>
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        className="flex items-center justify-start space-x-3 w-full text-red-600 hover:text-red-700 hover:bg-red-50"
                         onClick={handleLogout}
                       >
                         <LogOut className="w-5 h-5" />

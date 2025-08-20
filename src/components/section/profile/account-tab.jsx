@@ -692,65 +692,6 @@ const AccountTab = ({ userProfile, onProfileUpdate }) => {
         </CardContent>
       </Card>
 
-      {/* Social Media Connections Card */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Kết Nối Mạng Xã Hội</CardTitle>
-          <CardDescription>
-            Kết nối tài khoản mạng xã hội để đăng nhập nhanh hơn và chia sẻ
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            {socialAccounts.map((account) => (
-              <div
-                key={account.name}
-                className="flex items-center justify-between p-4 border rounded-lg"
-              >
-                <div className="flex items-center gap-3">
-                  <account.icon className="h-6 w-6" />
-                  <div>
-                    <p className="font-medium">{account.name}</p>
-                    {account.connected && (
-                      <p className="text-sm text-gray-500">
-                        {account.username}
-                      </p>
-                    )}
-                  </div>
-                </div>
-                <div className="flex items-center flex-wrap justify-end gap-2">
-                  {account.connected ? (
-                    <>
-                      <Badge variant="success" className="mr-2 bg-green-100">
-                        Đã kết nối
-                      </Badge>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="bg-red-600 text-white"
-                        onClick={() => handleSocialDisconnect(account.name)}
-                      >
-                        <Unlink className="w-4 h-4 mr-1" />
-                        Ngắt kết nối
-                      </Button>
-                    </>
-                  ) : (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleSocialConnect(account.name)}
-                    >
-                      <Plus className="w-4 h-4 mr-1" />
-                      Kết nối
-                    </Button>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-
       {/* Account Actions Card */}
       <Card className="border-red-200">
         <CardHeader>

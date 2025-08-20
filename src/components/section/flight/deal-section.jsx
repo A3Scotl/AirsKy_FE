@@ -94,7 +94,7 @@ export default function DealsSection() {
 
         <div className="relative">
           {/* Navigation Buttons */}
-          <div className="swiper-button-prev-custom absolute left-0 top-1/2 -translate-y-1/2 z-10 bg-white shadow-lg rounded-full p-3 cursor-pointer hover:bg-blue-50 transition-colors">
+          <div className="swiper-button-prev-custom absolute left-0 top-1/2 -translate-y-1/2 z-10 shadow-lg rounded-full p-3 cursor-pointer hover:bg-blue-50 transition-colors">
             <ChevronLeft className="w-6 h-6 text-blue-600" />
           </div>
           <div className="swiper-button-next-custom absolute right-0 top-1/2 -translate-y-1/2 z-10 bg-white shadow-lg rounded-full p-3 cursor-pointer hover:bg-blue-50 transition-colors">
@@ -123,7 +123,7 @@ export default function DealsSection() {
           >
             {deals.map((deal) => (
               <SwiperSlide key={deal.id}>
-                <div className="relative bg-white shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 overflow-visible border border-gray-100 ticket-card">
+                <div className="relative shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 overflow-visible ticket-card">
                   <div className="bg-white rounded-t-[2rem] rounded-b-[2rem] overflow-hidden relative">
                     {/* Side notches */}
                     <div className="absolute left-0 top-1/2 w-6 h-6 bg-gray-50 rounded-full transform -translate-x-3 -translate-y-1/2 z-20"></div>

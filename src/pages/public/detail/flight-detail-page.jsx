@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
+import FlightRouteMap from "@/components/common/flight-route-map";
 import {
   Clock,
   Plane,
@@ -23,6 +24,7 @@ import {
   Package,
   Headphones,
   Bed,
+  Map,
 } from "lucide-react";
 
 // Format currency function
@@ -361,9 +363,16 @@ const FlightDetail = () => {
         {/* Flight Information Tabs */}
         <div className="bg-white rounded-lg shadow-sm border border-gray-200">
           <Tabs defaultValue="details" className="w-full">
-            <TabsList className="grid w-full grid-cols-3 bg-gray-50 rounded-t-lg border-b">
+            <TabsList className="grid w-full grid-cols-4 bg-gray-50 rounded-t-lg border-b">
               <TabsTrigger value="details" className="text-sm">
                 Chi tiết chuyến bay
+              </TabsTrigger>
+              <TabsTrigger
+                value="route-map"
+                className="text-sm flex items-center"
+              >
+                <Map className="w-4 h-4 mr-1" />
+                Bản đồ tuyến bay
               </TabsTrigger>
               <TabsTrigger value="policies" className="text-sm">
                 Chính sách
@@ -525,6 +534,114 @@ const FlightDetail = () => {
                         <div className="flex justify-between">
                           <span className="text-gray-600">Đóng cổng:</span>
                           <span className="font-medium">10p trước giờ bay</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </TabsContent>
+
+              <TabsContent value="route-map" className="mt-0">
+                <div className="space-y-6">
+                  <div>
+                    <h3 className="text-lg font-semibold mb-4 text-gray-900 flex items-center">
+                      <Map className="w-5 h-5 text-blue-600 mr-2" />
+                      Bản đồ tuyến bay trực quan
+                    </h3>
+                    <p className="text-gray-600 mb-6">
+                      Xem đường bay từ{" "}
+                      {flightInfo.departure?.city || "TP. Hồ Chí Minh"} đến{" "}
+                      {flightInfo.arrival?.city || "Hà Nội"}
+                      với khoảng cách và thông tin chi tiết của chuyến bay{" "}
+                      {flightInfo.flightNumber || "VN7210"}.
+                    </p>
+
+                    {/* Flight Route Map */}
+                    <div className="rounded-lg overflow-hidden border border-gray-200 shadow-sm">
+                      <FlightRouteMap
+                        flightInfo={flightInfo}
+                        height="500px"
+                        showFlightPath={true}
+                        showAirportInfo={true}
+                        className="w-full"
+                      />
+                    </div>
+
+                    {/* Additional flight route information */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
+                      <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                        <div className="flex items-center mb-2">
+                          <div className="w-3 h-3 bg-green-500 rounded-full mr-2"></div>
+                          <h4 className="font-semibold text-green-800">
+                            Sân bay khởi hành
+                          </h4>
+                        </div>
+                        <p className="text-sm font-medium text-gray-800">
+                          {flightInfo.departure?.city || "TP. Hồ Chí Minh"} (
+                          {flightInfo.departure?.code || "SGN"})
+                        </p>
+                        <p className="text-xs text-gray-600">
+                          Khởi hành: {flightInfo.departure?.time || "05:05"} •{" "}
+                          {flightInfo.departure?.date || "15 tháng 8, 2025"}
+                        </p>
+                      </div>
+
+                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                        <div className="flex items-center mb-2">
+                          <Plane className="w-4 h-4 text-blue-600 mr-2" />
+                          <h4 className="font-semibold text-blue-800">
+                            Thông tin chuyến bay
+                          </h4>
+                        </div>
+                        <p className="text-sm font-medium text-gray-800">
+                          {flightInfo.flightNumber || "VN7210"} •{" "}
+                          {flightInfo.aircraft || "Airbus A321"}
+                        </p>
+                        <p className="text-xs text-gray-600">
+                          Thời gian bay: {flightInfo.duration || "2g 05p"} •{" "}
+                          {flightInfo.stops || "Bay thẳng"}
+                        </p>
+                      </div>
+
+                      <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                        <div className="flex items-center mb-2">
+                          <div className="w-3 h-3 bg-red-500 rounded-full mr-2"></div>
+                          <h4 className="font-semibold text-red-800">
+                            Sân bay đến
+                          </h4>
+                        </div>
+                        <p className="text-sm font-medium text-gray-800">
+                          {flightInfo.arrival?.city || "Hà Nội"} (
+                          {flightInfo.arrival?.code || "HAN"})
+                        </p>
+                        <p className="text-xs text-gray-600">
+                          Đến nơi: {flightInfo.arrival?.time || "07:10"} •{" "}
+                          {flightInfo.arrival?.date || "15 tháng 8, 2025"}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Map features info */}
+                    <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                      <h4 className="font-semibold text-gray-800 mb-2">
+                        Tính năng bản đồ:
+                      </h4>
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm text-gray-600">
+                        <div className="flex items-center">
+                          <Check className="w-4 h-4 text-green-500 mr-2" />
+                          <span>Zoom và pan tương tác</span>
+                        </div>
+                        <div className="flex items-center">
+                          <Check className="w-4 h-4 text-green-500 mr-2" />
+                          <span>Đường bay thực tế</span>
+                        </div>
+                        <div className="flex items-center">
+                          <Check className="w-4 h-4 text-green-500 mr-2" />
+                          <span>Thông tin sân bay chi tiết</span>
+                        </div>
+                        <div className="flex items-center">
+                          <Check className="w-4 h-4 text-green-500 mr-2" />
+                          <span>Khoảng cách chính xác</span>
                         </div>
                       </div>
                     </div>

@@ -2,6 +2,7 @@ import { SearchForm } from "@/components/common/search-form";
 import { FeaturesSection } from "@/components/section/home/features-section";
 import { DestinationSection } from "@/components/section/home/destination-section";
 import { ReviewsSection } from "@/components/section/home/reviews-section";
+import SuggestionSection  from "@/components/section/flight/suggestion-section";
 import { Swiper, SwiperSlide } from "swiper/react";
 import { Autoplay } from "swiper/modules";
 import "swiper/css";
@@ -123,6 +124,10 @@ function HomePage() {
 
       {/* Destinations Section */}
       <DestinationSection />
+
+      <div className="mt-16">
+        <SuggestionSection />
+      </div>
 
       {/* Reviews Section */}
       {/* <ReviewsSection /> */}
