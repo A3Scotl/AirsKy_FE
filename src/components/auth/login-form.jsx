@@ -63,14 +63,14 @@ export default function LoginForm({ setCurrentView }) {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-700 flex flex-col">
       {/* Header */}
-      <div className="bg-white shadow-sm border-b border-gray-200">
+      <div className="bg-white dark:bg-gray-600 shadow-sm border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <button
               onClick={() => window.history.back()}
-              className="flex items-center text-gray-600 hover:text-gray-900 transition-colors"
+              className="flex items-center text-gray-600 hover:text-gray-900 transition-colors dark:text-gray-300 dark:hover:text-white"
             >
               <ArrowLeft className="w-5 h-5 mr-2" />
               Quay lại
@@ -87,7 +87,7 @@ export default function LoginForm({ setCurrentView }) {
           <Card className="shadow-lg border-0">
             <CardContent className="p-8">
               <div className="text-center mb-8">
-                <h2 className="text-2xl font-bold text-gray-900 mb-2">
+                <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
                   Chào mừng trở lại
                 </h2>
                 <p className="text-gray-600">
@@ -97,13 +97,13 @@ export default function LoginForm({ setCurrentView }) {
 
               <form className="space-y-6" onSubmit={handleSubmit}>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                     Địa chỉ Email
                   </label>
                   <Input
                     type="email"
                     placeholder="Nhập địa chỉ email của bạn"
-                    className="w-full"
+                    className="w-full dark:text-gray-900"
                     value={formData.email}
                     onChange={handleInputChange("email")}
                     required
@@ -111,14 +111,14 @@ export default function LoginForm({ setCurrentView }) {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                     Mật khẩu
                   </label>
                   <div className="relative">
                     <Input
                       type={showPassword ? "text" : "password"}
                       placeholder="Nhập mật khẩu của bạn"
-                      className="w-full pr-10"
+                      className="w-full pr-10 dark:text-gray-900"
                       value={formData.password}
                       onChange={handleInputChange("password")}
                       required
@@ -160,11 +160,15 @@ export default function LoginForm({ setCurrentView }) {
                     <div className="w-full border-t border-gray-300" />
                   </div>
                   <div className="relative flex justify-center text-sm">
-                    <span className="px-2 bg-white text-gray-500">HOẶC</span>
+                    <span className="px-2 bg-white dark:bg-[#171717] text-gray-500">
+                      Hoặc
+                    </span>
                   </div>
                 </div>
 
-                <GoogleLoginButton disabled={loading} />
+                <div className="w-full">
+                  <GoogleLoginButton disabled={loading} />
+                </div>
 
                 <div className="text-center mt-6">
                   <span className="text-gray-600">Chưa có tài khoản? </span>

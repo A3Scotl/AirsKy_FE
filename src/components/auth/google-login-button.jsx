@@ -178,6 +178,7 @@ const GoogleLoginButton = ({ className = "", disabled = false }) => {
           variant="outline"
           className="w-full"
           disabled={true}
+          
         >
           <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24">
             <path

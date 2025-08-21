@@ -45,12 +45,12 @@ const formatDate = (date, formatString) => {
 const PassengerDetails = ({ formData, updateFormData, updatePassenger }) => (
   <div className="w-full">
     <h2 className="text-lg sm:text-xl font-bold mb-4">Thông tin hành khách</h2>
-    <p className="text-xs sm:text-sm text-gray-500 mb-4 sm:mb-6">
+    <p className="text-xs sm:text-sm text-gray-600 mb-4 sm:mb-6 dark:text-gray-300">
       Vui lòng cung cấp thông tin cần thiết cho tất cả hành khách
     </p>
 
     {/* Contact Person */}
-    <div className="mb-6 sm:mb-8 border-2 border-gray-200 p-3 sm:p-4 rounded-lg bg-gray-50">
+    <div className="mb-6 sm:mb-8 border-2 border-gray-200 p-3 sm:p-4 rounded-lg bg-gray-50 dark:bg-gray-800 dark:border-none">
       <div className="flex items-center gap-2 mb-3 sm:mb-4">
         <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-blue-100 flex items-center justify-center">
           <span className="text-blue-600 text-xs sm:text-sm">👤</span>
@@ -65,7 +65,7 @@ const PassengerDetails = ({ formData, updateFormData, updatePassenger }) => (
           <Input
             id="contact-fullname"
             placeholder="Nhập họ và tên của bạn"
-            className="text-sm"
+            className="text-sm dark:bg-[#171717]"
             value={formData.contact.fullName}
             onChange={(e) =>
               updateFormData("contact", "fullName", e.target.value)
@@ -79,7 +79,7 @@ const PassengerDetails = ({ formData, updateFormData, updatePassenger }) => (
           <Input
             id="contact-phone"
             placeholder="Nhập số điện thoại"
-            className="text-sm"
+            className="text-sm dark:bg-[#171717]"
             value={formData.contact.phone}
             onChange={(e) => updateFormData("contact", "phone", e.target.value)}
           />
@@ -91,7 +91,7 @@ const PassengerDetails = ({ formData, updateFormData, updatePassenger }) => (
           <Input
             id="contact-email"
             placeholder="Nhập địa chỉ email của bạn"
-            className="text-sm"
+            className="text-sm dark:bg-[#171717]"
             value={formData.contact.email}
             onChange={(e) => updateFormData("contact", "email", e.target.value)}
           />
@@ -103,7 +103,7 @@ const PassengerDetails = ({ formData, updateFormData, updatePassenger }) => (
           <Input
             id="contact-confirm-email"
             placeholder="Xác nhận địa chỉ email của bạn"
-            className="text-sm"
+            className="text-sm dark:bg-[#171717]"
             value={formData.contact.confirmEmail}
             onChange={(e) =>
               updateFormData("contact", "confirmEmail", e.target.value)
@@ -115,7 +115,7 @@ const PassengerDetails = ({ formData, updateFormData, updatePassenger }) => (
     </div>
 
     {/* Passenger 1: Adult */}
-    <div className="mb-6 sm:mb-8 border-2 border-gray-200 p-3 sm:p-4 rounded-lg bg-gray-50">
+    <div className="mb-6 sm:mb-8 border-2 border-gray-200 p-3 sm:p-4 rounded-lg bg-gray-50 dark:bg-gray-800 dark:border-none">
       <div className="flex items-center gap-2 mb-3 sm:mb-4">
         <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-green-100 flex items-center justify-center">
           <span className="text-green-600 text-xs sm:text-sm">👤</span>
@@ -132,7 +132,7 @@ const PassengerDetails = ({ formData, updateFormData, updatePassenger }) => (
           <Input
             id="p1-fullname"
             placeholder="Nhập tên đầy đủ"
-            className="text-sm"
+            className="text-sm dark:bg-[#171717]"
             value={formData.passengers[0].fullName}
             onChange={(e) => updatePassenger(0, "fullName", e.target.value)}
           />
@@ -144,6 +144,7 @@ const PassengerDetails = ({ formData, updateFormData, updatePassenger }) => (
           <Select
             value={formData.passengers[0].gender}
             onValueChange={(value) => updatePassenger(0, "gender", value)}
+            
           >
             <SelectTrigger className="text-sm">
               <SelectValue placeholder="Chọn giới tính" />
@@ -164,7 +165,7 @@ const PassengerDetails = ({ formData, updateFormData, updatePassenger }) => (
               <Button
                 variant="outline"
                 className={cn(
-                  "w-full justify-start text-left font-normal text-sm",
+                  "w-full justify-start text-left font-normal text-sm dark:bg-[#171717]",
                   !formData.passengers[0].dob && "text-muted-foreground"
                 )}
               >
@@ -193,7 +194,7 @@ const PassengerDetails = ({ formData, updateFormData, updatePassenger }) => (
           <Input
             id="p1-passport"
             placeholder="Nhập số hộ chiếu"
-            className="text-sm"
+            className="text-sm dark:bg-[#171717]"
             value={formData.passengers[0].passport}
             onChange={(e) => updatePassenger(0, "passport", e.target.value)}
           />
@@ -205,7 +206,7 @@ const PassengerDetails = ({ formData, updateFormData, updatePassenger }) => (
           <Input
             id="p1-ffn"
             placeholder="Nhập mã số khách hàng"
-            className="text-sm"
+            className="text-sm dark:bg-[#171717]"
             value={formData.passengers[0].frequentFlyer}
             onChange={(e) =>
               updatePassenger(0, "frequentFlyer", e.target.value)

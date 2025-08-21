@@ -1,6 +1,6 @@
 export function FeaturesSection() {
   return (
-    <section className="py-16 bg-white">
+    <section className="py-16 bg-white dark:bg-gray-900">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div>
           <h2 className="text-3xl font-bold text-center mb-8">
@@ -28,7 +28,7 @@ export function FeaturesSection() {
                 />
               </svg>
             </div>
-            <h3 className="text-lg font-semibold text-[#111827] mb-2">
+            <h3 className="text-lg font-semibold text-[#111827] dark:text-white mb-2">
               Đảm bảo giá tốt nhất
             </h3>
             <p className="text-sm text-[#6b7280]">
@@ -52,7 +52,7 @@ export function FeaturesSection() {
                 />
               </svg>
             </div>
-            <h3 className="text-lg font-semibold text-[#111827] mb-2">
+            <h3 className="text-lg font-semibold text-[#111827] dark:text-white mb-2">
               Hỗ trợ 24/7
             </h3>
             <p className="text-sm text-[#6b7280]">Dịch vụ khách hàng 24/7</p>
@@ -74,7 +74,7 @@ export function FeaturesSection() {
                 />
               </svg>
             </div>
-            <h3 className="text-lg font-semibold text-[#111827] mb-2">
+            <h3 className="text-lg font-semibold text-[#111827] dark:text-white mb-2">
               Ngày linh hoạt
             </h3>
             <p className="text-sm text-[#6b7280]">
@@ -98,7 +98,7 @@ export function FeaturesSection() {
                 />
               </svg>
             </div>
-            <h3 className="text-lg font-semibold text-[#111827] mb-2">
+            <h3 className="text-lg font-semibold text-[#111827] dark:text-white mb-2">
               Đặt chỗ an toàn
             </h3>
             <p className="text-sm text-[#6b7280]">

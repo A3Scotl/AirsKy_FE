@@ -140,7 +140,7 @@ const FavouritesTab = () => {
 
                 <CardHeader className="pb-3">
                   <div className="flex items-center gap-2">
-                    <Badge variant="secondary" className="text-xs bg-blue-50 ">
+                    <Badge variant="secondary" className="text-xs bg-blue-50 dark:text-gray-700 ">
                       {flight.flight}
                     </Badge>
                     <p className="text-xs text-gray-500">{flight.airline}</p>

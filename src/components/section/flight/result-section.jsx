@@ -454,7 +454,7 @@ export function FlightSearchResults() {
         </div>
 
         <div className="absolute left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-full max-w-5xl px-4 z-20">
-          <div className="bg-white rounded-2xl shadow-2xl p-6 border border-gray-200">
+          <div className="bg-white rounded-2xl shadow-2xl border border-gray-200">
             <SearchForm />
           </div>
         </div>
@@ -561,7 +561,7 @@ export function FlightSearchResults() {
                 currentFlights.map((flight) => (
                   <Card
                     key={flight.id}
-                    className="p-3 sm:p-4 hover:shadow-md transition-shadow hover:bg-blue-50/30 transition-bg cursor-pointer"
+                    className="p-3 sm:p-4 hover:shadow-md transition-shadow hover:bg-blue-50/30transition-bg cursor-pointer"
                   >
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
                       {/* Left side - Airline info and route */}
@@ -574,10 +574,10 @@ export function FlightSearchResults() {
                             className="w-8 h-8 sm:w-10 sm:h-10 rounded object-contain bg-white p-1 border flex-shrink-0"
                           />
                           <div className="min-w-0 flex-1">
-                            <p className="font-medium text-xs sm:text-sm text-gray-900 truncate">
+                            <p className="font-medium text-xs sm:text-sm text-gray-900 truncate dark:text-gray-200">
                               {flight.airline}
                             </p>
-                            <div className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm text-gray-600">
+                            <div className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm text-gray-600 dark:text-gray-400">
                               <span className="font-medium truncate">
                                 {flight.from} ({flight.fromCode})
                               </span>
@@ -640,8 +640,8 @@ export function FlightSearchResults() {
                       </Button>
 
                       {expandedFlights.has(flight.id) && (
-                        <div className="mt-4 border-t pt-4 bg-gray-50 -mx-3 sm:-mx-4 px-3 sm:px-4 pb-4 rounded-b-lg">
-                          <h3 className="text-lg font-semibold mb-4 text-gray-900">
+                        <div className="mt-4 border-t pt-4 bg-gray-50 dark:bg-gray-800 -mx-3 sm:-mx-4 px-3 sm:px-4 pb-4 rounded-b-lg">
+                          <h3 className="text-lg font-semibold mb-4 text-gray-900 dark:text-gray-200">
                             Chọn loại vé phù hợp
                           </h3>
                           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

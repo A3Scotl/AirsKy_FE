@@ -46,10 +46,10 @@ export function DestinationSection() {
   ];
 
   return (
-    <section className="py-16 bg-[#f9fafb]">
+    <section className="py-16 bg-[#f9fafb] dark:bg-gray-800">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-12">
-          <h2 className="text-3xl font-bold text-[#111827] mb-4">
+          <h2 className="text-3xl font-bold text-[#111827] dark:text-white mb-4">
             Những điểm đến quốc tế phổ biến
           </h2>
           <p className="text-lg text-[#6b7280] max-w-2xl mx-auto">
@@ -87,7 +87,7 @@ export function DestinationSection() {
                   </div>
                 </div>
                 <CardContent className="p-4">
-                  <h3 className="text-xl font-semibold text-[#111827] mb-1">
+                  <h3 className="text-xl font-semibold text-[#111827] dark:text-white mb-1">
                     {destination.city}
                   </h3>
                   <p className="text-[#6b7280]">{destination.country}</p>

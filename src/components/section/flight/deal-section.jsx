@@ -84,7 +84,7 @@ export default function DealsSection() {
     <section className="pb-8 pt-28 max-w-7xl mx-auto px-4 sm:px-20 lg:px-20">
       <div className="mt-24">
         <div className="flex justify-between items-center mb-2">
-          <h2 className="text-3xl font-bold text-gray-800 mb-2">
+          <h2 className="text-3xl font-bold text-gray-800 dark:text-white mb-2">
             Ưu Đãi Chuyến Bay Hot
           </h2>
           <a className="text-gray-600 hover:text-blue-600 cursor-pointer">
@@ -119,15 +119,15 @@ export default function DealsSection() {
               640: { slidesPerView: 2 },
               1024: { slidesPerView: 3 },
             }}
-            className="px-12"
+            className="px-12 bg-none"
           >
             {deals.map((deal) => (
               <SwiperSlide key={deal.id}>
-                <div className="relative shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 overflow-visible ticket-card">
-                  <div className="bg-white rounded-t-[2rem] rounded-b-[2rem] overflow-hidden relative">
+                <div className="relative shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 overflow-visible ticket-card ">
+                  <div className="bg-white dark:bg-gray-300 rounded-t-[2rem] rounded-b-[2rem] overflow-hidden relative">
                     {/* Side notches */}
-                    <div className="absolute left-0 top-1/2 w-6 h-6 bg-gray-50 rounded-full transform -translate-x-3 -translate-y-1/2 z-20"></div>
-                    <div className="absolute right-0 top-1/2 w-6 h-6 bg-gray-50 rounded-full transform translate-x-3 -translate-y-1/2 z-20"></div>
+                    <div className="absolute left-0 top-1/2 w-6 h-6 bg-gray-50 dark:bg-gray-700 rounded-full transform -translate-x-3 -translate-y-1/2 z-20"></div>
+                    <div className="absolute right-0 top-1/2 w-6 h-6  dark:bg-gray-700 rounded-full transform translate-x-3 -translate-y-1/2 z-20"></div>
 
                     {/* Discount Badge */}
                     <div className="absolute top-4 left-4 z-30">

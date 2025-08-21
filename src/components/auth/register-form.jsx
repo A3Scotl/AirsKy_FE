@@ -131,7 +131,7 @@ export default function RegisterForm({ setCurrentView }) {
 
   const renderFormField = (field, type = "text") => (
     <div key={field}>
-      <label className="block text-sm font-medium text-gray-700 mb-2">
+      <label className="block text-sm font-medium text-gray-700 mb-2 dark:text-gray-300">
         {formLabels[field]}
       </label>
       {field === "password" || field === "confirmPassword" ? (
@@ -139,7 +139,7 @@ export default function RegisterForm({ setCurrentView }) {
           <Input
             type={showPassword[field] ? "text" : "password"}
             placeholder={formPlaceholders[field]}
-            className="w-full pr-10"
+            className="w-full pr-10 dark:text-gray-900"
             value={formData[field]}
             onChange={handleInputChange(field)}
             required
@@ -160,7 +160,7 @@ export default function RegisterForm({ setCurrentView }) {
         <Input
           type={type}
           placeholder={formPlaceholders[field]}
-          className="w-full"
+          className="w-full dark:text-gray-900"
           value={formData[field]}
           onChange={handleInputChange(field)}
           required
@@ -170,14 +170,14 @@ export default function RegisterForm({ setCurrentView }) {
   );
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-700">
       {/* Header */}
-      <div className="bg-white shadow-sm border-b border-gray-200">
+      <div className="bg-white shadow-sm border-b border-gray-200 dark:bg-gray-600">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <button
               onClick={() => window.history.back()}
-              className="flex items-center text-gray-600 hover:text-gray-900 transition-colors"
+              className="flex items-center text-gray-600 dark:text-gray-300 hover:text-gray-900 transition-colors"
             >
               <ArrowLeft className="w-5 h-5 mr-2" />
               Quay lại
@@ -194,10 +194,10 @@ export default function RegisterForm({ setCurrentView }) {
           <Card className="shadow-lg border-0">
             <CardContent className="p-8">
               <div className="text-center mb-8">
-                <h2 className="text-2xl font-bold text-gray-900 mb-2">
+                <h2 className="text-2xl font-bold text-gray-900 mb-2 dark:text-white">
                   {step === 1 ? "Tạo tài khoản" : "Xác minh tài khoản"}
                 </h2>
-                <p className="text-gray-600">
+                <p className="text-gray-600 dark:text-gray-300">
                   {step === 1
                     ? "Tham gia AirSky và bắt đầu hành trình của bạn"
                     : "Nhập mã OTP để xác minh tài khoản"}

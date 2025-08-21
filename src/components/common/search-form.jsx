@@ -41,17 +41,21 @@ const TRAVEL_CLASSES = [
 // Date Picker Component
 function DatePicker({ date, onSelect, placeholder, disabled = false }) {
   return (
-    <Popover>
+    <Popover className="">
       <PopoverTrigger asChild>
         <Button
           variant="outline"
-          className={`w-full justify-start text-left font-normal ${
+          className={`w-full justify-start text-left font-normal dark:bg-gray-800 ${
             !date && "text-muted-foreground"
           } ${disabled && "cursor-not-allowed opacity-50"}`}
           disabled={disabled}
         >
-          <CalendarIcon className="mr-2 h-4 w-4" />
-          {date ? format(date, "dd/MM/yyyy") : <span>{placeholder}</span>}
+          <CalendarIcon className="mr-2 h-4 w-4 dark:text-white" />
+          {date ? (
+            format(date, "dd/MM/yyyy")
+          ) : (
+            <span className="dark:text-white">{placeholder}</span>
+          )}
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-auto p-0" align="start">
@@ -114,7 +118,7 @@ export function SearchForm() {
   } - ${travelClass}`;
 
   return (
-    <Card className="bg-white/95 backdrop-blur-sm p-6 max-w-5xl mx-auto">
+    <Card className="bg-white/95 backdrop-blur-sm dark:bg-gray-400/100 p-6 max-w-5xl mx-auto">
       <div className="space-y-6">
         {/* Tabs + Passenger Selector */}
         <div className="flex flex-col sm:flex-row sm:items-center gap-4">
@@ -139,7 +143,7 @@ export function SearchForm() {
             <Button
               variant="outline"
               onClick={() => setPassengerPopup(!passengerPopup)}
-              className="min-w-[220px] w-full sm:w-auto justify-between"
+              className="min-w-[220px] w-full sm:w-auto justify-between dark:bg-gray-800"
             >
               {passengerSummary}
               <svg
@@ -165,7 +169,7 @@ export function SearchForm() {
                     className="flex justify-between items-center py-2"
                   >
                     <div>
-                      <div className="font-medium">{item.label}</div>
+                      <div className="font-medium dark:text-gray-500">{item.label}</div>
                       <div className="text-sm text-gray-500">{item.sub}</div>
                     </div>
                     <div className="flex items-center space-x-2">
@@ -175,10 +179,11 @@ export function SearchForm() {
                         onClick={() =>
                           updatePassenger(item.key, passengers[item.key] - 1)
                         }
+                        className="dark:text-gray-500 dark:border-gray-600"
                       >
                         –
                       </Button>
-                      <span className="w-6 text-center">
+                      <span className="w-6 text-center dark:text-gray-500 dark:border-gray-600">
                         {passengers[item.key]}
                       </span>
                       <Button
@@ -187,6 +192,7 @@ export function SearchForm() {
                         onClick={() =>
                           updatePassenger(item.key, passengers[item.key] + 1)
                         }
+                        className="dark:text-gray-500 dark:border-gray-600"
                       >
                         +
                       </Button>
@@ -202,10 +208,10 @@ export function SearchForm() {
                   <select
                     value={travelClass}
                     onChange={(e) => setTravelClass(e.target.value)}
-                    className="w-full border border-gray-300 rounded-md p-2"
+                    className="w-full border border-gray-300 dark:text-gray-500 rounded-md p-2"
                   >
                     {TRAVEL_CLASSES.map((cls) => (
-                      <option key={cls} value={cls}>
+                      <option key={cls} value={cls} className="dark:text-gray-500">
                         {cls}
                       </option>
                     ))}

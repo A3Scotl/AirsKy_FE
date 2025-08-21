@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Outlet } from "react-router-dom";
 import AdminSidebar from "@/components/admin/sidebar";
 import AdminHeader from "@/components/admin/header";
+import ScrollToTop from "@/components/common/scroll-to-top";
 
 const AdminLayout = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -25,6 +26,7 @@ const AdminLayout = () => {
           </div>
         </main>
       </div>
+      <ScrollToTop />
     </div>
   );
 };

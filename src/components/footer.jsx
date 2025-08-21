@@ -85,7 +85,7 @@ export function Footer() {
                 alt="AirSky"
               />
               <h2 className="text-4xl font-bold bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">
-                AirSky
+                AirsKy
               </h2>
             </div>
             <p className="text-xl text-gray-300 max-w-3xl mx-auto">

@@ -79,7 +79,7 @@ const Payment = () => {
   return (
     <div className="max-w-7xl mx-auto py-8">
       <h2 className="text-2xl font-bold mb-4">Xem Lại & Thanh Toán</h2>
-      <p className="text-gray-600 mb-6">
+      <p className="text-gray-600 mb-6 dark:text-gray-300">
         Vui lòng xem lại thông tin đặt vé và hoàn tất thanh toán
       </p>
 

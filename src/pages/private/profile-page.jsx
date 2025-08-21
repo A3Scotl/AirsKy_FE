@@ -46,30 +46,28 @@ import {
   Plane,
 } from "lucide-react";
 import { toast } from "sonner";
+import { authApi } from "@/apis/auth-api";
+import { useAuth } from "@/contexts/auth-context";
 
 const AdminProfilePage = () => {
+  const { user } = useAuth();
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [loadingProfile, setLoadingProfile] = useState(true);
   const [profileData, setProfileData] = useState({
-    id: "ADM001",
-    firstName: "John",
-    lastName: "Administrator",
-    email: "admin@airsky.com",
-    phone: "+1 (555) 123-4567",
-    address: "123 Airport Boulevard, Aviation City, AC 12345",
-    role: "Super Administrator",
-    joinDate: "2023-01-15",
-    lastLogin: "2025-08-16 09:30:00",
+    id: "",
+    firstName: "",
+    lastName: "",
+    email: "",
+    phone: "",
+    address: "",
+    role: "",
+    joinDate: "",
+    lastLogin: "",
     status: "Active",
-    permissions: [
-      "Full Access",
-      "User Management",
-      "Flight Operations",
-      "Financial Reports",
-      "System Configuration",
-    ],
+    permissions: [],
     profileImage: null,
   });
 
@@ -102,17 +100,70 @@ const AdminProfilePage = () => {
     handledTickets: 89,
   });
 
+  // Fetch user profile data
+  useEffect(() => {
+    const fetchProfileData = async () => {
+      if (!user) {
+        setLoadingProfile(false);
+        return;
+      }
+
+      try {
+        setLoadingProfile(true);
+        const response = await authApi.me();
+
+        if (response.success && response.data) {
+          const userData = response.data;
+          setProfileData({
+            id: userData.id || "",
+            firstName: userData.firstName || "",
+            lastName: userData.lastName || "",
+            email: userData.email || user.email || "",
+            phone: userData.phone || "",
+            address: userData.address || "",
+            role: userData.role || user.role || "",
+            joinDate: userData.createdAt
+              ? new Date(userData.createdAt).toISOString().split("T")[0]
+              : "",
+            lastLogin: userData.lastLogin || "",
+            status: userData.status || "Active",
+            permissions: userData.permissions || [],
+            profileImage: userData.profileImage || null,
+          });
+        } else {
+          toast.error("Không thể tải thông tin profile");
+        }
+      } catch (error) {
+        console.error("Error fetching profile:", error);
+        toast.error("Lỗi khi tải thông tin profile");
+      } finally {
+        setLoadingProfile(false);
+      }
+    };
+
+    fetchProfileData();
+  }, [user]);
+
   const handleProfileUpdate = async (e) => {
     e.preventDefault();
     setIsLoading(true);
 
     try {
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      const response = await authApi.updateProfile({
+        firstName: profileData.firstName,
+        lastName: profileData.lastName,
+        phone: profileData.phone,
+        address: profileData.address,
+      });
 
-      toast.success("Profile updated successfully!");
+      if (response.success) {
+        toast.success("Cập nhật thông tin thành công!");
+      } else {
+        toast.error(response.message || "Cập nhật thất bại!");
+      }
     } catch (error) {
-      toast.error("Failed to update profile. Please try again.");
+      console.error("Error updating profile:", error);
+      toast.error("Cập nhật thất bại. Vui lòng thử lại.");
     } finally {
       setIsLoading(false);
     }
@@ -122,30 +173,37 @@ const AdminProfilePage = () => {
     e.preventDefault();
 
     if (passwordData.newPassword !== passwordData.confirmPassword) {
-      toast.error("New passwords do not match!");
+      toast.error("Mật khẩu mới không khớp!");
       return;
     }
 
     if (passwordData.newPassword.length < 8) {
-      toast.error("New password must be at least 8 characters long!");
+      toast.error("Mật khẩu mới phải có ít nhất 8 ký tự!");
       return;
     }
 
     setIsLoading(true);
 
     try {
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-
-      setPasswordData({
-        currentPassword: "",
-        newPassword: "",
-        confirmPassword: "",
+      const response = await authApi.changePassword({
+        email: profileData.email,
+        oldPassword: passwordData.currentPassword,
+        newPassword: passwordData.newPassword,
       });
 
-      toast.success("Password updated successfully!");
+      if (response.success) {
+        setPasswordData({
+          currentPassword: "",
+          newPassword: "",
+          confirmPassword: "",
+        });
+        toast.success("Đổi mật khẩu thành công!");
+      } else {
+        toast.error(response.message || "Đổi mật khẩu thất bại!");
+      }
     } catch (error) {
-      toast.error("Failed to update password. Please try again.");
+      console.error("Error changing password:", error);
+      toast.error("Đổi mật khẩu thất bại. Vui lòng thử lại.");
     } finally {
       setIsLoading(false);
     }
@@ -189,6 +247,22 @@ const AdminProfilePage = () => {
     }
   };
 
+  // Show loading state while fetching profile data
+  if (loadingProfile) {
+    return (
+      <div className="min-h-screen bg-gray-50 p-6">
+        <div className="max-w-6xl mx-auto space-y-6">
+          <div className="flex items-center justify-center min-h-96">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+              <p className="text-gray-600">Đang tải thông tin profile...</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 p-6">
       <div className="max-w-6xl mx-auto space-y-6">
@@ -214,8 +288,8 @@ const AdminProfilePage = () => {
                 <Avatar className="h-20 w-20">
                   <AvatarImage src={profileData.profileImage} alt="Profile" />
                   <AvatarFallback className="text-xl font-bold bg-blue-100">
-                    {profileData.firstName[0]}
-                    {profileData.lastName[0]}
+                    {(profileData.firstName?.[0] || "").toUpperCase()}
+                    {(profileData.lastName?.[0] || "").toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
                 <label

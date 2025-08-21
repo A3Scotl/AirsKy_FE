@@ -6,9 +6,12 @@ import {
   useLocation,
 } from "react-router-dom";
 import { lazy, Suspense } from "react";
+import { HelmetProvider } from "react-helmet-async";
 import { useScrollToTop } from "@/hooks/use-scroll-to-top";
 import { AnimatePresence } from "framer-motion";
 import { AuthProvider, useAuth } from "@/contexts/auth-context";
+import { ThemeProvider } from "@/contexts/theme-context";
+import { TitleSync } from "@/components/common/seo";
 import { Toaster } from "sonner";
 import LoadingPage from "@/pages/loading/loading-page";
 import PageTransition from "@/components/common/page-transition";
@@ -28,6 +31,14 @@ const FlightDetail = lazy(() =>
   import("@/pages/public/detail/flight-detail-page")
 );
 const ProfilePage = lazy(() => import("@/pages/public/profile-page"));
+const DealsPage = lazy(() => import("@/pages/public/deals-page"));
+const DealDetailPage = lazy(() =>
+  import("@/pages/public/detail/deal-detail-page")
+);
+const BlogPage = lazy(() => import("@/pages/public/blog-page"));
+const BlogDetailPage = lazy(() =>
+  import("@/pages/public/detail/blog-detail-page")
+);
 
 const NotFoundPage = lazy(() =>
   import("@/pages/public/not-found/not-found-page")
@@ -51,114 +62,161 @@ function AppRoutes() {
   if (loading) return <LoadingPage />;
 
   return (
-    <Suspense fallback={<LoadingPage />}>
-      <AnimatePresence mode="wait">
-        <Routes location={location} key={location.pathname}>
-          <Route path="/" element={<PublicLayout />}>
-            <Route
-              index
-              element={
-                <PageTransition>
-                  <HomePage />
-                </PageTransition>
-              }
-            />
-            <Route
-              path="/flights"
-              element={
-                <PageTransition>
-                  <FlightPage />
-                </PageTransition>
-              }
-            />
+    <>
+      <TitleSync />
+      <Suspense fallback={<LoadingPage />}>
+        <AnimatePresence mode="wait">
+          <Routes location={location} key={location.pathname}>
+            <Route path="/" element={<PublicLayout />}>
+              <Route
+                index
+                element={
+                  <PageTransition>
+                    <HomePage />
+                  </PageTransition>
+                }
+              />
+              <Route
+                path="/flights"
+                element={
+                  <PageTransition>
+                    <FlightPage />
+                  </PageTransition>
+                }
+              />
+
+              <Route
+                path="/booking-stepper"
+                element={
+                  <PageTransition>
+                    <FlightBookingStepper />
+                  </PageTransition>
+                }
+              />
+              <Route
+                path="/confirm-booking"
+                element={
+                  <PageTransition>
+                    <ConfirmBookingPage />
+                  </PageTransition>
+                }
+              />
+
+              <Route
+                path="/detail"
+                element={
+                  <PageTransition>
+                    <FlightDetail />
+                  </PageTransition>
+                }
+              />
+              <Route
+                path="/profile"
+                element={
+                  <PageTransition>
+                    <ProfilePage />
+                  </PageTransition>
+                }
+              />
+              <Route
+                path="/deals"
+                element={
+                  <PageTransition>
+                    <DealsPage />
+                  </PageTransition>
+                }
+              />
+              <Route
+                path="/deals/:dealId"
+                element={
+                  <PageTransition>
+                    <DealDetailPage />
+                  </PageTransition>
+                }
+              />
+              <Route
+                path="/blog"
+                element={
+                  <PageTransition>
+                    <BlogPage />
+                  </PageTransition>
+                }
+              />
+              <Route
+                path="/blog/:id"
+                element={
+                  <PageTransition>
+                    <BlogDetailPage />
+                  </PageTransition>
+                }
+              />
+            </Route>
+
+            <Route path="/auth" element={<AuthLayout />}>
+              <Route
+                index
+                element={
+                  <PageTransition>
+                    <AuthPage />
+                  </PageTransition>
+                }
+              />
+            </Route>
 
             <Route
-              path="/booking-stepper"
+              path="/admin"
               element={
-                <PageTransition>
-                  <FlightBookingStepper />
-                </PageTransition>
+                <AdminRoute>
+                  <PrivateLayout />
+                </AdminRoute>
               }
-            />
-            <Route
-              path="/confirm-booking"
-              element={
-                <PageTransition>
-                  <ConfirmBookingPage />
-                </PageTransition>
-              }
-            />
+            >
+              <Route
+                index
+                element={<Navigate to="/admin/dashboard" replace />}
+              />
+              <Route path="dashboard" element={<AdminDashboard />} />
+              <Route path="bookings" element={<AdminBooking />} />
+              <Route path="flights" element={<AdminFlights />} />
+              <Route path="users" element={<AdminUsers />} />
+              <Route path="payments" element={<AdminPayments />} />
+              <Route path="reports" element={<AdminReports />} />
+              <Route path="profile" element={<AdminProfile />} />
+            </Route>
 
+            {/* 404 Route - Must be last */}
             <Route
-              path="/detail"
+              path="*"
               element={
                 <PageTransition>
-                  <FlightDetail />
+                  <NotFoundPage />
                 </PageTransition>
               }
             />
-            <Route
-              path="/profile"
-              element={
-                <PageTransition>
-                  <ProfilePage />
-                </PageTransition>
-              }
-            />
-          </Route>
-
-          <Route path="/auth" element={<AuthLayout />}>
-            <Route
-              index
-              element={
-                <PageTransition>
-                  <AuthPage />
-                </PageTransition>
-              }
-            />
-          </Route>
-
-          <Route
-            path="/admin"
-            element={
-              <AdminRoute>
-                <PrivateLayout />
-              </AdminRoute>
-            }
-          >
-            <Route index element={<Navigate to="/admin/dashboard" replace />} />
-            <Route path="dashboard" element={<AdminDashboard />} />
-            <Route path="bookings" element={<AdminBooking />} />
-            <Route path="flights" element={<AdminFlights />} />
-            <Route path="users" element={<AdminUsers />} />
-            <Route path="payments" element={<AdminPayments />} />
-            <Route path="reports" element={<AdminReports />} />
-            <Route path="profile" element={<AdminProfile />} />
-          </Route>
-
-          {/* 404 Route - Must be last */}
-          <Route
-            path="*"
-            element={
-              <PageTransition>
-                <NotFoundPage />
-              </PageTransition>
-            }
-          />
-        </Routes>
-      </AnimatePresence>
-    </Suspense>
+          </Routes>
+        </AnimatePresence>
+      </Suspense>
+    </>
   );
 }
 
 function App() {
   return (
-    <Router>
-      <AuthProvider>
-        <Toaster position="top-right" richColors closeButton duration={3000} />
-        <AppRoutes />
-      </AuthProvider>
-    </Router>
+    <HelmetProvider>
+      <Router>
+        <ThemeProvider>
+          <AuthProvider>
+            <Toaster
+              position="top-right"
+              richColors
+              closeButton
+              duration={3000}
+            />
+            <AppRoutes />
+          </AuthProvider>
+        </ThemeProvider>
+      </Router>
+    </HelmetProvider>
   );
 }
 

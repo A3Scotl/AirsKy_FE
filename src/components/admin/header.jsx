@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Menu, Bell, User, LogOut, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,11 +12,30 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
+import { useAuth } from "@/contexts/auth-context";
+
+
 const AdminHeader = ({ setSidebarOpen }) => {
+  const navigate = useNavigate();
+  const { user, logout } = useAuth();
+
+  const getUserInitials = () => {
+    if (user?.fullName) {
+      return user.fullName
+        .split(" ")
+        .map((name) => name[0])
+        .join("")
+        .toUpperCase();
+    }
+    if (user?.email) {
+      return user.email.substring(0, 2).toUpperCase();
+    }
+    return "U";
+  };
 
   const handleLogout = () => {
-    // Handle logout logic here
-    console.log("Logging out...");
+    logout();
+    Navigate("/auth");
   };
 
   return (
@@ -32,14 +51,10 @@ const AdminHeader = ({ setSidebarOpen }) => {
           >
             <Menu className="h-5 w-5" />
           </Button>
-
-         
         </div>
 
         {/* Right side - Notifications and user menu */}
         <div className="flex items-center space-x-4">
-         
-
           {/* Notifications */}
           <div className="relative">
             <Button variant="ghost" size="sm">
@@ -58,27 +73,23 @@ const AdminHeader = ({ setSidebarOpen }) => {
                 variant="ghost"
                 className="flex items-center space-x-2 text-sm"
               >
-                <div className="h-8 w-8 rounded-full bg-blue-600 flex items-center justify-center">
-                  <span className="text-sm font-medium text-white">JA</span>
-                </div>
-                <span className="hidden md:block font-medium text-gray-700">
-                  John Administrator
-                </span>
+                {user && (
+                  <div className="flex items-center space-x-2">
+                    <div className="h-8 w-8 rounded-full bg-blue-600 flex items-center justify-center">
+                      <span className="text-sm font-medium text-white">
+                        {getUserInitials()}
+                      </span>
+                    </div>
+                    <span className="hidden md:block font-medium text-gray-700">
+                      {user.email}
+                    </span>
+                  </div>
+                )}
+
                 <ChevronDown className="h-4 w-4 text-gray-400" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-56">
-              <DropdownMenuLabel className="font-normal">
-                <div className="flex flex-col space-y-1">
-                  <p className="text-sm font-medium leading-none">
-                    John Administrator
-                  </p>
-                  <p className="text-xs leading-none text-gray-500">
-                    admin@airsky.com
-                  </p>
-                </div>
-              </DropdownMenuLabel>
-              <DropdownMenuSeparator />
               <DropdownMenuItem asChild>
                 <Link to="/admin/profile" className="flex items-center">
                   <User className="mr-2 h-4 w-4" />

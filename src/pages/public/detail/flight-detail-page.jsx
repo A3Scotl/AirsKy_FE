@@ -130,19 +130,19 @@ const FlightDetail = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-700">
       {/* Hero Section */}
       <div
-        className="h-80 bg-cover bg-center relative"
+        className="h-80 bg-cover bg-center relative pt-12"
         style={{
           backgroundImage:
             "url('https://images.unsplash.com/photo-1436491865332-7a61a109cc05?ixlib=rb-4.0.3&auto=format&fit=crop&w=2074&q=80')",
         }}
       >
-        <div className="absolute inset-0 bg-blue-500 bg-opacity-50"></div>
+        <div className="absolute inset-0 bg-black/80 "></div>
         <div className="relative z-10 h-full flex items-center justify-center text-white">
           <div className="text-center max-w-4xl mx-auto px-4">
-            <div className="flex items-center justify-center gap-4 mb-4">
+            <div className="flex items-center justify-center flex-wrap gap-4 mb-4">
               <img
                 src={flightInfo.airlineLogo || defaultFlightInfo.airlineLogo}
                 alt={flightInfo.airline}
@@ -223,10 +223,10 @@ const FlightDetail = () => {
 
         {/* Fare Selection Section */}
         <div className="mb-8">
-          <h2 className="text-3xl font-bold text-gray-900 mb-2">
+          <h2 className="text-3xl font-bold text-gray-900 mb-2 dark:text-white">
             Chọn loại vé phù hợp
           </h2>
-          <p className="text-gray-600 mb-6">
+          <p className="text-gray-600 dark:text-gray-300 mb-6">
             Lựa chọn hạng ghế phù hợp với nhu cầu du lịch của bạn
           </p>
 
@@ -236,11 +236,11 @@ const FlightDetail = () => {
                 key={fare.id}
                 className={`border rounded-lg cursor-pointer transition-all duration-200 ${
                   selectedFare === fare.id
-                    ? "ring-2 ring-blue-500 bg-blue-50"
+                    ? "ring-2 ring-blue-500 bg-blue-50 dark:bg-gray-300"
                     : "hover:border-blue-300 hover:shadow-md"
                 } ${
                   fare.popular
-                    ? "border-blue-200 bg-blue-50 relative"
+                    ? "border-blue-200 bg-blue-50 relative dark:bg-gray-100"
                     : "border-gray-200"
                 }`}
                 onClick={() => handleSelectFare(fare.id)}
@@ -289,7 +289,9 @@ const FlightDetail = () => {
                         </span>
                         <span
                           className={
-                            feature.included ? "text-gray-700" : "text-gray-500"
+                            feature.included
+                              ? "text-gray-700 dark:text-gray-900"
+                              : "text-gray-500"
                           }
                         >
                           {feature.text}
@@ -361,9 +363,9 @@ const FlightDetail = () => {
         </div>
 
         {/* Flight Information Tabs */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 dark:bg-gray-600">
           <Tabs defaultValue="details" className="w-full">
-            <TabsList className="grid w-full grid-cols-4 bg-gray-50 rounded-t-lg border-b">
+            <TabsList className="grid w-full grid-cols-4 bg-gray-50 dark:bg-gray-300 rounded-t-lg border-b">
               <TabsTrigger value="details" className="text-sm">
                 Chi tiết chuyến bay
               </TabsTrigger>
@@ -386,7 +388,7 @@ const FlightDetail = () => {
               <TabsContent value="details" className="mt-0">
                 <div className="space-y-6">
                   <div>
-                    <h3 className="text-lg font-semibold mb-4 text-gray-900">
+                    <h3 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white">
                       Lịch trình chuyến bay
                     </h3>
                     <div className="relative">
@@ -398,7 +400,7 @@ const FlightDetail = () => {
                         </div>
                         <div className="flex-grow">
                           <div className="flex items-center justify-between mb-2">
-                            <h4 className="text-lg font-semibold text-gray-900">
+                            <h4 className="text-lg font-semibold text-gray-900 dark:text-white">
                               Khởi hành
                             </h4>
                             <Badge
@@ -408,16 +410,16 @@ const FlightDetail = () => {
                               Đúng giờ
                             </Badge>
                           </div>
-                          <p className="text-2xl font-bold text-gray-900">
+                          <p className="text-2xl font-bold text-gray-900 dark:text-gray-300">
                             {flightInfo.departure.time}
                           </p>
-                          <p className="text-gray-600">
+                          <p className="text-gray-600 dark:text-gray-400">
                             {flightInfo.departure.date}
                           </p>
-                          <p className="text-lg font-medium text-gray-800 mt-1">
+                          <p className="text-lg font-medium text-gray-800 mt-1 dark:text-gray-300">
                             {flightInfo.departure.city}
                           </p>
-                          <p className="text-sm text-gray-500">
+                          <p className="text-sm text-gray-500 dark:text-gray-400">
                             Terminal 4, Cổng A12
                           </p>
                         </div>
@@ -452,7 +454,7 @@ const FlightDetail = () => {
                         </div>
                         <div className="flex-grow">
                           <div className="flex items-center justify-between mb-2">
-                            <h4 className="text-lg font-semibold text-gray-900">
+                            <h4 className="text-lg font-semibold text-gray-900 dark:text-white">
                               Đến nơi
                             </h4>
                             <Badge
@@ -462,16 +464,16 @@ const FlightDetail = () => {
                               Đúng giờ
                             </Badge>
                           </div>
-                          <p className="text-2xl font-bold text-gray-900">
+                          <p className="text-2xl font-bold text-gray-900 dark:text-gray-300">
                             {flightInfo.arrival.time}
                           </p>
-                          <p className="text-gray-600">
+                          <p className="text-gray-600 dark:text-gray-400">
                             {flightInfo.arrival.date}
                           </p>
-                          <p className="text-lg font-medium text-gray-800 mt-1">
+                          <p className="text-lg font-medium text-gray-800 mt-1 dark:text-gray-300">
                             {flightInfo.arrival.city}
                           </p>
-                          <p className="text-sm text-gray-500">
+                          <p className="text-sm text-gray-500 dark:text-gray-400">
                             Terminal 7, Cổng B15
                           </p>
                         </div>
@@ -481,28 +483,36 @@ const FlightDetail = () => {
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-6 border-t border-gray-200">
                     <div>
-                      <h4 className="font-semibold text-gray-900 mb-3">
+                      <h4 className="font-semibold text-gray-900 dark:text-white mb-3">
                         Thông tin chuyến bay
                       </h4>
                       <div className="space-y-2 text-sm">
                         <div className="flex justify-between">
-                          <span className="text-gray-600">Số hiệu:</span>
+                          <span className="text-gray-600 dark:text-white">
+                            Số hiệu:
+                          </span>
                           <span className="font-medium">
                             {flightInfo.flightNumber}
                           </span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-gray-600">Loại máy bay:</span>
+                          <span className="text-gray-600 dark:text-white">
+                            Loại máy bay:
+                          </span>
                           <span className="font-medium">
                             {flightInfo.aircraft}
                           </span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-gray-600">Khoảng cách:</span>
+                          <span className="text-gray-600 dark:text-white">
+                            Khoảng cách:
+                          </span>
                           <span className="font-medium">2,475 dặm</span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-gray-600">Vận hành bởi:</span>
+                          <span className="text-gray-600 dark:text-white">
+                            Vận hành bởi:
+                          </span>
                           <span className="font-medium">
                             {flightInfo.airline}
                           </span>
@@ -511,28 +521,32 @@ const FlightDetail = () => {
                     </div>
 
                     <div>
-                      <h4 className="font-semibold text-gray-900 mb-3">
+                      <h4 className="font-semibold text-gray-900 dark:text-white mb-3">
                         Thông tin làm thủ tục
                       </h4>
                       <div className="space-y-2 text-sm">
                         <div className="flex justify-between">
-                          <span className="text-gray-600">
+                          <span className="text-gray-600 dark:text-white">
                             Check-in online:
                           </span>
                           <span className="font-medium">24h trước giờ bay</span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-gray-600">
+                          <span className="text-gray-600 dark:text-white">
                             Check-in sân bay:
                           </span>
                           <span className="font-medium">2h trước giờ bay</span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-gray-600">Lên máy bay:</span>
+                          <span className="text-gray-600 dark:text-white">
+                            Lên máy bay:
+                          </span>
                           <span className="font-medium">30p trước giờ bay</span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-gray-600">Đóng cổng:</span>
+                          <span className="text-gray-600 dark:text-white ">
+                            Đóng cổng:
+                          </span>
                           <span className="font-medium">10p trước giờ bay</span>
                         </div>
                       </div>
@@ -544,8 +558,7 @@ const FlightDetail = () => {
               <TabsContent value="route-map" className="mt-0">
                 <div className="space-y-6">
                   <div>
-                    <h3 className="text-lg font-semibold mb-4 text-gray-900 flex items-center">
-                      <Map className="w-5 h-5 text-blue-600 mr-2" />
+                    <h3 className="text-lg font-semibold mb-4 text-gray-900 flex items-center dark:text-white">
                       Bản đồ tuyến bay trực quan
                     </h3>
                     <p className="text-gray-600 mb-6">
@@ -652,7 +665,7 @@ const FlightDetail = () => {
               <TabsContent value="policies" className="mt-0">
                 <div className="space-y-6">
                   <div>
-                    <h3 className="text-lg font-semibold mb-4 text-gray-900">
+                    <h3 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white">
                       Chính sách hành lý
                     </h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -661,7 +674,7 @@ const FlightDetail = () => {
                           <Package className="w-5 h-5 text-blue-600 mr-2" />
                           <h4 className="font-semibold">Hành lý xách tay</h4>
                         </div>
-                        <ul className="text-sm text-gray-600 space-y-1">
+                        <ul className="text-sm text-gray-600 dark:text-gray-300 space-y-1">
                           <li>• Trọng lượng tối đa: 7kg</li>
                           <li>• Kích thước tối đa: 56 x 36 x 23 cm</li>
                           <li>• 1 kiện bao gồm trong tất cả vé</li>
@@ -674,7 +687,7 @@ const FlightDetail = () => {
                           <Luggage className="w-5 h-5 text-blue-600 mr-2" />
                           <h4 className="font-semibold">Hành lý ký gửi</h4>
                         </div>
-                        <ul className="text-sm text-gray-600 space-y-1">
+                        <ul className="text-sm text-gray-600 dark:text-gray-300 space-y-1">
                           <li>• Phổ thông: 1 x 23kg bao gồm</li>
                           <li>• Thương gia: 2 x 32kg bao gồm</li>
                           <li>• Kích thước tối đa: 158cm tổng</li>
@@ -685,7 +698,7 @@ const FlightDetail = () => {
                   </div>
 
                   <div>
-                    <h3 className="text-lg font-semibold mb-4 text-gray-900">
+                    <h3 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white">
                       Hủy & Thay đổi
                     </h3>
                     <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
@@ -704,7 +717,7 @@ const FlightDetail = () => {
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                       <div className="border rounded-lg p-4">
                         <h4 className="font-semibold mb-2">Phổ thông cơ bản</h4>
-                        <ul className="text-sm text-gray-600 space-y-1">
+                        <ul className="text-sm text-gray-600 dark:text-gray-300 space-y-1">
                           <li>• Không được thay đổi</li>
                           <li>• Không hoàn tiền</li>
                           <li>• Không chuyển nhượng</li>
@@ -715,7 +728,7 @@ const FlightDetail = () => {
                         <h4 className="font-semibold mb-2">
                           Phổ thông tiêu chuẩn
                         </h4>
-                        <ul className="text-sm text-gray-600 space-y-1">
+                        <ul className="text-sm text-gray-600 dark:text-gray-300 space-y-1">
                           <li>
                             • Thay đổi: phí 3.600.000₫ + chênh lệch giá vé
                           </li>
@@ -726,7 +739,7 @@ const FlightDetail = () => {
 
                       <div className="border rounded-lg p-4">
                         <h4 className="font-semibold mb-2">Thương gia</h4>
-                        <ul className="text-sm text-gray-600 space-y-1">
+                        <ul className="text-sm text-gray-600 dark:text-gray-300 space-y-1">
                           <li>• Thay đổi miễn phí (áp dụng chênh lệch giá)</li>
                           <li>• Hủy miễn phí đến 2h trước</li>
                           <li>• Hoàn tiền đầy đủ trong 24h</li>
@@ -740,7 +753,7 @@ const FlightDetail = () => {
               <TabsContent value="amenities" className="mt-0">
                 <div className="space-y-6">
                   <div>
-                    <h3 className="text-lg font-semibold mb-4 text-gray-900">
+                    <h3 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white">
                       Dịch vụ trên chuyến bay
                     </h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -784,7 +797,7 @@ const FlightDetail = () => {
                             <amenity.icon className="w-6 h-6 text-blue-600 mr-3" />
                             <h4 className="font-semibold">{amenity.title}</h4>
                           </div>
-                          <p className="text-sm text-gray-600">
+                          <p className="text-sm text-gray-600 dark:text-gray-300">
                             {amenity.desc}
                           </p>
                         </div>
@@ -793,13 +806,13 @@ const FlightDetail = () => {
                   </div>
 
                   <div>
-                    <h3 className="text-lg font-semibold mb-4 text-gray-900">
+                    <h3 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white">
                       Cấu hình ghế ngồi
                     </h3>
                     <div className="bg-gray-50 rounded-lg p-6">
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
-                          <h4 className="font-semibold mb-3">Hạng phổ thông</h4>
+                          <h4 className="font-semibold mb-3 dark:text-gray-900">Hạng phổ thông</h4>
                           <ul className="text-sm text-gray-600 space-y-1">
                             <li>• Khoảng cách ghế: 31-32 inch</li>
                             <li>• Độ rộng ghế: 17-18 inch</li>
@@ -809,7 +822,7 @@ const FlightDetail = () => {
                         </div>
 
                         <div>
-                          <h4 className="font-semibold mb-3">
+                          <h4 className="font-semibold mb-3 dark:text-gray-900">
                             Hạng thương gia
                           </h4>
                           <ul className="text-sm text-gray-600 space-y-1">

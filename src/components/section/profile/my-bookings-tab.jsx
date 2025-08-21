@@ -170,6 +170,7 @@ const MyBookingsTab = () => {
             <Input
               id="search"
               placeholder="Nhập ID đặt chỗ hoặc số chuyến bay"
+              className="dark:bg-black dark:text-white"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
@@ -194,7 +195,7 @@ const MyBookingsTab = () => {
               date={dateRange}
               setDate={setDateRange}
               placeholder="Chọn khoảng thời gian"
-              className="w-full"
+              className="w-full  "
             />
           </div>
         </div>

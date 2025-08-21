@@ -15,15 +15,16 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Menu, User, LogOut, Calendar, Moon, Sun } from "lucide-react";
+import { Menu, User, LogOut, Calendar } from "lucide-react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/auth-context";
+import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { useEffect, useRef, useState } from "react";
 
 const MENU_ITEMS = [
   { label: "Chuyến bay", path: "flights" },
   { label: "Ưu đãi", path: "deals" },
-  { label: "Blog", path: "blogs" },
+  { label: "Blog", path: "blog" },
 ];
 
 export function Header() {
@@ -31,31 +32,7 @@ export function Header() {
   const location = useLocation();
   const { user, logout } = useAuth();
   const [showHeader, setShowHeader] = useState(true);
-  const [isDarkMode, setIsDarkMode] = useState(false);
   const lastScrollY = useRef(window.scrollY);
-
-  // Load theme from localStorage
-  useEffect(() => {
-    const savedTheme = localStorage.getItem("theme");
-    if (savedTheme === "dark") {
-      setIsDarkMode(true);
-      document.documentElement.classList.add("dark");
-    }
-  }, []);
-
-  // Toggle theme function
-  const toggleTheme = () => {
-    const newTheme = !isDarkMode;
-    setIsDarkMode(newTheme);
-
-    if (newTheme) {
-      document.documentElement.classList.add("dark");
-      localStorage.setItem("theme", "dark");
-    } else {
-      document.documentElement.classList.remove("dark");
-      localStorage.setItem("theme", "light");
-    }
-  };
 
   // Get user initials for avatar fallback
   const getUserInitials = () => {
@@ -105,7 +82,7 @@ export function Header() {
 
   return (
     <header
-      className={`fixed top-0 w-full z-[1000] bg-white/20 backdrop-blur-sm border-b border-white/20 shadow-sm transition-transform duration-500 ease-in-out ${
+      className={`fixed top-0 w-full z-[1000] bg-white/20 backdrop-blur-sm border-b border-white/20 shadow-sm transition-transform duration-500 ease-in-out dark:bg-gray-900/20 dark:border-gray-800/20 ${
         showHeader ? "translate-y-0" : "-translate-y-full"
       }`}
       style={{ willChange: "transform" }}
@@ -121,9 +98,9 @@ export function Header() {
                 alt="AirsSky"
               />
             </div>
-            <span className="text-xl font-bold bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent ml-2">
-              AirsSky
-            </span>
+            <h1 className="text-xl font-bold bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent ml-1">
+              Airsky
+            </h1>
           </Link>
 
           {/* Menu desktop */}
@@ -135,7 +112,7 @@ export function Header() {
                 className={`font-medium transition-colors duration-200 ${
                   isActive(item)
                     ? "text-[#2563eb] font-bold"
-                    : "text-gray-700 hover:text-[#2563eb]"
+                    : "text-gray-700 dark:text-gray-300 hover:text-[#2563eb]"
                 }`}
               >
                 {item.label}
@@ -145,12 +122,15 @@ export function Header() {
 
           {/* Actions desktop */}
           <div className="hidden md:flex items-center space-x-4">
+            {/* Theme Toggle - Always visible */}
+            <ThemeToggle variant="ghost" size="sm" />
+
             {user ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button
                     variant="ghost"
-                    className="flex items-center space-x-3 hover:bg-gray-100 px-3 py-2 rounded-lg"
+                    className="flex items-center space-x-3 hover:bg-gray-100 dark:hover:bg-gray-800 px-3 py-2 rounded-lg"
                   >
                     <Avatar className="w-8 h-8">
                       <AvatarImage
@@ -174,7 +154,6 @@ export function Header() {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="mt-6 w-64">
-            
                   <DropdownMenuItem asChild>
                     <Link to="/profile" className="flex items-center w-full">
                       <User className="w-4 h-4 mr-3" />
@@ -192,18 +171,6 @@ export function Header() {
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem
-                    onClick={toggleTheme}
-                    className="flex items-center"
-                  >
-                    {isDarkMode ? (
-                      <Sun className="w-4 h-4 mr-3" />
-                    ) : (
-                      <Moon className="w-4 h-4 mr-3" />
-                    )}
-                    {isDarkMode ? "Chế độ sáng" : "Chế độ tối"}
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem
                     onClick={handleLogout}
                     className="flex items-center text-red-600 focus:text-red-600"
                   >
@@ -215,7 +182,7 @@ export function Header() {
             ) : (
               <Button
                 variant="ghost"
-                className="bg-[#2563eb] hover:bg-[#1e40af] text-white w-full"
+                className="bg-[#2563eb] hover:bg-[#1e40af] text-white"
                 onClick={() => navigate("/auth")}
               >
                 Đăng nhập
@@ -224,7 +191,10 @@ export function Header() {
           </div>
 
           {/* Mobile menu button */}
-          <div className="md:hidden">
+          <div className="md:hidden flex items-center space-x-2">
+            {/* Theme Toggle for mobile - Always visible */}
+            <ThemeToggle variant="ghost" size="sm" />
+
             <Sheet>
               <SheetTrigger asChild>
                 <Button variant="ghost" size="icon">
@@ -291,18 +261,6 @@ export function Header() {
                       >
                         <Calendar className="w-5 h-5" />
                         <span>Đơn đặt chỗ của tôi</span>
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        className="flex items-center justify-start space-x-3 w-full"
-                        onClick={toggleTheme}
-                      >
-                        {isDarkMode ? (
-                          <Sun className="w-5 h-5" />
-                        ) : (
-                          <Moon className="w-5 h-5" />
-                        )}
-                        <span>{isDarkMode ? "Chế độ sáng" : "Chế độ tối"}</span>
                       </Button>
                       <Button
                         variant="ghost"

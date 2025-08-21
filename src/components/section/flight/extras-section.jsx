@@ -231,13 +231,13 @@ const Extras = () => {
   );
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-700">
       <div className="max-w-7xl mx-auto py-8">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">
+          <h1 className="text-3xl font-bold text-gray-900 mb-2 dark:text-white">
             Chọn Dịch Vụ Bổ Sung
           </h1>
-          <p className="text-gray-600">
+          <p className="text-gray-600 dark:text-gray-300">
             Nâng cao trải nghiệm chuyến bay với các dịch vụ thêm
           </p>
         </div>

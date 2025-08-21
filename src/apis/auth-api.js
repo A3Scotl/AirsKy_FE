@@ -88,5 +88,14 @@ export const authApi = {
    */
   googleLogin: async (credentials) => {
     return apiHandler("post", "/auth/google-login", credentials);
-  }
+  },
+
+  /**
+   * Cập nhật thông tin profile
+   * @param {{ firstName?: string, lastName?: string, phone?: string, address?: string }} profileData - Thông tin profile cần cập nhật
+   * @returns {Promise<{ success: boolean, data?: any, message: string }>}
+   */
+  updateProfile: async (profileData) => {
+    return apiHandler("put", "/auth/profile/update", profileData);
+  },
 };
