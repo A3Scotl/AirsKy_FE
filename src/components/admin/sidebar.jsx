@@ -9,6 +9,8 @@ import {
   Settings,
   User,
   X,
+  BookOpen,
+  Tag,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -45,6 +47,18 @@ const AdminSidebar = ({ sidebarOpen, setSidebarOpen }) => {
       href: "/admin/payments",
       icon: CreditCard,
       current: location.pathname === "/admin/payments",
+    },
+    {
+      name: "Quản lý Blog",
+      href: "/admin/blogs",
+      icon: BookOpen,
+      current: location.pathname === "/admin/blogs",
+    },
+    {
+      name: "Quản lý Deal",
+      href: "/admin/deals",
+      icon: Tag,
+      current: location.pathname === "/admin/deals",
     },
     {
       name: "Báo cáo & Phân tích",

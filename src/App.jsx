@@ -53,6 +53,8 @@ const AdminUsers = lazy(() => import("@/pages/private/user-page"));
 const AdminPayments = lazy(() => import("@/pages/private/payment-page"));
 const AdminReports = lazy(() => import("@/pages/private/report-page"));
 const AdminProfile = lazy(() => import("@/pages/private/profile-page"));
+const AdminBlog = lazy(() => import("@/pages/private/blog-page"));
+const AdminDeal = lazy(() => import("@/pages/private/deal-page"));
 
 function AppRoutes() {
   const { loading } = useAuth();
@@ -181,6 +183,8 @@ function AppRoutes() {
               <Route path="users" element={<AdminUsers />} />
               <Route path="payments" element={<AdminPayments />} />
               <Route path="reports" element={<AdminReports />} />
+              <Route path="blogs" element={<AdminBlog />} />
+              <Route path="deals" element={<AdminDeal />} />
               <Route path="profile" element={<AdminProfile />} />
             </Route>
 
