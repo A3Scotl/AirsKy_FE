@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import {
   LayoutDashboard,
@@ -11,11 +12,18 @@ import {
   X,
   BookOpen,
   Tag,
+  ChevronDown,
+  ChevronRight,
+  FolderOpen,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 const AdminSidebar = ({ sidebarOpen, setSidebarOpen }) => {
   const location = useLocation();
+  const [blogMenuOpen, setBlogMenuOpen] = useState(
+    location.pathname.includes("/admin/blogs") ||
+      location.pathname.includes("/admin/categories")
+  );
 
   const navigation = [
     {
@@ -49,10 +57,26 @@ const AdminSidebar = ({ sidebarOpen, setSidebarOpen }) => {
       current: location.pathname === "/admin/payments",
     },
     {
-      name: "Quản lý Blog",
-      href: "/admin/blogs",
+      name: "Quản lý bài đăng",
       icon: BookOpen,
-      current: location.pathname === "/admin/blogs",
+      current:
+        location.pathname.includes("/admin/blogs") ||
+        location.pathname.includes("/admin/categories"),
+      isExpandable: true,
+      submenu: [
+        {
+          name: "Bài đăng",
+          href: "/admin/blogs",
+          icon: BookOpen,
+          current: location.pathname === "/admin/blogs",
+        },
+        {
+          name: "Thể loại",
+          href: "/admin/categories",
+          icon: FolderOpen,
+          current: location.pathname === "/admin/categories",
+        },
+      ],
     },
     {
       name: "Quản lý Deal",
@@ -118,6 +142,79 @@ const AdminSidebar = ({ sidebarOpen, setSidebarOpen }) => {
         <nav className="mt-5 px-2 space-y-1">
           {navigation.map((item) => {
             const Icon = item.icon;
+
+            // Render expandable menu item
+            if (item.isExpandable && item.submenu) {
+              return (
+                <div key={item.name}>
+                  <button
+                    onClick={() => setBlogMenuOpen(!blogMenuOpen)}
+                    className={`
+                      group flex items-center w-full px-2 py-2 text-sm font-medium rounded-md transition-colors duration-200
+                      ${
+                        item.current
+                          ? "bg-blue-100 text-blue-900 border-r-2 border-blue-600"
+                          : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+                      }
+                    `}
+                  >
+                    <Icon
+                      className={`
+                        mr-3 flex-shrink-0 h-5 w-5 transition-colors duration-200
+                        ${
+                          item.current
+                            ? "text-blue-600"
+                            : "text-gray-400 group-hover:text-gray-500"
+                        }
+                      `}
+                    />
+                    {item.name}
+                    {blogMenuOpen ? (
+                      <ChevronDown className="ml-auto h-4 w-4" />
+                    ) : (
+                      <ChevronRight className="ml-auto h-4 w-4" />
+                    )}
+                  </button>
+
+                  {blogMenuOpen && (
+                    <div className="ml-6 mt-1 space-y-1">
+                      {item.submenu.map((subItem) => {
+                        const SubIcon = subItem.icon;
+                        return (
+                          <Link
+                            key={subItem.name}
+                            to={subItem.href}
+                            className={`
+                              group flex items-center px-2 py-2 text-sm font-medium rounded-md transition-colors duration-200
+                              ${
+                                subItem.current
+                                  ? "bg-blue-50 text-blue-700 border-r-2 border-blue-500"
+                                  : "text-gray-500 hover:bg-gray-50 hover:text-gray-700"
+                              }
+                            `}
+                            onClick={() => setSidebarOpen(false)}
+                          >
+                            <SubIcon
+                              className={`
+                                mr-3 flex-shrink-0 h-4 w-4 transition-colors duration-200
+                                ${
+                                  subItem.current
+                                    ? "text-blue-500"
+                                    : "text-gray-300 group-hover:text-gray-400"
+                                }
+                              `}
+                            />
+                            {subItem.name}
+                          </Link>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              );
+            }
+
+            // Render normal menu item
             return (
               <Link
                 key={item.name}

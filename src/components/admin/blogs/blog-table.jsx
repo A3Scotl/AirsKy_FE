@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import BlogFormModal from "./blog-form-modal";
 import BlogDetailModal from "./blog-detail-modal";
+import { blogApi } from "@/apis/blog-api";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -41,6 +42,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import Pagination from "@/components/ui/pagination";
 
 const BlogTable = ({
   blogs,
@@ -50,6 +52,7 @@ const BlogTable = ({
   totalItems,
   onPageChange,
   onItemsPerPageChange,
+  onAdd,
   onEdit,
   onDelete,
   loading,
@@ -59,16 +62,14 @@ const BlogTable = ({
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [formMode, setFormMode] = useState("add");
 
-  const filteredBlogs =
-    blogs?.filter((blog) => {
-      const query = searchQuery.toLowerCase();
-      return (
-        blog.title?.toLowerCase().includes(query) ||
-        blog.authorName?.toLowerCase().includes(query) ||
-        blog.excerpt?.toLowerCase().includes(query) ||
-        blog.categories?.some((cat) => cat.name.toLowerCase().includes(query))
-      );
-    }) || [];
+  // No client-side filtering since data is already filtered by backend
+  const displayBlogs = blogs || [];
+
+  const handleItemsPerPageChange = (newItemsPerPage) => {
+    // Reset to page 1 when changing items per page to avoid showing empty data
+    onPageChange(1);
+    onItemsPerPageChange(newItemsPerPage);
+  };
 
   const handleAddBlog = () => {
     setSelectedBlog(null);
@@ -91,16 +92,79 @@ const BlogTable = ({
     try {
       if (formMode === "add") {
         // Call API to create blog
-        console.log("Creating blog:", blogData);
+        const response = await blogApi.createBlog(blogData);
+        if (response.success) {
+          console.log("Blog created successfully:", response.data);
+          onAdd?.(response.data);
+          setShowFormModal(false);
+        } else {
+          console.error("Failed to create blog:", response.message);
+          alert("Lỗi tạo bài viết: " + response.message);
+        }
       } else {
         // Call API to update blog
-        console.log("Updating blog:", blogData);
-        onEdit?.(selectedBlog.blogId, blogData);
+        const response = await blogApi.updateBlog(
+          selectedBlog.blogId,
+          blogData
+        );
+        if (response.success) {
+          console.log("Blog updated successfully:", response.data);
+          onEdit?.(selectedBlog.blogId, response.data);
+          setShowFormModal(false);
+        } else {
+          console.error("Failed to update blog:", response.message);
+          alert("Lỗi cập nhật bài viết: " + response.message);
+        }
       }
-      setShowFormModal(false);
-      setSelectedBlog(null);
+      // Don't close modal here, let success case handle it
     } catch (error) {
       console.error("Error saving blog:", error);
+      alert("Lỗi kết nối API: " + error.message);
+    }
+  };
+
+  const handleDeleteBlog = async (blogId) => {
+    if (window.confirm("Bạn có chắc chắn muốn xóa bài viết này?")) {
+      try {
+        const response = await blogApi.deleteBlog(blogId);
+        if (response.success) {
+          console.log("Blog deleted successfully");
+          onDelete?.(blogId);
+        } else {
+          console.error("Failed to delete blog:", response.message);
+          alert("Lỗi xóa bài viết: " + response.message);
+        }
+      } catch (error) {
+        console.error("Error deleting blog:", error);
+        alert("Lỗi kết nối API: " + error.message);
+      }
+    }
+  };
+
+  const handleTogglePublish = async (blogId, isPublished) => {
+    try {
+      const response = isPublished
+        ? await blogApi.unpublishBlog(blogId)
+        : await blogApi.publishBlog(blogId);
+
+      if (response.success) {
+        console.log(
+          `Blog ${isPublished ? "unpublished" : "published"} successfully`
+        );
+        onEdit?.(blogId, { isPublished: !isPublished });
+      } else {
+        console.error(
+          `Failed to ${isPublished ? "unpublish" : "publish"} blog:`,
+          response.message
+        );
+        alert(
+          `Lỗi ${isPublished ? "hủy đăng" : "đăng"} bài viết: ` +
+            response.message
+        );
+      }
+    } catch (error) {
+      console.error("Error toggling publish status:", error);
+      alert("Lỗi kết nối API: " + error.message);
     }
   };
 
@@ -157,14 +221,14 @@ const BlogTable = ({
                       Đang tải...
                     </TableCell>
                   </TableRow>
-                ) : filteredBlogs.length === 0 ? (
+                ) : displayBlogs.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={8} className="text-center py-8">
                       Không có blog nào
                     </TableCell>
                   </TableRow>
                 ) : (
-                  filteredBlogs.map((blog) => (
+                  displayBlogs.map((blog) => (
                     <TableRow key={blog.blogId}>
                       <TableCell>
                         <div className="space-y-1">
@@ -253,9 +317,30 @@ const BlogTable = ({
                               <Edit className="h-4 w-4" />
                               Chỉnh sửa
                             </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() =>
+                                handleTogglePublish(
+                                  blog.blogId,
+                                  blog.isPublished
+                                )
+                              }
+                              className="flex items-center gap-2"
+                            >
+                              {blog.isPublished ? (
+                                <>
+                                  <XCircle className="h-4 w-4" />
+                                  Hủy đăng
+                                </>
+                              ) : (
+                                <>
+                                  <CheckCircle className="h-4 w-4" />
+                                  Đăng bài
+                                </>
+                              )}
+                            </DropdownMenuItem>
                             <DropdownMenuSeparator />
                             <DropdownMenuItem
-                              onClick={() => onDelete?.(blog.blogId)}
+                              onClick={() => handleDeleteBlog(blog.blogId)}
                               className="flex items-center gap-2 text-destructive"
                             >
                               <Trash2 className="h-4 w-4" />
@@ -270,6 +355,16 @@ const BlogTable = ({
               </TableBody>
             </Table>
           </div>
+
+          {/* Pagination */}
+          <Pagination
+            currentPage={currentPage}
+            totalPages={Math.max(1, Math.ceil(totalItems / itemsPerPage))}
+            itemsPerPage={itemsPerPage}
+            totalItems={totalItems}
+            onPageChange={onPageChange}
+            onPageSizeChange={onItemsPerPageChange}
+          />
         </CardContent>
       </Card>
 

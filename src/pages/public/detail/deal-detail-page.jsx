@@ -19,109 +19,7 @@ import {
   Info,
 } from "lucide-react";
 
-// Mock data chi tiết cho deal
-const dealDetails = {
-  summer2025: {
-    id: "summer2025",
-    title: "🌞 SUMMER SALE 2025",
-    subtitle: "Ưu đãi hè sôi động",
-    description:
-      "Chào đón mùa hè với những chuyến bay giá rẻ đến các điểm đến nổi tiếng. Giảm đến 40% cho tất cả chuyến bay nội địa, áp dụng cho tất cả hạng ghế.",
-    discount: "40%",
-    code: "SUMMER40",
-    validFrom: "2025-06-01",
-    validUntil: "2025-09-30",
-    minSpend: 2000000,
-    maxDiscount: 1000000,
-    usageLimit: 1000,
-    usedCount: 234,
-    image:
-      "https://images.unsplash.com/photo-1436491865332-7a61a109cc05?q=80&w=1200",
-    type: "percentage",
-
-    // Điều kiện áp dụng
-    conditions: [
-      "Áp dụng cho tất cả chuyến bay nội địa",
-      "Đặt vé trước 48h so với giờ khởi hành",
-      "Áp dụng cho tất cả hạng ghế: Economy, Business",
-      "Không áp dụng đồng thời với chương trình khuyến mãi khác",
-      "Mỗi khách hàng chỉ sử dụng 1 lần trong thời gian khuyến mãi",
-    ],
-
-    // Quy định
-    policies: [
-      "Mã giảm giá có hiệu lực từ 01/06/2025 đến 30/09/2025",
-      "Giảm giá tối đa 1.000.000đ cho mỗi đơn hàng",
-      "Chỉ áp dụng cho đơn hàng có giá trị từ 2.000.000đ trở lên",
-      "Không hoàn lại dưới mọi hình thức khi đã sử dụng",
-      "AirSky có quyền thay đổi điều khoản mà không cần báo trước",
-    ],
-
-    // Hướng dẫn sử dụng
-    instructions: [
-      "Chọn chuyến bay và điền thông tin hành khách",
-      "Tại trang thanh toán, nhập mã 'SUMMER40' vào ô mã giảm giá",
-      "Kiểm tra số tiền được giảm và hoàn tất thanh toán",
-      "Nhận vé điện tử qua email sau khi thanh toán thành công",
-    ],
-
-    // Điểm đến áp dụng
-    applicableRoutes: [
-      "TP.HCM ↔ Hà Nội",
-      "TP.HCM ↔ Đà Nẵng",
-      "Hà Nội ↔ Đà Nẵng",
-      "TP.HCM ↔ Phú Quốc",
-      "Hà Nội ↔ Nha Trang",
-      "Và tất cả tuyến nội địa khác",
-    ],
-  },
-
-  weekend2025: {
-    id: "weekend2025",
-    title: "🎉 WEEKEND GETAWAY",
-    subtitle: "Nghỉ dưỡng cuối tuần",
-    description:
-      "Tận hưởng những chuyến đi cuối tuần thú vị với ưu đãi đặc biệt 25% dành riêng cho các chuyến bay Thứ 7 và Chủ nhật.",
-    discount: "25%",
-    code: "WEEKEND25",
-    validFrom: "2025-01-01",
-    validUntil: "2025-12-31",
-    minSpend: 1500000,
-    maxDiscount: 500000,
-    usageLimit: 2000,
-    usedCount: 456,
-    image:
-      "https://images.unsplash.com/photo-1469474968028-56623f02e42e?q=80&w=1200",
-    type: "percentage",
-
-    conditions: [
-      "Chỉ áp dụng cho chuyến bay khởi hành Thứ 7, Chủ nhật",
-      "Đặt vé trước 24h so với giờ khởi hành",
-      "Áp dụng cho hạng ghế Economy",
-      "Mỗi tài khoản sử dụng tối đa 2 lần/tháng",
-    ],
-
-    policies: [
-      "Có hiệu lực cả năm 2025",
-      "Giảm giá tối đa 500.000đ cho mỗi đơn hàng",
-      "Áp dụng cho đơn hàng từ 1.500.000đ",
-      "Không áp dụng trong các ngày lễ, Tết",
-    ],
-
-    instructions: [
-      "Chọn chuyến bay cuối tuần (T7, CN)",
-      "Nhập mã 'WEEKEND25' khi thanh toán",
-      "Kiểm tra và xác nhận đơn hàng",
-      "Nhận vé và tận hưởng chuyến đi",
-    ],
-
-    applicableRoutes: [
-      "Tất cả tuyến nội địa",
-      "Ưu tiên các tuyến du lịch",
-      "Không áp dụng cho chuyến bay quốc tế",
-    ],
-  },
-};
+import { dealApi } from "@/apis/deal-api";
 
 const DealDetailPage = () => {
   const { dealId } = useParams();
@@ -130,16 +28,24 @@ const DealDetailPage = () => {
   const [activeTab, setActiveTab] = useState("overview");
 
   useEffect(() => {
-    // Simulate API call
-    const dealData = dealDetails[dealId];
-    if (dealData) {
-      setDeal(dealData);
-    }
+    const fetchDeal = async () => {
+      try {
+        const res = await dealApi.getDealById(dealId);
+        if (res.success && res.data) {
+          setDeal(res.data);
+        } else {
+          setDeal(null);
+        }
+      } catch (err) {
+        setDeal(null);
+      }
+    };
+    fetchDeal();
   }, [dealId]);
 
   const copyToClipboard = async () => {
-    if (deal?.code) {
-      await navigator.clipboard.writeText(deal.code);
+    if (deal?.dealCode) {
+      await navigator.clipboard.writeText(deal.dealCode);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     }
@@ -163,7 +69,29 @@ const DealDetailPage = () => {
 
   const getUsagePercentage = () => {
     if (!deal) return 0;
-    return (deal.usedCount / deal.usageLimit) * 100;
+    if (!deal.totalUsageLimit) return 0;
+    return (deal.usedCount / deal.totalUsageLimit) * 100;
+  };
+
+  // Bổ sung mock data nếu thiếu để tránh lỗi .map
+  const safeDeal = {
+    ...deal,
+    conditions: deal?.conditions || [
+      "Áp dụng cho tất cả chuyến bay nội địa",
+      "Đặt vé trước 48h so với giờ khởi hành",
+      "Không áp dụng đồng thời với chương trình khuyến mãi khác",
+    ],
+    policies: deal?.policies || [
+      "Mã giảm giá có hiệu lực trong thời gian khuyến mãi",
+      "Không hoàn lại dưới mọi hình thức khi đã sử dụng",
+      "AirSky có quyền thay đổi điều khoản mà không cần báo trước",
+    ],
+    instructions: deal?.instructions || [
+      "Chọn chuyến bay và điền thông tin hành khách",
+      "Tại trang thanh toán, nhập mã vào ô mã giảm giá",
+      "Kiểm tra số tiền được giảm và hoàn tất thanh toán",
+      "Nhận vé điện tử qua email sau khi thanh toán thành công",
+    ],
   };
 
   if (!deal) {
@@ -187,7 +115,12 @@ const DealDetailPage = () => {
       <section className="relative py-20 overflow-hidden">
         <div
           className="absolute inset-0 bg-cover bg-center"
-          style={{ backgroundImage: `url(${deal.image})` }}
+          style={{
+            backgroundImage: `url(${
+              deal.thumbnail ||
+              "https://images.unsplash.com/photo-1436491865332-7a61a109cc05?q=80&w=1200"
+            })`,
+          }}
         >
           <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/50 to-black/30"></div>
         </div>
@@ -195,17 +128,17 @@ const DealDetailPage = () => {
         <div className="relative container mx-auto px-4">
           <div className="max-w-4xl mx-auto text-center text-white">
             <h1 className="text-5xl font-bold mb-4">{deal.title}</h1>
-            <p className="text-xl mb-8 text-blue-100">{deal.subtitle}</p>
+            <p className="text-xl mb-8 text-blue-100">{deal.description}</p>
 
             {/* Deal Code Highlight */}
             <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl p-8 mb-8">
               <div className="text-center">
                 <div className="text-sm text-blue-200 mb-2">MÃ GIẢM GIÁ</div>
                 <div className="text-4xl font-mono font-bold mb-4 tracking-wider">
-                  {deal.code}
+                  {deal.dealCode}
                 </div>
                 <div className="text-6xl font-black text-yellow-400 mb-2">
-                  -{deal.discount}
+                  -{deal.discountPercentage}%
                 </div>
                 <button
                   onClick={copyToClipboard}
@@ -221,7 +154,7 @@ const DealDetailPage = () => {
               </div>
             </div>
 
-            <p className="text-lg leading-relaxed">{deal.description}</p>
+            
           </div>
         </div>
       </section>
@@ -267,7 +200,7 @@ const DealDetailPage = () => {
                     <div>
                       <div className="text-sm text-gray-500 mb-1">Giảm giá</div>
                       <div className="text-2xl font-bold text-red-600">
-                        {deal.discount}
+                        {deal.discountPercentage} %
                       </div>
                     </div>
                     <div>
@@ -275,7 +208,7 @@ const DealDetailPage = () => {
                         Giảm tối đa
                       </div>
                       <div className="text-2xl font-bold text-green-600">
-                        {formatPrice(deal.maxDiscount)}
+                        {formatPrice(deal.maxDiscountAmount)}
                       </div>
                     </div>
                     <div>
@@ -283,19 +216,19 @@ const DealDetailPage = () => {
                         Đơn tối thiểu
                       </div>
                       <div className="text-xl font-semibold">
-                        {formatPrice(deal.minSpend)}
+                        {formatPrice(deal.minimumOrderAmount)}
                       </div>
                     </div>
                     <div>
                       <div className="text-sm text-gray-500 mb-1">Thời hạn</div>
                       <div className="text-xl font-semibold">
-                        {formatDate(deal.validUntil)}{" "}
+                        {formatDate(deal.validFrom)}{" "}
                         <Badge
                           variant="outline"
                           className="border-red-500 text-red-500"
                         >
                           <Clock className="w-3 h-3 mr-1" />
-                          Còn {getDaysRemaining(deal.validUntil)} ngày
+                          Còn {getDaysRemaining(deal.validTo)} ngày
                         </Badge>
                       </div>
                     </div>
@@ -308,17 +241,19 @@ const DealDetailPage = () => {
                     Tuyến đường áp dụng
                   </h3>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {/* <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     {deal.applicableRoutes.map((route, index) => (
                       <div
                         key={index}
                         className="flex items-center space-x-2 p-3 bg-blue-50 rounded-lg"
                       >
                         <Plane className="w-4 h-4 text-blue-600" />
-                        <span className="text-sm font-medium dark:text-gray-700">{route}</span>
+                        <span className="text-sm font-medium dark:text-gray-700">
+                          {route}
+                        </span>
                       </div>
                     ))}
-                  </div>
+                  </div> */}
                 </Card>
               </div>
 
@@ -332,7 +267,7 @@ const DealDetailPage = () => {
                       <div className="flex justify-between text-sm mb-1">
                         <span>Đã sử dụng</span>
                         <span>
-                          {deal.usedCount}/{deal.usageLimit}
+                          {deal.usedCount}/{deal.totalUsageLimit}
                         </span>
                       </div>
                       <div className="w-full bg-gray-200 rounded-full h-2">
@@ -345,7 +280,7 @@ const DealDetailPage = () => {
 
                     <div className="text-center">
                       <div className="text-2xl font-bold text-green-600">
-                        {deal.usageLimit - deal.usedCount}
+                        {deal.totalUsageLimit - deal.usedCount}
                       </div>
                       <div className="text-sm text-gray-500">
                         Lượt sử dụng còn lại
@@ -382,7 +317,7 @@ const DealDetailPage = () => {
               </h3>
 
               <div className="space-y-4">
-                {deal.conditions.map((condition, index) => (
+                {safeDeal.conditions.map((condition, index) => (
                   <div
                     key={index}
                     className="flex items-start space-x-3 p-4 bg-orange-50 rounded-lg border-l-4 border-orange-400"
@@ -405,7 +340,7 @@ const DealDetailPage = () => {
               </h3>
 
               <div className="space-y-4">
-                {deal.policies.map((policy, index) => (
+                {safeDeal.policies.map((policy, index) => (
                   <div
                     key={index}
                     className="flex items-start space-x-3 p-4 bg-blue-50 rounded-lg border-l-4 border-blue-400"
@@ -428,7 +363,7 @@ const DealDetailPage = () => {
               </h3>
 
               <div className="space-y-6">
-                {deal.instructions.map((instruction, index) => (
+                {safeDeal.instructions.map((instruction, index) => (
                   <div key={index} className="flex items-start space-x-4">
                     <div className="w-10 h-10 bg-green-500 text-white rounded-full flex items-center justify-center text-lg font-bold">
                       {index + 1}
@@ -437,7 +372,7 @@ const DealDetailPage = () => {
                       <p className="text-gray-700 leading-relaxed text-lg">
                         {instruction}
                       </p>
-                      {index < deal.instructions.length - 1 && (
+                      {index < safeDeal.instructions.length - 1 && (
                         <div className="w-px h-8 bg-green-200 ml-5 mt-4"></div>
                       )}
                     </div>
@@ -454,7 +389,7 @@ const DealDetailPage = () => {
                   <p className="text-green-700 mb-4">
                     Nhập mã{" "}
                     <span className="font-mono font-bold bg-white px-2 py-1 rounded">
-                      {deal.code}
+                      {deal.dealCode}
                     </span>{" "}
                     để nhận ưu đãi
                   </p>

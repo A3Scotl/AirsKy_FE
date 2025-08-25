@@ -57,7 +57,8 @@ const DealFormModal = ({
     dealCode: "",
     title: "",
     description: "",
-    dealImage: "",
+    thumbnail: "",
+    thumbnailFile: null,
     discountPercentage: "",
     minimumOrderAmount: "",
     maxDiscountAmount: "",
@@ -84,20 +85,29 @@ const DealFormModal = ({
 
   // Populate form data when in edit mode
   useEffect(() => {
-    if (isEditMode) {
+    // Helper: format yyyy-MM-dd from ISO string
+    const toDateInput = (iso) => {
+      if (!iso) return "";
+      const d = new Date(iso);
+      return d.toISOString().slice(0, 10);
+    };
+    if (isEditMode && deal) {
       setFormData({
+        ...initialFormData,
+        ...deal,
         dealCode: deal.dealCode || "",
         title: deal.title || "",
         description: deal.description || "",
-        dealImage: deal.dealImage || "",
+        thumbnail: deal.thumbnail || "",
+        thumbnailFile: null,
         discountPercentage: deal.discountPercentage?.toString() || "",
         minimumOrderAmount: deal.minimumOrderAmount?.toString() || "",
         maxDiscountAmount: deal.maxDiscountAmount?.toString() || "",
-        validFrom: deal.validFrom ? deal.validFrom.split("T")[0] : "",
-        validTo: deal.validTo ? deal.validTo.split("T")[0] : "",
+        validFrom: deal.validFrom ? toDateInput(deal.validFrom) : "",
+        validTo: deal.validTo ? toDateInput(deal.validTo) : "",
         totalUsageLimit: deal.totalUsageLimit?.toString() || "",
         usagePerUser: deal.usagePerUser?.toString() || "",
-        isActive: deal.isActive || true,
+        isActive: typeof deal.isActive === "boolean" ? deal.isActive : true,
         departureAirportId: deal.departureAirportId?.toString() || "all",
         arrivalAirportId: deal.arrivalAirportId?.toString() || "all",
       });
@@ -210,13 +220,29 @@ const DealFormModal = ({
     return Object.keys(newErrors).length === 0;
   };
 
+  // Format ngày về yyyy-MM-ddTHH:mm:ss
+  const formatDateTime = (dateStr) => {
+    if (!dateStr) return "";
+    const d = new Date(dateStr);
+    // Lấy yyyy-MM-dd
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, "0");
+    const dd = String(d.getDate()).padStart(2, "0");
+    // Lấy HH:mm:ss (mặc định 00:00:00 nếu không có giờ)
+    const HH = String(d.getHours()).padStart(2, "0");
+    const MM = String(d.getMinutes()).padStart(2, "0");
+    const SS = String(d.getSeconds()).padStart(2, "0");
+    return `${yyyy}-${mm}-${dd}T${HH}:${MM}:${SS}`;
+  };
+
   const handleSubmit = (e) => {
     e.preventDefault();
-
     if (!validateForm()) {
       return;
     }
-
+    // Log giá trị ảnh trước khi submit
+    console.log("[DealFormModal] thumbnail:", formData.thumbnail);
+    // Chỉ gửi thumbnail là file nếu có file, nếu không thì gửi url string
     const dealData = {
       ...formData,
       discountPercentage: parseFloat(formData.discountPercentage),
@@ -238,10 +264,17 @@ const DealFormModal = ({
         formData.arrivalAirportId && formData.arrivalAirportId !== "all"
           ? parseInt(formData.arrivalAirportId)
           : null,
-      validFrom: new Date(formData.validFrom).toISOString(),
-      validTo: new Date(formData.validTo).toISOString(),
+      validFrom: formatDateTime(formData.validFrom),
+      validTo: formatDateTime(formData.validTo),
     };
-
+    // Xử lý thumbnail: chỉ gửi 1 loại
+    if (formData.thumbnailFile instanceof File) {
+      dealData.thumbnailFile = formData.thumbnailFile;
+      dealData.thumbnail = undefined; // Không gửi url nếu có file
+    } else {
+      dealData.thumbnailFile = undefined;
+      dealData.thumbnail = formData.thumbnail;
+    }
     onSave(dealData);
   };
 
@@ -366,10 +399,13 @@ const DealFormModal = ({
                   <div className="space-y-2">
                     <Label>Hình ảnh Deal</Label>
                     <ImageUpload
-                      value={formData.dealImage}
-                      onChange={(url) => handleInputChange("dealImage", url)}
+                      value={formData.thumbnail}
+                      onChange={(url, file) => {
+                        handleInputChange("thumbnail", url);
+                        handleInputChange("thumbnailFile", file);
+                      }}
                       placeholder="Chọn ảnh đại diện cho deal khuyến mại"
-                      error={errors.dealImage}
+                      error={errors.thumbnail}
                     />
                   </div>
                 </CardContent>

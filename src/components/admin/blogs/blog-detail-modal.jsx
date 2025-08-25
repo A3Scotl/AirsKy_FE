@@ -57,11 +57,11 @@ const BlogDetailModal = ({ open, onClose, blog }) => {
             <CardContent className="space-y-4">
               {/* Featured Image */}
               {blog.featuredImage && (
-                <div className="w-full">
+                <div className="w-full rounded-lg overflow-hidden">
                   <img
                     src={blog.featuredImage}
                     alt={blog.title}
-                    className="w-full h-64 object-cover rounded-lg border"
+                    className="w-full h-64 object-contain "
                     onError={(e) => {
                       e.target.style.display = "none";
                     }}

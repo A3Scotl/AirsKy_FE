@@ -74,126 +74,74 @@ const Pagination = ({
   }
 
   return (
-    <div className={`flex flex-col gap-4 ${className}`}>
+    <div className={`flex flex-col gap-4 ${className} mt-4` }>
       {/* Top section with page size selector and info */}
       <div className="flex items-center justify-between text-sm text-gray-600">
         {showInfo && (
           <div>
-            Showing {startItem} to {endItem} of {totalItems} results
+            Hiển thị {startItem} đến {endItem} trong tổng số {totalItems} kết
+            quả
           </div>
         )}
-
-        {showPageSizeSelector && (
-          <div className="flex items-center gap-2">
-            <span>Show</span>
-            <Select
-              value={itemsPerPage.toString()}
-              onValueChange={(value) => onPageSizeChange(parseInt(value))}
-            >
-              <SelectTrigger className="w-20 h-8">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="5">5</SelectItem>
-                <SelectItem value="10">10</SelectItem>
-                <SelectItem value="20">20</SelectItem>
-                <SelectItem value="50">50</SelectItem>
-                <SelectItem value="100">100</SelectItem>
-              </SelectContent>
-            </Select>
-            <span>per page</span>
-          </div>
-        )}
-      </div>
-
-      {/* Pagination controls */}
-      {totalPages > 1 && (
-        <div className="flex items-center justify-center gap-1">
-          {/* First page button */}
-          {showFirstLast && (
+        {/* Pagination controls */}
+        {totalPages > 1 && (
+          <div className="flex items-center justify-center gap-1">
+            {/* Previous page button */}
             <Button
               variant="outline"
               size="sm"
-              onClick={() => onPageChange(1)}
+              onClick={() => onPageChange(currentPage - 1)}
               disabled={currentPage === 1}
-              className="h-8 w-8 p-0"
-              title="First page"
+              className="h-8 px-3"
             >
-              <ChevronsLeft className="h-4 w-4" />
+              Trước
             </Button>
-          )}
 
-          {/* Previous page button */}
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => onPageChange(currentPage - 1)}
-            disabled={currentPage === 1}
-            className="h-8 px-3"
-          >
-            <ChevronLeft className="h-4 w-4 mr-1" />
-            Previous
-          </Button>
+            {/* Page numbers */}
+            <div className="flex items-center gap-1 mx-2">
+              {visiblePages.map((page, index) => {
+                if (page === "ellipsis-start" || page === "ellipsis-end") {
+                  return (
+                    <div
+                      key={`ellipsis-${index}`}
+                      className="h-8 w-8 flex items-center justify-center"
+                    >
+                      <MoreHorizontal className="h-4 w-4 text-gray-400" />
+                    </div>
+                  );
+                }
 
-          {/* Page numbers */}
-          <div className="flex items-center gap-1 mx-2">
-            {visiblePages.map((page, index) => {
-              if (page === "ellipsis-start" || page === "ellipsis-end") {
                 return (
-                  <div
-                    key={`ellipsis-${index}`}
-                    className="h-8 w-8 flex items-center justify-center"
+                  <Button
+                    key={page}
+                    variant={page === currentPage ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => onPageChange(page)}
+                    className="h-8 w-8 p-0"
                   >
-                    <MoreHorizontal className="h-4 w-4 text-gray-400" />
-                  </div>
+                    {page}
+                  </Button>
                 );
-              }
+              })}
+            </div>
 
-              return (
-                <Button
-                  key={page}
-                  variant={page === currentPage ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => onPageChange(page)}
-                  className="h-8 w-8 p-0"
-                >
-                  {page}
-                </Button>
-              );
-            })}
-          </div>
-
-          {/* Next page button */}
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => onPageChange(currentPage + 1)}
-            disabled={currentPage === totalPages}
-            className="h-8 px-3"
-          >
-            Next
-            <ChevronRight className="h-4 w-4 ml-1" />
-          </Button>
-
-          {/* Last page button */}
-          {showFirstLast && (
+            {/* Next page button */}
             <Button
               variant="outline"
               size="sm"
-              onClick={() => onPageChange(totalPages)}
+              onClick={() => onPageChange(currentPage + 1)}
               disabled={currentPage === totalPages}
-              className="h-8 w-8 p-0"
-              title="Last page"
+              className="h-8 px-3"
             >
-              <ChevronsRight className="h-4 w-4" />
+              Next
             </Button>
-          )}
-        </div>
-      )}
+          </div>
+        )}
 
-      {/* Page info for mobile */}
-      <div className="flex items-center justify-center text-sm text-gray-500 sm:hidden">
-        Page {currentPage} of {totalPages}
+        {/* Page info for mobile */}
+        <div className="flex items-center justify-center text-sm text-gray-500 sm:hidden">
+          Page {currentPage} of {totalPages}
+        </div>
       </div>
     </div>
   );

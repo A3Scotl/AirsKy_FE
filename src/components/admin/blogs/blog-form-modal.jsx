@@ -14,6 +14,8 @@ import {
   FileText,
   Globe,
 } from "lucide-react";
+import { blogApi } from "@/apis/blog-api";
+import { categoryApi } from "@/apis/category-api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -45,6 +47,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Checkbox } from "@/components/ui/checkbox";
 
 const BlogFormModal = ({
   open,
@@ -67,15 +70,34 @@ const BlogFormModal = ({
   const [formData, setFormData] = useState(initialFormData);
   const [errors, setErrors] = useState({});
   const [selectedCategories, setSelectedCategories] = useState([]);
+  const [availableCategories, setAvailableCategories] = useState([]);
+  const [loadingCategories, setLoadingCategories] = useState(false);
 
-  // Mock categories - trong thực tế sẽ fetch từ API
-  const availableCategories = [
-    { categoryId: 1, name: "Travel Tips", slug: "travel-tips" },
-    { categoryId: 2, name: "Destinations", slug: "destinations" },
-    { categoryId: 3, name: "Flight Deals", slug: "flight-deals" },
-    { categoryId: 4, name: "Airport Guides", slug: "airport-guides" },
-    { categoryId: 5, name: "Travel News", slug: "travel-news" },
-  ];
+  // Fetch categories from API
+  const fetchCategories = async () => {
+    try {
+      setLoadingCategories(true);
+      const result = await categoryApi.getAllCategoriesList();
+      if (result.success && result.data) {
+        setAvailableCategories(result.data);
+      } else {
+        console.error("Failed to fetch categories:", result.message);
+        setAvailableCategories([]);
+      }
+    } catch (error) {
+      console.error("Error fetching categories:", error);
+      setAvailableCategories([]);
+    } finally {
+      setLoadingCategories(false);
+    }
+  };
+
+  // Fetch categories when modal opens
+  useEffect(() => {
+    if (open) {
+      fetchCategories();
+    }
+  }, [open]);
 
   // Populate form data when in edit mode
   useEffect(() => {
@@ -109,6 +131,22 @@ const BlogFormModal = ({
         ...prev,
         [field]: "",
       }));
+    }
+  };
+
+  // Image upload handler for CKEditor
+  const handleImageUpload = async (file) => {
+    try {
+      const response = await blogApi.uploadImageForEditor(file);
+      if (response.success) {
+        return response.data; // Return image URL
+      } else {
+        console.error("Failed to upload image:", response.message);
+        throw new Error(response.message);
+      }
+    } catch (error) {
+      console.error("Error uploading image:", error);
+      throw error;
     }
   };
 
@@ -158,13 +196,14 @@ const BlogFormModal = ({
       return;
     }
 
-    const selectedCategoryObjects = availableCategories.filter((cat) =>
-      selectedCategories.includes(cat.categoryId)
-    );
-
+    // Prepare data for API call
     const blogData = {
-      ...formData,
-      categories: selectedCategoryObjects,
+      title: formData.title,
+      content: formData.content,
+      excerpt: formData.excerpt,
+      featuredImage: formData.featuredImage,
+      isPublished: formData.isPublished,
+      categoryIds: selectedCategories, // Send array of category IDs
     };
 
     onSave(blogData);
@@ -279,30 +318,51 @@ const BlogFormModal = ({
                       Chọn danh mục <span className="text-destructive">*</span>
                     </Label>
                     <div className="grid grid-cols-1 gap-2">
-                      {availableCategories.map((category) => (
-                        <div
-                          key={category.categoryId}
-                          className="flex items-center space-x-2"
-                        >
-                          <input
-                            type="checkbox"
-                            id={`category-${category.categoryId}`}
-                            checked={selectedCategories.includes(
-                              category.categoryId
-                            )}
-                            onChange={() =>
-                              handleCategoryToggle(category.categoryId)
-                            }
-                            className="rounded border-gray-300"
-                          />
-                          <Label
-                            htmlFor={`category-${category.categoryId}`}
-                            className="cursor-pointer"
-                          >
-                            {category.name}
-                          </Label>
+                      {loadingCategories ? (
+                        <div className="flex items-center justify-center py-4">
+                          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+                          <span className="ml-2 text-sm text-gray-600">
+                            Đang tải categories...
+                          </span>
                         </div>
-                      ))}
+                      ) : availableCategories.length === 0 ? (
+                        <div className="text-center py-4">
+                          <p className="text-sm text-gray-500">
+                            Chưa có category nào
+                          </p>
+                          <p className="text-xs text-gray-400 mt-1">
+                            Hãy tạo category trước khi viết blog
+                          </p>
+                        </div>
+                      ) : (
+                        availableCategories.map((category) => (
+                          <div
+                            key={category.categoryId}
+                            className="flex items-center space-x-2"
+                          >
+                            <Checkbox
+                              id={`category-${category.categoryId}`}
+                              checked={selectedCategories.includes(
+                                category.categoryId
+                              )}
+                              onCheckedChange={() =>
+                                handleCategoryToggle(category.categoryId)
+                              }
+                            />
+                            <Label
+                              htmlFor={`category-${category.categoryId}`}
+                              className="cursor-pointer text-sm"
+                            >
+                              {category.name}
+                              {category.slug && (
+                                <span className="text-xs text-gray-500 ml-2">
+                                  ({category.slug})
+                                </span>
+                              )}
+                            </Label>
+                          </div>
+                        ))
+                      )}
                     </div>
                     {errors.categories && (
                       <p className="text-sm text-destructive">
@@ -316,7 +376,7 @@ const BlogFormModal = ({
                         );
                         return (
                           <Badge key={categoryId} variant="secondary">
-                            {category?.name}
+                            {category?.name || `Category ${categoryId}`}
                           </Badge>
                         );
                       })}
@@ -342,7 +402,8 @@ const BlogFormModal = ({
                     onChange={(content) =>
                       handleInputChange("content", content)
                     }
-                    // placeholder="Nhập nội dung blog với định dạng phong phú..."
+                    onImageUpload={handleImageUpload}
+                    placeholder="Nhập nội dung blog với định dạng phong phú..."
                     error={errors.content}
                     required
                   />

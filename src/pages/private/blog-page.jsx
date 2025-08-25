@@ -8,6 +8,7 @@ import {
   BookOpen,
 } from "lucide-react";
 import BlogTable from "@/components/admin/blogs/blog-table";
+import { blogApi } from "@/apis/blog-api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -29,129 +30,125 @@ const AdminBlogPage = () => {
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [totalItems, setTotalItems] = useState(0);
 
-  // Mock data - trong thực tế sẽ fetch từ API
-  const mockBlogs = [
-    {
-      blogId: 1,
-      title: "10 Mẹo Đặt Vé Máy Bay Giá Rẻ",
-      content: "Nội dung blog về cách đặt vé máy bay giá rẻ...",
-      slug: "10-meo-dat-ve-may-bay-gia-re",
-      excerpt: "Khám phá những bí quyết để có được vé máy bay với giá tốt nhất",
-      featuredImage: "https://example.com/image1.jpg",
-      publishedDate: "2025-08-20T10:00:00",
-      isPublished: true,
-      viewCount: 245,
-      likeCount: 18,
-      createdAt: "2025-08-20T10:00:00",
-      updatedAt: "2025-08-20T10:00:00",
-      authorId: 1,
-      authorName: "Admin User",
-      authorEmail: "admin@gmail.com",
-      categories: [
-        {
-          categoryId: 1,
-          name: "Travel Tips",
-          slug: "travel-tips",
-          description: "Helpful travel tips and guides",
-        },
-        {
-          categoryId: 3,
-          name: "Flight Deals",
-          slug: "flight-deals",
-          description: "Special flight offers and promotions",
-        },
-      ],
-    },
-    {
-      blogId: 2,
-      title: "Hướng Dẫn Check-in Online",
-      content: "Nội dung blog về cách check-in online...",
-      slug: "huong-dan-check-in-online",
-      excerpt: "Tất cả những gì bạn cần biết về check-in online",
-      featuredImage: "https://example.com/image2.jpg",
-      publishedDate: null,
-      isPublished: false,
-      viewCount: 0,
-      likeCount: 0,
-      createdAt: "2025-08-21T14:30:00",
-      updatedAt: "2025-08-21T14:30:00",
-      authorId: 1,
-      authorName: "Admin User",
-      authorEmail: "admin@gmail.com",
-      categories: [
-        {
-          categoryId: 4,
-          name: "Airport Guides",
-          slug: "airport-guides",
-          description: "Airport information and guides",
-        },
-      ],
-    },
-    {
-      blogId: 3,
-      title: "Top 5 Điểm Du Lịch Mùa Hè",
-      content: "Nội dung blog về điểm du lịch mùa hè...",
-      slug: "top-5-diem-du-lich-mua-he",
-      excerpt: "Những điểm đến tuyệt vời cho kỳ nghỉ hè của bạn",
-      featuredImage: "https://example.com/image3.jpg",
-      publishedDate: "2025-08-19T08:15:00",
-      isPublished: true,
-      viewCount: 892,
-      likeCount: 67,
-      createdAt: "2025-08-19T08:15:00",
-      updatedAt: "2025-08-19T08:15:00",
-      authorId: 1,
-      authorName: "Admin User",
-      authorEmail: "admin@gmail.com",
-      categories: [
-        {
-          categoryId: 2,
-          name: "Destinations",
-          slug: "destinations",
-          description: "Popular travel destinations",
-        },
-      ],
-    },
-  ];
-
   useEffect(() => {
     fetchBlogs();
   }, [currentPage, itemsPerPage, statusFilter]);
 
+  useEffect(() => {
+    const delayDebounceFn = setTimeout(() => {
+      if (searchQuery.trim()) {
+        handleSearch(searchQuery);
+      } else {
+        fetchBlogs();
+      }
+    }, 500);
+
+    return () => clearTimeout(delayDebounceFn);
+  }, [searchQuery]);
+
   const fetchBlogs = async () => {
     setLoading(true);
     try {
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      // Prepare params for API call
+      const params = {
+        page: currentPage - 1, // Backend uses 0-based pagination
+        size: itemsPerPage,
+        sort: "createdAt,desc",
+      };
 
-      let filteredBlogs = mockBlogs;
-
-      if (statusFilter === "published") {
-        filteredBlogs = mockBlogs.filter((blog) => blog.isPublished);
-      } else if (statusFilter === "draft") {
-        filteredBlogs = mockBlogs.filter((blog) => !blog.isPublished);
+      // Use different API endpoints based on status filter
+      let response;
+      if (statusFilter === "all") {
+        response = await blogApi.getAllBlogs(params);
+      } else {
+        // For now, get all blogs and filter on frontend
+        // Later you can add backend filters
+        response = await blogApi.getAllBlogs(params);
       }
 
-      setBlogs(filteredBlogs);
-      setTotalItems(filteredBlogs.length);
+      if (response.success) {
+        let blogsData = response.data.content || response.data || [];
+
+        // Apply status filter on frontend if needed
+        if (statusFilter === "published") {
+          blogsData = blogsData.filter((blog) => blog.isPublished);
+        } else if (statusFilter === "draft") {
+          blogsData = blogsData.filter((blog) => !blog.isPublished);
+        }
+
+        setBlogs(blogsData);
+        setTotalItems(response.data.totalElements || blogsData.length);
+      } else {
+        console.error("Failed to fetch blogs:", response.message);
+        setBlogs([]);
+        setTotalItems(0);
+      }
     } catch (error) {
       console.error("Error fetching blogs:", error);
+      setBlogs([]);
+      setTotalItems(0);
     } finally {
       setLoading(false);
     }
   };
 
+  const handleAddBlog = (blogData) => {
+    // Blog creation is handled in BlogTable component
+    // This is called after successful creation to refresh data
+    console.log("Blog added:", blogData);
+    fetchBlogs(); // Refresh data after successful add
+  };
+
   const handleEditBlog = (blogId, blogData) => {
-    // API call to update blog
-    console.log("Editing blog:", blogId, blogData);
-    fetchBlogs(); // Refresh data
+    // Blog editing is handled in BlogTable component
+    // This is called after successful update to refresh data
+    console.log("Blog edited:", blogId, blogData);
+    fetchBlogs(); // Refresh data after successful edit
   };
 
   const handleDeleteBlog = (blogId) => {
-    if (window.confirm("Bạn có chắc chắn muốn xóa blog này?")) {
-      // API call to delete blog
-      console.log("Deleting blog:", blogId);
-      fetchBlogs(); // Refresh data
+    // Blog deletion is handled in BlogTable component
+    // This is called after successful deletion to refresh data
+    console.log("Blog deleted:", blogId);
+    fetchBlogs(); // Refresh data after successful delete
+  };
+
+  const handleItemsPerPageChange = (newItemsPerPage) => {
+    setCurrentPage(1); // Reset to page 1 when changing items per page
+    setItemsPerPage(newItemsPerPage);
+  };
+
+  const handleSearch = async (query) => {
+    setCurrentPage(1); // Reset to first page when searching
+
+    if (query.trim()) {
+      setLoading(true);
+      try {
+        const response = await blogApi.searchBlogs({
+          keyword: query,
+          page: 0,
+          size: itemsPerPage,
+          sort: "createdAt,desc",
+        });
+
+        if (response.success) {
+          const blogsData = response.data.content || response.data || [];
+          setBlogs(blogsData);
+          setTotalItems(response.data.totalElements || blogsData.length);
+        } else {
+          console.error("Failed to search blogs:", response.message);
+          setBlogs([]);
+          setTotalItems(0);
+        }
+      } catch (error) {
+        console.error("Error searching blogs:", error);
+        setBlogs([]);
+        setTotalItems(0);
+      } finally {
+        setLoading(false);
+      }
+    } else {
+      fetchBlogs(); // Reset to normal fetch when search is cleared
     }
   };
 
@@ -273,7 +270,10 @@ const AdminBlogPage = () => {
               </Select>
               <Select
                 value={itemsPerPage.toString()}
-                onValueChange={(value) => setItemsPerPage(parseInt(value))}
+                onValueChange={(value) => {
+                  setCurrentPage(1); // Reset to page 1 when changing items per page
+                  setItemsPerPage(parseInt(value));
+                }}
               >
                 <SelectTrigger className="w-32">
                   <SelectValue />
@@ -298,7 +298,8 @@ const AdminBlogPage = () => {
         itemsPerPage={itemsPerPage}
         totalItems={totalItems}
         onPageChange={setCurrentPage}
-        onItemsPerPageChange={setItemsPerPage}
+        onItemsPerPageChange={handleItemsPerPageChange}
+        onAdd={handleAddBlog}
         onEdit={handleEditBlog}
         onDelete={handleDeleteBlog}
         loading={loading}

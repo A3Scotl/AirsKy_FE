@@ -54,6 +54,7 @@ const AdminPayments = lazy(() => import("@/pages/private/payment-page"));
 const AdminReports = lazy(() => import("@/pages/private/report-page"));
 const AdminProfile = lazy(() => import("@/pages/private/profile-page"));
 const AdminBlog = lazy(() => import("@/pages/private/blog-page"));
+const AdminCategory = lazy(() => import("@/pages/private/category-page"));
 const AdminDeal = lazy(() => import("@/pages/private/deal-page"));
 
 function AppRoutes() {
@@ -145,7 +146,7 @@ function AppRoutes() {
                 }
               />
               <Route
-                path="/blog/:id"
+                path="/blog/:slug"
                 element={
                   <PageTransition>
                     <BlogDetailPage />
@@ -184,6 +185,7 @@ function AppRoutes() {
               <Route path="payments" element={<AdminPayments />} />
               <Route path="reports" element={<AdminReports />} />
               <Route path="blogs" element={<AdminBlog />} />
+              <Route path="categories" element={<AdminCategory />} />
               <Route path="deals" element={<AdminDeal />} />
               <Route path="profile" element={<AdminProfile />} />
             </Route>

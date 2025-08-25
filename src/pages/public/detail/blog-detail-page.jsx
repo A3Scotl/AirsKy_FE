@@ -3,6 +3,9 @@ import { useParams, Link } from "react-router-dom";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { blogApi } from "@/apis/blog-api";
+import { blogLikeApi } from "@/apis/blog-like-api";
+import { useAuth } from "@/contexts/auth-context";
 import {
   Calendar,
   Clock,
@@ -10,100 +13,114 @@ import {
   ArrowLeft,
   Share2,
   BookOpen,
-  Eye,
+  Album,
   Heart,
   Facebook,
   Twitter,
   MessageCircle,
   Tag,
+  Loader2,
 } from "lucide-react";
 import { Swiper, SwiperSlide } from "swiper/react";
 import { Autoplay, Navigation } from "swiper/modules";
 import "swiper/css";
 import "swiper/css/navigation";
 
-// Mock data (same as blog-page.jsx)
-const blogPosts = [
-  {
-    id: "travel-tips-vietnam",
-    title: "10 Mẹo Du Lịch Việt Nam Tiết Kiệm Chi Phí",
-    excerpt:
-      "Khám phá những bí quyết giúp bạn du lịch Việt Nam với chi phí tối ưu mà vẫn có những trải nghiệm tuyệt vời...",
-    content: `
-      <h2>1. Lựa chọn thời điểm du lịch phù hợp</h2>
-      <p>Việc lựa chọn thời điểm du lịch đóng vai trò quan trọng trong việc tiết kiệm chi phí. Tránh các mùa cao điểm như Tết Nguyên đán, các ngày lễ lớn khi giá cả thường tăng cao.</p>
-      
-      <h2>2. Đặt vé máy bay sớm</h2>
-      <p>Đặt vé máy bay trước 2-3 tháng thường sẽ có giá tốt hơn. Sử dụng các trang web so sánh giá để tìm được deal tốt nhất.</p>
-      
-      <h2>3. Lựa chọn chỗ ở phù hợp</h2>
-      <p>Thay vì khách sạn đắt tiền, hãy cân nhắc homestay, hostel hoặc các nhà nghỉ dân dã để tiết kiệm chi phí lưu trú.</p>
-      
-      <h2>4. Sử dụng phương tiện công cộng</h2>
-      <p>Xe buýt, xe khách địa phương thường rẻ hơn nhiều so với taxi hay xe thuê. Đây cũng là cách tốt để trải nghiệm văn hóa địa phương.</p>
-      
-      <h2>5. Ăn uống như người địa phương</h2>
-      <p>Thử các quán ăn địa phương, đường phố thay vì nhà hàng cao cấp. Bạn sẽ vừa tiết kiệm tiền vừa có trải nghiệm ẩm thực đích thực.</p>
-    `,
-    author: "Nguyễn Văn A",
-    publishDate: "2025-08-15",
-    readTime: "5 phút đọc",
-    category: "Du lịch",
-    tags: ["du lịch", "tiết kiệm", "việt nam"],
-    image:
-      "https://images.unsplash.com/photo-1539635278303-d4002c07eae3?q=80&w=1200",
-    views: 1250,
-    likes: 89,
-    featured: true,
-  },
-  {
-    id: "best-airlines-asia",
-    title: "Top 5 Hãng Hàng Không Tốt Nhất Châu Á 2025",
-    excerpt:
-      "Danh sách những hãng hàng không được đánh giá cao nhất về chất lượng dịch vụ và giá cả...",
-    content: `
-      <h2>1. Singapore Airlines</h2>
-      <p>Singapore Airlines luôn được đánh giá cao về chất lượng dịch vụ và độ thoải mái. Đây là lựa chọn hàng đầu cho những chuyến bay dài.</p>
-      
-      <h2>2. Qatar Airways</h2>
-      <p>Với dịch vụ hạng nhất và mạng lưới bay rộng khắp, Qatar Airways là một trong những hãng hàng không tốt nhất thế giới.</p>
-      
-      <h2>3. ANA (All Nippon Airways)</h2>
-      <p>Hãng hàng không Nhật Bản nổi tiếng với sự tỉ mỉ và chất lượng dịch vụ hoàn hảo theo phong cách Nhật Bản.</p>
-    `,
-    author: "Trần Thị B",
-    publishDate: "2025-08-12",
-    readTime: "7 phút đọc",
-    category: "Hàng không",
-    tags: ["hàng không", "châu á", "đánh giá"],
-    image:
-      "https://images.unsplash.com/photo-1436491865332-7a61a109cc05?q=80&w=1200",
-    views: 2100,
-    likes: 156,
-    featured: true,
-  },
-  // Add more posts...
-];
-
 const BlogDetailPage = () => {
-  const { id } = useParams();
+  const { slug } = useParams();
   const [post, setPost] = useState(null);
-  const [relatedPosts, setRelatedPosts] = useState([]);
   const [isLiked, setIsLiked] = useState(false);
+  const [likeCount, setLikeCount] = useState(0);
+  const [isLiking, setIsLiking] = useState(false);
+  const user = useAuth();
+  const isAuthenticated = !!user;
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  useEffect(() => {
-    // Find the current post
-    const currentPost = blogPosts.find((p) => p.id === id);
-    setPost(currentPost);
-
-    // Find related posts (same category, excluding current post)
-    if (currentPost) {
-      const related = blogPosts
-        .filter((p) => p.id !== id && p.category === currentPost.category)
-        .slice(0, 6);
-      setRelatedPosts(related);
+  const handleLike = async () => {
+    if (!isAuthenticated) {
+      alert("Vui lòng đăng nhập để thích bài viết");
+      return;
     }
-  }, [id]);
+    console.log("post.blogId:", post?.blogId);
+    if (!post?.blogId || isLiking) {
+      console.warn(
+        "Cannot toggle like: blogId is missing or request in progress",
+        { blogId: post?.blogId, isLiking }
+      );
+      return;
+    }
+    setIsLiking(true);
+    try {
+      const result = await blogLikeApi.toggleLike(post.blogId);
+      console.log("toggleLike API result:", result);
+      if (result.success) {
+        setIsLiked(result.isLiked);
+        setLikeCount((prev) =>
+          result.isLiked ? prev + 1 : Math.max(0, prev - 1)
+        );
+      } else {
+        if (result.status === 401) {
+          alert("Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.");
+        } else {
+          alert(result.message || "Có lỗi xảy ra");
+        }
+      }
+    } catch (error) {
+      console.error("handleLike error:", error);
+      alert("Có lỗi xảy ra khi thực hiện thao tác");
+    } finally {
+      setIsLiking(false);
+    }
+  };
+
+  // In useEffect
+  useEffect(() => {
+    const fetchBlog = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const res = await blogApi.getBlogBySlug(slug);
+        console.log("getBlogBySlug response:", res);
+        if (res.success && res.data) {
+          console.log("res.data.likeCount:", res.data.likeCount);
+          setPost(res.data);
+          setLikeCount(
+            typeof res.data.likeCount === "number"
+              ? res.data.likeCount
+              : (res.data.likeCount && res.data.likeCount.count) || 0
+          );
+          if (isAuthenticated && res.data.blogId) {
+            console.log("Checking like status for blogId:", res.data.blogId);
+            const likeRes = await blogLikeApi.checkIfLiked(res.data.blogId);
+            console.log("checkIfLiked result:", likeRes, "user:", user);
+            if (likeRes.success) {
+              // Ensure Boolean conversion is explicit
+              const isLiked = likeRes.data === true;
+              console.log("Setting isLiked:", isLiked); // Log to confirm
+              setIsLiked(isLiked);
+            } else {
+              console.log("checkIfLiked failed:", likeRes.message);
+              setIsLiked(false);
+            }
+          } else {
+            console.log(
+              "Not authenticated or no blogId, setting isLiked: false"
+            );
+            setIsLiked(false);
+          }
+        } else {
+          setError(res.message || "Không tìm thấy bài viết");
+        }
+      } catch (err) {
+        console.error("fetchBlog error:", err);
+        setError("Có lỗi xảy ra khi tải bài viết");
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchBlog();
+  }, [slug, isAuthenticated]);
 
   const formatDate = (dateString) => {
     return new Date(dateString).toLocaleDateString("vi-VN", {
@@ -142,12 +159,19 @@ const BlogDetailPage = () => {
     }
   };
 
-  if (!post) {
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="h-16 w-16 text-blue-600 animate-spin" />
+      </div>
+    );
+  }
+  if (error || !post) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <h2 className="text-2xl font-bold text-gray-900 mb-4">
-            Bài viết không tồn tại
+            {error || "Bài viết không tồn tại"}
           </h2>
           <Link to="/blog">
             <Button>
@@ -165,7 +189,9 @@ const BlogDetailPage = () => {
       {/* Hero Image */}
       <div className="relative h-96 md:h-[500px] overflow-hidden">
         <img
-          src={post.image}
+          src={
+            post.thumbnail || post.featuredImage || "/api/placeholder/800/400"
+          }
           alt={post.title}
           className="w-full h-full object-cover"
         />
@@ -187,28 +213,17 @@ const BlogDetailPage = () => {
         {/* Hero Content */}
         <div className="absolute bottom-8 left-8 right-8">
           <div className="max-w-4xl">
-            <Badge className="bg-blue-600 text-white mb-4">
-              {post.category}
-            </Badge>
             <h1 className="text-3xl md:text-5xl font-bold text-white mb-4 leading-tight">
               {post.title}
             </h1>
             <div className="flex items-center space-x-6 text-white/90">
               <div className="flex items-center">
                 <User className="w-5 h-5 mr-2" />
-                {post.author}
+                {post.authorName || "Ẩn danh"}
               </div>
               <div className="flex items-center">
                 <Calendar className="w-5 h-5 mr-2" />
-                {formatDate(post.publishDate)}
-              </div>
-              <div className="flex items-center">
-                <Clock className="w-5 h-5 mr-2" />
-                {post.readTime}
-              </div>
-              <div className="flex items-center">
-                <Eye className="w-5 h-5 mr-2" />
-                {formatViews(post.views)}
+                {formatDate(post.createdAt || post.publishDate)}
               </div>
             </div>
           </div>
@@ -216,52 +231,84 @@ const BlogDetailPage = () => {
       </div>
 
       <div className="container mx-auto px-4 py-12">
-        <div className="max-w-4xl mx-auto">
-          {/* Article Meta & Share */}
-          <div className="flex items-center justify-between mb-8 p-6 bg-white rounded-xl shadow-sm">
-            <div className="flex items-center space-x-4">
-              <Button
-                variant={isLiked ? "default" : "outline"}
-                size="sm"
-                onClick={() => setIsLiked(!isLiked)}
-                className="flex items-center space-x-2"
-              >
-                <Heart className={`w-4 h-4 dark:text-gray-600 ${isLiked ? "fill-current" : ""}`} />
-                <span className="dark:text-gray-600">{post.likes + (isLiked ? 1 : 0)}</span>
-              </Button>
+        {/* Breadcrumb */}
 
-              <div className="flex items-center space-x-2 text-gray-500">
-                <BookOpen className="w-4 h-4" />
-                <span className="text-sm">{post.readTime}</span>
+        <div className="max-w-7xl mx-auto">
+          {/* Article Meta & Share */}
+          <div className="flex justify-between items-center mb-8 p-6 rounded-xl shadow-sm ">
+            <div className="">
+              <nav className="text-sm text-gray-500 flex items-center gap-2 max-w-6xl mx-auto">
+                <Link
+                  to="/blog"
+                  className="hover:underline text-blue-600 font-medium"
+                >
+                  Blog
+                </Link>
+                <span className="mx-1">/</span>
+                <span className="text-gray-700 font-semibold">
+                  {post?.title || slug}
+                </span>
+              </nav>
+            </div>
+            <div>
+              <div className="flex items-center space-x-2">
+                <div className="flex items-center space-x-4">
+                  <Button
+                    variant={isLiked ? "default" : "outline"}
+                    size="sm"
+                    onClick={handleLike}
+                    disabled={isLiking}
+                    className="flex items-center space-x-2"
+                  >
+                    <Heart
+                      className={`w-4 h-4 dark:text-gray-600 ${
+                        isLiked ? "fill-current" : ""
+                      }`}
+                    />
+
+                    <span className="dark:text-gray-600">
+                      {typeof likeCount === "number" ? likeCount : 0}
+                    </span>
+                    {isLiking && (
+                      <div className="w-3 h-3 border border-current border-t-transparent rounded-full animate-spin ml-1" />
+                    )}
+                  </Button>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleShare("facebook")}
+                >
+                  <Album className="w-4 h-4 dark:text-gray-600" />
+                </Button>
+
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleShare("facebook")}
+                >
+                  <Facebook className="w-4 h-4 dark:text-gray-600" />
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleShare("twitter")}
+                >
+                  <Twitter className="w-4 h-4 dark:text-gray-600" />
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleShare("copy")}
+                >
+                  <Share2 className="w-4 h-4 dark:text-gray-600" />
+                </Button>
               </div>
             </div>
-
-            <div className="flex items-center space-x-2">
-              <span className="text-sm text-gray-500 mr-2">Chia sẻ:</span>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => handleShare("facebook")}
-              >
-                <Facebook className="w-4 h-4 dark:text-gray-600" />
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => handleShare("twitter")}
-              >
-                <Twitter className="w-4 h-4 dark:text-gray-600" />
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => handleShare("copy")}
-              >
-                <Share2 className="w-4 h-4 dark:text-gray-600" />
-              </Button>
-            </div>
           </div>
+        </div>
 
+        <div className="max-w-4xl mx-auto">
           {/* Article Content */}
           <div className="bg-white rounded-xl shadow-sm p-8 mb-12">
             <div
@@ -274,113 +321,19 @@ const BlogDetailPage = () => {
               <div className="flex items-center space-x-2">
                 <Tag className="w-5 h-5 text-gray-400" />
                 <span className="text-sm font-medium text-gray-500">Tags:</span>
-                {post.tags.map((tag) => (
-                  <Badge
-                    key={tag}
-                    variant="outline"
-                    className="text-blue-600 border-blue-600"
-                  >
-                    {tag}
-                  </Badge>
-                ))}
+                {Array.isArray(post.categories) &&
+                  post.categories.map((cate) => (
+                    <Badge
+                      key={cate.categoryId || cate.slug || cate.name}
+                      variant="outline"
+                      className="text-blue-600 border-blue-600"
+                    >
+                      {cate.name}
+                    </Badge>
+                  ))}
               </div>
             </div>
           </div>
-
-          {/* Author Info */}
-          <div className="bg-white rounded-xl shadow-sm p-6 mb-12">
-            <div className="flex items-center space-x-4">
-              <div className="w-16 h-16 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center">
-                <User className="w-8 h-8 text-white" />
-              </div>
-              <div>
-                <h3 className="text-xl font-bold text-gray-900">
-                  {post.author}
-                </h3>
-                <p className="text-gray-600">
-                  Tác giả chuyên về du lịch và hàng không
-                </p>
-                <div className="flex items-center space-x-2 mt-2">
-                  <Button variant="outline" size="sm" className="dark:text-gray-600 dark:border-gray-600">
-                    <MessageCircle className="w-4 h-4 mr-2 dark:text-gray-600" />
-                    Liên hệ
-                  </Button>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Related Posts */}
-          {relatedPosts.length > 0 && (
-            <section>
-              <h2 className="text-3xl font-bold text-gray-900 mb-8">
-                Bài viết liên quan
-              </h2>
-
-              <Swiper
-                modules={[Autoplay, Navigation]}
-                spaceBetween={30}
-                slidesPerView={1}
-                navigation={true}
-                autoplay={{
-                  delay: 4000,
-                  disableOnInteraction: false,
-                }}
-                breakpoints={{
-                  640: { slidesPerView: 1 },
-                  768: { slidesPerView: 2 },
-                  1024: { slidesPerView: 3 },
-                }}
-              >
-                {relatedPosts.map((relatedPost) => (
-                  <SwiperSlide key={relatedPost.id}>
-                    <Link to={`/blog/${relatedPost.id}`}>
-                      <Card className="group overflow-hidden hover:shadow-xl transition-all duration-300 h-full">
-                        <div className="relative overflow-hidden">
-                          <img
-                            src={relatedPost.image}
-                            alt={relatedPost.title}
-                            className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
-                          />
-                          <div className="absolute bottom-4 right-4 bg-black/50 backdrop-blur-sm rounded-lg px-2 py-1">
-                            <div className="flex items-center space-x-2 text-white text-sm">
-                              <Eye className="w-4 h-4" />
-                              <span>{formatViews(relatedPost.views)}</span>
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="p-6">
-                          <Badge variant="outline" className="mb-3">
-                            {relatedPost.category}
-                          </Badge>
-
-                          <h3 className="text-lg font-bold text-gray-900 mb-3 group-hover:text-blue-600 transition-colors line-clamp-2">
-                            {relatedPost.title}
-                          </h3>
-
-                          <p className="text-gray-600 mb-4 line-clamp-2">
-                            {relatedPost.excerpt}
-                          </p>
-
-                          <div className="flex items-center justify-between text-sm text-gray-500">
-                            <div className="flex items-center">
-                              <User className="w-4 h-4 mr-1" />
-                              {relatedPost.author}
-                            </div>
-                            <div className="flex items-center">
-                              <Clock className="w-4 h-4 mr-1" />
-                              {relatedPost.readTime}
-                            </div>
-                          </div>
-                        </div>
-                      </Card>
-                    </Link>
-                  </SwiperSlide>
-                ))}
-              </Swiper>
-            </section>
-          )}
         </div>
       </div>
     </div>

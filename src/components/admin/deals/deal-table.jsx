@@ -44,6 +44,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
+import Pagination from "@/components/ui/pagination";
 
 const DealTable = ({
   deals,
@@ -54,6 +55,7 @@ const DealTable = ({
   onPageChange,
   onItemsPerPageChange,
   onEdit,
+  onAdd,
   onDelete,
   loading,
 }) => {
@@ -92,12 +94,9 @@ const DealTable = ({
   const handleSaveDeal = async (dealData) => {
     try {
       if (formMode === "add") {
-        // Call API to create deal
-        console.log("Creating deal:", dealData);
+        await onAdd?.(dealData);
       } else {
-        // Call API to update deal
-        console.log("Updating deal:", dealData);
-        onEdit?.(selectedDeal.dealId, dealData);
+        await onEdit?.(selectedDeal.dealId, dealData);
       }
       setShowFormModal(false);
       setSelectedDeal(null);
@@ -308,6 +307,15 @@ const DealTable = ({
               </TableBody>
             </Table>
           </div>
+          {/* Pagination */}
+          <Pagination
+            currentPage={currentPage}
+            totalPages={Math.max(1, Math.ceil(totalItems / itemsPerPage))}
+            itemsPerPage={itemsPerPage}
+            totalItems={totalItems}
+            onPageChange={onPageChange}
+            onPageSizeChange={onItemsPerPageChange}
+          />
         </CardContent>
       </Card>
 

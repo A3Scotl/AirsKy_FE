@@ -55,7 +55,7 @@ const ImageUpload = ({
       // In a real implementation, you would get the actual URL from your server
       const uploadedUrl = previewUrl; // This would be the actual server URL
 
-      onChange?.(uploadedUrl);
+      onChange?.(uploadedUrl, file);
     } catch (error) {
       console.error("Upload error:", error);
       alert("Có lỗi xảy ra khi tải ảnh lên!");
@@ -93,7 +93,7 @@ const ImageUpload = ({
 
   const handleRemove = () => {
     setPreview("");
-    onChange?.("");
+    onChange?.("", null);
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
@@ -101,7 +101,7 @@ const ImageUpload = ({
 
   const handleUrlInput = (url) => {
     setPreview(url);
-    onChange?.(url);
+    onChange?.(url, null);
   };
 
   return (

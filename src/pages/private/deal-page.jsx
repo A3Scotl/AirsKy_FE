@@ -8,6 +8,7 @@ import {
   Tag,
   TrendingUp,
 } from "lucide-react";
+import { dealApi } from "@/apis/deal-api";
 import DealTable from "@/components/admin/deals/deal-table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -30,114 +31,6 @@ const AdminDealPage = () => {
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [totalItems, setTotalItems] = useState(0);
 
-  // Mock data - trong thực tế sẽ fetch từ API
-  const mockDeals = [
-    {
-      dealId: 1,
-      dealCode: "SUMMER2024",
-      title: "Ưu đãi mùa hè",
-      discountPercentage: 20,
-      minimumOrderAmount: 1000000,
-      validFrom: "2025-06-01T00:00:00",
-      validTo: "2025-08-31T23:59:59",
-      description: "Giảm giá đặc biệt cho các chuyến bay mùa hè",
-      maxDiscountAmount: 500000,
-      totalUsageLimit: 1000,
-      usedCount: 234,
-      usagePerUser: 1,
-      isActive: true,
-      createdAt: "2025-05-15T08:00:00",
-      updatedAt: "2025-05-15T08:00:00",
-      departureAirportId: null,
-      departureAirportName: null,
-      departureAirportCode: null,
-      arrivalAirportId: null,
-      arrivalAirportName: null,
-      arrivalAirportCode: null,
-      remainingUsage: 766,
-      isExpired: false,
-      isAvailable: true,
-    },
-    {
-      dealId: 2,
-      dealCode: "WEEKEND15",
-      title: "Weekend Getaway",
-      discountPercentage: 15,
-      minimumOrderAmount: 600000,
-      validFrom: "2025-02-01T00:00:00",
-      validTo: "2025-11-30T23:59:59",
-      description: "Perfect for your weekend trips and short vacations.",
-      maxDiscountAmount: 250000,
-      totalUsageLimit: 300,
-      usedCount: 78,
-      usagePerUser: null,
-      isActive: true,
-      createdAt: "2025-08-23T08:15:44",
-      updatedAt: "2025-08-23T08:15:44",
-      departureAirportId: 1,
-      departureAirportName: "Nội Bài",
-      departureAirportCode: "HAN",
-      arrivalAirportId: 2,
-      arrivalAirportName: "Tân Sơn Nhất",
-      arrivalAirportCode: "SGN",
-      remainingUsage: 222,
-      isExpired: false,
-      isAvailable: true,
-    },
-    {
-      dealId: 3,
-      dealCode: "NEWYEAR25",
-      title: "Ưu đãi Tết Nguyên Đán",
-      discountPercentage: 25,
-      minimumOrderAmount: 1500000,
-      validFrom: "2025-01-15T00:00:00",
-      validTo: "2025-02-28T23:59:59",
-      description: "Giảm giá đặc biệt dịp Tết Nguyên Đán",
-      maxDiscountAmount: 800000,
-      totalUsageLimit: 500,
-      usedCount: 500,
-      usagePerUser: 2,
-      isActive: true,
-      createdAt: "2025-01-01T00:00:00",
-      updatedAt: "2025-01-01T00:00:00",
-      departureAirportId: null,
-      departureAirportName: null,
-      departureAirportCode: null,
-      arrivalAirportId: null,
-      arrivalAirportName: null,
-      arrivalAirportCode: null,
-      remainingUsage: 0,
-      isExpired: false,
-      isAvailable: false,
-    },
-    {
-      dealId: 4,
-      dealCode: "EARLYBIRD",
-      title: "Early Bird Special",
-      discountPercentage: 10,
-      minimumOrderAmount: 800000,
-      validFrom: "2024-12-01T00:00:00",
-      validTo: "2024-12-31T23:59:59",
-      description: "Đặt sớm để nhận ưu đãi",
-      maxDiscountAmount: 200000,
-      totalUsageLimit: 200,
-      usedCount: 45,
-      usagePerUser: 1,
-      isActive: false,
-      createdAt: "2024-11-15T10:00:00",
-      updatedAt: "2024-11-15T10:00:00",
-      departureAirportId: null,
-      departureAirportName: null,
-      departureAirportCode: null,
-      arrivalAirportId: null,
-      arrivalAirportName: null,
-      arrivalAirportCode: null,
-      remainingUsage: 155,
-      isExpired: true,
-      isAvailable: false,
-    },
-  ];
-
   useEffect(() => {
     fetchDeals();
   }, [currentPage, itemsPerPage, statusFilter]);
@@ -145,34 +38,153 @@ const AdminDealPage = () => {
   const fetchDeals = async () => {
     setLoading(true);
     try {
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-
-      let filteredDeals = mockDeals;
-
-      if (statusFilter === "active") {
-        filteredDeals = mockDeals.filter(
-          (deal) => deal.isActive && !deal.isExpired
-        );
-      } else if (statusFilter === "inactive") {
-        filteredDeals = mockDeals.filter((deal) => !deal.isActive);
-      } else if (statusFilter === "expired") {
-        filteredDeals = mockDeals.filter((deal) => deal.isExpired);
+      // Gọi API lấy danh sách deal (admin)
+      const params = {
+        page: currentPage - 1,
+        size: itemsPerPage,
+        sort: "createdAt,desc",
+      };
+      const res = await dealApi.getAllDeals(params);
+      if (res.success && res.data && res.data.content) {
+        let apiDeals = res.data.content;
+        // Lọc theo status nếu cần
+        let filteredDeals = apiDeals;
+        if (statusFilter === "active") {
+          filteredDeals = apiDeals.filter(
+            (deal) => deal.isActive && !deal.isExpired
+          );
+        } else if (statusFilter === "inactive") {
+          filteredDeals = apiDeals.filter((deal) => !deal.isActive);
+        } else if (statusFilter === "expired") {
+          filteredDeals = apiDeals.filter((deal) => deal.isExpired);
+        }
+        setDeals(filteredDeals);
+        setTotalItems(res.data.totalElements || filteredDeals.length);
+      } else {
+        setDeals([]);
+        setTotalItems(0);
       }
-
-      setDeals(filteredDeals);
-      setTotalItems(filteredDeals.length);
     } catch (error) {
       console.error("Error fetching deals:", error);
+      setDeals([]);
+      setTotalItems(0);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleEditDeal = (dealId, dealData) => {
-    // API call to update deal
-    console.log("Editing deal:", dealId, dealData);
-    fetchDeals(); // Refresh data
+  // Thêm deal mới
+  const handleAddDeal = async (dealData) => {
+    try {
+      const formData = new FormData();
+      // Các trường bắt buộc
+      formData.append("dealCode", dealData.dealCode);
+      formData.append("title", dealData.title);
+      formData.append("discountPercentage", dealData.discountPercentage);
+      formData.append("minimumOrderAmount", dealData.minimumOrderAmount);
+      formData.append("validFrom", dealData.validFrom);
+      formData.append("validTo", dealData.validTo);
+      // Các trường tuỳ chọn
+      if (dealData.description)
+        formData.append("description", dealData.description);
+      if (
+        dealData.maxDiscountAmount !== null &&
+        dealData.maxDiscountAmount !== undefined
+      )
+        formData.append("maxDiscountAmount", dealData.maxDiscountAmount);
+      if (
+        dealData.totalUsageLimit !== null &&
+        dealData.totalUsageLimit !== undefined
+      )
+        formData.append("totalUsageLimit", dealData.totalUsageLimit);
+      if (dealData.usagePerUser !== null && dealData.usagePerUser !== undefined)
+        formData.append("usagePerUser", dealData.usagePerUser);
+      if (dealData.isActive !== undefined)
+        formData.append("isActive", dealData.isActive);
+      if (dealData.departureAirportId)
+        formData.append("departureAirportId", dealData.departureAirportId);
+      if (dealData.arrivalAirportId)
+        formData.append("arrivalAirportId", dealData.arrivalAirportId);
+      // Ảnh (nếu có)
+      if (dealData.thumbnailFile instanceof File) {
+        formData.append("thumbnail", dealData.thumbnailFile);
+      } else if (
+        dealData.thumbnail &&
+        !dealData.thumbnail.startsWith("blob:")
+      ) {
+        // Nếu là nhập url thủ công (không phải blob preview)
+        formData.append("thumbnail", dealData.thumbnail);
+      }
+
+      // log ra các trường
+      console.log("Form Data to be sent:");
+      for (let [key, value] of formData.entries()) {
+        console.log(`${key}:`, value);
+      }
+
+      const res = await dealApi.createDeal(formData);
+      console.log("API Response:");
+      console.log(res);
+      if (res.success) {
+        fetchDeals();
+      } else {
+        alert(res.message || "Tạo deal thất bại");
+      }
+    } catch (err) {
+      alert("Có lỗi khi tạo deal");
+    }
+  };
+
+  // Cập nhật deal
+  const handleEditDeal = async (dealId, dealData) => {
+    try {
+      const formData = new FormData();
+      formData.append("dealCode", dealData.dealCode);
+      formData.append("title", dealData.title);
+      formData.append("discountPercentage", dealData.discountPercentage);
+      formData.append("minimumOrderAmount", dealData.minimumOrderAmount);
+      formData.append("validFrom", dealData.validFrom);
+      formData.append("validTo", dealData.validTo);
+      if (dealData.description)
+        formData.append("description", dealData.description);
+      if (
+        dealData.maxDiscountAmount !== null &&
+        dealData.maxDiscountAmount !== undefined
+      )
+        formData.append("maxDiscountAmount", dealData.maxDiscountAmount);
+      if (
+        dealData.totalUsageLimit !== null &&
+        dealData.totalUsageLimit !== undefined
+      ) {
+        formData.append("totalUsageLimit", dealData.totalUsageLimit);
+      }
+
+      if (dealData.usagePerUser !== null && dealData.usagePerUser !== undefined)
+        formData.append("usagePerUser", dealData.usagePerUser);
+      if (dealData.isActive !== undefined)
+        formData.append("isActive", dealData.isActive);
+      if (dealData.departureAirportId)
+        formData.append("departureAirportId", dealData.departureAirportId);
+      if (dealData.arrivalAirportId)
+        formData.append("arrivalAirportId", dealData.arrivalAirportId);
+      if (dealData.thumbnailFile instanceof File) {
+        formData.append("thumbnail", dealData.thumbnailFile);
+      } else if (
+        dealData.thumbnail &&
+        !dealData.thumbnail.startsWith("blob:")
+      ) {
+        formData.append("thumbnail", dealData.thumbnail);
+      }
+
+      const res = await dealApi.updateDeal(dealId, formData);
+      if (res.success) {
+        fetchDeals();
+      } else {
+        alert(res.message || "Cập nhật deal thất bại");
+      }
+    } catch (err) {
+      alert("Có lỗi khi cập nhật deal");
+    }
   };
 
   const handleDeleteDeal = (dealId) => {
@@ -193,6 +205,7 @@ const AdminDealPage = () => {
   };
 
   const getStatsCards = () => {
+    console.log("deals", deals);
     const totalDeals = deals.length;
     const activeDeals = deals.filter(
       (deal) => deal.isActive && !deal.isExpired
@@ -331,6 +344,7 @@ const AdminDealPage = () => {
         onPageChange={setCurrentPage}
         onItemsPerPageChange={setItemsPerPage}
         onEdit={handleEditDeal}
+        onAdd={handleAddDeal}
         onDelete={handleDeleteDeal}
         loading={loading}
       />
