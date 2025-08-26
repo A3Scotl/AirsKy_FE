@@ -9,7 +9,7 @@ import {
   TrendingUp,
 } from "lucide-react";
 import { dealApi } from "@/apis/deal-api";
-import DealTable from "@/components/admin/deals/deal-table";
+import DealTable, { getDealStatus } from "@/components/admin/deals/deal-table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -47,16 +47,19 @@ const AdminDealPage = () => {
       const res = await dealApi.getAllDeals(params);
       if (res.success && res.data && res.data.content) {
         let apiDeals = res.data.content;
-        // Lọc theo status nếu cần
+        // Lọc theo status mới (giống backend/status badge)
         let filteredDeals = apiDeals;
-        if (statusFilter === "active") {
+        if (statusFilter !== "all") {
+          let statusMap = {
+            active: "ĐANG HOẠT ĐỘNG",
+            inactive: "KHÔNG XÁC ĐỊNH",
+            expired: "ĐÃ HẾT HẠN",
+            soon: "SẮP HOẠT ĐỘNG",
+            usedup: "HẾT LƯỢT SỬ DỤNG",
+          };
           filteredDeals = apiDeals.filter(
-            (deal) => deal.isActive && !deal.isExpired
+            (deal) => getDealStatus(deal) === statusMap[statusFilter]
           );
-        } else if (statusFilter === "inactive") {
-          filteredDeals = apiDeals.filter((deal) => !deal.isActive);
-        } else if (statusFilter === "expired") {
-          filteredDeals = apiDeals.filter((deal) => deal.isExpired);
         }
         setDeals(filteredDeals);
         setTotalItems(res.data.totalElements || filteredDeals.length);
@@ -311,8 +314,10 @@ const AdminDealPage = () => {
                 <SelectContent>
                   <SelectItem value="all">Tất cả trạng thái</SelectItem>
                   <SelectItem value="active">Đang hoạt động</SelectItem>
-                  <SelectItem value="inactive">Không hoạt động</SelectItem>
+                  <SelectItem value="soon">Sắp hoạt động</SelectItem>
                   <SelectItem value="expired">Đã hết hạn</SelectItem>
+                  <SelectItem value="usedup">Hết lượt sử dụng</SelectItem>
+                  <SelectItem value="inactive">Không xác định</SelectItem>
                 </SelectContent>
               </Select>
               <Select

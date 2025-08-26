@@ -93,23 +93,14 @@ const AdminBlogPage = () => {
   };
 
   const handleAddBlog = (blogData) => {
-    // Blog creation is handled in BlogTable component
-    // This is called after successful creation to refresh data
-    console.log("Blog added:", blogData);
     fetchBlogs(); // Refresh data after successful add
   };
 
   const handleEditBlog = (blogId, blogData) => {
-    // Blog editing is handled in BlogTable component
-    // This is called after successful update to refresh data
-    console.log("Blog edited:", blogId, blogData);
     fetchBlogs(); // Refresh data after successful edit
   };
 
   const handleDeleteBlog = (blogId) => {
-    // Blog deletion is handled in BlogTable component
-    // This is called after successful deletion to refresh data
-    console.log("Blog deleted:", blogId);
     fetchBlogs(); // Refresh data after successful delete
   };
 

@@ -19,6 +19,7 @@ import {
   Loader2,
   AlertCircle,
   RefreshCw,
+  BookOpen,
 } from "lucide-react";
 import { useUserProfile, userProfileUtils } from "@/hooks/use-user-profile";
 
@@ -27,6 +28,7 @@ import MyBookingsTab from "../../components/section/profile/my-bookings-tab";
 import FavouritesTab from "@/components/section/profile/favourites-tab";
 import AccountTab from "@/components/section/profile/account-tab";
 import SettingsTab from "@/components/section/profile/settings-tab";
+import MyBlogsTab from "@/components/section/profile/my-blogs-tab";
 import { Navigate } from "react-router-dom";
 
 const UserProfile = () => {
@@ -127,6 +129,18 @@ const UserProfile = () => {
                   <Button
                     variant="ghost"
                     className={`w-full justify-start ${
+                      activeTab === "my-blogs"
+                        ? "bg-blue-100 text-blue-600"
+                        : ""
+                    }`}
+                    onClick={() => setActiveTab("my-blogs")}
+                  >
+                    <BookOpen className="mr-2 h-4 w-4" />
+                    Bài viết của tôi
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    className={`w-full justify-start ${
                       activeTab === "account" ? "bg-blue-100 text-blue-600" : ""
                     }`}
                     onClick={() => setActiveTab("account")}
@@ -162,6 +176,9 @@ const UserProfile = () => {
                 userProfile={userProfile}
                 onProfileUpdate={refetch}
               />
+            )}
+            {activeTab === "my-blogs" && (
+              <MyBlogsTab userProfile={userProfile} onProfileUpdate={refetch} />
             )}
             {activeTab === "account" && (
               <AccountTab userProfile={userProfile} onProfileUpdate={refetch} />

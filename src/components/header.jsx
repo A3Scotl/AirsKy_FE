@@ -130,7 +130,7 @@ export function Header() {
                 <DropdownMenuTrigger asChild>
                   <Button
                     variant="ghost"
-                    className="flex items-center space-x-3 hover:bg-gray-100 dark:hover:bg-gray-800 px-3 py-2 rounded-lg"
+                    className="flex items-center space-x-3 dark:hover:bg-gray-800 px-3 py-2 rounded-lg"
                   >
                     <Avatar className="w-8 h-8">
                       <AvatarImage

@@ -5,6 +5,22 @@ import { apiHandler } from "@/utils/api-handler";
  */
 export const blogApi = {
   /**
+   * Lấy danh sách bài viết yêu thích của user
+   * @param {{ page?: number, size?: number, sort?: string }} params
+   * @returns {Promise<{ success: boolean, data?: any, message: string }>}
+   */
+  getLikedBlogs: async (params = {}) => {
+    const queryParams = new URLSearchParams();
+    if (params.page !== undefined) queryParams.append("page", params.page);
+    if (params.size !== undefined) queryParams.append("size", params.size);
+    if (params.sort) queryParams.append("sort", params.sort);
+    const queryString = queryParams.toString();
+    const endpoint = queryString
+      ? `/blogs/liked?${queryString}`
+      : "/blogs/liked";
+    return apiHandler("get", endpoint);
+  },
+  /**
    * Tạo bài viết mới (Admin only)
    * @param {{
    *   title: string,
@@ -18,29 +34,68 @@ export const blogApi = {
    * @returns {Promise<{ success: boolean, data?: any, message: string }>}
    */
   createBlog: async (blogData) => {
-    // Prepare FormData for multipart request
+    // Nếu là FormData thì gửi luôn
+    if (blogData instanceof FormData) {
+      return apiHandler("post", "/blogs", blogData, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      });
+    }
+    // Nếu là object thường thì tạo FormData như cũ
     const formData = new FormData();
     formData.append("title", blogData.title);
     formData.append("content", blogData.content);
-
     if (blogData.excerpt) {
       formData.append("excerpt", blogData.excerpt);
     }
-
     if (blogData.featuredImageFile instanceof File) {
       formData.append("featuredImageFile", blogData.featuredImageFile);
     } else if (blogData.featuredImage) {
       formData.append("featuredImage", blogData.featuredImage);
     }
-
     formData.append("isPublished", blogData.isPublished || false);
-    formData.append("categoryIds", blogData.categoryIds.join(","));
-
+    formData.append("categoryIds", (blogData.categoryIds || []).join(","));
     return apiHandler("post", "/blogs", formData, {
       headers: {
         "Content-Type": "multipart/form-data",
       },
     });
+  },
+
+  /**
+   * Lưu bài viết (toggle save)
+   * @param {number} id - ID của bài viết
+   * @returns {Promise<{ success: boolean, message: string }>}
+   */
+  saveBlog: async (id) => {
+    return apiHandler("post", `/blogs/${id}/save`);
+  },
+
+  /**
+   * Bỏ lưu bài viết
+   * @param {number} id - ID của bài viết
+   * @returns {Promise<{ success: boolean, message: string }>}
+   */
+  unsaveBlog: async (id) => {
+    return apiHandler("delete", `/blogs/${id}/save`);
+  },
+
+  /**
+   * Lấy danh sách bài viết đã lưu của user
+   * @param {{ page?: number, size?: number, sort?: string }} params
+   * @returns {Promise<{ success: boolean, data?: any, message: string }>}
+   */
+  getSavedBlogs: async (params = {}) => {
+    const queryParams = new URLSearchParams();
+    if (params.page !== undefined) queryParams.append("page", params.page);
+    if (params.size !== undefined) queryParams.append("size", params.size);
+    if (params.sort) queryParams.append("sort", params.sort);
+    const queryString = queryParams.toString();
+    const endpoint = queryString
+      ? `/blogs/saved?${queryString}`
+      : "/blogs/saved";
+    return apiHandler("get", endpoint);
   },
 
   /**
@@ -57,25 +112,28 @@ export const blogApi = {
    * }} blogData - Thông tin cập nhật
    * @returns {Promise<{ success: boolean, data?: any, message: string }>}
    */
+
   updateBlog: async (id, blogData) => {
-    // Prepare FormData for multipart request
+    if (blogData instanceof FormData) {
+      return apiHandler("put", `/blogs/${id}`, blogData, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      });
+    }
     const formData = new FormData();
     formData.append("title", blogData.title);
     formData.append("content", blogData.content);
-
     if (blogData.excerpt) {
       formData.append("excerpt", blogData.excerpt);
     }
-
     if (blogData.featuredImageFile instanceof File) {
       formData.append("featuredImageFile", blogData.featuredImageFile);
     } else if (blogData.featuredImage) {
       formData.append("featuredImage", blogData.featuredImage);
     }
-
     formData.append("isPublished", blogData.isPublished || false);
-    formData.append("categoryIds", blogData.categoryIds.join(","));
-
+    formData.append("categoryIds", (blogData.categoryIds || []).join(","));
     return apiHandler("put", `/blogs/${id}`, formData, {
       headers: {
         "Content-Type": "multipart/form-data",
@@ -295,7 +353,7 @@ export const blogApi = {
     // Sử dụng getAllPublishedBlogs với sort theo views
     return this.getAllPublishedBlogs({
       size: params.limit || 10,
-      sort: "views,desc",
+      sort: "viewCount,desc",
     });
   },
 

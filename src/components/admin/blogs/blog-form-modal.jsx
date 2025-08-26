@@ -63,6 +63,7 @@ const BlogFormModal = ({
     content: "",
     excerpt: "",
     featuredImage: "",
+    featuredImageFile: null, // Thêm trường file object
     isPublished: false,
     categories: [],
   };
@@ -119,10 +120,12 @@ const BlogFormModal = ({
     }
   }, [isEditMode, blog]);
 
-  const handleInputChange = (field, value) => {
+  // Cho phép truyền nhiều giá trị (ví dụ: { url, file })
+  const handleInputChange = (field, value, extra) => {
     setFormData((prev) => ({
       ...prev,
       [field]: value,
+      ...(extra || {}),
     }));
 
     // Clear error when user starts typing
@@ -196,17 +199,29 @@ const BlogFormModal = ({
       return;
     }
 
-    // Prepare data for API call
-    const blogData = {
-      title: formData.title,
-      content: formData.content,
-      excerpt: formData.excerpt,
-      featuredImage: formData.featuredImage,
-      isPublished: formData.isPublished,
-      categoryIds: selectedCategories, // Send array of category IDs
-    };
-
-    onSave(blogData);
+    // Nếu có file object thì gửi FormData, ngược lại gửi JSON thường
+    if (formData.featuredImageFile) {
+      const data = new FormData();
+      data.append("title", formData.title);
+      data.append("content", formData.content);
+      data.append("excerpt", formData.excerpt);
+      data.append("isPublished", formData.isPublished);
+      data.append("featuredImageFile", formData.featuredImageFile);
+      // Đảm bảo categoryIds là mảng join thành chuỗi
+      data.append("categoryIds", selectedCategories.join(","));
+      onSave(data, true); // true: là FormData
+    } else {
+      // Nếu chỉ nhập URL ảnh
+      const blogData = {
+        title: formData.title,
+        content: formData.content,
+        excerpt: formData.excerpt,
+        featuredImage: formData.featuredImage,
+        isPublished: formData.isPublished,
+        categoryIds: selectedCategories,
+      };
+      onSave(blogData, false);
+    }
   };
 
   const handleClose = () => {
@@ -295,8 +310,10 @@ const BlogFormModal = ({
                     <ImageUpload
                       label="Ảnh đại diện"
                       value={formData.featuredImage}
-                      onChange={(url) =>
-                        handleInputChange("featuredImage", url)
+                      onChange={(url, file) =>
+                        handleInputChange("featuredImage", url, {
+                          featuredImageFile: file,
+                        })
                       }
                       placeholder="Chọn ảnh đại diện cho blog"
                       error={errors.featuredImage}

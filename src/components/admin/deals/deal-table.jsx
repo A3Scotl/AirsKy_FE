@@ -120,40 +120,50 @@ const DealTable = ({
     }).format(amount);
   };
 
+  // Hàm xác định trạng thái deal giống backend
+
   const getStatusBadge = (deal) => {
-    if (!deal.isActive) {
-      return (
-        <Badge variant="secondary" className="flex items-center gap-1">
-          <XCircle className="h-3 w-3" />
-          Không hoạt động
-        </Badge>
-      );
+    const status = getDealStatus(deal);
+    switch (status) {
+      case "SẮP HOẠT ĐỘNG":
+        return (
+          <Badge variant="outline" className="flex items-center gap-1">
+            <Clock className="h-3 w-3" />
+            Sắp hoạt động
+          </Badge>
+        );
+      case "ĐÃ HẾT HẠN":
+        return (
+          <Badge
+            variant="destructive"
+            className="flex items-center gap-1 text-white"
+          >
+            <Clock className="h-3 w-3" />
+            Đã hết hạn
+          </Badge>
+        );
+      case "HẾT LƯỢT SỬ DỤNG":
+        return (
+          <Badge variant="secondary" className="flex items-center gap-1">
+            <XCircle className="h-3 w-3" />
+            Hết lượt sử dụng
+          </Badge>
+        );
+      case "ĐANG HOẠT ĐỘNG":
+        return (
+          <Badge variant="success" className="flex items-center gap-1">
+            <CheckCircle className="h-3 w-3" />
+            Đang hoạt động
+          </Badge>
+        );
+      default:
+        return (
+          <Badge variant="outline" className="flex items-center gap-1">
+            <XCircle className="h-3 w-3" />
+            Không xác định
+          </Badge>
+        );
     }
-
-    if (deal.isExpired) {
-      return (
-        <Badge variant="destructive" className="flex items-center gap-1">
-          <Clock className="h-3 w-3" />
-          Hết hạn
-        </Badge>
-      );
-    }
-
-    if (!deal.isAvailable) {
-      return (
-        <Badge variant="outline" className="flex items-center gap-1">
-          <XCircle className="h-3 w-3" />
-          Hết lượt sử dụng
-        </Badge>
-      );
-    }
-
-    return (
-      <Badge variant="success" className="flex items-center gap-1">
-        <CheckCircle className="h-3 w-3" />
-        Đang hoạt động
-      </Badge>
-    );
   };
 
   const getUsageProgress = (deal) => {
@@ -343,3 +353,35 @@ const DealTable = ({
 };
 
 export default DealTable;
+
+export const getDealStatus = (deal) => {
+  const now = new Date();
+  const validFrom = deal.validFrom ? new Date(deal.validFrom) : null;
+  const validTo = deal.validTo ? new Date(deal.validTo) : null;
+  if (validFrom && validFrom > now) {
+    return "SẮP HOẠT ĐỘNG";
+  }
+  if (validTo && validTo < now) {
+    return "ĐÃ HẾT HẠN";
+  }
+  if (
+    deal.totalUsageLimit != null &&
+    deal.usedCount != null &&
+    deal.usedCount >= deal.totalUsageLimit
+  ) {
+    return "HẾT LƯỢT SỬ DỤNG";
+  }
+  if (
+    deal.isActive &&
+    validFrom &&
+    validFrom <= now &&
+    validTo &&
+    validTo >= now &&
+    (deal.totalUsageLimit == null ||
+      deal.usedCount == null ||
+      deal.usedCount < deal.totalUsageLimit)
+  ) {
+    return "ĐANG HOẠT ĐỘNG";
+  }
+  return "KHÔNG XÁC ĐỊNH";
+};

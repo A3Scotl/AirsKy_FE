@@ -4,6 +4,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { blogApi } from "@/apis/blog-api";
+import BlogCard from "@/components/section/blog/blog-card";
 import { blogLikeApi } from "@/apis/blog-like-api";
 import { useAuth } from "@/contexts/auth-context";
 import {
@@ -32,10 +33,16 @@ const BlogDetailPage = () => {
   const [isLiked, setIsLiked] = useState(false);
   const [likeCount, setLikeCount] = useState(0);
   const [isLiking, setIsLiking] = useState(false);
+  // Save/Unsave state
+  const [isSaved, setIsSaved] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const user = useAuth();
   const isAuthenticated = !!user;
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  // Related blogs
+  const [relatedBlogs, setRelatedBlogs] = useState([]);
+  const [relatedLoading, setRelatedLoading] = useState(false);
 
   const handleLike = async () => {
     if (!isAuthenticated) {
@@ -81,9 +88,7 @@ const BlogDetailPage = () => {
       setError(null);
       try {
         const res = await blogApi.getBlogBySlug(slug);
-        console.log("getBlogBySlug response:", res);
         if (res.success && res.data) {
-          console.log("res.data.likeCount:", res.data.likeCount);
           setPost(res.data);
           setLikeCount(
             typeof res.data.likeCount === "number"
@@ -91,29 +96,68 @@ const BlogDetailPage = () => {
               : (res.data.likeCount && res.data.likeCount.count) || 0
           );
           if (isAuthenticated && res.data.blogId) {
-            console.log("Checking like status for blogId:", res.data.blogId);
+            // Check like status
             const likeRes = await blogLikeApi.checkIfLiked(res.data.blogId);
-            console.log("checkIfLiked result:", likeRes, "user:", user);
-            if (likeRes.success) {
-              // Ensure Boolean conversion is explicit
-              const isLiked = likeRes.data === true;
-              console.log("Setting isLiked:", isLiked); // Log to confirm
-              setIsLiked(isLiked);
-            } else {
-              console.log("checkIfLiked failed:", likeRes.message);
-              setIsLiked(false);
+            setIsLiked(likeRes.success ? !!likeRes.data : false);
+            // Check save status
+            try {
+              const savedRes = await blogApi.getSavedBlogs({
+                page: 0,
+                size: 100,
+              });
+              if (savedRes.success && Array.isArray(savedRes.data?.content)) {
+                setIsSaved(
+                  savedRes.data.content.some(
+                    (b) => b.blogId === res.data.blogId
+                  )
+                );
+              } else {
+                setIsSaved(false);
+              }
+            } catch (e) {
+              setIsSaved(false);
             }
           } else {
-            console.log(
-              "Not authenticated or no blogId, setting isLiked: false"
-            );
             setIsLiked(false);
+            setIsSaved(false);
+          }
+          // Fetch related blogs by category slug (first category)
+          if (
+            Array.isArray(res.data.categories) &&
+            res.data.categories.length > 0
+          ) {
+            const cateSlug = res.data.categories[0].slug;
+            setRelatedLoading(true);
+            try {
+              const relatedRes = await blogApi.getBlogsByCategory(cateSlug, {
+                size: 12,
+                sort: "createdAt,desc",
+              });
+              if (
+                relatedRes.success &&
+                Array.isArray(relatedRes.data?.content)
+              ) {
+                // Lọc bỏ bài hiện tại khỏi danh sách liên quan
+                setRelatedBlogs(
+                  relatedRes.data.content.filter(
+                    (b) => b.blogId !== res.data.blogId
+                  )
+                );
+              } else {
+                setRelatedBlogs([]);
+              }
+            } catch (e) {
+              setRelatedBlogs([]);
+            } finally {
+              setRelatedLoading(false);
+            }
+          } else {
+            setRelatedBlogs([]);
           }
         } else {
           setError(res.message || "Không tìm thấy bài viết");
         }
       } catch (err) {
-        console.error("fetchBlog error:", err);
         setError("Có lỗi xảy ra khi tải bài viết");
       } finally {
         setLoading(false);
@@ -121,6 +165,30 @@ const BlogDetailPage = () => {
     };
     fetchBlog();
   }, [slug, isAuthenticated]);
+  // Toggle save/unsave
+  const handleToggleSave = async () => {
+    if (!isAuthenticated) {
+      alert("Vui lòng đăng nhập để lưu bài viết");
+      return;
+    }
+    if (!post?.blogId || isSaving) return;
+    setIsSaving(true);
+    try {
+      if (isSaved) {
+        const res = await blogApi.unsaveBlog(post.blogId);
+        if (res.success) setIsSaved(false);
+        else alert(res.message || "Có lỗi khi bỏ lưu bài viết");
+      } else {
+        const res = await blogApi.saveBlog(post.blogId);
+        if (res.success) setIsSaved(true);
+        else alert(res.message || "Có lỗi khi lưu bài viết");
+      }
+    } catch (e) {
+      alert("Có lỗi xảy ra khi lưu/bỏ lưu bài viết");
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   const formatDate = (dateString) => {
     return new Date(dateString).toLocaleDateString("vi-VN", {
@@ -230,80 +298,93 @@ const BlogDetailPage = () => {
         </div>
       </div>
 
-      <div className="container mx-auto px-4 py-12">
-        {/* Breadcrumb */}
-
-        <div className="max-w-7xl mx-auto">
-          {/* Article Meta & Share */}
-          <div className="flex justify-between items-center mb-8 p-6 rounded-xl shadow-sm ">
-            <div className="">
-              <nav className="text-sm text-gray-500 flex items-center gap-2 max-w-6xl mx-auto">
-                <Link
-                  to="/blog"
-                  className="hover:underline text-blue-600 font-medium"
-                >
-                  Blog
-                </Link>
-                <span className="mx-1">/</span>
-                <span className="text-gray-700 font-semibold">
-                  {post?.title || slug}
-                </span>
-              </nav>
-            </div>
-            <div>
-              <div className="flex items-center space-x-2">
-                <div className="flex items-center space-x-4">
-                  <Button
-                    variant={isLiked ? "default" : "outline"}
-                    size="sm"
-                    onClick={handleLike}
-                    disabled={isLiking}
-                    className="flex items-center space-x-2"
-                  >
-                    <Heart
-                      className={`w-4 h-4 dark:text-gray-600 ${
-                        isLiked ? "fill-current" : ""
-                      }`}
-                    />
-
-                    <span className="dark:text-gray-600">
-                      {typeof likeCount === "number" ? likeCount : 0}
-                    </span>
-                    {isLiking && (
-                      <div className="w-3 h-3 border border-current border-t-transparent rounded-full animate-spin ml-1" />
-                    )}
-                  </Button>
-                </div>
+      <div className="max-w-7xl mx-auto">
+        {/* Article Meta & Share */}
+        <div className="flex justify-between items-center mb-8 p-6 rounded-xl shadow-sm ">
+          <div className="">
+            <nav className="text-sm text-gray-500 flex items-center gap-2 max-w-6xl mx-auto">
+              <Link
+                to="/blog"
+                className="hover:underline text-blue-600 font-medium"
+              >
+                Blog
+              </Link>
+              <span className="mx-1">/</span>
+              <span className="text-gray-700 font-medium">
+                {post?.categories &&
+                post.categories.length > 0 &&
+                post.categories[0]?.name
+                  ? post.categories[0].name
+                  : "Chưa phân loại"}
+              </span>
+              <span className="mx-1">/</span>
+              <span className="text-gray-700 font-semibold">
+                {post?.title || slug}
+              </span>
+            </nav>
+          </div>
+          <div>
+            <div className="flex items-center space-x-2">
+              <div className="flex items-center space-x-4">
                 <Button
-                  variant="outline"
+                  variant={isLiked ? "default" : "outline"}
                   size="sm"
-                  onClick={() => handleShare("facebook")}
+                  onClick={handleLike}
+                  disabled={isLiking}
+                  className="flex items-center space-x-2"
                 >
-                  <Album className="w-4 h-4 dark:text-gray-600" />
-                </Button>
-
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleShare("facebook")}
-                >
-                  <Facebook className="w-4 h-4 dark:text-gray-600" />
+                  <Heart
+                    className={`w-4 h-4 dark:text-gray-600 ${
+                      isLiked ? "text-red-500" : ""
+                    }`}
+                  />
+                  <span className="dark:text-gray-600">
+                    {typeof likeCount === "number" ? likeCount : 0}
+                  </span>
+                  {isLiking && (
+                    <div className="w-3 h-3 border border-current border-t-transparent rounded-full animate-spin ml-1" />
+                  )}
                 </Button>
                 <Button
-                  variant="outline"
+                  variant={isSaved ? "default" : "outline"}
                   size="sm"
-                  onClick={() => handleShare("twitter")}
+                  onClick={handleToggleSave}
+                  disabled={isSaving}
+                  className="flex items-center space-x-2"
                 >
-                  <Twitter className="w-4 h-4 dark:text-gray-600" />
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleShare("copy")}
-                >
-                  <Share2 className="w-4 h-4 dark:text-gray-600" />
+                  <BookOpen
+                    className={`w-4 h-4 ${
+                      isSaved ? "text-blue-600" : "text-gray-600"
+                    }`}
+                  />
+                  <span>{isSaved ? "Đã lưu" : "Lưu bài viết"}</span>
+                  {isSaving && (
+                    <div className="w-3 h-3 border border-current border-t-transparent rounded-full animate-spin ml-1" />
+                  )}
                 </Button>
               </div>
+
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handleShare("facebook")}
+              >
+                <Facebook className="w-4 h-4 dark:text-gray-600" />
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handleShare("twitter")}
+              >
+                <Twitter className="w-4 h-4 dark:text-gray-600" />
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handleShare("copy")}
+              >
+                <Share2 className="w-4 h-4 dark:text-gray-600" />
+              </Button>
             </div>
           </div>
         </div>
@@ -335,9 +416,49 @@ const BlogDetailPage = () => {
             </div>
           </div>
         </div>
+
+        {/* Related Blogs Section dưới cùng */}
+        <div className="max-w-7xl mx-auto mt-10 mb-14">
+          <h2 className="text-2xl font-bold mb-6 text-gray-800">
+            Bài viết liên quan
+          </h2>
+          {relatedLoading ? (
+            <div className="flex justify-center py-8">
+              <Loader2 className="h-8 w-8 text-blue-600 animate-spin" />
+            </div>
+          ) : relatedBlogs.length === 0 ? (
+            <div className="text-gray-500 text-center py-8">
+              Không có bài viết liên quan
+            </div>
+          ) : relatedBlogs.length <= 3 ? (
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {relatedBlogs.map((blog) => (
+                <BlogCard key={blog.blogId} blog={blog} />
+              ))}
+            </div>
+          ) : (
+            <Swiper
+              modules={[Autoplay, Navigation]}
+              spaceBetween={24}
+              slidesPerView={1}
+              navigation
+              autoplay={{ delay: 5000 }}
+              breakpoints={{
+                640: { slidesPerView: 2 },
+                1024: { slidesPerView: 4 },
+              }}
+              className="related-blogs-swiper"
+            >
+              {relatedBlogs.map((blog) => (
+                <SwiperSlide key={blog.blogId}>
+                  <BlogCard blog={blog} />
+                </SwiperSlide>
+              ))}
+            </Swiper>
+          )}
+        </div>
       </div>
     </div>
   );
 };
-
 export default BlogDetailPage;

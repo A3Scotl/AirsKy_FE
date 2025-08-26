@@ -48,14 +48,8 @@ const ImageUpload = ({
       const previewUrl = URL.createObjectURL(file);
       setPreview(previewUrl);
 
-      // Here you would typically upload the file to your server
-      // For now, we'll simulate the upload and use the preview URL
-      await new Promise((resolve) => setTimeout(resolve, 1000)); // Simulate upload delay
-
-      // In a real implementation, you would get the actual URL from your server
-      const uploadedUrl = previewUrl; // This would be the actual server URL
-
-      onChange?.(uploadedUrl, file);
+      // Truyền cả previewUrl (cho UI) và file object (cho submit form)
+      onChange?.(previewUrl, file);
     } catch (error) {
       console.error("Upload error:", error);
       alert("Có lỗi xảy ra khi tải ảnh lên!");
@@ -101,6 +95,7 @@ const ImageUpload = ({
 
   const handleUrlInput = (url) => {
     setPreview(url);
+    // Nếu nhập URL thì truyền URL và null cho file
     onChange?.(url, null);
   };
 

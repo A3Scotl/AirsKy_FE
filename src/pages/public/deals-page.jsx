@@ -4,6 +4,13 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
+  Select,
+  SelectContent,
+  SelectTrigger,
+  SelectValue,
+  SelectItem,
+} from "@/components/ui/select";
+import {
   Sheet,
   SheetContent,
   SheetDescription,
@@ -171,27 +178,6 @@ const DealsPage = () => {
         </section>
 
         <div className="container mx-auto px-4 max-w-6xl py-16">
-          {/* Filter Controls - Bổ sung phần lọc */}
-          <section className="mb-8">
-            <div className="flex flex-wrap items-center justify-between gap-4">
-              <div className="flex items-center space-x-4">
-                <label className="text-gray-700 dark:text-gray-300 font-medium">
-                  Sắp xếp theo:
-                </label>
-                <select
-                  value={sortBy}
-                  onChange={(e) => setSortBy(e.target.value)}
-                  className="border rounded-lg px-3 py-2 bg-white dark:bg-gray-800"
-                >
-                  <option value="discount">Giảm giá cao nhất</option>
-                  <option value="expiry">Hết hạn sớm nhất</option>
-                  <option value="usage">Sử dụng nhiều nhất</option>
-                </select>
-              </div>
-              {/* Nếu API có category, có thể thêm filterType select ở đây */}
-            </div>
-          </section>
-
           {/* Featured Deals Section - Sử dụng 3 deals filtered đặc biệt */}
           <section className="mb-16">
             <div className="flex items-center justify-between mb-8">
@@ -451,12 +437,41 @@ const DealsPage = () => {
                 </p>
               </div>
 
-              <Link to="/flights">
-                <Button variant="outline" className="font-semibold">
-                  Xem thêm
-                  <ArrowRight className="w-4 h-4 ml-2" />
-                </Button>
-              </Link>
+              <div className="flex gap-2 flex-wrap">
+                {/* Filter Controls - Bổ sung phần lọc */}
+                <section className="mb-8">
+                  <div className="flex flex-wrap items-center justify-between gap-4">
+                    <div className="flex items-center space-x-4">
+                      <label className="text-gray-700 dark:text-gray-300 font-medium">
+                        Sắp xếp theo:
+                      </label>
+                      <Select value={sortBy} onValueChange={setSortBy}>
+                        <SelectTrigger className="w-48 h-10 bg-white dark:bg-gray-800">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="discount">
+                            Giảm giá cao nhất
+                          </SelectItem>
+                          <SelectItem value="expiry">
+                            Hết hạn sớm nhất
+                          </SelectItem>
+                          <SelectItem value="usage">
+                            Sử dụng nhiều nhất
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    {/* Nếu API có category, có thể thêm filterType select ở đây */}
+                  </div>
+                </section>
+                <Link to="/flights">
+                  <Button variant="outline" className="font-semibold">
+                    Xem thêm
+                    <ArrowRight className="w-4 h-4 ml-2" />
+                  </Button>
+                </Link>
+              </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -544,7 +559,7 @@ const DealsPage = () => {
 
             {/* Pagination */}
             {totalPages > 1 && (
-              <div className="flex items-center justify-center space-x-2 mt-8">
+              <div className="flex items-center justify-end space-x-2 mt-8">
                 <Button
                   variant="outline"
                   size="sm"

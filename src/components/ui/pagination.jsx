@@ -133,7 +133,7 @@ const Pagination = ({
               disabled={currentPage === totalPages}
               className="h-8 px-3"
             >
-              Next
+              Sau
             </Button>
           </div>
         )}

@@ -88,7 +88,8 @@ const BlogTable = ({
     setShowDetailModal(true);
   };
 
-  const handleSaveBlog = async (blogData) => {
+  // Nhận thêm isFormData để phân biệt loại dữ liệu
+  const handleSaveBlog = async (blogData, isFormData = false) => {
     try {
       if (formMode === "add") {
         // Call API to create blog

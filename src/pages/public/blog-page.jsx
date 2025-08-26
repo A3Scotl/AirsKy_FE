@@ -27,6 +27,13 @@ import { blogApi } from "@/apis/blog-api";
 import { categoryApi } from "@/apis/category-api";
 import { blogLikeApi } from "@/apis/blog-like-api";
 import BlogCard from "@/components/section/blog/blog-card";
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from "@/components/ui/select";
 
 const BlogPage = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -52,6 +59,9 @@ const BlogPage = () => {
   const [totalPages, setTotalPages] = useState(1);
   const [totalBlogs, setTotalBlogs] = useState(0);
   const blogsPerPage = 9;
+  const [sortOption, setSortOption] = useState(
+    searchParams.get("sort") || "createdAt,desc"
+  );
 
   // Fetch categories
   const fetchCategories = async () => {
@@ -68,28 +78,31 @@ const BlogPage = () => {
   // Fetch featured blogs (top like)
   const fetchFeaturedBlogs = async () => {
     try {
-      // Lấy nhiều blog để lọc top like
       const result = await blogApi.getAllPublishedBlogs({
         page: 0,
-        size: 30,
+        size: 50,
         sort: "createdAt,desc",
       });
       if (result.success && result.data) {
         let blogs = result.data.content || result.data;
-        // Lấy số like cho từng blog song song
         const likeCounts = await Promise.all(
           blogs.map(async (blog) => {
             const likeRes = await blogLikeApi.getLikeCount(blog.blogId);
             return likeRes.success ? likeRes.data : 0;
           })
         );
-        // Gắn số like vào blog
         blogs = blogs.map((blog, idx) => ({
           ...blog,
           likeCount: likeCounts[idx],
         }));
-        // Sắp xếp giảm dần theo likeCount
-        blogs.sort((a, b) => (b.likeCount || 0) - (a.likeCount || 0));
+        blogs = blogs.filter(
+          (b) => (b.viewCount || 0) > 200 || (b.likeCount || 0) > 10
+        );
+        blogs.sort(
+          (a, b) =>
+            (b.likeCount || 0) - (a.likeCount || 0) ||
+            (b.viewCount || 0) - (a.viewCount || 0)
+        );
         setFeaturedBlogs(blogs.slice(0, 5));
       }
     } catch (error) {
@@ -98,7 +111,12 @@ const BlogPage = () => {
   };
 
   // Fetch blogs with filters
-  const fetchBlogs = async (page = 1, search = "", category = "") => {
+  const fetchBlogs = async (
+    page = 1,
+    search = "",
+    category = "",
+    sort = sortOption
+  ) => {
     try {
       setSearchLoading(true);
       setError(null);
@@ -106,26 +124,27 @@ const BlogPage = () => {
       let result;
 
       if (search.trim()) {
-        // Search blogs
+        // Search blogs with optional category filter
         result = await blogApi.searchBlogs({
           keyword: search,
+          category: category || undefined, // Include category in search if provided
           page: page - 1,
           size: blogsPerPage,
-          sort: "createdAt,desc",
+          sort: sort,
         });
       } else if (category) {
-        // Filter by category
+        // Filter by category only
         result = await blogApi.getBlogsByCategory(category, {
           page: page - 1,
           size: blogsPerPage,
-          sort: "createdAt,desc",
+          sort: sort,
         });
       } else {
         // Get all published blogs
         result = await blogApi.getAllPublishedBlogs({
           page: page - 1,
           size: blogsPerPage,
-          sort: "createdAt,desc",
+          sort: sort,
         });
       }
 
@@ -168,15 +187,24 @@ const BlogPage = () => {
     if (searchTerm) params.set("search", searchTerm);
     if (selectedCategory) params.set("category", selectedCategory);
     if (currentPage > 1) params.set("page", currentPage.toString());
+    if (sortOption && sortOption !== "createdAt,desc")
+      params.set("sort", sortOption);
 
     setSearchParams(params);
-  }, [searchTerm, selectedCategory, currentPage, setSearchParams]);
+  }, [searchTerm, selectedCategory, currentPage, sortOption, setSearchParams]);
 
   // Handle search
   const handleSearch = async (e) => {
     e.preventDefault();
     setCurrentPage(1);
-    await fetchBlogs(1, searchTerm, selectedCategory);
+    await fetchBlogs(1, searchTerm, selectedCategory, sortOption);
+  };
+
+  // Handle sort change
+  const handleSortChange = async (value) => {
+    setSortOption(value);
+    setCurrentPage(1);
+    await fetchBlogs(1, searchTerm, selectedCategory, value);
   };
 
   // Handle category filter
@@ -245,14 +273,13 @@ const BlogPage = () => {
           </div>
         </div>
 
-        {/* Featured Blogs Carousel */}
-        {featuredBlogs.length > 0 && (
+        {/* Featured Blogs Carousel (only show when no search term) */}
+        {!searchTerm && featuredBlogs.length > 0 && (
           <div className="py-16 bg-white">
             <div className="container mx-auto px-4">
               <h2 className="text-3xl font-bold text-center mb-12 text-gray-800">
                 Bài Viết Nổi Bật
               </h2>
-
               <Swiper
                 modules={[Autoplay, Navigation, Pagination]}
                 spaceBetween={30}
@@ -333,12 +360,10 @@ const BlogPage = () => {
                     <Button
                       key={category.categoryId}
                       variant={
-                        selectedCategory === category.categoryId
-                          ? "default"
-                          : "ghost"
+                        selectedCategory === category.slug ? "default" : "ghost"
                       }
                       className="w-full justify-start"
-                      onClick={() => handleCategoryChange(category.categoryId)}
+                      onClick={() => handleCategoryChange(category.slug)}
                     >
                       {category.name}
                     </Button>
@@ -350,20 +375,35 @@ const BlogPage = () => {
             {/* Blog Grid */}
             <div className="lg:w-3/4">
               {/* Results Info */}
-              <div className="flex justify-between items-center mb-8">
+              <div className="flex flex-col md:flex-row md:justify-between md:items-center mb-8 gap-4">
                 <h2 className="text-2xl font-bold text-gray-800">
                   {searchTerm
                     ? `Kết quả tìm kiếm: "${searchTerm}"`
+                    : selectedCategory
+                    ? `Danh mục: ${
+                        categories.find((c) => c.slug === selectedCategory)
+                          ?.name || "Đang tải..."
+                      }`
                     : "Tất cả bài viết"}
                 </h2>
-                {/* Sort by */}
-                {/* <div>
-                  <select>
-                    <option value="newest">Mới nhất</option>
-                    <option value="most_viewed">Lượt xem giảm dần</option>
-                    <option value="most_liked">Lượt thích giảm dần</option>
-                  </select>
-                </div> */}
+                <div className="w-full md:w-60">
+                  <Select value={sortOption} onValueChange={handleSortChange}>
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Sắp xếp" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="publishedDate,desc">
+                        Mới nhất
+                      </SelectItem>
+                      <SelectItem value="viewCount,desc">
+                        Phổ biến nhất
+                      </SelectItem>
+                      <SelectItem value="likeCount,desc">
+                        Yêu thích nhất
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
 
               {/* Error State */}
@@ -382,6 +422,11 @@ const BlogPage = () => {
               )}
 
               {/* Loading State */}
+              {searchLoading && (
+                <div className="text-center py-12">
+                  <p className="text-gray-600 text-lg">Đang tải...</p>
+                </div>
+              )}
 
               {/* No Results */}
               {!searchLoading && !error && blogs.length === 0 && (
@@ -411,7 +456,7 @@ const BlogPage = () => {
                     ))}
                   </div>
 
-                  {/* Pagination (dưới danh sách bài viết, hoạt động cho cả lọc theo danh mục) */}
+                  {/* Pagination */}
                   {totalPages > 1 && (
                     <div className="flex justify-center mt-12">
                       <div className="flex items-center gap-2">
@@ -425,7 +470,6 @@ const BlogPage = () => {
                           Trước
                         </Button>
 
-                        {/* Hiển thị các trang, có dấu ... nếu nhiều trang */}
                         {[...Array(totalPages)].map((_, i) => {
                           const page = i + 1;
                           const isCurrentPage = page === currentPage;

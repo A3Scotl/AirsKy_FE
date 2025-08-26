@@ -35,7 +35,7 @@ const AdminHeader = ({ setSidebarOpen }) => {
 
   const handleLogout = () => {
     logout();
-    Navigate("/auth");
+    navigate("/auth");
   };
 
   return (
