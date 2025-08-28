@@ -15,6 +15,7 @@ import {
   ChevronDown,
   ChevronRight,
   FolderOpen,
+  MapPin,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -23,6 +24,15 @@ const AdminSidebar = ({ sidebarOpen, setSidebarOpen }) => {
   const [blogMenuOpen, setBlogMenuOpen] = useState(
     location.pathname.includes("/admin/blogs") ||
       location.pathname.includes("/admin/categories")
+  );
+  const [flightMenuOpen, setFlightMenuOpen] = useState(
+    location.pathname.startsWith("/admin/flights") ||
+      location.pathname.startsWith("/admin/seats") ||
+      location.pathname.startsWith("/admin/airports") ||
+      location.pathname.startsWith("/admin/travel-classes") ||
+      location.pathname.startsWith("/admin/airlines") ||
+      location.pathname.startsWith("/admin/gates") ||
+      location.pathname.startsWith("/admin/baggage")
   );
 
   const navigation = [
@@ -42,7 +52,59 @@ const AdminSidebar = ({ sidebarOpen, setSidebarOpen }) => {
       name: "Quản lý chuyến bay",
       href: "/admin/flights",
       icon: Plane,
-      current: location.pathname === "/admin/flights",
+      current:
+        location.pathname.startsWith("/admin/flights") ||
+        location.pathname.startsWith("/admin/seats") ||
+        location.pathname.startsWith("/admin/airports") ||
+        location.pathname.startsWith("/admin/travel-classes") ||
+        location.pathname.startsWith("/admin/airlines") ||
+        location.pathname.startsWith("/admin/gates") ||
+        location.pathname.startsWith("/admin/baggage"),
+      isExpandable: true,
+      submenu: [
+        {
+          name: "Chuyến bay",
+          href: "/admin/flights",
+          icon: Plane,
+          current: location.pathname === "/admin/flights",
+        },
+        {
+          name: "Ghế",
+          href: "/admin/seats",
+          icon: Users,
+          current: location.pathname === "/admin/seats",
+        },
+        {
+          name: "Sân bay",
+          href: "/admin/airports",
+          icon: MapPin,
+          current: location.pathname === "/admin/airports",
+        },
+        {
+          name: "Hạng vé",
+          href: "/admin/travel-classes",
+          icon: Tag,
+          current: location.pathname === "/admin/travel-classes",
+        },
+        {
+          name: "Hãng bay",
+          href: "/admin/airlines",
+          icon: User,
+          current: location.pathname === "/admin/airlines",
+        },
+        {
+          name: "Sân đỗ",
+          href: "/admin/gates",
+          icon: FolderOpen,
+          current: location.pathname === "/admin/gates",
+        },
+        {
+          name: "Hành lý",
+          href: "/admin/baggage",
+          icon: Tag,
+          current: location.pathname === "/admin/baggage",
+        },
+      ],
     },
     {
       name: "Quản lý người dùng",
@@ -148,7 +210,13 @@ const AdminSidebar = ({ sidebarOpen, setSidebarOpen }) => {
               return (
                 <div key={item.name}>
                   <button
-                    onClick={() => setBlogMenuOpen(!blogMenuOpen)}
+                    onClick={() => {
+                      if (item.name === "Quản lý bài đăng") {
+                        setBlogMenuOpen(!blogMenuOpen);
+                      } else if (item.name === "Quản lý chuyến bay") {
+                        setFlightMenuOpen(!flightMenuOpen);
+                      }
+                    }}
                     className={`
                       group flex items-center w-full px-2 py-2 text-sm font-medium rounded-md transition-colors duration-200
                       ${
@@ -169,14 +237,18 @@ const AdminSidebar = ({ sidebarOpen, setSidebarOpen }) => {
                       `}
                     />
                     {item.name}
-                    {blogMenuOpen ? (
+                    {item.name === "Quản lý bài đăng" && blogMenuOpen ? (
+                      <ChevronDown className="ml-auto h-4 w-4" />
+                    ) : item.name === "Quản lý bài đăng" ? (
+                      <ChevronRight className="ml-auto h-4 w-4" />
+                    ) : item.name === "Quản lý chuyến bay" && flightMenuOpen ? (
                       <ChevronDown className="ml-auto h-4 w-4" />
                     ) : (
                       <ChevronRight className="ml-auto h-4 w-4" />
                     )}
                   </button>
 
-                  {blogMenuOpen && (
+                  {(item.name === "Quản lý bài đăng" && blogMenuOpen && (
                     <div className="ml-6 mt-1 space-y-1">
                       {item.submenu.map((subItem) => {
                         const SubIcon = subItem.icon;
@@ -209,7 +281,41 @@ const AdminSidebar = ({ sidebarOpen, setSidebarOpen }) => {
                         );
                       })}
                     </div>
-                  )}
+                  )) ||
+                    (item.name === "Quản lý chuyến bay" && flightMenuOpen && (
+                      <div className="ml-6 mt-1 space-y-1">
+                        {item.submenu.map((subItem) => {
+                          const SubIcon = subItem.icon;
+                          return (
+                            <Link
+                              key={subItem.name}
+                              to={subItem.href}
+                              className={`
+                                  group flex items-center px-2 py-2 text-sm font-medium rounded-md transition-colors duration-200
+                                  ${
+                                    subItem.current
+                                      ? "bg-blue-50 text-blue-700 border-r-2 border-blue-500"
+                                      : "text-gray-500 hover:bg-gray-50 hover:text-gray-700"
+                                  }
+                                `}
+                              onClick={() => setSidebarOpen(false)}
+                            >
+                              <SubIcon
+                                className={`
+                                    mr-3 flex-shrink-0 h-4 w-4 transition-colors duration-200
+                                    ${
+                                      subItem.current
+                                        ? "text-blue-500"
+                                        : "text-gray-300 group-hover:text-gray-400"
+                                    }
+                                  `}
+                              />
+                              {subItem.name}
+                            </Link>
+                          );
+                        })}
+                      </div>
+                    ))}
                 </div>
               );
             }
@@ -244,28 +350,6 @@ const AdminSidebar = ({ sidebarOpen, setSidebarOpen }) => {
             );
           })}
         </nav>
-
-        {/* Admin info at bottom */}
-        <div className="absolute bottom-0 w-full border-t border-gray-200">
-          <Link
-            to="/admin/profile"
-            className="flex items-center p-4 hover:bg-gray-50 transition-colors duration-200"
-            onClick={() => setSidebarOpen(false)}
-          >
-            <div className="flex-shrink-0">
-              <div className="h-8 w-8 rounded-full bg-blue-600 flex items-center justify-center">
-                <span className="text-sm font-medium text-white">JA</span>
-              </div>
-            </div>
-            <div className="ml-3 flex-1">
-              <p className="text-sm font-medium text-gray-700">
-                John Administrator
-              </p>
-              <p className="text-xs text-gray-500">admin@airsky.com</p>
-            </div>
-            <User className="h-4 w-4 text-gray-400" />
-          </Link>
-        </div>
       </div>
     </>
   );

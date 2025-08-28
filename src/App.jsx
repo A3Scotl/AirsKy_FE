@@ -11,6 +11,7 @@ import { useScrollToTop } from "@/hooks/use-scroll-to-top";
 import { AnimatePresence } from "framer-motion";
 import { AuthProvider, useAuth } from "@/contexts/auth-context";
 import { ThemeProvider } from "@/contexts/theme-context";
+import { SearchProvider } from "@/contexts/search-context";
 import { TitleSync } from "@/components/common/seo";
 import { Toaster } from "sonner";
 import LoadingPage from "@/pages/loading/loading-page";
@@ -56,6 +57,8 @@ const AdminProfile = lazy(() => import("@/pages/private/profile-page"));
 const AdminBlog = lazy(() => import("@/pages/private/blog-page"));
 const AdminCategory = lazy(() => import("@/pages/private/category-page"));
 const AdminDeal = lazy(() => import("@/pages/private/deal-page"));
+const AdminAirport = lazy(() => import("@/pages/private/airport-page"));
+const AdminAirline = lazy(() => import("@/pages/private/airline-page"));
 
 function AppRoutes() {
   const { loading } = useAuth();
@@ -106,7 +109,7 @@ function AppRoutes() {
               />
 
               <Route
-                path="/detail"
+                path="/detail/:id"
                 element={
                   <PageTransition>
                     <FlightDetail />
@@ -181,6 +184,8 @@ function AppRoutes() {
               <Route path="dashboard" element={<AdminDashboard />} />
               <Route path="bookings" element={<AdminBooking />} />
               <Route path="flights" element={<AdminFlights />} />
+              <Route path="airports" element={<AdminAirport />} />
+              <Route path="airlines" element={<AdminAirline />} />
               <Route path="users" element={<AdminUsers />} />
               <Route path="payments" element={<AdminPayments />} />
               <Route path="reports" element={<AdminReports />} />
@@ -212,13 +217,15 @@ function App() {
       <Router>
         <ThemeProvider>
           <AuthProvider>
-            <Toaster
-              position="top-right"
-              richColors
-              closeButton
-              duration={3000}
-            />
-            <AppRoutes />
+            <SearchProvider>
+              <Toaster
+                position="top-right"
+                richColors
+                closeButton
+                duration={3000}
+              />
+              <AppRoutes />
+            </SearchProvider>
           </AuthProvider>
         </ThemeProvider>
       </Router>

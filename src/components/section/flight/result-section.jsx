@@ -3,12 +3,21 @@
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ArrowRight, Filter, ChevronLeft, ChevronRight } from "lucide-react";
+import {
+  ArrowRight,
+  Filter,
+  ChevronLeft,
+  ChevronRight,
+  Plane,
+} from "lucide-react";
 import { useState, useMemo, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation, useSearchParams } from "react-router-dom";
 import { SearchForm } from "../../common/search-form";
 import { FlightFilters } from "./filter-section";
 import DealsSection from "./deal-section";
+import { flightApi } from "../../../apis/flight-api";
+import { airportApi } from "../../../apis/airport-api";
+import { useSearch } from "../../../contexts/search-context";
 
 // Formatting utilities
 const formatCurrency = (amount) => {
@@ -17,7 +26,7 @@ const formatCurrency = (amount) => {
     currency: "VND",
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
-  }).format(amount * 24000); // Convert USD to VND approx
+  }).format(amount); // Display as-is since prices are already in VND
 };
 
 const formatDate = (dateString) => {
@@ -36,211 +45,156 @@ const formatFlightDuration = (minutes) => {
   return `${hours}g ${mins}p`;
 };
 
-// Reduced flight data with Vietnamese cities
-const allFlights = [
-  {
-    id: "1",
-    airline: "VietJet Air",
-    airlineLogo:
-      "https://logos-world.net/wp-content/uploads/2021/02/VietJet-Air-Logo.png",
-    from: "TP. Hồ Chí Minh",
-    fromCode: "SGN",
-    to: "Bangkok",
-    toCode: "BKK",
-    date: "2025-08-26",
-    priceNumeric: 57,
-    type: "Một chiều",
-    departureTime: "08:30",
-    duration: "80",
-  },
-  {
-    id: "2",
-    airline: "Vietnam Airlines",
-    airlineLogo:
-      "https://logos-world.net/wp-content/uploads/2021/02/Vietnam-Airlines-Logo.png",
-    from: "Hà Nội",
-    fromCode: "HAN",
-    to: "Singapore",
-    toCode: "SIN",
-    date: "2025-08-30",
-    priceNumeric: 86,
-    type: "Một chiều",
-    departureTime: "06:20",
-    duration: "180",
-  },
-  {
-    id: "3",
-    airline: "Jetstar Pacific",
-    airlineLogo:
-      "https://logos-world.net/wp-content/uploads/2020/03/Jetstar-Logo.png",
-    from: "TP. Hồ Chí Minh",
-    fromCode: "SGN",
-    to: "Đà Nẵng",
-    toCode: "DAD",
-    date: "2025-08-20",
-    priceNumeric: 33,
-    type: "Một chiều",
-    departureTime: "11:30",
-    duration: "75",
-  },
-  {
-    id: "4",
-    airline: "Bamboo Airways",
-    airlineLogo:
-      "https://upload.wikimedia.org/wikipedia/commons/thumb/d/dd/Bamboo_Airways_logo.svg/1024px-Bamboo_Airways_logo.svg.png",
-    from: "Đà Nẵng",
-    fromCode: "DAD",
-    to: "Seoul",
-    toCode: "ICN",
-    date: "2025-09-05",
-    priceNumeric: 196,
-    type: "Một chiều",
-    departureTime: "09:45",
-    duration: "240",
-  },
-  {
-    id: "5",
-    airline: "VietJet Air",
-    airlineLogo:
-      "https://logos-world.net/wp-content/uploads/2021/02/VietJet-Air-Logo.png",
-    from: "Hà Nội",
-    fromCode: "HAN",
-    to: "TP. Hồ Chí Minh",
-    toCode: "SGN",
-    date: "2025-08-25",
-    priceNumeric: 48,
-    type: "Một chiều",
-    departureTime: "07:00",
-    duration: "120",
-  },
-  {
-    id: "6",
-    airline: "Bamboo Airways",
-    airlineLogo:
-      "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e9/Bamboo_Airways_logo.svg/1200px-Bamboo_Airways_logo.svg.png",
-    from: "Đà Nẵng",
-    fromCode: "DAD",
-    to: "Seoul",
-    toCode: "ICN",
-    date: "2025-08-27",
-    priceNumeric: 220,
-    type: "Một chiều",
-    departureTime: "15:30",
-    duration: "300",
-  },
-  {
-    id: "7",
-    airline: "Vietnam Airlines",
-    airlineLogo:
-      "https://logos-world.net/wp-content/uploads/2021/02/Vietnam-Airlines-Logo.png",
-    from: "TP. Hồ Chí Minh",
-    fromCode: "SGN",
-    to: "Tokyo",
-    toCode: "NRT",
-    date: "2025-08-28",
-    priceNumeric: 380,
-    type: "Một chiều",
-    departureTime: "23:45",
-    duration: "360",
-  },
-  {
-    id: "8",
-    airline: "VietJet Air",
-    airlineLogo:
-      "https://logos-world.net/wp-content/uploads/2021/02/VietJet-Air-Logo.png",
-    from: "Hà Nội",
-    fromCode: "HAN",
-    to: "Singapore",
-    toCode: "SIN",
-    date: "2025-08-29",
-    priceNumeric: 165,
-    type: "Một chiều",
-    departureTime: "11:20",
-    duration: "210",
-  },
-  {
-    id: "9",
-    airline: "Jetstar Pacific",
-    airlineLogo:
-      "https://upload.wikimedia.org/wikipedia/commons/thumb/9/9a/Jetstar_Airways_logo.svg/1200px-Jetstar_Airways_logo.svg.png",
-    from: "Cần Thơ",
-    fromCode: "VCA",
-    to: "Bangkok",
-    toCode: "BKK",
-    date: "2025-08-30",
-    priceNumeric: 95,
-    type: "Một chiều",
-    departureTime: "14:15",
-    duration: "90",
-  },
-  {
-    id: "10",
-    airline: "Vietnam Airlines",
-    airlineLogo:
-      "https://logos-world.net/wp-content/uploads/2021/02/Vietnam-Airlines-Logo.png",
-    from: "TP. Hồ Chí Minh",
-    fromCode: "SGN",
-    to: "Paris",
-    toCode: "CDG",
-    date: "2025-08-31",
-    priceNumeric: 650,
-    type: "Một chiều",
-    departureTime: "01:30",
-    duration: "780",
-  },
-  {
-    id: "11",
-    airline: "Bamboo Airways",
-    airlineLogo:
-      "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e9/Bamboo_Airways_logo.svg/1200px-Bamboo_Airways_logo.svg.png",
-    from: "Phú Quốc",
-    fromCode: "PQC",
-    to: "Kuala Lumpur",
-    toCode: "KUL",
-    date: "2025-09-01",
-    priceNumeric: 140,
-    type: "Một chiều",
-    departureTime: "08:45",
-    duration: "150",
-  },
-  {
-    id: "12",
-    airline: "VietJet Air",
-    airlineLogo:
-      "https://logos-world.net/wp-content/uploads/2021/02/VietJet-Air-Logo.png",
-    from: "Hà Nội",
-    fromCode: "HAN",
-    to: "Melbourne",
-    toCode: "MEL",
-    date: "2025-09-02",
-    priceNumeric: 420,
-    type: "Một chiều",
-    departureTime: "17:20",
-    duration: "540",
-  },
-];
+// Flight data will be fetched from API
+// const allFlights = [ ... ]; // Removed static data
 
 export function FlightSearchResults() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const [searchParams] = useSearchParams();
+  const { searchCriteria: contextSearchCriteria } = useSearch();
   const [selectedFlight, setSelectedFlight] = useState(null);
-  const [searchCriteria, setSearchCriteria] = useState(null);
+  const [searchCriteria, setSearchCriteria] = useState(null); // Start with no search criteria
+  const [allFlights, setAllFlights] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState({
-    priceRange: [20, 1000],
+    priceRange: [100000, 10000000],
     airlines: [],
     departureTime: [],
     sortBy: "price-asc",
   });
-  const [activeTab, setActiveTab] = useState("one-way");
+  const [activeTab, setActiveTab] = useState("all"); // Start with all flights
   const [expandedFlights, setExpandedFlights] = useState(new Set());
   const [selectedFares, setSelectedFares] = useState({});
   const [showMobileFilters, setShowMobileFilters] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
-  const [flightsPerPage] = useState(4); // Giảm xuống 4 để có nhiều trang hơn
+  const [flightsPerPage] = useState(6); // Giảm xuống 4 để có nhiều trang hơn
 
   // Reset page when filters change
   useEffect(() => {
     setCurrentPage(1);
   }, [filters, searchCriteria, activeTab]);
+
+  // Get search criteria from URL params (from homepage) or location state
+  useEffect(() => {
+    // First try URL params
+    const fromParam = searchParams.get("from");
+    const toParam = searchParams.get("to");
+    const departDateParam = searchParams.get("departDate");
+    const returnDateParam = searchParams.get("returnDate");
+    const tripTypeParam = searchParams.get("tripType");
+    const passengersParam = searchParams.get("passengers");
+
+    if (fromParam || toParam) {
+      const criteria = {
+        from: fromParam,
+        to: toParam,
+        departDate: departDateParam ? new Date(departDateParam) : null,
+        returnDate: returnDateParam ? new Date(returnDateParam) : null,
+        tripType: tripTypeParam || "oneway",
+        passengers: passengersParam
+          ? JSON.parse(passengersParam)
+          : { adults: 1, children: 0, infants: 0 },
+        searchCombinations: [], // Single combination for backward compatibility
+      };
+      console.log("Received search criteria from URL params:", criteria);
+      setSearchCriteria(criteria);
+    }
+    // Try context as secondary source
+    else if (contextSearchCriteria) {
+      console.log(
+        "Received search criteria from context:",
+        contextSearchCriteria
+      );
+      setSearchCriteria(contextSearchCriteria);
+    }
+    // Fallback to location state (for backward compatibility)
+    else if (location.state && location.state.searchCriteria) {
+      console.log(
+        "Received search criteria from location state:",
+        location.state.searchCriteria
+      );
+      setSearchCriteria(location.state.searchCriteria);
+    }
+  }, [searchParams, location.state, contextSearchCriteria]);
+
+  // Listen for context changes (when context is updated after component mount)
+  useEffect(() => {
+    if (
+      contextSearchCriteria &&
+      !searchParams.get("from") &&
+      !location.state?.searchCriteria
+    ) {
+      console.log(
+        "Context updated, setting search criteria:",
+        contextSearchCriteria
+      );
+      setSearchCriteria(contextSearchCriteria);
+    }
+  }, [contextSearchCriteria, searchParams, location.state]);
+
+  // Fetch all flights on component mount
+  useEffect(() => {
+    const fetchAllFlights = async () => {
+      try {
+        setLoading(true);
+        const response = await flightApi.getAllFlights({ size: 1000 }); // Get a large number of flights
+        if (response.success) {
+          // Map API data to UI format
+          const mappedFlights = response.data.content.map((flight) => ({
+            id: flight.flightId,
+            airline: flight.airlineName || "Unknown Airline",
+            airlineLogo: flight.airlineName
+              ? `https://logo.clearbit.com/${flight.airlineName
+                  .toLowerCase()
+                  .replace(/\s+/g, "")
+                  .replace(/[^a-zA-Z0-9]/g, "")}.com`
+              : "https://via.placeholder.com/40x40?text=Logo",
+            from: flight.from || "Unknown",
+            fromCode: flight.fromCode || "UNK",
+            to: flight.to || "Unknown",
+            toCode: flight.toCode || "UNK",
+            date: flight.departureTime
+              ? new Date(flight.departureTime).toISOString().split("T")[0]
+              : "",
+            priceNumeric: flight.basePrice || 0,
+            type: flight.type || "ONE_WAY",
+            departureTime: flight.departureTime
+              ? new Date(flight.departureTime).toTimeString().slice(0, 5)
+              : "",
+            duration: flight.duration || 0,
+          }));
+
+          // Remove duplicates from API response to prevent duplicate keys
+          const uniqueFlights = mappedFlights.filter(
+            (flight, index, self) =>
+              index === self.findIndex((f) => f.id === flight.id)
+          );
+
+          console.log("Original flights from API:", mappedFlights.length);
+          console.log(
+            "Unique flights after API deduplication:",
+            uniqueFlights.length
+          );
+          console.log(
+            "Duplicate flight IDs removed:",
+            mappedFlights.length - uniqueFlights.length
+          );
+
+          setAllFlights(uniqueFlights);
+          console.log("Fetched flights (unique):", uniqueFlights);
+        } else {
+          console.error("Failed to fetch flights:", response.message);
+        }
+      } catch (error) {
+        console.error("Error fetching flights:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchAllFlights();
+  }, []);
 
   // Simplified fare options data with Vietnamese text
   const fareOptions = [
@@ -283,7 +237,8 @@ export function FlightSearchResults() {
 
   const handleSearch = (criteria) => setSearchCriteria(criteria);
   const handleBookFlight = (flight) => setSelectedFlight(flight);
-  const handleViewFlightDetails = (flight) => navigate("/detail");
+  const handleViewFlightDetails = (flight) =>
+    navigate("/detail/" + flight.id, { state: { flight } });
 
   const handleSelectFare = (flightId, fareId) => {
     setSelectedFares((prev) => ({ ...prev, [flightId]: fareId }));
@@ -298,11 +253,12 @@ export function FlightSearchResults() {
 
   const handleResetFilters = () => {
     setFilters({
-      priceRange: [20, 1000],
+      priceRange: [100000, 10000000], // Từ 100k đến 10 triệu VND
       airlines: [],
       departureTime: [],
       sortBy: "price-asc",
     });
+    setActiveTab("all");
     setCurrentPage(1);
   };
 
@@ -326,16 +282,24 @@ export function FlightSearchResults() {
     return "evening";
   };
 
-  const isDomestic = (flight) => {
-    const vietnamCodes = ["SGN", "HAN", "DAD"];
-    return (
-      vietnamCodes.includes(flight.fromCode) &&
-      vietnamCodes.includes(flight.toCode)
-    );
-  };
-
   const filteredAndSortedFlights = useMemo(() => {
-    const filtered = allFlights.filter((flight) => {
+    console.log("Starting flight filtering...");
+    console.log("Total flights in allFlights:", allFlights.length);
+    console.log(
+      "Flight IDs in allFlights:",
+      allFlights.map((f) => f.id)
+    );
+
+    // Check for duplicates in original data
+    const flightIds = allFlights.map((f) => f.id);
+    const uniqueIds = new Set(flightIds);
+    if (flightIds.length !== uniqueIds.size) {
+      console.warn("DUPLICATE FLIGHT IDs FOUND IN ORIGINAL DATA!");
+      console.warn("Total flights:", flightIds.length);
+      console.warn("Unique IDs:", uniqueIds.size);
+    }
+
+    let filtered = allFlights.filter((flight) => {
       // Price filter
       if (
         flight.priceNumeric < filters.priceRange[0] ||
@@ -343,54 +307,192 @@ export function FlightSearchResults() {
       ) {
         return false;
       }
+      return true;
+    });
+    console.log("After price filter:", filtered.length);
 
-      // Airline filter
+    // Airline filter
+    filtered = filtered.filter((flight) => {
       if (
         filters.airlines.length > 0 &&
         !filters.airlines.includes(flight.airline)
       ) {
         return false;
       }
+      return true;
+    });
+    console.log("After airline filter:", filtered.length);
 
-      // Departure time filter
+    // Departure time filter
+    filtered = filtered.filter((flight) => {
       if (filters.departureTime.length > 0) {
         const flightTimeSlot = getDepartureTimeSlot(flight.departureTime);
         if (!filters.departureTime.includes(flightTimeSlot)) {
           return false;
         }
       }
-
-      // Search criteria filter
-      if (searchCriteria) {
-        const fromCodeMatch = searchCriteria.from.match(/\(([^)]+)\)/)?.[1];
-        const toCodeMatch = searchCriteria.to.match(/\(([^)]+)\)/)?.[1];
-        const fromMatch =
-          flight.from
-            .toLowerCase()
-            .includes(searchCriteria.from.toLowerCase().split("(")[0].trim()) ||
-          flight.fromCode === fromCodeMatch;
-        const toMatch =
-          flight.to
-            .toLowerCase()
-            .includes(searchCriteria.to.toLowerCase().split("(")[0].trim()) ||
-          flight.toCode === toCodeMatch;
-
-        if (!fromMatch || !toMatch) {
-          return false;
-        }
-      }
-
-      // Tab filter
-      if (activeTab === "domestic" && !isDomestic(flight)) {
-        return false;
-      }
-      if (activeTab === "international" && isDomestic(flight)) {
-        return false;
-      }
-      // For 'one-way', no additional filter since all are one-way
-
       return true;
     });
+    console.log("After departure time filter:", filtered.length);
+
+    // Search criteria filter
+    console.log("Search criteria:", searchCriteria);
+    filtered = filtered.filter((flight) => {
+      if (searchCriteria) {
+        // Check if we have search combinations (multiple from/to pairs)
+        if (
+          searchCriteria.searchCombinations &&
+          searchCriteria.searchCombinations.length > 0
+        ) {
+          console.log(
+            "Filtering with",
+            searchCriteria.searchCombinations.length,
+            "combinations"
+          );
+
+          // Check if flight matches ANY of the search combinations
+          const matchesAnyCombination = searchCriteria.searchCombinations.some(
+            (combination) => {
+              let fromCriteria = combination.from;
+              let toCriteria = combination.to;
+
+              // Convert object format to string format for comparison
+              if (
+                fromCriteria &&
+                typeof fromCriteria === "object" &&
+                fromCriteria.airportCode
+              ) {
+                fromCriteria = `${fromCriteria.city} (${fromCriteria.airportCode})`;
+              }
+              if (
+                toCriteria &&
+                typeof toCriteria === "object" &&
+                toCriteria.airportCode
+              ) {
+                toCriteria = `${toCriteria.city} (${toCriteria.airportCode})`;
+              }
+
+              // Check if flight matches this combination
+              if (fromCriteria && toCriteria) {
+                const fromCodeMatch = fromCriteria.match(/\(([^)]+)\)/)?.[1];
+                const toCodeMatch = toCriteria.match(/\(([^)]+)\)/)?.[1];
+                const fromMatch =
+                  flight.from
+                    .toLowerCase()
+                    .includes(
+                      fromCriteria.toLowerCase().split("(")[0].trim()
+                    ) || flight.fromCode === fromCodeMatch;
+                const toMatch =
+                  flight.to
+                    .toLowerCase()
+                    .includes(toCriteria.toLowerCase().split("(")[0].trim()) ||
+                  flight.toCode === toCodeMatch;
+
+                const matches = fromMatch && toMatch;
+                if (matches) {
+                  console.log(
+                    `Flight ${flight.id} matches combination: ${fromCriteria} -> ${toCriteria}`
+                  );
+                }
+                return matches;
+              }
+              return false;
+            }
+          );
+
+          return matchesAnyCombination;
+        } else {
+          // Handle single search criteria (backward compatibility)
+          let fromCriteria = searchCriteria.from;
+          let toCriteria = searchCriteria.to;
+
+          // If it's an array (from AirportAutocomplete), get the first item
+          if (Array.isArray(fromCriteria) && fromCriteria.length > 0) {
+            fromCriteria = fromCriteria[0];
+          }
+          if (Array.isArray(toCriteria) && toCriteria.length > 0) {
+            toCriteria = toCriteria[0];
+          }
+
+          // If it's an object with airportCode, convert to string format
+          if (
+            fromCriteria &&
+            typeof fromCriteria === "object" &&
+            fromCriteria.airportCode
+          ) {
+            fromCriteria = `${fromCriteria.city} (${fromCriteria.airportCode})`;
+          }
+          if (
+            toCriteria &&
+            typeof toCriteria === "object" &&
+            toCriteria.airportCode
+          ) {
+            toCriteria = `${toCriteria.city} (${toCriteria.airportCode})`;
+          }
+
+          // Now filter with string format
+          if (fromCriteria && toCriteria) {
+            const fromCodeMatch = fromCriteria.match(/\(([^)]+)\)/)?.[1];
+            const toCodeMatch = toCriteria.match(/\(([^)]+)\)/)?.[1];
+            const fromMatch =
+              flight.from
+                .toLowerCase()
+                .includes(fromCriteria.toLowerCase().split("(")[0].trim()) ||
+              flight.fromCode === fromCodeMatch;
+            const toMatch =
+              flight.to
+                .toLowerCase()
+                .includes(toCriteria.toLowerCase().split("(")[0].trim()) ||
+              flight.toCode === toCodeMatch;
+
+            if (!fromMatch || !toMatch) {
+              return false;
+            }
+          }
+        }
+      }
+      return true;
+    });
+    console.log("After search criteria filter:", filtered.length);
+
+    // Remove duplicates based on flight ID - this is crucial for multiple combinations
+    console.log(
+      "Flights before duplicate removal:",
+      filtered.map((f) => f.id)
+    );
+    const uniqueFiltered = filtered.filter((flight, index, self) => {
+      const isUnique = index === self.findIndex((f) => f.id === flight.id);
+      if (!isUnique) {
+        console.log(`Removing duplicate flight ${flight.id}`);
+      }
+      return isUnique;
+    });
+    filtered = uniqueFiltered;
+    console.log("After removing duplicates:", filtered.length);
+    console.log(
+      "Unique flight IDs:",
+      filtered.map((f) => f.id)
+    );
+
+    // Tab filter based on flight type
+    filtered = filtered.filter((flight) => {
+      if (activeTab === "all") {
+        return true; // Show all flights
+      }
+      if (activeTab === "domestic" && flight.type !== "DOMESTIC") {
+        return false;
+      }
+      if (activeTab === "international" && flight.type !== "INTERNATIONAL") {
+        return false;
+      }
+      // For "one-way" tab, show only ONE_WAY flights
+      if (activeTab === "one-way" && flight.type !== "ONE_WAY") {
+        return false;
+      }
+      return true;
+    });
+    console.log("After tab filter:", filtered.length);
+    console.log("Final filtered flights:", filtered);
 
     // Sort flights
     filtered.sort((a, b) => {
@@ -409,7 +511,7 @@ export function FlightSearchResults() {
     });
 
     return filtered;
-  }, [filters, searchCriteria, activeTab]);
+  }, [allFlights, filters, searchCriteria, activeTab]);
 
   // Calculate pagination
   const totalFlights = filteredAndSortedFlights.length;
@@ -429,6 +531,46 @@ export function FlightSearchResults() {
     currentPage > 1 && handlePageChange(currentPage - 1);
   const handleNext = () =>
     currentPage < totalPages && handlePageChange(currentPage + 1);
+
+  // Memoize the initialValues to prevent unnecessary re-renders
+  const searchFormInitialValues = useMemo(() => {
+    if (!searchCriteria) return null;
+
+    let fromLocations = [];
+    let toLocations = [];
+
+    if (
+      searchCriteria.searchCombinations &&
+      searchCriteria.searchCombinations.length > 0
+    ) {
+      // Extract unique from locations
+      const fromSet = new Set();
+      searchCriteria.searchCombinations.forEach((combo) => {
+        if (combo.from && combo.from.airportCode) {
+          fromSet.add(JSON.stringify(combo.from));
+        }
+      });
+      fromLocations = Array.from(fromSet).map((item) => JSON.parse(item));
+
+      // Extract unique to locations
+      const toSet = new Set();
+      searchCriteria.searchCombinations.forEach((combo) => {
+        if (combo.to && combo.to.airportCode) {
+          toSet.add(JSON.stringify(combo.to));
+        }
+      });
+      toLocations = Array.from(toSet).map((item) => JSON.parse(item));
+    } else {
+      fromLocations = searchCriteria.from || [];
+      toLocations = searchCriteria.to || [];
+    }
+
+    return {
+      ...searchCriteria,
+      from: fromLocations,
+      to: toLocations,
+    };
+  }, [searchCriteria]);
 
   return (
     <div className="mx-auto">
@@ -455,7 +597,10 @@ export function FlightSearchResults() {
 
         <div className="absolute left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-full max-w-5xl px-4 z-20">
           <div className="bg-white rounded-2xl shadow-2xl border border-gray-200">
-            <SearchForm />
+            <SearchForm
+              onSearch={handleSearch}
+              initialValues={searchFormInitialValues}
+            />
           </div>
         </div>
       </div>
@@ -479,7 +624,90 @@ export function FlightSearchResults() {
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-3 sm:mb-4 gap-2">
                 <h2 className="text-lg sm:text-xl font-bold text-gray-900">
                   {searchCriteria
-                    ? `Chuyến bay từ ${searchCriteria.from} đến ${searchCriteria.to}`
+                    ? (() => {
+                        // Check if we have multiple search combinations
+                        if (
+                          searchCriteria.searchCombinations &&
+                          searchCriteria.searchCombinations.length > 1
+                        ) {
+                          const combinationsText =
+                            searchCriteria.searchCombinations
+                              .slice(0, 3) // Show max 3 combinations in title
+                              .map((combo, index) => {
+                                let fromDisplay = combo.from;
+                                let toDisplay = combo.to;
+
+                                // Convert object format to display format
+                                if (
+                                  fromDisplay &&
+                                  typeof fromDisplay === "object" &&
+                                  fromDisplay.airportCode
+                                ) {
+                                  fromDisplay = `${fromDisplay.city} (${fromDisplay.airportCode})`;
+                                }
+                                if (
+                                  toDisplay &&
+                                  typeof toDisplay === "object" &&
+                                  toDisplay.airportCode
+                                ) {
+                                  toDisplay = `${toDisplay.city} (${toDisplay.airportCode})`;
+                                }
+
+                                return `${fromDisplay || "N/A"} → ${
+                                  toDisplay || "N/A"
+                                }`;
+                              })
+                              .join(", ");
+
+                          const remaining =
+                            searchCriteria.searchCombinations.length - 3;
+                          const remainingText =
+                            remaining > 0 ? ` và ${remaining} tuyến khác` : "";
+
+                          return `Chuyến bay: ${combinationsText}${remainingText}`;
+                        } else {
+                          // Single search criteria (backward compatibility)
+                          let fromDisplay = searchCriteria.from;
+                          let toDisplay = searchCriteria.to;
+
+                          // If it's an array (from AirportAutocomplete), get the first item
+                          if (
+                            Array.isArray(fromDisplay) &&
+                            fromDisplay.length > 0
+                          ) {
+                            fromDisplay = fromDisplay[0];
+                          }
+                          if (
+                            Array.isArray(toDisplay) &&
+                            toDisplay.length > 0
+                          ) {
+                            toDisplay = toDisplay[0];
+                          }
+
+                          // If it's an object with airportCode, convert to display format
+                          if (
+                            fromDisplay &&
+                            typeof fromDisplay === "object" &&
+                            fromDisplay.airportCode
+                          ) {
+                            fromDisplay = `${fromDisplay.city} (${fromDisplay.airportCode})`;
+                          }
+                          if (
+                            toDisplay &&
+                            typeof toDisplay === "object" &&
+                            toDisplay.airportCode
+                          ) {
+                            toDisplay = `${toDisplay.city} (${toDisplay.airportCode})`;
+                          }
+
+                          // Only show if we have both from and to
+                          if (fromDisplay && toDisplay) {
+                            return `Chuyến bay từ ${fromDisplay} đến ${toDisplay}`;
+                          } else {
+                            return "Tìm ưu đãi chuyến bay giá rẻ từ Việt Nam";
+                          }
+                        }
+                      })()
                     : "Tìm ưu đãi chuyến bay giá rẻ từ Việt Nam"}
                 </h2>
                 <p className="text-xs sm:text-sm text-gray-600">
@@ -507,7 +735,7 @@ export function FlightSearchResults() {
 
                 <div className="flex gap-1 sm:gap-2 overflow-x-auto">
                   {[
-                    { key: "one-way", label: "Một chiều" },
+                    { key: "all", label: "Tất cả" },
                     { key: "domestic", label: "Nội địa" },
                     { key: "international", label: "Quốc tế" },
                   ].map((tab) => (
@@ -544,7 +772,17 @@ export function FlightSearchResults() {
 
             {/* Flight Results List */}
             <div className="space-y-3 sm:space-y-4">
-              {totalFlights === 0 ? (
+              {loading ? (
+                <Card className="p-6 sm:p-8 text-center">
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                    Đang tải chuyến bay...
+                  </h3>
+                  <p className="text-sm text-gray-600">
+                    Vui lòng đợi trong giây lát
+                  </p>
+                </Card>
+              ) : totalFlights === 0 ? (
                 <Card className="p-6 sm:p-8 text-center">
                   <Plane className="w-12 h-12 mx-auto text-gray-400 mb-4" />
                   <h3 className="text-lg font-semibold text-gray-900 mb-2">
@@ -558,9 +796,9 @@ export function FlightSearchResults() {
                   </Button>
                 </Card>
               ) : (
-                currentFlights.map((flight) => (
+                currentFlights.map((flight, index) => (
                   <Card
-                    key={flight.id}
+                    key={`flight-${flight.id}-${index}`}
                     className="p-3 sm:p-4 hover:shadow-md transition-shadow hover:bg-blue-50/30transition-bg cursor-pointer"
                   >
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
@@ -672,7 +910,7 @@ export function FlightSearchResults() {
                                     {fare.name}
                                   </h4>
                                   <p className="text-2xl font-bold text-blue-600 mb-1">
-                                    {formatCurrency(fare.price / 24000)}
+                                    {formatCurrency(fare.price)}
                                   </p>
                                   <p className="text-xs text-gray-500">
                                     mỗi hành khách
@@ -750,7 +988,7 @@ export function FlightSearchResults() {
                                     {formatCurrency(
                                       fareOptions.find(
                                         (f) => f.id === selectedFares[flight.id]
-                                      )?.price / 24000
+                                      )?.price
                                     )}
                                   </p>
                                 </div>

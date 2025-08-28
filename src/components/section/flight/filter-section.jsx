@@ -97,6 +97,15 @@ export function FlightFilters({ filters, onFiltersChange, onReset }) {
     onFiltersChange({ ...filters, aircraft: newAircraft });
   };
 
+  const formatCurrency = (amount) => {
+    return new Intl.NumberFormat("vi-VN", {
+      style: "currency",
+      currency: "VND",
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(amount); // Display as-is since prices are already in VND
+  };
+
   return (
     <Card className="p-3 sm:p-4 h-fit">
       <div className="flex items-center justify-between mb-3 sm:mb-4">
@@ -147,18 +156,143 @@ export function FlightFilters({ filters, onFiltersChange, onReset }) {
         {/* Price Range */}
         <div>
           <Label className="text-xs sm:text-sm font-medium mb-2 sm:mb-3 block">
-            Khoảng giá: ${filters.priceRange[0]} - ${filters.priceRange[1]}
+            Khoảng giá
           </Label>
-          <Slider
-            value={filters.priceRange}
-            onValueChange={(value) =>
-              onFiltersChange({ ...filters, priceRange: value })
-            }
-            max={1000}
-            min={20}
-            step={10}
-            className="w-full"
-          />
+
+          {/* Current Range Display */}
+          <div className="bg-blue-50 rounded-lg p-3 mb-3">
+            <div className="text-center">
+              <div className="text-lg font-bold text-blue-600">
+                {formatCurrency(filters.priceRange[0])} -{" "}
+                {formatCurrency(filters.priceRange[1])}
+              </div>
+              <div className="text-xs text-gray-500 mt-1">
+                Kéo thanh trượt để điều chỉnh khoảng giá
+              </div>
+            </div>
+          </div>
+
+          {/* Price Slider */}
+          <div className="px-2">
+            <Slider
+              value={filters.priceRange}
+              onValueChange={(value) =>
+                onFiltersChange({ ...filters, priceRange: value })
+              }
+              max={10000000} // 10 triệu VND
+              min={100000} // 100 nghìn VND
+              step={50000} // bước 50 nghìn VND
+              className="w-full"
+            />
+          </div>
+
+          {/* Min/Max Labels */}
+          <div className="flex justify-between text-xs text-gray-500 mt-2 px-2">
+            <span>{formatCurrency(100000)}</span>
+            <span>{formatCurrency(10000000)}</span>
+          </div>
+
+          {/* Quick Price Ranges */}
+          <div className="mt-3 space-y-2">
+            <Label className="text-xs font-medium text-gray-600">
+              Chọn nhanh:
+            </Label>
+            <div className="grid grid-cols-2 gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                className="text-xs"
+                onClick={() =>
+                  onFiltersChange({ ...filters, priceRange: [100000, 1000000] })
+                }
+              >
+                Dưới 1 triệu
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="text-xs"
+                onClick={() =>
+                  onFiltersChange({
+                    ...filters,
+                    priceRange: [1000000, 3000000],
+                  })
+                }
+              >
+                1-3 triệu
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="text-xs"
+                onClick={() =>
+                  onFiltersChange({
+                    ...filters,
+                    priceRange: [3000000, 5000000],
+                  })
+                }
+              >
+                3-5 triệu
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="text-xs"
+                onClick={() =>
+                  onFiltersChange({
+                    ...filters,
+                    priceRange: [5000000, 10000000],
+                  })
+                }
+              >
+                Trên 5 triệu
+              </Button>
+            </div>
+          </div>
+
+          {/* Price Input Fields */}
+          <div className="mt-3 grid grid-cols-2 gap-2">
+            <div>
+              <Label className="text-xs text-gray-600">Từ</Label>
+              <input
+                type="number"
+                value={filters.priceRange[0]}
+                onChange={(e) => {
+                  const value = Number(e.target.value);
+                  if (value >= 100000 && value <= filters.priceRange[1]) {
+                    onFiltersChange({
+                      ...filters,
+                      priceRange: [value, filters.priceRange[1]],
+                    });
+                  }
+                }}
+                className="w-full px-2 py-1 text-xs border rounded"
+                min="100000"
+                max={filters.priceRange[1]}
+                step="50000"
+              />
+            </div>
+            <div>
+              <Label className="text-xs text-gray-600">Đến</Label>
+              <input
+                type="number"
+                value={filters.priceRange[1]}
+                onChange={(e) => {
+                  const value = Number(e.target.value);
+                  if (value >= filters.priceRange[0] && value <= 10000000) {
+                    onFiltersChange({
+                      ...filters,
+                      priceRange: [filters.priceRange[0], value],
+                    });
+                  }
+                }}
+                className="w-full px-2 py-1 text-xs border rounded"
+                min={filters.priceRange[0]}
+                max="10000000"
+                step="50000"
+              />
+            </div>
+          </div>
         </div>
 
         {/* Airlines */}

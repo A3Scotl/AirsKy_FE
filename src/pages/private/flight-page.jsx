@@ -260,7 +260,7 @@ const AdminFlights = () => {
 
       {/* Main Content Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="overview">Tổng quan</TabsTrigger>
           <TabsTrigger value="schedule">Lịch trình</TabsTrigger>
         </TabsList>

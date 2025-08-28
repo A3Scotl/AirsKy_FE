@@ -33,7 +33,22 @@ const AirportAutocomplete = ({
   });
 
   useEffect(() => {
-    setSelectedLocations(value || []);
+    // Only update selectedLocations if the value has actually changed
+    const currentCodes = selectedLocations.map((loc) => loc.airportCode).sort();
+    const newCodes = (value || []).map((loc) => loc.airportCode).sort();
+
+    if (JSON.stringify(currentCodes) !== JSON.stringify(newCodes)) {
+      console.log(
+        "AirportAutocomplete: Updating selectedLocations from value prop"
+      );
+      // Remove duplicates from the incoming value
+      const uniqueValue = (value || []).filter(
+        (location, index, self) =>
+          index ===
+          self.findIndex((loc) => loc.airportCode === location.airportCode)
+      );
+      setSelectedLocations(uniqueValue);
+    }
   }, [value]);
 
   useEffect(() => {
@@ -95,14 +110,20 @@ const AirportAutocomplete = ({
       (loc) => loc.airportCode === location.airportCode
     );
 
-    const newSelection = isAlreadySelected
-      ? selectedLocations.filter(
-          (loc) => loc.airportCode !== location.airportCode
-        )
-      : [...selectedLocations, location];
+    if (isAlreadySelected) {
+      // If already selected, remove it (toggle behavior)
+      const newSelection = selectedLocations.filter(
+        (loc) => loc.airportCode !== location.airportCode
+      );
+      setSelectedLocations(newSelection);
+      onChange(newSelection);
+    } else {
+      // If not selected, add it
+      const newSelection = [...selectedLocations, location];
+      setSelectedLocations(newSelection);
+      onChange(newSelection);
+    }
 
-    setSelectedLocations(newSelection);
-    onChange(newSelection);
     setSearchTerm("");
   };
 
@@ -166,9 +187,9 @@ const AirportAutocomplete = ({
         {/* Selected locations */}
         {multiple && (
           <div className="flex flex-wrap gap-1 mb-1">
-            {selectedLocations.map((location) => (
+            {selectedLocations.map((location, index) => (
               <span
-                key={location.airportCode}
+                key={`selected-${location.airportCode}-${index}`}
                 className="inline-flex items-center bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full"
               >
                 <MapPin className="w-3 h-3 mr-1" />
@@ -273,7 +294,7 @@ const AirportAutocomplete = ({
               );
               return (
                 <div
-                  key={destination.airportCode}
+                  key={`search-result-${destination.airportCode}-${destination.city}`}
                   onClick={() => handleLocationSelect(destination)}
                   className={`p-3 hover:bg-gray-50 cursor-pointer border-b last:border-b-0 transition-colors ${
                     isSelected ? "bg-blue-50" : ""

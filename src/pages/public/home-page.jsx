@@ -7,8 +7,56 @@ import SEO from "@/components/common/seo";
 import { Swiper, SwiperSlide } from "swiper/react";
 import { Autoplay } from "swiper/modules";
 import "swiper/css";
+import { useNavigate } from "react-router-dom";
+import { useSearch } from "@/contexts/search-context";
 
 function HomePage() {
+  const navigate = useNavigate();
+  const { updateSearchCriteria } = useSearch();
+
+  // Handle search from homepage
+  const handleHomeSearch = (criteria) => {
+    // Update context with search criteria
+    updateSearchCriteria(criteria);
+
+    // Also use URL params as backup
+    const params = new URLSearchParams();
+
+    if (criteria.from && typeof criteria.from === "object") {
+      params.append(
+        "from",
+        `${criteria.from.city} (${criteria.from.airportCode})`
+      );
+    } else if (criteria.from) {
+      params.append("from", criteria.from);
+    }
+
+    if (criteria.to && typeof criteria.to === "object") {
+      params.append("to", `${criteria.to.city} (${criteria.to.airportCode})`);
+    } else if (criteria.to) {
+      params.append("to", criteria.to);
+    }
+
+    if (criteria.departDate) {
+      params.append("departDate", criteria.departDate.toISOString());
+    }
+
+    if (criteria.returnDate) {
+      params.append("returnDate", criteria.returnDate.toISOString());
+    }
+
+    params.append("tripType", criteria.tripType || "oneway");
+    params.append(
+      "passengers",
+      JSON.stringify(
+        criteria.passengers || { adults: 1, children: 0, infants: 0 }
+      )
+    );
+
+    // Navigate with query params
+    navigate(`/flights?${params.toString()}`);
+  };
+
   // Airlines data
   const airlines = [
     {
@@ -78,7 +126,7 @@ function HomePage() {
               </p>
             </div>
 
-            <SearchForm />
+            <SearchForm onSearch={handleHomeSearch} />
           </div>
         </section>
 
