@@ -1,423 +1,326 @@
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
+import { ArrowRight, Plane, Clock, Calendar, MapPin } from "lucide-react";
 
-/**
- * @typedef {Object} DestinationRoute
- * @property {string} from
- * @property {string} fromCode
- * @property {string} to
- * @property {string} toCode
- * @property {string} dateRange
- * @property {string} price
- * @property {string} priceFrom
- */
-
-/**
- * @typedef {Object} Destination
- * @property {string} id
- * @property {string} name
- * @property {string} country
- * @property {string} image
- * @property {DestinationRoute[]} routes
- */
-
-const destinations = [
+const vietnamFlights = [
   {
-    id: "singapore",
-    name: "Singapore",
-    country: "Singapore",
+    id: "hcm-hanoi",
+    route: "TP.HCM - Hà Nội",
+    fromCity: "TP. Hồ Chí Minh",
+    toCity: "Hà Nội",
+    fromCode: "SGN",
+    toCode: "HAN",
+    price: "1.299.000",
+    duration: "2h 15m",
+    airline: "Vietnam Airlines",
+    date: "Hôm nay",
     image:
-      "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/image-D0OBowBPbZSKXKboOX2uEIk6rB0Zrf.png",
-    routes: [
-      {
-        from: "Ho Chi Minh City",
-        fromCode: "SGN",
-        to: "Singapore",
-        toCode: "SIN",
-        dateRange: "Sep 20 - 29",
-        price: "$154",
-        priceFrom: "from",
-      },
-      {
-        from: "Hanoi",
-        fromCode: "HAN",
-        to: "Singapore",
-        toCode: "SIN",
-        dateRange: "Sep 25 - 30",
-        price: "$164",
-        priceFrom: "from",
-      },
-      {
-        from: "Da Nang",
-        fromCode: "DAD",
-        to: "Singapore",
-        toCode: "SIN",
-        dateRange: "Sep 22 - 28",
-        price: "$174",
-        priceFrom: "from",
-      },
-    ],
+      "https://plus.unsplash.com/premium_photo-1691960159290-6f4ace6e6c4c?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MXx8aGFub2l8ZW58MHx8MHx8fDA%3D",
+    description: "Tuyến bay phổ biến nhất Việt Nam",
+    isPopular: true,
+    discount: 15,
   },
   {
-    id: "thailand",
-    name: "Thailand",
-    country: "Thailand",
-    image: "/destinations/thailand.png",
-    routes: [
-      {
-        from: "Ho Chi Minh City",
-        fromCode: "SGN",
-        to: "Chiang Mai",
-        toCode: "CNX",
-        dateRange: "Aug 28 - Sep 1",
-        price: "$402",
-        priceFrom: "from",
-      },
-      {
-        from: "Ho Chi Minh City",
-        fromCode: "SGN",
-        to: "Krabi",
-        toCode: "KBV",
-        dateRange: "Aug 29 - Sep 3",
-        price: "$519",
-        priceFrom: "from",
-      },
-      {
-        from: "Ho Chi Minh City",
-        fromCode: "SGN",
-        to: "Bangkok",
-        toCode: "BKK",
-        dateRange: "Sep 15 - 20",
-        price: "$201",
-        priceFrom: "from",
-      },
-      {
-        from: "Hanoi",
-        fromCode: "HAN",
-        to: "Bangkok",
-        toCode: "BKK",
-        dateRange: "Sep 18 - 25",
-        price: "$217",
-        priceFrom: "from",
-      },
-    ],
+    id: "hanoi-danang",
+    route: "Hà Nội - Đà Nẵng",
+    fromCity: "Hà Nội",
+    toCity: "Đà Nẵng",
+    fromCode: "HAN",
+    toCode: "DAD",
+    price: "899.000",
+    duration: "1h 30m",
+    airline: "VietJet Air",
+    date: "Ngày mai",
+    image:
+      "https://images.unsplash.com/photo-1559592413-7cec4d0cae2b?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8M3x8JUM0JTkxJUMzJUEwJTIwbiVFMSVCQSVCNW5nfGVufDB8fDB8fHww",
+    description: "Khám phá thành phố biển",
   },
   {
-    id: "japan",
-    name: "Japan",
-    country: "Japan",
-    image: "/destinations/japan.png",
-    routes: [
-      {
-        from: "Ho Chi Minh City",
-        fromCode: "SGN",
-        to: "Tokyo",
-        toCode: "HND",
-        dateRange: "Sep 28 - Oct 9",
-        price: "$431",
-        priceFrom: "from",
-      },
-      {
-        from: "Ho Chi Minh City",
-        fromCode: "SGN",
-        to: "Tokyo",
-        toCode: "NRT",
-        dateRange: "Oct 7 - 11",
-        price: "$407",
-        priceFrom: "from",
-      },
-      {
-        from: "Ho Chi Minh City",
-        fromCode: "SGN",
-        to: "Osaka",
-        toCode: "KIX",
-        dateRange: "Oct 12 - 18",
-        price: "$421",
-        priceFrom: "from",
-      },
-      {
-        from: "Hanoi",
-        fromCode: "HAN",
-        to: "Tokyo",
-        toCode: "NRT",
-        dateRange: "Oct 20 - 27",
-        price: "$436",
-        priceFrom: "from",
-      },
-    ],
+    id: "hcm-danang",
+    route: "TP.HCM - Đà Nẵng",
+    fromCity: "TP. Hồ Chí Minh",
+    toCity: "Đà Nẵng",
+    fromCode: "SGN",
+    toCode: "DAD",
+    price: "1.099.000",
+    duration: "1h 25m",
+    airline: "Bamboo Airways",
+    date: "Thứ 7",
+    image:
+      "https://images.unsplash.com/photo-1559592413-7cec4d0cae2b?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8M3x8JUM0JTkxJUMzJUEwJTIwbiVFMSVCQSVCNW5nfGVufDB8fDB8fHww",
+    description: "Nghỉ dưỡng cuối tuần",
   },
   {
-    id: "south-korea",
-    name: "South Korea",
-    country: "South Korea",
-    image: "/destinations/south-korea.png",
-    routes: [
-      {
-        from: "Ho Chi Minh City",
-        fromCode: "SGN",
-        to: "Jeju",
-        toCode: "CJU",
-        dateRange: "Sep 10 - 13",
-        price: "$371",
-        priceFrom: "from",
-      },
-      {
-        from: "Ho Chi Minh City",
-        fromCode: "SGN",
-        to: "Busan",
-        toCode: "PUS",
-        dateRange: "Sep 11 - 18",
-        price: "$322",
-        priceFrom: "from",
-      },
-      {
-        from: "Ho Chi Minh City",
-        fromCode: "SGN",
-        to: "Seoul",
-        toCode: "ICN",
-        dateRange: "Sep 5 - 12",
-        price: "$294",
-        priceFrom: "from",
-      },
-      {
-        from: "Hanoi",
-        fromCode: "HAN",
-        to: "Seoul",
-        toCode: "ICN",
-        dateRange: "Sep 8 - 15",
-        price: "$306",
-        priceFrom: "from",
-      },
-    ],
+    id: "hcm-phuquoc",
+    route: "TP.HCM - Phú Quốc",
+    fromCity: "TP. Hồ Chí Minh",
+    toCity: "Phú Quốc",
+    fromCode: "SGN",
+    toCode: "PQC",
+    price: "1.549.000",
+    duration: "1h 10m",
+    airline: "Vietnam Airlines",
+    date: "Chủ nhật",
+    image:
+      "https://images.unsplash.com/photo-1732784258726-23832e93dc59?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MjZ8fHBoJUMzJUJBJTIwcXUlRTElQkIlOTFjfGVufDB8fDB8fHww",
+    description: "Đảo ngọc thiên đường",
   },
   {
-    id: "australia",
-    name: "Australia",
-    country: "Australia",
-    image: "/destinations/australia.png",
-    routes: [
-      {
-        from: "Ho Chi Minh City",
-        fromCode: "SGN",
-        to: "Sydney",
-        toCode: "SYD",
-        dateRange: "Sep 5 - 16",
-        price: "$601",
-        priceFrom: "from",
-      },
-      {
-        from: "Ho Chi Minh City",
-        fromCode: "SGN",
-        to: "Perth",
-        toCode: "PER",
-        dateRange: "Aug 25 - Sep 1",
-        price: "$349",
-        priceFrom: "from",
-      },
-      {
-        from: "Ho Chi Minh City",
-        fromCode: "SGN",
-        to: "Melbourne",
-        toCode: "MEL",
-        dateRange: "Sep 10 - 20",
-        price: "$625",
-        priceFrom: "from",
-      },
-      {
-        from: "Hanoi",
-        fromCode: "HAN",
-        to: "Sydney",
-        toCode: "SYD",
-        dateRange: "Sep 15 - 25",
-        price: "$640",
-        priceFrom: "from",
-      },
-    ],
-  },
-  {
-    id: "china",
-    name: "China",
-    country: "China",
-    image: "/destinations/china.png",
-    routes: [
-      {
-        from: "Ho Chi Minh City",
-        fromCode: "SGN",
-        to: "Guangzhou",
-        toCode: "CAN",
-        dateRange: "Sep 5 - 9",
-        price: "$182",
-        priceFrom: "from",
-      },
-      {
-        from: "Ho Chi Minh City",
-        fromCode: "SGN",
-        to: "Nanjing",
-        toCode: "NKG",
-        dateRange: "Sep 14 - 19",
-        price: "$226",
-        priceFrom: "from",
-      },
-      {
-        from: "Ho Chi Minh City",
-        fromCode: "SGN",
-        to: "Shenzhen",
-        toCode: "SZX",
-        dateRange: "Sep 12 - 17",
-        price: "$199",
-        priceFrom: "from",
-      },
-      {
-        from: "Hanoi",
-        fromCode: "HAN",
-        to: "Beijing",
-        toCode: "PEK",
-        dateRange: "Sep 20 - 26",
-        price: "$242",
-        priceFrom: "from",
-      },
-    ],
+    id: "hanoi-nhatrang",
+    route: "Hà Nội - Nha Trang",
+    fromCity: "Hà Nội",
+    toCity: "Nha Trang",
+    fromCode: "HAN",
+    toCode: "CXR",
+    price: "1.399.000",
+    duration: "2h 5m",
+    airline: "Jetstar Pacific",
+    date: "T2 tới",
+    image:
+      "https://images.unsplash.com/photo-1654930453993-bf69bbb3a00d?q=80&w=1170&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
+    description: "Biển xanh cát trắng",
   },
 ];
 
-export function SuggestionDestination() {
-  // State to manage visible routes for each destination
-  const [visibleRoutes, setVisibleRoutes] = useState(
-    destinations.reduce((acc, dest) => {
-      acc[dest.id] = 2; // Initially show only 2 routes
-      return acc;
-    }, {})
-  );
+const formatPrice = (price) =>
+  new Intl.NumberFormat("vi-VN").format(price) + "đ";
 
-  // State to manage showing all destinations
-  const [showAllDestinations, setShowAllDestinations] = useState(false);
-
-  // Function to show more routes
-  const handleShowMore = (destinationId) => {
-    setVisibleRoutes((prev) => ({
-      ...prev,
-      [destinationId]: prev[destinationId] + 2, // Show 2 more routes
-    }));
-  };
-
-  // Display only first 4 destinations initially
-  const displayedDestinations = showAllDestinations ? destinations : destinations.slice(0, 4);
-
-  return (
-    <div className="max-w-6xl mx-auto p-6">
-      {/* Header */}
-      <div className="mb-8">
-        <h2 className="text-2xl font-bold text-gray-900 mb-2">
-          Flight Deals From Vietnam To Popular Destinations
-        </h2>
-        <p className="text-gray-600">
-          Discover Special Flight Deals To Top Global Destinations.
-        </p>
-      </div>
-
-      {/* Destinations Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {displayedDestinations.map((destination) => (
-          <Card
-            key={destination.id}
-            className="overflow-hidden group hover:shadow-lg transition-shadow"
-          >
-            {/* Destination Image */}
-            <div className="relative h-48 overflow-hidden">
-              <img
-                src={
-                  destination.image ||
-                  `/placeholder.svg?height=200&width=400&query=${destination.name} landmark`
-                }
-                alt={destination.name}
-                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-              <div className="absolute top-4 right-4">
-                <Button
-                  size="sm"
-                  className="bg-blue-600 hover:bg-blue-700 text-white"
-                >
-                  Explore Flights
-                </Button>
-              </div>
-              <div className="absolute bottom-4 left-4">
-                <h3 className="text-white text-xl font-bold">
-                  {destination.name}
-                </h3>
-              </div>
-            </div>
-
-            {/* Routes */}
-            <div className="p-4 space-y-3">
-              {destination.routes
-                .slice(0, visibleRoutes[destination.id])
-                .map((route, index) => (
-                  <div
-                    key={index}
-                    className="flex justify-between items-center"
-                  >
-                    <div>
-                      <p className="font-medium text-sm text-gray-900">
-                        {route.from} ({route.fromCode}) ⇄ {route.to} (
-                        {route.toCode})
-                      </p>
-                      <p className="text-xs text-gray-500">{route.dateRange}</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-sm text-gray-600">{route.priceFrom}</p>
-                      <p className="font-bold text-red-600">{route.price}</p>
-                    </div>
-                  </div>
-                ))}
-
-              {/* View More Link */}
-              {visibleRoutes[destination.id] < destination.routes.length && (
-                <div className="pt-2 border-t">
-                  <button
-                    onClick={() => handleShowMore(destination.id)}
-                    className="text-blue-600 hover:text-blue-700 text-sm font-medium transition-colors duration-200 flex items-center gap-1"
-                  >
-                    Show More Flights
-                  </button>
-                </div>
-              )}
-
-              {/* Show less option when all routes are visible */}
-              {visibleRoutes[destination.id] >= destination.routes.length &&
-                destination.routes.length > 2 && (
-                  <div className="pt-2 border-t">
-                    <button
-                      onClick={() =>
-                        setVisibleRoutes((prev) => ({
-                          ...prev,
-                          [destination.id]: 2,
-                        }))
-                      }
-                      className="text-gray-500 hover:text-gray-700 text-sm font-medium transition-colors duration-200"
-                    >
-                      Show Less
-                    </button>
-                  </div>
-                )}
-            </div>
-          </Card>
-        ))}
-      </div>
-
-      {/* See More Destinations Button */}
-      {!showAllDestinations && destinations.length > 4 && (
-        <div className="text-center mt-8">
-          <Button
-            onClick={() => setShowAllDestinations(true)}
-            variant="outline"
-            className="px-8 py-2 text-blue-600 border-blue-600 hover:bg-blue-50"
-          >
-            See More Destinations
-          </Button>
-        </div>
+const FlightCard = ({ flight, onClick, main }) => (
+  <Card
+    className={
+      main
+        ? "relative overflow-hidden h-full group hover:shadow-2xl transition-all duration-500 transform hover:-translate-y-2 border-0 shadow-xl"
+        : "relative overflow-hidden group hover:shadow-lg transition-all duration-300 border hover:border-blue-200 cursor-pointer"
+    }
+    onClick={onClick}
+  >
+    <div
+      className={
+        main
+          ? "absolute inset-0 bg-cover bg-center"
+          : "absolute inset-0 bg-cover bg-center opacity-20 group-hover:opacity-30 transition-opacity"
+      }
+      style={{ backgroundImage: `url(${flight.image})` }}
+    >
+      {main && (
+        <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/50 to-black/30"></div>
       )}
     </div>
+    <div
+      className={
+        main
+          ? "relative z-10 p-8 h-full flex flex-col justify-between min-h-[400px]"
+          : "relative z-10 p-4"
+      }
+    >
+      <div>
+        {main && flight.isPopular && (
+          <div className="inline-flex items-center bg-red-500 text-white px-3 py-1 rounded-full text-sm font-medium mb-4">
+            🔥 Phổ biến nhất
+          </div>
+        )}
+        <div className="flex items-center mb-4">
+          <div className="text-center">
+            <div
+              className={
+                main
+                  ? "text-3xl font-bold text-white"
+                  : "text-lg font-bold text-gray-800 dark:text-white"
+              }
+            >
+              {flight.fromCode}
+            </div>
+            <div
+              className={
+                main
+                  ? "text-white/80 text-sm"
+                  : "text-xs text-gray-500 dark:text-gray-300"
+              }
+            >
+              {flight.fromCity}
+            </div>
+          </div>
+          <div className={main ? "flex-1 mx-6 relative" : ""}>
+            {main ? (
+              <>
+                <div className="h-px bg-white/30"></div>
+                <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
+                  <Plane className="w-8 h-8 text-white rotate-90" />
+                </div>
+              </>
+            ) : (
+              <ArrowRight className="w-4 h-4 text-gray-400" />
+            )}
+          </div>
+          <div className="text-center">
+            <div
+              className={
+                main
+                  ? "text-3xl font-bold text-white"
+                  : "text-lg font-bold text-gray-800 dark:text-white"
+              }
+            >
+              {flight.toCode}
+            </div>
+            <div
+              className={
+                main
+                  ? "text-white/80 text-sm"
+                  : "text-xs text-gray-500 dark:text-gray-300"
+              }
+            >
+              {flight.toCity}
+            </div>
+          </div>
+        </div>
+        <p
+          className={
+            main
+              ? "text-white/90 text-lg mb-6"
+              : "text-sm text-gray-600 mb-3 line-clamp-2"
+          }
+        >
+          {flight.description}
+        </p>
+      </div>
+      <div>
+        <div
+          className={
+            main
+              ? "grid grid-cols-3 gap-4 mb-6"
+              : "grid grid-cols-2 gap-2 mb-3 text-xs text-gray-500"
+          }
+        >
+          <div className={main ? "text-center" : "flex items-center"}>
+            <Clock
+              className={
+                main ? "w-5 h-5 text-white/70 mx-auto mb-1" : "w-3 h-3 mr-1"
+              }
+            />
+            <span className={main ? "text-white text-sm" : ""}>
+              {flight.duration}
+            </span>
+          </div>
+          <div className={main ? "text-center" : "flex items-center"}>
+            <Calendar
+              className={
+                main ? "w-5 h-5 text-white/70 mx-auto mb-1" : "w-3 h-3 mr-1"
+              }
+            />
+            <span className={main ? "text-white text-sm" : ""}>
+              {flight.date}
+            </span>
+          </div>
+          {main && (
+            <div className="text-center">
+              <MapPin className="w-5 h-5 text-white/70 mx-auto mb-1" />
+              <div className="text-white text-sm">{flight.airline}</div>
+            </div>
+          )}
+        </div>
+        <div className="flex items-center justify-between">
+          <div>
+            {main && flight.discount && (
+              <div className="text-white/70 text-sm line-through mb-1">
+                {formatPrice(
+                  Math.round(parseInt(flight.price.replace(/\./g, "")) * 1.15)
+                )}
+              </div>
+            )}
+            <div
+              className={
+                main
+                  ? "text-3xl font-bold text-white"
+                  : "text-lg font-bold text-blue-600"
+              }
+            >
+              {formatPrice(flight.price.replace(/\./g, ""))}
+            </div>
+            <div
+              className={
+                main ? "text-white/70 text-sm" : "text-xs text-gray-500"
+              }
+            >
+              / người
+            </div>
+          </div>
+          <Button
+            size={main ? "lg" : "sm"}
+            variant={main ? undefined : "outline"}
+            className={
+              main
+                ? "bg-white text-blue-600 hover:bg-blue-50 font-semibold px-8 py-3 rounded-xl shadow-lg hover:shadow-xl transition-all"
+                : "hover:bg-blue-50 hover:border-blue-300 text-blue-600"
+            }
+          >
+            {main ? (
+              <>
+                Đặt ngay
+                <ArrowRight className="w-5 h-5 ml-2" />
+              </>
+            ) : (
+              <>Đặt vé</>
+            )}
+          </Button>
+        </div>
+      </div>
+    </div>
+    {main && flight.discount && (
+      <div className="absolute top-4 right-4 bg-red-500 text-white px-3 py-1 rounded-full text-sm font-bold transform rotate-12">
+        -{flight.discount}%
+      </div>
+    )}
+  </Card>
+);
+
+const SuggestionSection = () => {
+  const [selectedFlight, setSelectedFlight] = useState(null);
+  const mainFlight = vietnamFlights[0];
+  const smallFlights = vietnamFlights.slice(1, 5);
+
+  return (
+    <section className="mx-auto py-16 bg-gradient-to-b from-blue-50 via-white to-indigo-50 dark:from-gray-500 dark:via-gray-900 dark:to-gray-700">
+      <div className="container mx-auto px-16">
+        <div className="text-center mb-12">
+          <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">
+            Chuyến Bay Nội Địa
+          </h2>
+          <p className="text-lg text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">
+            Khám phá Việt Nam với những tuyến bay phổ biến và giá vé tốt nhất
+          </p>
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-8">
+          <div className="lg:col-span-2">
+            <FlightCard flight={mainFlight} main />
+          </div>
+          {[0, 1].map((col) => (
+            <div className="flex flex-col gap-4" key={col}>
+              {smallFlights.slice(col * 2, col * 2 + 2).map((flight) => (
+                <FlightCard
+                  key={flight.id}
+                  flight={flight}
+                  onClick={() => setSelectedFlight(flight)}
+                />
+              ))}
+            </div>
+          ))}
+        </div>
+        <div className="text-center">
+          <Button
+            size="lg"
+            variant="outline"
+            className="bg-white hover:bg-blue-50 border-2 border-blue-200 hover:border-blue-300 text-blue-600 font-semibold px-8 py-3 rounded-xl shadow-md hover:shadow-lg transition-all"
+          >
+            <Plane className="w-5 h-5 mr-2" />
+            Xem tất cả
+            <ArrowRight className="w-5 h-5 ml-2" />
+          </Button>
+        </div>
+      </div>
+    </section>
   );
-}
+};
+
+export { SuggestionSection };
+export default SuggestionSection;

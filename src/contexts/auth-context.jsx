@@ -29,7 +29,7 @@ export function AuthProvider({ children }) {
         const isTokenExpired = decoded.exp * 1000 < Date.now();
 
         if (isTokenExpired) {
-          toast.warning("Your session has expired");
+          toast.warning("Phiên của bạn đã hết hạn");
           localStorage.removeItem("token");
           localStorage.removeItem("user");
           setUser(null);
@@ -46,8 +46,8 @@ export function AuthProvider({ children }) {
         setUser(userData);
         localStorage.setItem("user", JSON.stringify(userData));
       } catch (error) {
-        console.error("Token decoding error:", error);
-        toast.error("Invalid token");
+        // console.error("Token decoding error:", error);
+        toast.error("Token không hợp lệ");
         localStorage.removeItem("token");
         localStorage.removeItem("user");
         setUser(null);
@@ -68,8 +68,8 @@ export function AuthProvider({ children }) {
     setUser(null);
     localStorage.removeItem("user");
     localStorage.removeItem("token");
-    toast.info("You have been logged out");
-    navigate("/login");
+    toast.info("Bạn đã đăng xuất thành công");
+    navigate("/");
   };
 
   return (

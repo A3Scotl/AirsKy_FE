@@ -1,14 +1,14 @@
 export function FeaturesSection() {
   return (
-    <section className="py-16 bg-white">
+    <section className="py-16 bg-white dark:bg-gray-900">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div>
           <h2 className="text-3xl font-bold text-center mb-8">
-            Why Choose AirsKy?
+            Tại sao chọn AirsKy?
           </h2>
           <p className="text-lg text-center text-gray-600 mb-12">
-            Discover the unique features that make AirsKy the best choice for
-            your travel needs
+            Khám phá những tính năng độc đáo giúp AirsKy trở thành sự lựa chọn
+            tốt nhất cho nhu cầu du lịch của bạn
           </p>
         </div>
         <div className="grid md:grid-cols-4 gap-8">
@@ -28,11 +28,11 @@ export function FeaturesSection() {
                 />
               </svg>
             </div>
-            <h3 className="text-lg font-semibold text-[#111827] mb-2">
-              Best Price Guarantee
+            <h3 className="text-lg font-semibold text-[#111827] dark:text-white mb-2">
+              Đảm bảo giá tốt nhất
             </h3>
             <p className="text-sm text-[#6b7280]">
-              Find a lower price? We'll match it
+              Tìm thấy giá thấp hơn? Chúng tôi sẽ khớp nó
             </p>
           </div>
 
@@ -52,12 +52,10 @@ export function FeaturesSection() {
                 />
               </svg>
             </div>
-            <h3 className="text-lg font-semibold text-[#111827] mb-2">
-              24/7 Support
+            <h3 className="text-lg font-semibold text-[#111827] dark:text-white mb-2">
+              Hỗ trợ 24/7
             </h3>
-            <p className="text-sm text-[#6b7280]">
-              Round-the-clock customer service
-            </p>
+            <p className="text-sm text-[#6b7280]">Dịch vụ khách hàng 24/7</p>
           </div>
 
           <div className="text-center p-6">
@@ -76,11 +74,11 @@ export function FeaturesSection() {
                 />
               </svg>
             </div>
-            <h3 className="text-lg font-semibold text-[#111827] mb-2">
-              Flexible Dates
+            <h3 className="text-lg font-semibold text-[#111827] dark:text-white mb-2">
+              Ngày linh hoạt
             </h3>
             <p className="text-sm text-[#6b7280]">
-              Easy date changes and cancellations
+              Dễ dàng thay đổi và hủy chuyến bay
             </p>
           </div>
 
@@ -100,11 +98,11 @@ export function FeaturesSection() {
                 />
               </svg>
             </div>
-            <h3 className="text-lg font-semibold text-[#111827] mb-2">
-              Secure Booking
+            <h3 className="text-lg font-semibold text-[#111827] dark:text-white mb-2">
+              Đặt chỗ an toàn
             </h3>
             <p className="text-sm text-[#6b7280]">
-              Your data is safe and protected
+              Dữ liệu của bạn được bảo vệ an toàn
             </p>
           </div>
         </div>
