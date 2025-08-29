@@ -1,4 +1,3 @@
-import { Helmet } from "react-helmet-async";
 import CategoryTable from "@/components/admin/categories/category-table";
 
 const CategoryPage = () => {

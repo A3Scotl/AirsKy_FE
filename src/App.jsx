@@ -6,7 +6,7 @@ import {
   useLocation,
 } from "react-router-dom";
 import { lazy, Suspense } from "react";
-import { HelmetProvider } from "react-helmet-async";
+import { HelmetProvider } from "@dr.pogodin/react-helmet"; 
 import { useScrollToTop } from "@/hooks/use-scroll-to-top";
 import { AnimatePresence } from "framer-motion";
 import { AuthProvider, useAuth } from "@/contexts/auth-context";
@@ -18,7 +18,7 @@ import LoadingPage from "@/pages/loading/loading-page";
 import PageTransition from "@/components/common/page-transition";
 import AdminRoute from "@/routes/admin-route";
 
-// Lazy load tất cả page
+
 const HomePage = lazy(() => import("@/pages/public/home-page"));
 const AuthPage = lazy(() => import("@/pages/public/auth/auth-page"));
 const FlightPage = lazy(() => import("@/pages/public/flight-page"));
@@ -90,7 +90,6 @@ function AppRoutes() {
                   </PageTransition>
                 }
               />
-
               <Route
                 path="/booking-stepper"
                 element={
@@ -107,7 +106,6 @@ function AppRoutes() {
                   </PageTransition>
                 }
               />
-
               <Route
                 path="/detail/:id"
                 element={
@@ -195,7 +193,7 @@ function AppRoutes() {
               <Route path="profile" element={<AdminProfile />} />
             </Route>
 
-            {/* 404 Route - Must be last */}
+            {/* 404 - fallback */}
             <Route
               path="*"
               element={
