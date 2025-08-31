@@ -4,6 +4,7 @@ import { DestinationSection } from "@/components/section/home/destination-sectio
 import { ReviewsSection } from "@/components/section/home/reviews-section";
 import SuggestionSection from "@/components/section/flight/suggestion-section";
 import SEO from "@/components/common/seo";
+import ChatbotWidget from "@/components/common/chatbot-widget";
 import { Swiper, SwiperSlide } from "swiper/react";
 import { Autoplay } from "swiper/modules";
 import "swiper/css";
@@ -190,6 +191,11 @@ function HomePage() {
 
         {/* Reviews Section */}
         {/* <ReviewsSection /> */}
+      </div>
+
+      {/* Chatbot Widget */}
+      <div className="">
+        <ChatbotWidget />
       </div>
     </>
   );

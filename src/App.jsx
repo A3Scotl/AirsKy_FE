@@ -6,7 +6,7 @@ import {
   useLocation,
 } from "react-router-dom";
 import { lazy, Suspense } from "react";
-import { HelmetProvider } from "@dr.pogodin/react-helmet"; 
+import { HelmetProvider } from "@dr.pogodin/react-helmet";
 import { useScrollToTop } from "@/hooks/use-scroll-to-top";
 import { AnimatePresence } from "framer-motion";
 import { AuthProvider, useAuth } from "@/contexts/auth-context";
@@ -17,7 +17,7 @@ import { Toaster } from "sonner";
 import LoadingPage from "@/pages/loading/loading-page";
 import PageTransition from "@/components/common/page-transition";
 import AdminRoute from "@/routes/admin-route";
-
+import ChatbotWidget from "@/components/common/chatbot-widget";
 
 const HomePage = lazy(() => import("@/pages/public/home-page"));
 const AuthPage = lazy(() => import("@/pages/public/auth/auth-page"));
@@ -223,6 +223,7 @@ function App() {
                 duration={3000}
               />
               <AppRoutes />
+              <ChatbotWidget />
             </SearchProvider>
           </AuthProvider>
         </ThemeProvider>
