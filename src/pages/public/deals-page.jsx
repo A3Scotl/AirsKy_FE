@@ -63,6 +63,9 @@ const DealsPage = () => {
         size: 100,
         sort: "createdAt,desc",
       });
+
+      console.log("res deal data", res);
+
       if (res.success && res.data && res.data.content) {
         const deals = res.data.content;
         setFlightDeals(deals);
@@ -465,12 +468,6 @@ const DealsPage = () => {
                     {/* Nếu API có category, có thể thêm filterType select ở đây */}
                   </div>
                 </section>
-                <Link to="/flights">
-                  <Button variant="outline" className="font-semibold">
-                    Xem thêm
-                    <ArrowRight className="w-4 h-4 ml-2" />
-                  </Button>
-                </Link>
               </div>
             </div>
 

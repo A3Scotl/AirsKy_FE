@@ -88,4 +88,42 @@ export const flightApi = {
   getSeatsByFlight: async (flightId) => {
     return apiHandler("get", `/flights/${flightId}/seats`);
   },
+
+  /**
+   * Tìm kiếm chuyến bay nội địa trong một quốc gia
+   * @param {string} country - Tên quốc gia
+   * @param {{ page?: number, size?: number }} params
+   * @returns {Promise<{ success: boolean, data?: any, message: string }>}
+   */
+  findDomesticFlights: async (country, params = {}) => {
+    const queryParams = new URLSearchParams();
+    queryParams.append("country", country);
+    if (params.page !== undefined) queryParams.append("page", params.page);
+    if (params.size !== undefined) queryParams.append("size", params.size);
+    const queryString = queryParams.toString();
+    const endpoint = `/flights/domestic?${queryString}`;
+    return apiHandler("get", endpoint);
+  },
+
+  /**
+   * Tìm kiếm chuyến bay giữa hai quốc gia
+   * @param {string} departureCountry - Quốc gia khởi hành
+   * @param {string} arrivalCountry - Quốc gia đến
+   * @param {{ page?: number, size?: number }} params
+   * @returns {Promise<{ success: boolean, data?: any, message: string }>}
+   */
+  findFlightsBetweenCountries: async (
+    departureCountry,
+    arrivalCountry,
+    params = {}
+  ) => {
+    const queryParams = new URLSearchParams();
+    queryParams.append("departureCountry", departureCountry);
+    queryParams.append("arrivalCountry", arrivalCountry);
+    if (params.page !== undefined) queryParams.append("page", params.page);
+    if (params.size !== undefined) queryParams.append("size", params.size);
+    const queryString = queryParams.toString();
+    const endpoint = `/flights/between-countries?${queryString}`;
+    return apiHandler("get", endpoint);
+  },
 };

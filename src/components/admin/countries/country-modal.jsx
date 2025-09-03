@@ -11,18 +11,17 @@ import { Button } from "@/components/ui/button";
 import ImageUpload from "@/components/ui/image-upload";
 
 /**
- * Modal thêm/cập nhật hãng bay
+ * Modal thêm/cập nhật quốc gia
  * @param {object} props
  * @param {boolean} props.open
  * @param {function} props.onClose
  * @param {function} props.onSubmit
  * @param {object} [props.initialData] - Nếu có là update, không có là create
  */
-const AirlineModal = ({ open, onClose, onSubmit, initialData }) => {
+const CountryModal = ({ open, onClose, onSubmit, initialData }) => {
   const [form, setForm] = useState({
-    airline_code: "",
-    airline_name: "",
-    contact: "",
+    country_code: "",
+    country_name: "",
     is_active: true,
     thumbnail: "",
     thumbnailFile: null,
@@ -31,18 +30,16 @@ const AirlineModal = ({ open, onClose, onSubmit, initialData }) => {
   useEffect(() => {
     if (initialData) {
       setForm({
-        airline_code: initialData.airlineCode || initialData.airline_code || "",
-        airline_name: initialData.airlineName || initialData.airline_name || "",
-        contact: initialData.contact || "",
+        country_code: initialData.countryCode || initialData.country_code || "",
+        country_name: initialData.countryName || initialData.country_name || "",
         is_active: initialData.active ?? initialData.is_active ?? true,
         thumbnail: initialData.thumbnail || "",
         thumbnailFile: null,
       });
     } else {
       setForm({
-        airline_code: "",
-        airline_name: "",
-        contact: "",
+        country_code: "",
+        country_name: "",
         is_active: true,
         thumbnail: "",
         thumbnailFile: null,
@@ -69,79 +66,95 @@ const AirlineModal = ({ open, onClose, onSubmit, initialData }) => {
   const handleSubmit = (e) => {
     e.preventDefault();
     // Log giá trị ảnh trước khi submit
-    console.log("[AirlineModal] Submitting form data:");
+    console.log("[CountryModal] Submitting form data:");
     console.log("- thumbnail:", form.thumbnail);
     console.log("- thumbnailFile:", form.thumbnailFile);
     console.log(
       "- thumbnailFile instanceof File:",
       form.thumbnailFile instanceof File
     );
+    console.log("- initialData thumbnail:", initialData?.thumbnail);
 
     const formData = {
-      airlineCode: form.airline_code,
-      airlineName: form.airline_name,
-      contact: form.contact,
+      countryCode: form.country_code,
+      countryName: form.country_name,
       active: form.is_active,
     };
 
-    // Xử lý thumbnail: chỉ gửi 1 loại
-    if (form.thumbnailFile instanceof File) {
-      console.log("[AirlineModal] Sending file:", form.thumbnailFile.name);
-      formData.thumbnailFile = form.thumbnailFile;
-    } else if (form.thumbnail) {
-      console.log("[AirlineModal] Sending URL:", form.thumbnail);
-      formData.thumbnail = form.thumbnail;
+    // Xử lý thumbnail cho update vs create
+    if (initialData) {
+      // Update mode
+      if (form.thumbnailFile instanceof File) {
+        console.log(
+          "[CountryModal] Update - Sending new file:",
+          form.thumbnailFile.name
+        );
+        formData.thumbnailFile = form.thumbnailFile;
+      } else if (form.thumbnail && form.thumbnail !== initialData.thumbnail) {
+        console.log("[CountryModal] Update - Sending new URL:", form.thumbnail);
+        formData.thumbnail = form.thumbnail;
+      } else if (initialData.thumbnail) {
+        console.log(
+          "[CountryModal] Update - Keeping existing thumbnail:",
+          initialData.thumbnail
+        );
+        formData.existingThumbnail = initialData.thumbnail;
+      }
     } else {
-      console.log("[AirlineModal] No thumbnail to send");
+      // Create mode
+      if (form.thumbnailFile instanceof File) {
+        console.log(
+          "[CountryModal] Create - Sending file:",
+          form.thumbnailFile.name
+        );
+        formData.thumbnailFile = form.thumbnailFile;
+      } else if (form.thumbnail) {
+        console.log("[CountryModal] Create - Sending URL:", form.thumbnail);
+        formData.thumbnail = form.thumbnail;
+      } else {
+        console.log("[CountryModal] Create - No thumbnail");
+      }
     }
 
-    console.log("[AirlineModal] Final formData:", formData);
+    console.log("[CountryModal] Final formData:", formData);
     onSubmit(formData);
   };
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-3xl mx-auto max-h-[90vh] overflow-auto">
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
-            {initialData ? "Cập nhật hãng bay" : "Thêm hãng bay"}
+            {initialData ? "Cập nhật quốc gia" : "Thêm quốc gia"}
           </DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <Input
-            label="Mã hãng bay"
-            name="airline_code"
-            value={form.airline_code}
+            label="Mã quốc gia"
+            name="country_code"
+            value={form.country_code}
             onChange={handleChange}
-            maxLength={5}
+            maxLength={3}
             required
-            placeholder="VD: VNA"
+            placeholder="VD: VN"
           />
           <Input
-            label="Tên hãng bay"
-            name="airline_name"
-            value={form.airline_name}
+            label="Tên quốc gia"
+            name="country_name"
+            value={form.country_name}
             onChange={handleChange}
             maxLength={100}
             required
-            placeholder="VD: Vietnam Airlines"
+            placeholder="VD: Việt Nam"
           />
-          <Input
-            label="Liên hệ"
-            name="contact"
-            value={form.contact}
-            onChange={handleChange}
-            maxLength={100}
-            placeholder="Số điện thoại, email hoặc website"
-          />
-          <div className="max-w-full">
+          <div className="">
             <label className="block text-sm font-medium mb-2">
               Ảnh thumbnail
             </label>
             <ImageUpload
               value={form.thumbnail}
               onChange={handleThumbnailChange}
-              placeholder="Chọn ảnh hãng bay"
+              placeholder="Chọn ảnh quốc gia"
             />
           </div>
           <div className="flex items-center space-x-2">
@@ -168,4 +181,4 @@ const AirlineModal = ({ open, onClose, onSubmit, initialData }) => {
   );
 };
 
-export default AirlineModal;
+export default CountryModal;

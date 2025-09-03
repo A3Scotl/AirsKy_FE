@@ -5,38 +5,96 @@ import { apiHandler } from "@/utils/api-handler";
  */
 export const airportApi = {
   /**
-   * Tạo sân bay mới (Admin only)
+   * Tạo sân bay mới (Admin only) - Sử dụng FormData cho thumbnail
    * @param {{
-   *   code: string,
-   *   name: string,
-   *   city: string,
-   *   country: string,
-   *   latitude?: number,
-   *   longitude?: number,
-   *   timezone?: string
+   *   airportCode: string,
+   *   airportName: string,
+   *   countryId: string,
+   *   cityNames?: string,
+   *   thumbnail?: string,
+   *   thumbnailFile?: File,
+   *   active?: boolean
    * }} airportData - Thông tin sân bay
    * @returns {Promise<{ success: boolean, data?: any, message: string }>}
    */
   createAirport: async (airportData) => {
-    return apiHandler("post", "/airports", airportData);
+    const formData = new FormData();
+    formData.append("airportCode", airportData.airportCode);
+    formData.append("airportName", airportData.airportName);
+    formData.append("countryId", airportData.countryId);
+    if (airportData.cityNames)
+      formData.append("cityNames", airportData.cityNames);
+
+    // Xử lý thumbnail: chỉ gửi 1 loại
+    if (airportData.thumbnailFile instanceof File) {
+      console.log(
+        "[AirportAPI] Appending file:",
+        airportData.thumbnailFile.name
+      );
+      formData.append("thumbnail", airportData.thumbnailFile);
+    } else if (airportData.thumbnail) {
+      console.log("[AirportAPI] Appending URL:", airportData.thumbnail);
+      console.log("[AirportAPI] URL type:", typeof airportData.thumbnail);
+      formData.append("thumbnailUrl", airportData.thumbnail);
+    }
+
+    formData.append(
+      "active",
+      airportData.active !== undefined ? airportData.active.toString() : "true"
+    );
+
+    // Debug: Log FormData contents
+    console.log("[AirportAPI] FormData entries:");
+    for (let [key, value] of formData.entries()) {
+      console.log(`  ${key}:`, value, `(type: ${typeof value})`);
+    }
+
+    return apiHandler("post", "/airports", formData, {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    });
   },
 
   /**
-   * Cập nhật thông tin sân bay (Admin only)
+   * Cập nhật thông tin sân bay (Admin only) - Sử dụng FormData cho thumbnail
    * @param {number} id - ID của sân bay
    * @param {{
-   *   code?: string,
-   *   name?: string,
-   *   city?: string,
-   *   country?: string,
-   *   latitude?: number,
-   *   longitude?: number,
-   *   timezone?: string
+   *   airportCode: string,
+   *   airportName: string,
+   *   countryId: string,
+   *   cityNames?: string,
+   *   thumbnail?: string,
+   *   thumbnailFile?: File,
+   *   active?: boolean
    * }} airportData - Thông tin cập nhật
    * @returns {Promise<{ success: boolean, data?: any, message: string }>}
    */
   updateAirport: async (id, airportData) => {
-    return apiHandler("put", `/airports/${id}`, airportData);
+    const formData = new FormData();
+    formData.append("airportCode", airportData.airportCode);
+    formData.append("airportName", airportData.airportName);
+    formData.append("countryId", airportData.countryId);
+    if (airportData.cityNames)
+      formData.append("cityNames", airportData.cityNames);
+
+    // Xử lý thumbnail: chỉ gửi 1 loại
+    if (airportData.thumbnailFile instanceof File) {
+      formData.append("thumbnail", airportData.thumbnailFile);
+    } else if (airportData.thumbnail) {
+      formData.append("thumbnailUrl", airportData.thumbnail);
+    }
+
+    formData.append(
+      "active",
+      airportData.active !== undefined ? airportData.active.toString() : "true"
+    );
+
+    return apiHandler("put", `/airports/${id}`, formData, {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    });
   },
 
   /**
@@ -159,5 +217,4 @@ export const airportApi = {
       size: 100,
     });
   },
-
 };

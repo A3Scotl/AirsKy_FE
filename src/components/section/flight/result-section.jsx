@@ -70,6 +70,19 @@ export function FlightSearchResults() {
   const [currentPage, setCurrentPage] = useState(1);
   const [flightsPerPage] = useState(6); // Giảm xuống 4 để có nhiều trang hơn
 
+  // Debug: Log when searchCriteria changes
+  useEffect(() => {
+    console.log("🔄 searchCriteria updated:", searchCriteria);
+    console.log("🔄 searchCriteria type check:", {
+      hasFrom: !!searchCriteria?.from,
+      hasTo: !!searchCriteria?.to,
+      fromType: typeof searchCriteria?.from,
+      toType: typeof searchCriteria?.to,
+      fromValue: searchCriteria?.from,
+      toValue: searchCriteria?.to,
+    });
+  }, [searchCriteria]);
+
   // Reset page when filters change
   useEffect(() => {
     setCurrentPage(1);
@@ -77,7 +90,24 @@ export function FlightSearchResults() {
 
   // Get search criteria from URL params (from homepage) or location state
   useEffect(() => {
-    // First try URL params
+    console.log("🔍 Checking sources:");
+    console.log("- URL params from:", searchParams.get("from"));
+    console.log("- URL params to:", searchParams.get("to"));
+    console.log("- Context:", contextSearchCriteria);
+    console.log("- Location state:", location.state);
+
+    // First priority: Location state (from destination click)
+    if (location.state && location.state.searchCriteria) {
+      const locationCriteria = location.state.searchCriteria;
+      console.log(
+        "✅ Using location state (highest priority):",
+        locationCriteria
+      );
+      setSearchCriteria(locationCriteria);
+      return;
+    }
+
+    // Second priority: URL params (from homepage search)
     const fromParam = searchParams.get("from");
     const toParam = searchParams.get("to");
     const departDateParam = searchParams.get("departDate");
@@ -97,25 +127,20 @@ export function FlightSearchResults() {
           : { adults: 1, children: 0, infants: 0 },
         searchCombinations: [], // Single combination for backward compatibility
       };
-      console.log("Received search criteria from URL params:", criteria);
+      console.log("📋 Using URL params (second priority):", criteria);
       setSearchCriteria(criteria);
+      return;
     }
-    // Try context as secondary source
-    else if (contextSearchCriteria) {
-      console.log(
-        "Received search criteria from context:",
-        contextSearchCriteria
-      );
+
+    // Third priority: Context (fallback)
+    if (contextSearchCriteria) {
+      console.log("🔄 Using context (third priority):", contextSearchCriteria);
       setSearchCriteria(contextSearchCriteria);
+      return;
     }
-    // Fallback to location state (for backward compatibility)
-    else if (location.state && location.state.searchCriteria) {
-      console.log(
-        "Received search criteria from location state:",
-        location.state.searchCriteria
-      );
-      setSearchCriteria(location.state.searchCriteria);
-    }
+
+    // No valid search criteria found
+    console.log("❌ No valid search criteria found from any source");
   }, [searchParams, location.state, contextSearchCriteria]);
 
   // Listen for context changes (when context is updated after component mount)
@@ -133,13 +158,102 @@ export function FlightSearchResults() {
     }
   }, [contextSearchCriteria, searchParams, location.state]);
 
-  // Fetch all flights on component mount
+  // Fetch flights based on search criteria
   useEffect(() => {
-    const fetchAllFlights = async () => {
+    console.log("🔍 useEffect triggered with searchCriteria:", searchCriteria);
+    console.log("🔍 location.state:", location.state);
+
+    const fetchFlightsByCriteria = async () => {
+      if (!searchCriteria) {
+        console.log("❌ No searchCriteria found, skipping fetch");
+        return;
+      }
+
       try {
         setLoading(true);
-        const response = await flightApi.getAllFlights({ size: 1000 }); // Get a large number of flights
+        let response;
+
+        // Check if we have from and to countries for international flights (from destination click)
+        console.log("🔍 Checking API call conditions:");
+        console.log("- searchCriteria:", searchCriteria);
+        console.log(
+          "- searchCriteria.from:",
+          searchCriteria?.from,
+          "(type:",
+          typeof searchCriteria?.from,
+          ")"
+        );
+        console.log(
+          "- searchCriteria.to:",
+          searchCriteria?.to,
+          "(type:",
+          typeof searchCriteria?.to,
+          ")"
+        );
+        console.log(
+          "- from is string:",
+          typeof searchCriteria?.from === "string"
+        );
+        console.log("- to is string:", typeof searchCriteria?.to === "string");
+
+        // Check if this is a country-based search (from destination click)
+        const isCountrySearch =
+          (typeof searchCriteria.from === "string" &&
+            searchCriteria.from === "Việt Nam") ||
+          (typeof searchCriteria.from === "string" &&
+            !searchCriteria.from.includes("(") &&
+            !searchCriteria.from.includes(")"));
+
+        console.log("🔍 isCountrySearch:", isCountrySearch);
+        console.log(
+          "🔍 searchCriteria.from contains '(': ",
+          typeof searchCriteria.from === "string" &&
+            searchCriteria.from.includes("(")
+        );
+        console.log(
+          "🔍 searchCriteria.from contains ')': ",
+          typeof searchCriteria.from === "string" &&
+            searchCriteria.from.includes(")")
+        );
+
+        if (isCountrySearch) {
+          console.log(
+            `✈️ ✅ Using findFlightsBetweenCountries API for country search: ${
+              typeof searchCriteria.from === "string"
+                ? searchCriteria.from
+                : "N/A"
+            } -> ${
+              typeof searchCriteria.to === "string" ? searchCriteria.to : "N/A"
+            }`
+          );
+
+          // Use the between countries API
+          response = await flightApi.findFlightsBetweenCountries(
+            typeof searchCriteria.from === "string" ? searchCriteria.from : "", // departureCountry
+            typeof searchCriteria.to === "string" ? searchCriteria.to : "", // arrivalCountry
+            { page: 0, size: 1000 }
+          );
+
+          console.log(
+            "📋 API Response from findFlightsBetweenCountries:",
+            response
+          );
+        } else {
+          console.log("🏙️ Using getAllFlights API for airport search");
+          // For airport searches, get all flights and filter client-side
+          response = await flightApi.getAllFlights({ size: 1000 });
+        }
+
         if (response.success) {
+          console.log("✅ API call successful");
+          console.log("📦 Raw API response:", response);
+          console.log("📦 Response data:", response.data);
+          console.log("📦 Content array:", response.data?.content);
+          console.log(
+            "📦 Content length:",
+            response.data?.content?.length || 0
+          );
+
           // Map API data to UI format
           const mappedFlights = response.data.content.map((flight) => ({
             id: flight.flightId,
@@ -162,27 +276,42 @@ export function FlightSearchResults() {
             departureTime: flight.departureTime
               ? new Date(flight.departureTime).toTimeString().slice(0, 5)
               : "",
+            arrivalTime: flight.arrivalTime
+              ? new Date(flight.arrivalTime).toTimeString().slice(0, 5)
+              : "",
             duration: flight.duration || 0,
+            stops: flight.stops || "Bay thẳng",
+            aircraft: flight.aircraft || "Airbus A321",
           }));
 
-          // Remove duplicates from API response to prevent duplicate keys
+          console.log(
+            "🔄 Mapped flights sample (first 3):",
+            mappedFlights.slice(0, 3)
+          );
+
+          // Remove duplicates
           const uniqueFlights = mappedFlights.filter(
             (flight, index, self) =>
               index === self.findIndex((f) => f.id === flight.id)
           );
 
-          console.log("Original flights from API:", mappedFlights.length);
           console.log(
-            "Unique flights after API deduplication:",
-            uniqueFlights.length
+            `✨ Final unique flights: ${uniqueFlights.length} flights`
           );
           console.log(
-            "Duplicate flight IDs removed:",
-            mappedFlights.length - uniqueFlights.length
+            "Sample unique flights:",
+            uniqueFlights.slice(0, 2).map((f) => ({
+              id: f.id,
+              from: f.from,
+              to: f.to,
+              fromCode: f.fromCode,
+              toCode: f.toCode,
+              airline: f.airline,
+              price: f.priceNumeric,
+            }))
           );
 
           setAllFlights(uniqueFlights);
-          console.log("Fetched flights (unique):", uniqueFlights);
         } else {
           console.error("Failed to fetch flights:", response.message);
         }
@@ -193,8 +322,28 @@ export function FlightSearchResults() {
       }
     };
 
-    fetchAllFlights();
-  }, []);
+    fetchFlightsByCriteria();
+  }, [searchCriteria]);
+
+  console.log("search criteria:", searchCriteria);
+  // Debug component to test navigation
+  const DebugInfo = () => (
+    <div className="bg-yellow-100 border-l-4 border-yellow-500 p-4 mb-4">
+      <h3 className="font-bold text-yellow-800">🔍 Debug Info:</h3>
+      <p className="text-sm text-yellow-700">
+        Search Criteria: {JSON.stringify(searchCriteria, null, 2)}
+      </p>
+      <p className="text-sm text-yellow-700">
+        Location State: {JSON.stringify(location.state, null, 2)}
+      </p>
+      <p className="text-sm text-yellow-700">
+        Has Country Search:{" "}
+        {searchCriteria?.from === "Việt Nam" && searchCriteria?.to
+          ? "YES"
+          : "NO"}
+      </p>
+    </div>
+  );
 
   // Simplified fare options data with Vietnamese text
   const fareOptions = [
@@ -246,9 +395,24 @@ export function FlightSearchResults() {
 
   const handleProceedToBooking = (flight, fareId) => {
     const selectedFare = fareOptions.find((fare) => fare.id === fareId);
-    localStorage.setItem("selectedFlight", JSON.stringify(flight));
+    if (!selectedFare) {
+      console.error("Selected fare not found");
+      return;
+    }
+
+    // Prepare flight data for booking
+    const bookingFlightData = {
+      ...flight,
+      selectedFare: selectedFare,
+      fareId: fareId,
+    };
+
+    // Store in localStorage and navigate
+    localStorage.setItem("selectedFlight", JSON.stringify(bookingFlightData));
     localStorage.setItem("selectedFare", JSON.stringify(selectedFare));
-    navigate("/booking-stepper");
+
+    // Navigate with state as backup
+    navigate("/booking-stepper", { state: { flightData: bookingFlightData } });
   };
 
   const handleResetFilters = () => {
@@ -337,8 +501,28 @@ export function FlightSearchResults() {
 
     // Search criteria filter
     console.log("Search criteria:", searchCriteria);
+    console.log("Search criteria type:", typeof searchCriteria);
+    if (searchCriteria) {
+      console.log("Search criteria keys:", Object.keys(searchCriteria));
+      console.log(
+        "Search criteria from:",
+        typeof searchCriteria.from === "string"
+          ? searchCriteria.from
+          : searchCriteria.from
+      );
+      console.log(
+        "Search criteria to:",
+        typeof searchCriteria.to === "string"
+          ? searchCriteria.to
+          : searchCriteria.to
+      );
+    }
     filtered = filtered.filter((flight) => {
       if (searchCriteria) {
+        console.log(
+          `Checking flight ${flight.id}: ${flight.from} (${flight.fromCode}) -> ${flight.to} (${flight.toCode})`
+        );
+
         // Check if we have search combinations (multiple from/to pairs)
         if (
           searchCriteria.searchCombinations &&
@@ -356,6 +540,12 @@ export function FlightSearchResults() {
               let fromCriteria = combination.from;
               let toCriteria = combination.to;
 
+              console.log(
+                `Checking combination: ${JSON.stringify(
+                  fromCriteria
+                )} -> ${JSON.stringify(toCriteria)}`
+              );
+
               // Convert object format to string format for comparison
               if (
                 fromCriteria &&
@@ -372,21 +562,64 @@ export function FlightSearchResults() {
                 toCriteria = `${toCriteria.city} (${toCriteria.airportCode})`;
               }
 
+              console.log(
+                `Converted combination: ${fromCriteria} -> ${toCriteria}`
+              );
+
               // Check if flight matches this combination
               if (fromCriteria && toCriteria) {
                 const fromCodeMatch = fromCriteria.match(/\(([^)]+)\)/)?.[1];
                 const toCodeMatch = toCriteria.match(/\(([^)]+)\)/)?.[1];
-                const fromMatch =
-                  flight.from
+                console.log(
+                  `Extracted codes: from=${fromCodeMatch}, to=${toCodeMatch}`
+                );
+
+                // Special handling for country-based search (from destination click)
+                // If criteria is a country name, do relaxed matching
+                let fromMatch = false;
+                let toMatch = false;
+
+                if (fromCodeMatch) {
+                  // Airport code matching (original logic)
+                  fromMatch = flight.fromCode === fromCodeMatch;
+                } else {
+                  // Country/city name matching - relaxed
+                  const fromSearchTerm = fromCriteria
                     .toLowerCase()
-                    .includes(
-                      fromCriteria.toLowerCase().split("(")[0].trim()
-                    ) || flight.fromCode === fromCodeMatch;
-                const toMatch =
-                  flight.to
+                    .split("(")[0]
+                    .trim();
+                  fromMatch =
+                    flight.from.toLowerCase().includes(fromSearchTerm) ||
+                    flight.fromCode.toLowerCase().includes(fromSearchTerm);
+                }
+
+                if (toCodeMatch) {
+                  // Airport code matching (original logic)
+                  toMatch = flight.toCode === toCodeMatch;
+                } else {
+                  // Country/city name matching - relaxed
+                  const toSearchTerm = toCriteria
                     .toLowerCase()
-                    .includes(toCriteria.toLowerCase().split("(")[0].trim()) ||
-                  flight.toCode === toCodeMatch;
+                    .split("(")[0]
+                    .trim();
+                  toMatch =
+                    flight.to.toLowerCase().includes(toSearchTerm) ||
+                    flight.toCode.toLowerCase().includes(toSearchTerm);
+                }
+
+                console.log(
+                  `Flight ${flight.id} from match: ${fromMatch} (${
+                    flight.from
+                  }/${flight.fromCode} includes ${fromCriteria
+                    .toLowerCase()
+                    .split("(")[0]
+                    .trim()})`
+                );
+                console.log(
+                  `Flight ${flight.id} to match: ${toMatch} (${flight.to}/${
+                    flight.toCode
+                  } includes ${toCriteria.toLowerCase().split("(")[0].trim()})`
+                );
 
                 const matches = fromMatch && toMatch;
                 if (matches) {
@@ -403,8 +636,16 @@ export function FlightSearchResults() {
           return matchesAnyCombination;
         } else {
           // Handle single search criteria (backward compatibility)
-          let fromCriteria = searchCriteria.from;
-          let toCriteria = searchCriteria.to;
+          let fromCriteria =
+            typeof searchCriteria.from === "string" ? searchCriteria.from : "";
+          let toCriteria =
+            typeof searchCriteria.to === "string" ? searchCriteria.to : "";
+
+          console.log(
+            `Single criteria - Raw from: ${JSON.stringify(
+              fromCriteria
+            )}, to: ${JSON.stringify(toCriteria)}`
+          );
 
           // If it's an array (from AirportAutocomplete), get the first item
           if (Array.isArray(fromCriteria) && fromCriteria.length > 0) {
@@ -413,6 +654,12 @@ export function FlightSearchResults() {
           if (Array.isArray(toCriteria) && toCriteria.length > 0) {
             toCriteria = toCriteria[0];
           }
+
+          console.log(
+            `After array check - from: ${JSON.stringify(
+              fromCriteria
+            )}, to: ${JSON.stringify(toCriteria)}`
+          );
 
           // If it's an object with airportCode, convert to string format
           if (
@@ -430,26 +677,90 @@ export function FlightSearchResults() {
             toCriteria = `${toCriteria.city} (${toCriteria.airportCode})`;
           }
 
+          console.log(
+            `After object conversion - from: ${fromCriteria}, to: ${toCriteria}`
+          );
+
           // Now filter with string format
           if (fromCriteria && toCriteria) {
-            const fromCodeMatch = fromCriteria.match(/\(([^)]+)\)/)?.[1];
-            const toCodeMatch = toCriteria.match(/\(([^)]+)\)/)?.[1];
-            const fromMatch =
-              flight.from
+            // Ensure fromCriteria and toCriteria are strings before calling .match()
+            const fromCriteriaStr =
+              typeof fromCriteria === "string" ? fromCriteria : "";
+            const toCriteriaStr =
+              typeof toCriteria === "string" ? toCriteria : "";
+
+            const fromCodeMatch = fromCriteriaStr.match(/\(([^)]+)\)/)?.[1];
+            const toCodeMatch = toCriteriaStr.match(/\(([^)]+)\)/)?.[1];
+            console.log(
+              `Extracted codes: from=${fromCodeMatch}, to=${toCodeMatch}`
+            );
+
+            // Special handling for country-based search (from destination click)
+            // If criteria is a country name, do relaxed matching
+            let fromMatch = false;
+            let toMatch = false;
+
+            if (fromCodeMatch) {
+              // Airport code matching (original logic)
+              fromMatch = flight.fromCode === fromCodeMatch;
+            } else {
+              // Country/city name matching - relaxed
+              const fromSearchTerm = fromCriteriaStr
                 .toLowerCase()
-                .includes(fromCriteria.toLowerCase().split("(")[0].trim()) ||
-              flight.fromCode === fromCodeMatch;
-            const toMatch =
-              flight.to
+                .split("(")[0]
+                .trim();
+              fromMatch =
+                flight.from.toLowerCase().includes(fromSearchTerm) ||
+                flight.fromCode.toLowerCase().includes(fromSearchTerm);
+            }
+
+            if (toCodeMatch) {
+              // Airport code matching (original logic)
+              toMatch = flight.toCode === toCodeMatch;
+            } else {
+              // Country/city name matching - relaxed
+              const toSearchTerm = toCriteriaStr
                 .toLowerCase()
-                .includes(toCriteria.toLowerCase().split("(")[0].trim()) ||
-              flight.toCode === toCodeMatch;
+                .split("(")[0]
+                .trim();
+              toMatch =
+                flight.to.toLowerCase().includes(toSearchTerm) ||
+                flight.toCode.toLowerCase().includes(toSearchTerm);
+            }
+
+            console.log(
+              `Flight ${flight.id} from match: ${fromMatch} (${flight.from}/${
+                flight.fromCode
+              } includes ${
+                typeof fromCriteriaStr === "string"
+                  ? fromCriteriaStr.toLowerCase().split("(")[0].trim()
+                  : "N/A"
+              })`
+            );
+            console.log(
+              `Flight ${flight.id} to match: ${toMatch} (${flight.to}/${
+                flight.toCode
+              } includes ${
+                typeof toCriteriaStr === "string"
+                  ? toCriteriaStr.toLowerCase().split("(")[0].trim()
+                  : "N/A"
+              })`
+            );
 
             if (!fromMatch || !toMatch) {
+              console.log(
+                `Flight ${flight.id} does NOT match criteria, filtering out`
+              );
               return false;
+            } else {
+              console.log(`Flight ${flight.id} matches criteria, keeping`);
             }
+          } else {
+            console.log(`Missing from or to criteria for flight ${flight.id}`);
           }
         }
+      } else {
+        console.log(`No search criteria for flight ${flight.id}, keeping`);
       }
       return true;
     });
@@ -561,8 +872,16 @@ export function FlightSearchResults() {
       });
       toLocations = Array.from(toSet).map((item) => JSON.parse(item));
     } else {
-      fromLocations = searchCriteria.from || [];
-      toLocations = searchCriteria.to || [];
+      fromLocations =
+        typeof searchCriteria.from === "string" ||
+        Array.isArray(searchCriteria.from)
+          ? searchCriteria.from
+          : [];
+      toLocations =
+        typeof searchCriteria.to === "string" ||
+        Array.isArray(searchCriteria.to)
+          ? searchCriteria.to
+          : [];
     }
 
     return {
@@ -667,8 +986,14 @@ export function FlightSearchResults() {
                           return `Chuyến bay: ${combinationsText}${remainingText}`;
                         } else {
                           // Single search criteria (backward compatibility)
-                          let fromDisplay = searchCriteria.from;
-                          let toDisplay = searchCriteria.to;
+                          let fromDisplay =
+                            typeof searchCriteria.from === "string"
+                              ? searchCriteria.from
+                              : "";
+                          let toDisplay =
+                            typeof searchCriteria.to === "string"
+                              ? searchCriteria.to
+                              : "";
 
                           // If it's an array (from AirportAutocomplete), get the first item
                           if (
@@ -719,6 +1044,9 @@ export function FlightSearchResults() {
                   )}
                 </p>
               </div>
+
+              {/* Debug Info - Remove this in production */}
+              <DebugInfo />
 
               <div className="flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
                 <div className="lg:hidden">

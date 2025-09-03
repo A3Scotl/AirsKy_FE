@@ -65,7 +65,6 @@ const parseFlightText = (text) => {
   if (!text) return null;
 
   try {
-    console.log("Raw text to parse:", text);
 
     // Check if this looks like a flight block (contains flight number pattern)
     if (!text.includes("**") || !text.includes("→")) {
@@ -118,8 +117,6 @@ const parseFlightText = (text) => {
       seats,
       status,
     };
-
-    console.log("Successfully parsed flight:", flight);
     return flight;
   } catch (error) {
     console.error("Error parsing flight text:", error, "Text:", text);
@@ -419,18 +416,6 @@ const ChatbotWidget = () => {
     setFlightPagination({});
   }, []);
 
-  // Test function for debugging
-  const testParse = useCallback(() => {
-    const testText =
-      "1. VJ202 (VietJet Air) Hà Nội → Đà Nẵng 09:00 11:30 1.350.000₫ 180 ghế trống ✅ Đúng giờ";
-    const result = parseFlightText(testText);
-    console.log("Test parse result:", result);
-  }, []);
-
-  useEffect(() => {
-    console.log("ChatbotWidget mounted successfully!");
-    console.log("Chatbot widget is rendering...");
-  }, []);
 
   const cleanFlightData = useCallback((flights) => {
     return flights.map((flight) => ({
@@ -519,7 +504,6 @@ const ChatbotWidget = () => {
   }, []);
 
   const parsedMessages = useMemo(() => {
-    console.log("Parsing messages:", messages);
     return messages.map((message) => {
       let flights = [];
 
@@ -528,10 +512,8 @@ const ChatbotWidget = () => {
         Array.isArray(message.context.data)
       ) {
         flights = cleanFlightData(message.context.data);
-        console.log("Flights from structured data:", flights);
       } else if (message.text && message.sender === "bot") {
         // Try to parse flights from text if no structured data
-        console.log("Attempting to parse flights from text:", message.text);
 
         // Split text into flight blocks (each starts with a number)
         const lines = message.text.split("\n");
@@ -558,8 +540,6 @@ const ChatbotWidget = () => {
           flightBlocks.push(currentBlock.join("\n"));
         }
 
-        console.log("Flight blocks found:", flightBlocks.length);
-
         const parsedFlights = [];
         for (const block of flightBlocks) {
           const flight = parseFlightText(block);
@@ -570,7 +550,6 @@ const ChatbotWidget = () => {
 
         if (parsedFlights.length > 0) {
           flights = cleanFlightData(parsedFlights);
-          console.log("Flights parsed from text:", flights);
         }
       }
 
@@ -578,7 +557,6 @@ const ChatbotWidget = () => {
         ...message,
         flights,
       };
-      console.log("Parsed message result:", result);
       return result;
     });
   }, [messages, cleanFlightData]);
@@ -595,7 +573,7 @@ const ChatbotWidget = () => {
 
   if (!isOpen && !hasBeenOpened) {
     return (
-      <div className="fixed bottom-6 right-6 z-50">
+      <div className="fixed bottom-22 right-8 z-50">
         <Button
           onClick={() => setIsOpen(true)}
           className="rounded-full w-12 h-12 bg-blue-600 hover:bg-blue-700 shadow-lg hover:shadow-xl transition-all duration-300"

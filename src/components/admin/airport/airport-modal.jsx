@@ -8,6 +8,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import {
   Select,
   SelectTrigger,
@@ -15,6 +16,7 @@ import {
   SelectItem,
   SelectValue,
 } from "@/components/ui/select";
+import ImageUpload from "@/components/ui/image-upload";
 
 /**
  * Modal thêm/cập nhật sân bay
@@ -23,32 +25,46 @@ import {
  * @param {function} props.onClose
  * @param {function} props.onSubmit
  * @param {object} [props.initialData] - Nếu có là update, không có là create
- * @param {Array} props.countries - Danh sách quốc gia [{ country_id, country_name }]
+ * @param {Array} props.countries - Danh sách quốc gia [{ countryId, countryName }]
  */
 const AirportModal = ({ open, onClose, onSubmit, initialData, countries }) => {
   const [form, setForm] = useState({
     airport_code: "",
     airport_name: "",
-    country_id: "",
+    countryId: "",
+    city_name: "",
     is_active: true,
+    thumbnail: "",
+    thumbnailFile: null,
   });
 
   useEffect(() => {
     if (initialData) {
       setForm({
-        airport_code: initialData.airport_code || "",
-        airport_name: initialData.airport_name || "",
-        country_id: initialData.country_id
-          ? String(initialData.country_id)
-          : "",
-        is_active: initialData.is_active ?? true,
+        airport_code: initialData.airportCode || initialData.airport_code || "",
+        airport_name: initialData.airportName || initialData.airport_name || "",
+        countryId: initialData.countryId ? String(initialData.countryId) : "",
+        city_name: (() => {
+          const cityData =
+            initialData.cityNames || initialData.cityName || initialData.city;
+          if (Array.isArray(cityData)) {
+            return cityData.join(", ");
+          }
+          return cityData || "";
+        })(),
+        is_active: initialData.active ?? initialData.is_active ?? true,
+        thumbnail: initialData.thumbnail || "",
+        thumbnailFile: null,
       });
     } else {
       setForm({
         airport_code: "",
         airport_name: "",
-        country_id: "",
+        countryId: "",
+        city_name: "",
         is_active: true,
+        thumbnail: "",
+        thumbnailFile: null,
       });
     }
   }, [initialData, open]);
@@ -61,14 +77,51 @@ const AirportModal = ({ open, onClose, onSubmit, initialData, countries }) => {
     }));
   };
 
+  const handleThumbnailChange = (url, file) => {
+    setForm((prev) => ({
+      ...prev,
+      thumbnail: url,
+      thumbnailFile: file,
+    }));
+  };
+
   const handleSubmit = (e) => {
     e.preventDefault();
-    onSubmit(form);
+    // Log giá trị ảnh trước khi submit
+    console.log("[AirportModal] Submitting form data:");
+    console.log("- thumbnail:", form.thumbnail);
+    console.log("- thumbnailFile:", form.thumbnailFile);
+    console.log(
+      "- thumbnailFile instanceof File:",
+      form.thumbnailFile instanceof File
+    );
+
+    const formData = {
+      airportCode: form.airport_code,
+      airportName: form.airport_name,
+      countryId: form.countryId,
+      cityNames: form.city_name,
+      active: form.is_active,
+    };
+
+    // Xử lý thumbnail: chỉ gửi 1 loại
+    if (form.thumbnailFile instanceof File) {
+      console.log("[AirportModal] Sending file:", form.thumbnailFile.name);
+      formData.thumbnailFile = form.thumbnailFile;
+    } else if (form.thumbnail) {
+      console.log("[AirportModal] Sending URL:", form.thumbnail);
+      formData.thumbnail = form.thumbnail;
+    } else {
+      console.log("[AirportModal] No thumbnail to send");
+    }
+
+    console.log("[AirportModal] Final formData:", formData);
+    onSubmit(formData);
   };
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent>
+      <DialogContent className="max-w-3xl mx-auto max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
             {initialData ? "Cập nhật sân bay" : "Thêm sân bay"}
@@ -93,10 +146,47 @@ const AirportModal = ({ open, onClose, onSubmit, initialData, countries }) => {
             required
             placeholder="VD: Sân bay Tân Sơn Nhất"
           />
+          <Input
+            label="Tên thành phố"
+            name="city_name"
+            value={form.city_name}
+            onChange={handleChange}
+            maxLength={200}
+            placeholder="VD: Hồ Chí Minh, Hà Nội, Đà Nẵng (cách nhau bằng dấu phẩy)"
+          />
+          <p className="text-xs text-muted-foreground">
+            Nhập nhiều thành phố cách nhau bằng dấu phẩy. Ví dụ: "Hồ Chí Minh,
+            Hà Nội"
+          </p>
+          {initialData && form.city_name && (
+            <div className="mt-2">
+              <p className="text-sm text-muted-foreground mb-2">
+                Thành phố hiện tại:
+              </p>
+              <div className="flex flex-wrap gap-1">
+                {(() => {
+                  if (typeof form.city_name === "string") {
+                    return form.city_name.split(",").map((city, index) => (
+                      <Badge key={index} variant="outline" className="text-xs">
+                        {city.trim()}
+                      </Badge>
+                    ));
+                  } else if (Array.isArray(form.city_name)) {
+                    return form.city_name.map((city, index) => (
+                      <Badge key={index} variant="outline" className="text-xs">
+                        {typeof city === "string" ? city.trim() : city}
+                      </Badge>
+                    ));
+                  }
+                  return null;
+                })()}
+              </div>
+            </div>
+          )}
           <Select
-            value={form.country_id}
+            value={form.countryId}
             onValueChange={(v) =>
-              setForm((prev) => ({ ...prev, country_id: v }))
+              setForm((prev) => ({ ...prev, countryId: v }))
             }
             required
           >
@@ -105,12 +195,25 @@ const AirportModal = ({ open, onClose, onSubmit, initialData, countries }) => {
             </SelectTrigger>
             <SelectContent>
               {countries.map((c) => (
-                <SelectItem key={c.country_id} value={String(c.country_id)}>
-                  {c.country_name}
+                <SelectItem
+                  key={c.countryId || c.id}
+                  value={String(c.countryId || c.id)}
+                >
+                  {c.countryName}
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
+          <div>
+            <label className="block text-sm font-medium mb-2">
+              Ảnh thumbnail
+            </label>
+            <ImageUpload
+              value={form.thumbnail}
+              onChange={handleThumbnailChange}
+              placeholder="Chọn ảnh sân bay"
+            />
+          </div>
           <div className="flex items-center space-x-2">
             <input
               type="checkbox"

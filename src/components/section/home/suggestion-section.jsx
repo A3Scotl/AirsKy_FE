@@ -1,0 +1,353 @@
+import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { useState, useEffect } from "react";
+import { ArrowRight, Plane, Clock, Calendar, MapPin } from "lucide-react";
+import { flightApi } from "@/apis/flight-api";
+import { useNavigate } from "react-router-dom";
+
+const formatPrice = (price) =>
+  new Intl.NumberFormat("vi-VN").format(price) + "đ";
+
+const FlightCard = ({ flight, onClick, main }) => {
+  const navigate = useNavigate();
+  const handleViewFlightDetails = (flight) =>
+    navigate("/detail/" + flight.id, { state: { flight } });
+
+  return (
+    <Card
+      className={
+        main
+          ? "relative overflow-hidden h-full group hover:shadow-2xl transition-all duration-500 transform hover:-translate-y-2 border-0 shadow-xl"
+          : "relative overflow-hidden group hover:shadow-lg transition-all duration-300 border hover:border-blue-200 cursor-pointer"
+      }
+      onClick={onClick}
+    >
+      <div
+        className={
+          main
+            ? "absolute inset-0 bg-cover bg-center"
+            : "absolute inset-0 bg-cover bg-center opacity-20 group-hover:opacity-30 transition-opacity"
+        }
+        style={{ backgroundImage: `url(${flight.image})` }}
+      >
+        {main && (
+          <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/50 to-black/30"></div>
+        )}
+      </div>
+      <div
+        className={
+          main
+            ? "relative z-10 p-8 h-full flex flex-col justify-between min-h-[400px]"
+            : "relative z-10 p-4"
+        }
+      >
+        <div>
+          {main && flight.isPopular && (
+            <div className="inline-flex items-center bg-red-500 text-white px-3 py-1 rounded-full text-sm font-medium mb-4">
+              🔥 Phổ biến nhất
+            </div>
+          )}
+          <div className="flex items-center mb-4">
+            <div className="text-center">
+              <div
+                className={
+                  main
+                    ? "text-3xl font-bold text-white"
+                    : "text-lg font-bold text-gray-800 dark:text-white"
+                }
+              >
+                {flight.fromCode}
+              </div>
+              <div
+                className={
+                  main
+                    ? "text-white/80 text-sm"
+                    : "text-xs text-gray-500 dark:text-gray-300"
+                }
+              >
+                {flight.fromCity}
+              </div>
+            </div>
+            <div className={main ? "flex-1 mx-6 relative" : ""}>
+              {main ? (
+                <>
+                  <div className="h-px bg-white/30"></div>
+                  <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
+                    <Plane className="w-8 h-8 text-white rotate-90" />
+                  </div>
+                </>
+              ) : (
+                <ArrowRight className="w-4 h-4 text-gray-400" />
+              )}
+            </div>
+            <div className="text-center">
+              <div
+                className={
+                  main
+                    ? "text-3xl font-bold text-white"
+                    : "text-lg font-bold text-gray-800 dark:text-white"
+                }
+              >
+                {flight.toCode}
+              </div>
+              <div
+                className={
+                  main
+                    ? "text-white/80 text-sm"
+                    : "text-xs text-gray-500 dark:text-gray-300"
+                }
+              >
+                {flight.toCity}
+              </div>
+            </div>
+          </div>
+          <p
+            className={
+              main
+                ? "text-white/90 text-lg mb-6"
+                : "text-sm text-gray-600 mb-3 line-clamp-2"
+            }
+          >
+            {flight.description}
+          </p>
+        </div>
+        <div>
+          <div
+            className={
+              main
+                ? "grid grid-cols-3 gap-4 mb-6"
+                : "grid grid-cols-2 gap-2 mb-3 text-xs text-gray-500"
+            }
+          >
+            <div className={main ? "text-center" : "flex items-center"}>
+              <Clock
+                className={
+                  main ? "w-5 h-5 text-white/70 mx-auto mb-1" : "w-3 h-3 mr-1"
+                }
+              />
+              <span className={main ? "text-white text-sm" : ""}>
+                {flight.duration}
+              </span>
+            </div>
+            <div className={main ? "text-center" : "flex items-center"}>
+              <Calendar
+                className={
+                  main ? "w-5 h-5 text-white/70 mx-auto mb-1" : "w-3 h-3 mr-1"
+                }
+              />
+              <span className={main ? "text-white text-sm" : ""}>
+                {flight.date}
+              </span>
+            </div>
+            {main && (
+              <div className="text-center">
+                <MapPin className="w-5 h-5 text-white/70 mx-auto mb-1" />
+                <div className="text-white text-sm">{flight.airline}</div>
+              </div>
+            )}
+          </div>
+          <div className="flex items-center justify-between">
+            <div>
+              {main && flight.discount && (
+                <div className="text-white/70 text-sm line-through mb-1">
+                  {formatPrice(
+                    Math.round(parseInt(flight.priceNumeric.replace(/\./g, "")) * 1.15)
+                  )}
+                </div>
+              )}
+              <div
+                className={
+                  main
+                    ? "text-3xl font-bold text-white"
+                    : "text-lg font-bold text-blue-600"
+                }
+              >
+                {formatPrice(flight.priceNumeric.replace(/\./g, ""))}
+              </div>
+              <div
+                className={
+                  main ? "text-white/70 text-sm" : "text-xs text-gray-500"
+                }
+              >
+                / người
+              </div>
+            </div>
+            <Button
+              size={main ? "lg" : "sm"}
+              variant={main ? undefined : "outline"}
+              onClick={() => handleViewFlightDetails(flight)}
+              className={
+                main
+                  ? "bg-white text-blue-600 hover:bg-blue-50 font-semibold px-8 py-3 rounded-xl shadow-lg hover:shadow-xl transition-all"
+                  : "hover:bg-blue-50 hover:border-blue-300 text-blue-600"
+              }
+            >
+              {main ? (
+                <>
+                  Đặt ngay
+                  <ArrowRight className="w-5 h-5 ml-2" />
+                </>
+              ) : (
+                <>Đặt vé</>
+              )}
+            </Button>
+          </div>
+        </div>
+      </div>
+      {main && flight.discount && (
+        <div className="absolute top-4 right-4 bg-red-500 text-white px-3 py-1 rounded-full text-sm font-bold transform rotate-12">
+          -{flight.discount}%
+        </div>
+      )}
+    </Card>
+  );
+};
+
+const SuggestionSection = () => {
+  const [flights, setFlights] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [selectedFlight, setSelectedFlight] = useState(null);
+
+  useEffect(() => {
+    const fetchDomesticFlights = async () => {
+      try {
+        setLoading(true);
+        const response = await flightApi.findDomesticFlights("Viet Nam", {
+          page: 0,
+          size: 10,
+        });
+
+        if (response.success && response.data) {
+          // Map API response to component format
+          const mappedFlights = response.data.content.map((flight, index) => ({
+            id: flight.flightId.toString(),
+            route: `${flight.fromCode} - ${flight.toCode}`,
+            from: flight.from.split(" - ")[0] || flight.from,
+            to: flight.to.split(" - ")[0] || flight.to,
+            fromCode: flight.fromCode,
+            toCode: flight.toCode,
+            priceNumeric: flight.basePrice.toString(),
+            duration: `${Math.floor(flight.duration / 60)}h ${
+              flight.duration % 60
+            }m`,
+            airline: flight.airlineName,
+            date: new Date(flight.departureTime).toLocaleDateString("vi-VN", {
+              weekday: "short",
+              day: "numeric",
+              month: "short",
+            }),
+            image:
+              "https://images.unsplash.com/photo-1436491865332-7a61a109cc05?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8YWlycGxhbmV8ZW58MHx8MHx8fDA%3D",
+            description: `Chuyến bay ${flight.flightNumber} từ ${flight.fromCode} đến ${flight.toCode}`,
+            isPopular: index === 0,
+            discount: index === 0 ? 15 : null,
+            availableSeats: flight.availableSeats,
+            status: flight.status,
+          }));
+
+          setFlights(mappedFlights);
+        } else {
+          setError(response.message || "Không thể tải dữ liệu chuyến bay");
+        }
+      } catch (err) {
+        console.error("Error fetching domestic flights:", err);
+        setError("Có lỗi xảy ra khi tải dữ liệu");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchDomesticFlights();
+  }, []);
+
+  if (loading) {
+    return (
+      <section className="mx-auto py-16 bg-gradient-to-b from-blue-50 via-white to-indigo-50 dark:from-gray-500 dark:via-gray-900 dark:to-gray-700">
+        <div className="container mx-auto px-16">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">
+              Chuyến Bay Nội Địa
+            </h2>
+            <p className="text-lg text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">
+              Đang tải dữ liệu chuyến bay...
+            </p>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  if (error) {
+    return (
+      <section className="mx-auto py-16 bg-gradient-to-b from-blue-50 via-white to-indigo-50 dark:from-gray-500 dark:via-gray-900 dark:to-gray-700">
+        <div className="container mx-auto px-16">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">
+              Chuyến Bay Nội Địa
+            </h2>
+            <p className="text-lg text-red-600 dark:text-red-400 max-w-2xl mx-auto">
+              {error}
+            </p>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  const mainFlight = flights.length > 0 ? flights[0] : null;
+  const smallFlights = flights.slice(1, 5);
+
+  return (
+    <section className="mx-auto py-16 bg-gradient-to-b from-blue-50 via-white to-indigo-50 dark:from-gray-500 dark:via-gray-900 dark:to-gray-700">
+      <div className="container mx-auto px-16">
+        <div className="text-center mb-12">
+          <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">
+            Chuyến Bay Nội Địa
+          </h2>
+          <p className="text-lg text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">
+            Khám phá Việt Nam với những tuyến bay phổ biến và giá vé tốt nhất
+          </p>
+        </div>
+        {flights.length > 0 ? (
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-8">
+            <div className="lg:col-span-2">
+              <FlightCard flight={mainFlight} main />
+            </div>
+            {[0, 1].map((col) => (
+              <div className="flex flex-col gap-4" key={col}>
+                {smallFlights.slice(col * 2, col * 2 + 2).map((flight) => (
+                  <FlightCard
+                    key={flight.id}
+                    flight={flight}
+                    onClick={() => setSelectedFlight(flight)}
+                  />
+                ))}
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="text-center py-12">
+            <p className="text-gray-600 dark:text-gray-400">
+              Không có chuyến bay nào được tìm thấy.
+            </p>
+          </div>
+        )}
+        <div className="text-center">
+          <Button
+            size="lg"
+            variant="outline"
+            className="bg-white hover:bg-blue-50 border-2 border-blue-200 hover:border-blue-300 text-blue-600 font-semibold px-8 py-3 rounded-xl shadow-md hover:shadow-lg transition-all"
+          >
+            <Plane className="w-5 h-5 mr-2" />
+            Xem tất cả
+            <ArrowRight className="w-5 h-5 ml-2" />
+          </Button>
+        </div>
+      </div>
+    </section>
+  );
+};
+
+export { SuggestionSection };
+export default SuggestionSection;

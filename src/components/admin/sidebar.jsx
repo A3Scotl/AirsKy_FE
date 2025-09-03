@@ -32,7 +32,8 @@ const AdminSidebar = ({ sidebarOpen, setSidebarOpen }) => {
       location.pathname.startsWith("/admin/travel-classes") ||
       location.pathname.startsWith("/admin/airlines") ||
       location.pathname.startsWith("/admin/gates") ||
-      location.pathname.startsWith("/admin/baggage")
+      location.pathname.startsWith("/admin/baggage") ||
+      location.pathname.startsWith("/admin/countries")
   );
 
   const navigation = [
@@ -59,7 +60,9 @@ const AdminSidebar = ({ sidebarOpen, setSidebarOpen }) => {
         location.pathname.startsWith("/admin/travel-classes") ||
         location.pathname.startsWith("/admin/airlines") ||
         location.pathname.startsWith("/admin/gates") ||
-        location.pathname.startsWith("/admin/baggage"),
+        location.pathname.startsWith("/admin/baggage") ||
+        location.pathname.startsWith("/admin/countries"),
+
       isExpandable: true,
       submenu: [
         {
@@ -104,6 +107,12 @@ const AdminSidebar = ({ sidebarOpen, setSidebarOpen }) => {
           icon: Tag,
           current: location.pathname === "/admin/baggage",
         },
+        {
+          name: "Quốc gia",
+          href: "/admin/countries",
+          icon: MapPin,
+          current: location.pathname === "/admin/countries",
+        }
       ],
     },
     {

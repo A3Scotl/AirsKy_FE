@@ -59,6 +59,7 @@ const AdminCategory = lazy(() => import("@/pages/private/category-page"));
 const AdminDeal = lazy(() => import("@/pages/private/deal-page"));
 const AdminAirport = lazy(() => import("@/pages/private/airport-page"));
 const AdminAirline = lazy(() => import("@/pages/private/airline-page"));
+const AdminCountry = lazy(() => import("@/pages/private/country-page"));
 
 function AppRoutes() {
   const { loading } = useAuth();
@@ -184,6 +185,7 @@ function AppRoutes() {
               <Route path="flights" element={<AdminFlights />} />
               <Route path="airports" element={<AdminAirport />} />
               <Route path="airlines" element={<AdminAirline />} />
+              <Route path="countries" element={<AdminCountry/>} />
               <Route path="users" element={<AdminUsers />} />
               <Route path="payments" element={<AdminPayments />} />
               <Route path="reports" element={<AdminReports />} />

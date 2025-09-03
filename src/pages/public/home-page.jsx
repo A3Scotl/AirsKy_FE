@@ -2,7 +2,7 @@ import { SearchForm } from "@/components/common/search-form";
 import { FeaturesSection } from "@/components/section/home/features-section";
 import { DestinationSection } from "@/components/section/home/destination-section";
 import { ReviewsSection } from "@/components/section/home/reviews-section";
-import SuggestionSection from "@/components/section/flight/suggestion-section";
+import SuggestionSection from "@/components/section/home/suggestion-section";
 import SEO from "@/components/common/seo";
 import ChatbotWidget from "@/components/common/chatbot-widget";
 import { Swiper, SwiperSlide } from "swiper/react";
@@ -10,10 +10,17 @@ import { Autoplay } from "swiper/modules";
 import "swiper/css";
 import { useNavigate } from "react-router-dom";
 import { useSearch } from "@/contexts/search-context";
+import { useState, useEffect } from "react";
+import { airlineApi } from "@/apis/airline-api";
 
 function HomePage() {
   const navigate = useNavigate();
   const { updateSearchCriteria } = useSearch();
+
+  // Airlines state
+  const [airlines, setAirlines] = useState([]);
+  const [airlinesLoading, setAirlinesLoading] = useState(true);
+  const [airlinesError, setAirlinesError] = useState(null);
 
   // Handle search from homepage
   const handleHomeSearch = (criteria) => {
@@ -23,18 +30,30 @@ function HomePage() {
     // Also use URL params as backup
     const params = new URLSearchParams();
 
-    if (criteria.from && typeof criteria.from === "object") {
+    if (
+      criteria.from &&
+      typeof criteria.from === "object" &&
+      !Array.isArray(criteria.from) &&
+      criteria.from.city &&
+      criteria.from.airportCode
+    ) {
       params.append(
         "from",
         `${criteria.from.city} (${criteria.from.airportCode})`
       );
-    } else if (criteria.from) {
+    } else if (criteria.from && !Array.isArray(criteria.from)) {
       params.append("from", criteria.from);
     }
 
-    if (criteria.to && typeof criteria.to === "object") {
+    if (
+      criteria.to &&
+      typeof criteria.to === "object" &&
+      !Array.isArray(criteria.to) &&
+      criteria.to.city &&
+      criteria.to.airportCode
+    ) {
       params.append("to", `${criteria.to.city} (${criteria.to.airportCode})`);
-    } else if (criteria.to) {
+    } else if (criteria.to && !Array.isArray(criteria.to)) {
       params.append("to", criteria.to);
     }
 
@@ -58,44 +77,51 @@ function HomePage() {
     navigate(`/flights?${params.toString()}`);
   };
 
-  // Airlines data
-  const airlines = [
-    {
-      name: "Emirates",
-      logo: "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d0/Emirates_logo.svg/2560px-Emirates_logo.svg.png",
-      description: "Premium international flights",
-    },
-    {
-      name: "VietJet Air",
-      logo: "https://upload.wikimedia.org/wikipedia/commons/8/8d/VietJet_Air_logo.png",
-      description: "Budget-friendly domestic & international",
-    },
-    {
-      name: "Vietnam Airlines",
-      logo: "https://upload.wikimedia.org/wikipedia/en/thumb/b/b6/Vietnam_Airlines_logo_2015.svg/375px-Vietnam_Airlines_logo_2015.svg.png",
-      description: "National flag carrier of Vietnam",
-    },
-    {
-      name: "Qatar Airways",
-      logo: "https://upload.wikimedia.org/wikipedia/en/thumb/9/9b/Qatar_Airways_Logo.svg/375px-Qatar_Airways_Logo.svg.png",
-      description: "Award-winning airline",
-    },
-    {
-      name: "Singapore Airlines",
-      logo: "https://upload.wikimedia.org/wikipedia/en/thumb/6/6b/Singapore_Airlines_Logo_2.svg/330px-Singapore_Airlines_Logo_2.svg.png",
-      description: "World's best airline",
-    },
-    {
-      name: "Turkish Airlines",
-      logo: "https://upload.wikimedia.org/wikipedia/commons/thumb/0/00/Turkish_Airlines_logo_2019_compact.svg/2560px-Turkish_Airlines_logo_2019_compact.svg.png",
-      description: "Connecting Europe, Asia & Africa",
-    },
-    {
-      name: "Thailand Airlines",
-      logo: "https://upload.wikimedia.org/wikipedia/commons/thumb/0/00/Turkish_Airlines_logo_2019_compact.svg/2560px-Turkish_Airlines_logo_2019_compact.svg.png",
-      description: "Connecting Europe, Asia & Africa",
-    },
-  ];
+  // Fetch airlines data
+  useEffect(() => {
+    const fetchAirlines = async () => {
+      try {
+        setAirlinesLoading(true);
+        setAirlinesError(null);
+
+        const result = await airlineApi.getAllAirlines({
+          page: 0,
+          size: 50, // Lấy nhiều airlines để hiển thị
+          sort: "airlineName,asc",
+        });
+
+        if (result.success && result.data) {
+          // Map API response to component format
+          const mappedAirlines =
+            result.data.content
+              ?.filter((airline) => airline.active)
+              .map((airline) => ({
+                name: airline.airlineName,
+                logo: airline.thumbnail || "/default-airline-logo.svg", // Fallback logo
+                description: `Mã hãng: ${airline.airlineCode}${
+                  airline.contact ? ` - Liên hệ: ${airline.contact}` : ""
+                }`,
+                airlineId: airline.airlineId,
+                airlineCode: airline.airlineCode,
+                active: airline.active,
+              })) || [];
+
+          setAirlines(mappedAirlines);
+        } else {
+          setAirlinesError(
+            result.message || "Không thể tải danh sách hãng hàng không"
+          );
+        }
+      } catch (error) {
+        console.error("Error fetching airlines:", error);
+        setAirlinesError("Có lỗi xảy ra khi tải danh sách hãng hàng không");
+      } finally {
+        setAirlinesLoading(false);
+      }
+    };
+
+    fetchAirlines();
+  }, []);
 
   return (
     <>
@@ -146,7 +172,7 @@ function HomePage() {
             modules={[Autoplay]}
             spaceBetween={30}
             slidesPerView={5}
-            loop={true}
+            loop={false} // Disable loop to avoid warning
             autoplay={{
               delay: 2000,
               disableOnInteraction: false,
@@ -159,25 +185,38 @@ function HomePage() {
             }}
             className="airlines-slider"
           >
-            {airlines.map((airline, index) => (
-              <SwiperSlide key={index}>
-                <div className="p-4 transition-all duration-300 group cursor-pointer">
-                  <div className="text-center">
-                    <div className="h-16 flex items-center justify-center mb-3">
-                      <img
-                        src={airline.logo}
-                        alt={airline.name}
-                        className="h-full w-auto max-w-[120px] object-contain group-hover:scale-110 transition-transform duration-300 filter grayscale hover:grayscale-0"
-                        style={{
-                          filter: "drop-shadow(0 1px 2px rgba(0, 0, 0, 0.1))",
-                        }}
-                      />
+            {(airlinesLoading ? [] : airlines.length > 0 ? airlines : []).map(
+              (airline, index) => (
+                <SwiperSlide key={airline.airlineId || index}>
+                  <div className="p-4 transition-all duration-300 group cursor-pointer">
+                    <div className="text-center">
+                      <div className="h-16 flex items-center justify-center mb-3">
+                        <img
+                          src={airline.logo}
+                          alt={airline.name}
+                          className="h-full w-auto max-w-[120px] object-contain group-hover:scale-110 transition-transform duration-300 filter grayscale hover:grayscale-0"
+                          style={{
+                            filter: "drop-shadow(0 1px 2px rgba(0, 0, 0, 0.1))",
+                          }}
+                        />
+                      </div>
+                      <h4 className="text-sm font-medium text-gray-900 dark:text-white mb-1">
+                        {airline.name}
+                      </h4>
                     </div>
                   </div>
-                </div>
-              </SwiperSlide>
-            ))}
+                </SwiperSlide>
+              )
+            )}
           </Swiper>
+
+          {airlinesError && (
+            <div className="text-center mt-4">
+              <p className="text-sm text-red-600 dark:text-red-400">
+                {airlinesError}
+              </p>
+            </div>
+          )}
         </section>
 
         {/* Destinations Section */}

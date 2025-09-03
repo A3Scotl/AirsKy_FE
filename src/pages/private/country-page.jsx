@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from "react";
-import AirlineModal from "@/components/admin/airlines/airline-modal";
+import CountryModal from "@/components/admin/countries/country-modal";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -20,47 +20,44 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import Pagination from "@/components/ui/pagination";
-import { airlineApi } from "@/apis/airline-api";
-import { useAirline } from "@/hooks/use-airline";
+import { countryApi } from "@/apis/country-api";
+import { useCountry } from "@/hooks/use-country";
 
-const AirlinePage = () => {
+const CountryPage = () => {
   const [modalOpen, setModalOpen] = useState(false);
   const [editData, setEditData] = useState(null);
 
   // Search, Filter, Sort states
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
-  const [sortBy, setSortBy] = useState("airlineName");
+  const [sortBy, setSortBy] = useState("countryName");
   const [sortOrder, setSortOrder] = useState("asc");
 
   // Pagination states
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
 
-  const { airlines, loading, refresh } = useAirline();
+  const { countries, loading, refresh } = useCountry();
 
   // Filtered and sorted data
-  const filteredAndSortedAirlines = useMemo(() => {
-    let filtered = airlines;
+  const filteredAndSortedCountries = useMemo(() => {
+    let filtered = countries;
 
     // Apply search filter
     if (searchTerm) {
       filtered = filtered.filter(
-        (airline) =>
-          airline.airlineName
+        (country) =>
+          country.countryName
             .toLowerCase()
             .includes(searchTerm.toLowerCase()) ||
-          airline.airlineCode
-            .toLowerCase()
-            .includes(searchTerm.toLowerCase()) ||
-          airline.contact.toLowerCase().includes(searchTerm.toLowerCase())
+          country.countryCode.toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
 
     // Apply status filter
     if (statusFilter !== "all") {
-      filtered = filtered.filter((airline) =>
-        statusFilter === "active" ? airline.active : !airline.active
+      filtered = filtered.filter((country) =>
+        statusFilter === "active" ? country.active : !country.active
       );
     }
 
@@ -69,21 +66,17 @@ const AirlinePage = () => {
       let aValue, bValue;
 
       switch (sortBy) {
-        case "airlineCode":
-          aValue = a.airlineCode || "";
-          bValue = b.airlineCode || "";
+        case "countryCode":
+          aValue = a.countryCode || "";
+          bValue = b.countryCode || "";
           break;
-        case "airlineName":
-          aValue = a.airlineName || "";
-          bValue = b.airlineName || "";
-          break;
-        case "contact":
-          aValue = a.contact || "";
-          bValue = b.contact || "";
+        case "countryName":
+          aValue = a.countryName || "";
+          bValue = b.countryName || "";
           break;
         default:
-          aValue = a.airlineName || "";
-          bValue = b.airlineName || "";
+          aValue = a.countryName || "";
+          bValue = b.countryName || "";
       }
 
       if (sortOrder === "asc") {
@@ -94,14 +87,17 @@ const AirlinePage = () => {
     });
 
     return filtered;
-  }, [airlines, searchTerm, statusFilter, sortBy, sortOrder]);
+  }, [countries, searchTerm, statusFilter, sortBy, sortOrder]);
 
   // Pagination logic
-  const totalItems = filteredAndSortedAirlines.length;
+  const totalItems = filteredAndSortedCountries.length;
   const totalPages = Math.ceil(totalItems / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
-  const currentAirlines = filteredAndSortedAirlines.slice(startIndex, endIndex);
+  const currentCountries = filteredAndSortedCountries.slice(
+    startIndex,
+    endIndex
+  );
 
   // Reset to first page when filters change
   React.useEffect(() => {
@@ -130,16 +126,18 @@ const AirlinePage = () => {
     setEditData(null);
     setModalOpen(true);
   };
-  const handleEdit = (airline) => {
-    setEditData(airline);
+
+  const handleEdit = (country) => {
+    setEditData(country);
     setModalOpen(true);
   };
-  const handleDelete = async (airline) => {
+
+  const handleDelete = async (country) => {
     if (
-      window.confirm(`Bạn có chắc muốn xóa hãng bay ${airline.airlineName}?`)
+      window.confirm(`Bạn có chắc muốn xóa quốc gia ${country.countryName}?`)
     ) {
       try {
-        const response = await airlineApi.deleteAirline(airline.airlineId);
+        const response = await countryApi.deleteCountry(country.id);
         if (response.success) {
           // Refresh danh sách sử dụng hook
           refresh();
@@ -147,23 +145,24 @@ const AirlinePage = () => {
           alert("Lỗi khi xóa: " + response.message);
         }
       } catch (error) {
-        console.error("Lỗi xóa airline:", error);
-        alert("Lỗi khi xóa hãng bay");
+        console.error("Lỗi xóa country:", error);
+        alert("Lỗi khi xóa quốc gia");
       }
     }
   };
+
   const handleSubmit = async (formData) => {
     try {
       let response;
       if (editData) {
         // Update
-        response = await airlineApi.updateAirlineWithImage(
-          editData.airlineId,
+        response = await countryApi.updateCountryWithImage(
+          editData.id,
           formData
         );
       } else {
         // Create
-        response = await airlineApi.createAirlineWithImage(formData);
+        response = await countryApi.createCountryWithImage(formData);
       }
 
       if (response.success) {
@@ -175,7 +174,7 @@ const AirlinePage = () => {
       }
     } catch (error) {
       console.error("Lỗi submit:", error);
-      alert("Lỗi khi lưu hãng bay");
+      alert("Lỗi khi lưu quốc gia");
     }
   };
 
@@ -184,12 +183,12 @@ const AirlinePage = () => {
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-2xl font-bold">Quản lý Hãng bay</h1>
+          <h1 className="text-2xl font-bold">Quản lý Quốc gia</h1>
           <p className="text-sm text-gray-600 mt-1">
-            Tổng cộng: {totalItems} hãng bay
+            Tổng cộng: {totalItems} quốc gia
           </p>
         </div>
-        <Button onClick={handleAdd}>Thêm hãng bay</Button>
+        <Button onClick={handleAdd}>Thêm quốc gia</Button>
       </div>
 
       {/* Search and Filters */}
@@ -200,7 +199,7 @@ const AirlinePage = () => {
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
               <Input
-                placeholder="Tìm kiếm theo tên, mã hoặc liên hệ..."
+                placeholder="Tìm kiếm theo tên hoặc mã quốc gia..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-10"
@@ -236,12 +235,10 @@ const AirlinePage = () => {
                 <SelectValue placeholder="Sắp xếp theo" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="airlineName-asc">Tên A-Z</SelectItem>
-                <SelectItem value="airlineName-desc">Tên Z-A</SelectItem>
-                <SelectItem value="airlineCode-asc">Mã A-Z</SelectItem>
-                <SelectItem value="airlineCode-desc">Mã Z-A</SelectItem>
-                <SelectItem value="contact-asc">Liên hệ A-Z</SelectItem>
-                <SelectItem value="contact-desc">Liên hệ Z-A</SelectItem>
+                <SelectItem value="countryName-asc">Tên A-Z</SelectItem>
+                <SelectItem value="countryName-desc">Tên Z-A</SelectItem>
+                <SelectItem value="countryCode-asc">Mã A-Z</SelectItem>
+                <SelectItem value="countryCode-desc">Mã Z-A</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -260,11 +257,11 @@ const AirlinePage = () => {
               <TableRow>
                 <TableHead
                   className="cursor-pointer hover:bg-gray-50 select-none"
-                  onClick={() => handleSort("airlineCode")}
+                  onClick={() => handleSort("countryCode")}
                 >
                   <div className="flex items-center gap-2">
                     Mã
-                    {sortBy === "airlineCode" && (
+                    {sortBy === "countryCode" && (
                       <span className="text-xs">
                         {sortOrder === "asc" ? "↑" : "↓"}
                       </span>
@@ -273,24 +270,11 @@ const AirlinePage = () => {
                 </TableHead>
                 <TableHead
                   className="cursor-pointer hover:bg-gray-50 select-none"
-                  onClick={() => handleSort("airlineName")}
+                  onClick={() => handleSort("countryName")}
                 >
                   <div className="flex items-center gap-2">
-                    Tên hãng bay
-                    {sortBy === "airlineName" && (
-                      <span className="text-xs">
-                        {sortOrder === "asc" ? "↑" : "↓"}
-                      </span>
-                    )}
-                  </div>
-                </TableHead>
-                <TableHead
-                  className="cursor-pointer hover:bg-gray-50 select-none"
-                  onClick={() => handleSort("contact")}
-                >
-                  <div className="flex items-center gap-2">
-                    Liên hệ
-                    {sortBy === "contact" && (
+                    Tên quốc gia
+                    {sortBy === "countryName" && (
                       <span className="text-xs">
                         {sortOrder === "asc" ? "↑" : "↓"}
                       </span>
@@ -303,16 +287,15 @@ const AirlinePage = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {currentAirlines.map((a) => (
-                <TableRow key={a.airlineId}>
-                  <TableCell className="font-mono">{a.airlineCode}</TableCell>
-                  <TableCell>{a.airlineName}</TableCell>
-                  <TableCell>{a.contact}</TableCell>
+              {currentCountries.map((c) => (
+                <TableRow key={c.id}>
+                  <TableCell className="font-mono">{c.countryCode}</TableCell>
+                  <TableCell>{c.countryName}</TableCell>
                   <TableCell>
-                    {a.thumbnail ? (
+                    {c.thumbnail ? (
                       <img
-                        src={a.thumbnail}
-                        alt={a.airlineName}
+                        src={c.thumbnail}
+                        alt={c.countryName}
                         className="w-12 h-12 object-cover rounded"
                       />
                     ) : (
@@ -323,9 +306,9 @@ const AirlinePage = () => {
                   </TableCell>
                   <TableCell>
                     <span
-                      className={a.active ? "text-green-600" : "text-gray-400"}
+                      className={c.active ? "text-green-600" : "text-gray-400"}
                     >
-                      {a.active ? "Hoạt động" : "Ẩn"}
+                      {c.active ? "Hoạt động" : "Ẩn"}
                     </span>
                   </TableCell>
                   <TableCell>
@@ -333,14 +316,14 @@ const AirlinePage = () => {
                       <Button
                         size="sm"
                         variant="outline"
-                        onClick={() => handleEdit(a)}
+                        onClick={() => handleEdit(c)}
                       >
                         <Pencil className="w-4 h-4 mr-1" />
                       </Button>
                       <Button
                         size="sm"
                         variant="destructive"
-                        onClick={() => handleDelete(a)}
+                        onClick={() => handleDelete(c)}
                       >
                         <Trash2 className="w-4 h-4 mr-1" />
                       </Button>
@@ -367,7 +350,7 @@ const AirlinePage = () => {
         />
       )}
 
-      <AirlineModal
+      <CountryModal
         open={modalOpen}
         onClose={() => setModalOpen(false)}
         onSubmit={handleSubmit}
@@ -377,4 +360,4 @@ const AirlinePage = () => {
   );
 };
 
-export default AirlinePage;
+export default CountryPage;

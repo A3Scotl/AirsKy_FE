@@ -1,73 +1,20 @@
 import { Swiper, SwiperSlide } from "swiper/react";
 import { Navigation, Autoplay, Pagination } from "swiper/modules";
-import { ChevronLeft, ChevronRight, Plane, Star } from "lucide-react";
+import {
+  ChevronLeft,
+  ChevronRight,
+  Plane,
+  Star,
+  Tag,
+  Calendar,
+  MapPin,
+} from "lucide-react";
 import "swiper/css";
 import "swiper/css/navigation";
 import "swiper/css/pagination";
-
-// Dữ liệu ưu đãi đã tối ưu với tiếng Việt
-const deals = [
-  {
-    id: 1,
-    airline: "VietJet Air",
-    route: "SGN → BKK",
-    price: 1632000,
-    originalPrice: 2376000,
-    discount: "32%",
-    duration: "1g 30p",
-    rating: 4.2,
-    image:
-      "https://logos-world.net/wp-content/uploads/2023/01/VietJet-Air-Logo.png",
-    departure: "08:30",
-    arrival: "11:00",
-    stops: "Bay thẳng",
-  },
-  {
-    id: 2,
-    airline: "Scoot",
-    route: "SGN → SIN",
-    price: 1296000,
-    originalPrice: 2040000,
-    discount: "37%",
-    duration: "1g 45p",
-    rating: 4.0,
-    image:
-      "https://upload.wikimedia.org/wikipedia/en/thumb/6/6b/Scoot_logo.svg/1200px-Scoot_logo.svg.png",
-    departure: "14:20",
-    arrival: "17:05",
-    stops: "Bay thẳng",
-  },
-  {
-    id: 3,
-    airline: "Vietnam Airlines",
-    route: "SGN → HAN",
-    price: 2448000,
-    originalPrice: 3648000,
-    discount: "33%",
-    duration: "2g 10p",
-    rating: 4.5,
-    image:
-      "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f1/Vietnam_Airlines_logo.svg/1200px-Vietnam_Airlines_logo.svg.png",
-    departure: "06:00",
-    arrival: "08:10",
-    stops: "Bay thẳng",
-  },
-  {
-    id: 4,
-    airline: "Bamboo Airways",
-    route: "SGN → DAD",
-    price: 2136000,
-    originalPrice: 3192000,
-    discount: "32%",
-    duration: "1g 20p",
-    rating: 4.3,
-    image:
-      "https://upload.wikimedia.org/wikipedia/commons/thumb/8/8c/Bamboo_Airways_logo.svg/1200px-Bamboo_Airways_logo.svg.png",
-    departure: "16:45",
-    arrival: "18:05",
-    stops: "Bay thẳng",
-  },
-];
+import { useState, useEffect } from "react";
+import { dealApi } from "@/apis/deal-api";
+import { Link } from "react-router-dom";
 
 // Format currency function
 const formatCurrency = (amount) => {
@@ -79,7 +26,106 @@ const formatCurrency = (amount) => {
   }).format(amount);
 };
 
+// Format date function
+const formatDate = (dateString) => {
+  return new Date(dateString).toLocaleDateString("vi-VN", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  });
+};
+
 export default function DealsSection() {
+  const [deals, setDeals] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    const fetchDeals = async () => {
+      try {
+        setLoading(true);
+        const response = await dealApi.getActiveDeals({ size: 50 }); // Tăng size để có nhiều data hơn
+        if (response.success) {
+          // Lọc chỉ lấy những deal có tuyến bay cụ thể
+          const dealsWithRoutes = (
+            response.data.content ||
+            response.data ||
+            []
+          ).filter(
+            (deal) => deal.departureAirportName && deal.arrivalAirportName
+          );
+          setDeals(dealsWithRoutes);
+        } else {
+          setError(response.message || "Không thể tải dữ liệu ưu đãi");
+        }
+      } catch (err) {
+        console.error("Error fetching deals:", err);
+        setError("Lỗi kết nối mạng");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchDeals();
+  }, []);
+
+  if (loading) {
+    return (
+      <section className="pb-8 pt-28 max-w-7xl mx-auto px-4 sm:px-20 lg:px-20">
+        <div className="mt-24">
+          <div className="flex justify-between items-center mb-2">
+            <h2 className="text-3xl font-bold text-gray-800 dark:text-white mb-2">
+              Ưu Đãi Chuyến Bay Hot
+            </h2>
+          </div>
+          <div className="flex justify-center items-center py-12">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+            <span className="ml-3 text-gray-600">Đang tải ưu đãi...</span>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  if (error) {
+    return (
+      <section className="pb-8 pt-28 max-w-7xl mx-auto px-4 sm:px-20 lg:px-20">
+        <div className="mt-24">
+          <div className="flex justify-between items-center mb-2">
+            <h2 className="text-3xl font-bold text-gray-800 dark:text-white mb-2">
+              Ưu Đãi Chuyến Bay Hot
+            </h2>
+          </div>
+          <div className="flex justify-center items-center py-12">
+            <div className="text-red-500 text-center">
+              <p className="text-lg font-semibold">Không thể tải ưu đãi</p>
+              <p className="text-sm mt-2">{error}</p>
+            </div>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  if (!deals || deals.length === 0) {
+    return (
+      <section className="pb-8 pt-28 max-w-7xl mx-auto px-4 sm:px-20 lg:px-20">
+        <div className="mt-24">
+          <div className="flex justify-between items-center mb-2">
+            <h2 className="text-3xl font-bold text-gray-800 dark:text-white mb-2">
+              Ưu Đãi Chuyến Bay Hot
+            </h2>
+          </div>
+          <div className="flex justify-center items-center py-12">
+            <div className="text-gray-500 text-center">
+              <p className="text-lg font-semibold">Không có ưu đãi nào</p>
+              <p className="text-sm mt-2">Vui lòng quay lại sau</p>
+            </div>
+          </div>
+        </div>
+      </section>
+    );
+  }
   return (
     <section className="pb-8 pt-28 max-w-7xl mx-auto px-4 sm:px-20 lg:px-20">
       <div className="mt-24">
@@ -87,9 +133,12 @@ export default function DealsSection() {
           <h2 className="text-3xl font-bold text-gray-800 dark:text-white mb-2">
             Ưu Đãi Chuyến Bay Hot
           </h2>
-          <a className="text-gray-600 hover:text-blue-600 cursor-pointer">
+          <Link
+            to="/deals"
+            className="text-gray-600 hover:text-blue-600 cursor-pointer"
+          >
             Xem tất cả
-          </a>
+          </Link>
         </div>
 
         <div className="relative">
@@ -122,7 +171,7 @@ export default function DealsSection() {
             className="px-12 bg-none"
           >
             {deals.map((deal) => (
-              <SwiperSlide key={deal.id}>
+              <SwiperSlide key={deal.dealId}>
                 <div className="relative shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 overflow-visible ticket-card ">
                   <div className="bg-white dark:bg-gray-300 rounded-t-[2rem] rounded-b-[2rem] overflow-hidden relative">
                     {/* Side notches */}
@@ -132,7 +181,7 @@ export default function DealsSection() {
                     {/* Discount Badge */}
                     <div className="absolute top-4 left-4 z-30">
                       <span className="bg-red-500 text-white px-3 py-1 rounded-full text-sm font-bold">
-                        -{deal.discount}
+                        -{deal.discountPercentage}%
                       </span>
                     </div>
 
@@ -141,59 +190,67 @@ export default function DealsSection() {
                       <div className="flex items-center justify-between">
                         <div className="flex items-center space-x-3">
                           <div className="w-12 h-12 bg-white rounded-lg p-2 flex items-center justify-center">
-                            <img
-                              src={deal.image}
-                              alt={deal.airline}
-                              className="w-full h-full object-contain"
-                            />
+                            {deal.thumbnail ? (
+                              <img
+                                src={deal.thumbnail}
+                                alt={deal.title}
+                                className="w-full h-full object-contain"
+                              />
+                            ) : (
+                              <Tag className="w-6 h-6 text-blue-600" />
+                            )}
                           </div>
                           <div>
-                            <h3 className="font-bold text-lg">
-                              {deal.airline}
-                            </h3>
+                            <h3 className="font-bold text-lg">{deal.title}</h3>
                             <div className="flex items-center space-x-1">
-                              <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
-                              <span className="text-sm">{deal.rating}</span>
+                              <Tag className="w-4 h-4 text-yellow-400" />
+                              <span className="text-sm font-mono bg-yellow-100 text-yellow-800 px-2 py-0.5 rounded">
+                                {deal.dealCode}
+                              </span>
                             </div>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <div className="text-sm opacity-90">
+                            Còn {deal.remainingUsage} lượt
                           </div>
                         </div>
                       </div>
                     </div>
 
-                    {/* Flight Info */}
+                    {/* Deal Info */}
                     <div className="p-6">
                       {/* Route */}
-                      <div className="flex items-center justify-center mb-8">
-                        <div className="text-center">
-                          <div className="text-2xl font-bold text-gray-800">
-                            {deal.route.split(" → ")[0]}
+                      {deal.departureAirportName && deal.arrivalAirportName && (
+                        <div className="flex items-center justify-center mb-8">
+                          <div className="text-center">
+                            <div className="text-2xl font-bold text-gray-800">
+                              {deal.departureAirportCode}
+                            </div>
+                            <div className="text-sm text-gray-500">
+                              {deal.departureAirportName}
+                            </div>
                           </div>
-                          <div className="text-sm text-gray-500">
-                            {deal.departure}
+                          <div className="flex-1 flex items-center justify-center mx-4 relative">
+                            <div className="absolute inset-0 flex items-center">
+                              <div className="w-full h-0.5 bg-gradient-to-r from-blue-400 via-blue-500 to-blue-400"></div>
+                            </div>
+                            <div className="w-3 h-3 bg-blue-500 rounded-full z-10 absolute left-0"></div>
+                            <div className="bg-white border-2 border-blue-500 rounded-full p-2 z-10 shadow-sm">
+                              <Plane className="w-4 h-4 text-blue-500 transform rotate-45" />
+                            </div>
+                            <div className="w-3 h-3 bg-blue-500 rounded-full z-10 absolute right-0"></div>
+                          </div>
+                          <div className="text-center">
+                            <div className="text-2xl font-bold text-gray-800">
+                              {deal.arrivalAirportCode}
+                            </div>
+                            <div className="text-sm text-gray-500">
+                              {deal.arrivalAirportName}
+                            </div>
                           </div>
                         </div>
-                        <div className="flex-1 flex items-center justify-center mx-4 relative">
-                          <div className="absolute inset-0 flex items-center">
-                            <div className="w-full h-0.5 bg-gradient-to-r from-blue-400 via-blue-500 to-blue-400"></div>
-                          </div>
-                          <div className="w-3 h-3 bg-blue-500 rounded-full z-10 absolute left-0"></div>
-                          <div className="bg-white border-2 border-blue-500 rounded-full p-2 z-10 shadow-sm">
-                            <Plane className="w-4 h-4 text-blue-500 transform rotate-45" />
-                          </div>
-                          <div className="w-3 h-3 bg-blue-500 rounded-full z-10 absolute right-0"></div>
-                          <div className="absolute -bottom-6 left-1/2 transform -translate-x-1/2 text-xs text-gray-500 bg-blue-50 px-2 py-1 rounded-full">
-                            {deal.duration}
-                          </div>
-                        </div>
-                        <div className="text-center">
-                          <div className="text-2xl font-bold text-gray-800">
-                            {deal.route.split(" → ")[1]}
-                          </div>
-                          <div className="text-sm text-gray-500">
-                            {deal.arrival}
-                          </div>
-                        </div>
-                      </div>
+                      )}
 
                       {/* Divider */}
                       <div className="border-t-2 border-dashed border-gray-300 my-4 mx-6 relative">
@@ -201,20 +258,44 @@ export default function DealsSection() {
                         <div className="absolute right-0 top-0 w-4 h-4 bg-gray-50 rounded-full transform translate-x-8 -translate-y-2"></div>
                       </div>
 
-                      {/* Price */}
+                      {/* Deal Details */}
                       <div className="pt-4">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <div className="text-sm text-gray-500 line-through">
-                              {formatCurrency(deal.originalPrice)}
+                        <div className="space-y-3 mb-4">
+                          {deal.minimumOrderAmount && (
+                            <div className="flex items-center justify-between text-sm">
+                              <span className="text-gray-600">
+                                Đơn tối thiểu:
+                              </span>
+                              <span className="font-semibold">
+                                {formatCurrency(deal.minimumOrderAmount)}
+                              </span>
                             </div>
-                            <div className="text-2xl font-bold text-blue-600">
-                              {formatCurrency(deal.price)}
+                          )}
+                          {deal.maxDiscountAmount && (
+                            <div className="flex items-center justify-between text-sm">
+                              <span className="text-gray-600">
+                                Giảm tối đa:
+                              </span>
+                              <span className="font-semibold text-red-600">
+                                {formatCurrency(deal.maxDiscountAmount)}
+                              </span>
                             </div>
-                            <div className="text-sm text-gray-500">/người</div>
+                          )}
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="text-gray-600 flex items-center">
+                              <Calendar className="w-4 h-4 mr-1" />
+                              Hết hạn:
+                            </span>
+                            <span className="font-semibold text-orange-600">
+                              {formatDate(deal.validTo)}
+                            </span>
                           </div>
+                        </div>
+
+                        {/* Action Button */}
+                        <div className="flex items-center justify-center">
                           <button className="bg-gradient-to-r from-blue-500 to-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:from-blue-600 hover:to-blue-700 transition-all duration-300 transform hover:scale-105 shadow-lg">
-                            Đặt ngay
+                            Sao chép mã: {deal.dealCode}
                           </button>
                         </div>
                       </div>

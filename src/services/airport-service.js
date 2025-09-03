@@ -22,17 +22,12 @@ class AirportService {
   async getAllAirportsData() {
     const now = Date.now();
 
-
     try {
-      
-
       // Thử lấy với size lớn hơn
       const response = await airportApi.getAllAirports({
         size: 5000, // Tăng size để đảm bảo lấy hết
         page: 0,
       });
-
-      
 
       if (response.success && response.data) {
         // Handle cả trường hợp data là array hoặc có pagination
@@ -40,16 +35,10 @@ class AirportService {
           ? response.data
           : response.data.content || response.data.data || [];
 
-        
-
         this.allAirports = airports.map((airport) =>
           this.formatAirportForUI(airport)
         );
         this.lastFetchTime = now;
-
-        
-
-       
 
         return this.allAirports;
       }
@@ -194,10 +183,7 @@ class AirportService {
     }
 
     try {
-     
-
       const allAirports = await this.getAllAirportsData();
-      
 
       // Lọc theo country nếu có
       let filteredAirports = allAirports;
@@ -210,7 +196,6 @@ class AirportService {
         );
       }
 
-      
       const nearbyAirports = await findNearestAirports(
         filteredAirports,
         latitude,
@@ -218,7 +203,6 @@ class AirportService {
         options.limit || 10
       );
 
-      
       nearbyAirports.forEach((airport, index) => {
         console.log(
           `  ${index + 1}. ${airport.airportCode} - ${airport.distance}km`
@@ -278,8 +262,17 @@ class AirportService {
         airport.icaoCode,
       airportName: airport.airportName || airport.name || airport.airport,
       city:
-        airport.city || airport.cityName || airport.airportName || "Unknown",
+        airport.city ||
+        airport.cityNames ||
+        airport.cityName ||
+        airport.airportName ||
+        "Unknown",
+      cityName:
+        airport.cityNames || airport.cityName || airport.city || "Unknown", // Thêm trường cityName
+      cityNames:
+        airport.cityNames || airport.cityName || airport.city || "Unknown", // Thêm trường cityNames
       country: airport.country || airport.countryName || "Unknown",
+      thumbnail: airport.thumbnail || "", // Thêm thumbnail
       // Giữ tương thích với format cũ
       code:
         airport.airportCode ||
