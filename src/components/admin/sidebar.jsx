@@ -55,7 +55,6 @@ const AdminSidebar = ({ sidebarOpen, setSidebarOpen }) => {
       icon: Plane,
       current:
         location.pathname.startsWith("/admin/flights") ||
-        location.pathname.startsWith("/admin/seats") ||
         location.pathname.startsWith("/admin/airports") ||
         location.pathname.startsWith("/admin/travel-classes") ||
         location.pathname.startsWith("/admin/airlines") ||
@@ -70,12 +69,6 @@ const AdminSidebar = ({ sidebarOpen, setSidebarOpen }) => {
           href: "/admin/flights",
           icon: Plane,
           current: location.pathname === "/admin/flights",
-        },
-        {
-          name: "Ghế",
-          href: "/admin/seats",
-          icon: Users,
-          current: location.pathname === "/admin/seats",
         },
         {
           name: "Sân bay",

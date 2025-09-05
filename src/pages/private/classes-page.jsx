@@ -202,12 +202,12 @@ const ClassesPage = () => {
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-2xl font-bold">Travel Class Management</h1>
+          <h1 className="text-2xl font-bold">Quản lý Hạng vé</h1>
           <p className="text-sm text-gray-600 mt-1">
-            Total: {totalItems} travel classes
+            Tổng cộng: {totalItems} hạng vé
           </p>
         </div>
-        <Button onClick={handleAdd}>Add Travel Class</Button>
+        <Button onClick={handleAdd}>Thêm hạng vé</Button>
       </div>
 
       {/* Search and Filters */}
@@ -218,7 +218,7 @@ const ClassesPage = () => {
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
               <Input
-                placeholder="Search by class name or benefits..."
+                placeholder="Tìm kiếm theo tên , quyền lợi..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-10"
@@ -233,11 +233,11 @@ const ClassesPage = () => {
                 <SelectValue placeholder="Filter by status" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All statuses</SelectItem>
-                <SelectItem value="refundable">Refundable</SelectItem>
-                <SelectItem value="non_refundable">Non-Refundable</SelectItem>
-                <SelectItem value="changeable">Changeable</SelectItem>
-                <SelectItem value="non_changeable">Non-Changeable</SelectItem>
+                <SelectItem value="all">Tất cả trạng thái</SelectItem>
+                <SelectItem value="refundable">Được hoàn trả</SelectItem>
+                <SelectItem value="non_refundable">Không được hoàn trả</SelectItem>
+                <SelectItem value="changeable">Có thể đổi vé</SelectItem>
+                <SelectItem value="non_changeable">Không thể đổi vé</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -256,10 +256,10 @@ const ClassesPage = () => {
                 <SelectValue placeholder="Sort by" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="className-asc">Class Name A-Z</SelectItem>
-                <SelectItem value="className-desc">Class Name Z-A</SelectItem>
-                <SelectItem value="priceMultiplier-asc">Price Multiplier Low-High</SelectItem>
-                <SelectItem value="priceMultiplier-desc">Price Multiplier High-Low</SelectItem>
+                <SelectItem value="className-asc">Tên A-Z</SelectItem>
+                <SelectItem value="className-desc">Tên Z-A</SelectItem>
+                <SelectItem value="priceMultiplier-asc">Nhân giá Low-High</SelectItem>
+                <SelectItem value="priceMultiplier-desc">Nhân giá High-Low</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -281,7 +281,7 @@ const ClassesPage = () => {
                   onClick={() => handleSort("className")}
                 >
                   <div className="flex items-center gap-2">
-                    Class Name
+                    Hạng vé
                     {sortBy === "className" && (
                       <span className="text-xs">
                         {sortOrder === "asc" ? "↑" : "↓"}
@@ -289,13 +289,13 @@ const ClassesPage = () => {
                     )}
                   </div>
                 </TableHead>
-                <TableHead>Benefits</TableHead>
+                <TableHead>Quyền lợi</TableHead>
                 <TableHead
                   className="cursor-pointer hover:bg-gray-50 select-none"
                   onClick={() => handleSort("priceMultiplier")}
                 >
                   <div className="flex items-center gap-2">
-                    Price Multiplier
+                    Nhân giá
                     {sortBy === "priceMultiplier" && (
                       <span className="text-xs">
                         {sortOrder === "asc" ? "↑" : "↓"}
@@ -303,10 +303,10 @@ const ClassesPage = () => {
                     )}
                   </div>
                 </TableHead>
-                <TableHead>Refundable</TableHead>
-                <TableHead>Changeable</TableHead>
-                <TableHead>Cancellation Fee</TableHead>
-                <TableHead>Actions</TableHead>
+                <TableHead>Hoàn trả</TableHead>
+                <TableHead>Đổi vé</TableHead>
+                <TableHead>Phí hủy</TableHead>
+                <TableHead>Hành động</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -317,12 +317,12 @@ const ClassesPage = () => {
                   <TableCell>{tc.priceMultiplier?.toFixed(2) || "N/A"}</TableCell>
                   <TableCell>
                     <span className={tc.refundable ? "text-green-600" : "text-gray-400"}>
-                      {tc.refundable ? "Yes" : "No"}
+                      {tc.refundable ? "Co" : "Không"}
                     </span>
                   </TableCell>
                   <TableCell>
                     <span className={tc.changeable ? "text-green-600" : "text-gray-400"}>
-                      {tc.changeable ? "Yes" : "No"}
+                      {tc.changeable ? "Có" : "Không"}
                     </span>
                   </TableCell>
                   <TableCell>{tc.cancellationFee ? `$${tc.cancellationFee.toFixed(2)}` : "N/A"}</TableCell>
