@@ -22,48 +22,47 @@ export const authApi = {
   },
   /**
    * Xác thực otp đăng kí
-   * @param {{ email: string, otpCode: String }} credentials 
+   * @param {{ email: string, otpCode: String }} credentials
    * @returns {Promise<{ success: boolean, data?: any, message: string }>}
    */
-  verifyOtpRegistration: async(credentials)=>{
-     return apiHandler("post", "/auth/verify-registration", credentials);
+  verifyOtpRegistration: async (credentials) => {
+    return apiHandler("post", "/auth/verify-registration", credentials);
   },
 
   /**
-   * Đổi mật khẩu 
-   * @param {{ email: string, oldPassword: String,newPassword: String }} credentials 
+   * Đổi mật khẩu
+   * @param {{ email: string, oldPassword: String,newPassword: String }} credentials
    * @returns {Promise<{ success: boolean, data?: any, message: string }>}
    */
-  changePassword: async(credentials)=>{
-     return apiHandler("post", "/auth/change-pasword", credentials);
+  changePassword: async (credentials) => {
+    return apiHandler("post", "/auth/change-password", credentials);
   },
   /**
-   * Quên mật khẩu --> nhập email 
-   * @param {{ email: string}} credentials 
+   * Quên mật khẩu --> nhập email
+   * @param {{ email: string}} credentials
    * @returns {Promise<{ success: boolean, data?: any, message: string }>}
    */
-  forgotPasswordRequest: async(credentials)=>{
-     return apiHandler("post", "/auth/forgot-password", credentials);
+  forgotPasswordRequest: async (credentials) => {
+    return apiHandler("post", "/auth/forgot-password", credentials);
   },
   /**
-   * Quên mật khẩu --> nhập email 
+   * Quên mật khẩu --> nhập email
    * --> nhập OtpCode đã nhận từ forgotPasswordRequest
    * --> Nhập pass mới
-   * @param {{ email: string, otpCode: String,newPassword: String }} credentials 
+   * @param {{ email: string, otpCode: String,newPassword: String }} credentials
    * @returns {Promise<{ success: boolean, data?: any, message: string }>}
    */
-  resetPassword: async(credentials)=>{
-     return apiHandler("post", "/auth/reset-password", credentials);
+  resetPassword: async (credentials) => {
+    return apiHandler("post", "/auth/reset-password", credentials);
   },
-   /**
+  /**
    * Gửi lại mã xác thực
-   * @param {{ email: string}} credentials 
+   * @param {{ email: string}} credentials
    * @returns {Promise<{ success: boolean, data?: any, message: string }>}
    */
-  resendOtpCode: async(credentials)=>{
-     return apiHandler("post", "/auth/resend-verification", credentials);
+  resendOtpCode: async (credentials) => {
+    return apiHandler("post", "/auth/resend-verification", credentials);
   },
-
 
   /**
    * Gửi yêu cầu đăng xuất
@@ -74,11 +73,29 @@ export const authApi = {
   },
 
   /**
-   * Lấy thông tin người dùng hiện tại 
-   * * @param {{ email: string}} credentials 
+   * Lấy thông tin người dùng hiện tại
+   * * @param {{ email: string}} credentials
    * @returns {Promise<{ success: boolean, data?: any, message: string }>}
    */
   me: async () => {
     return apiHandler("get", "/auth/profile/me");
+  },
+
+  /**
+   * Đăng nhập bằng Google
+   * @param {{ idToken: string }} credentials - Thông tin đăng nhập Google
+   * @returns {Promise<{ success: boolean, data?: any, message: string }>}
+   */
+  googleLogin: async (credentials) => {
+    return apiHandler("post", "/auth/google-login", credentials);
+  },
+
+  /**
+   * Cập nhật thông tin profile
+   * @param {{ firstName?: string, lastName?: string, phone?: string, address?: string }} profileData - Thông tin profile cần cập nhật
+   * @returns {Promise<{ success: boolean, data?: any, message: string }>}
+   */
+  updateProfile: async (profileData) => {
+    return apiHandler("put", "/auth/profile/update", profileData);
   },
 };
