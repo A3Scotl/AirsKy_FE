@@ -152,10 +152,46 @@ export const airportApi = {
     // Sử dụng getAllAirports với size lớn để lấy nhiều dữ liệu
     const { query, limit = 10, country } = searchParams;
 
-    return this.getAllAirports({
-      size: 1000, // Lấy nhiều để có thể filter
-      search: query, // Nếu backend hỗ trợ search param
-    });
+    // Call getAllAirports directly using apiHandler
+    const queryParams = new URLSearchParams();
+    queryParams.append("size", "1000");
+    if (query) queryParams.append("search", query);
+    const endpoint = `/airports?${queryParams.toString()}`;
+
+    return apiHandler("get", endpoint);
+  },
+
+  /**
+   * Lấy thông tin airport từ airport code
+   * @param {string} airportCode - Mã sân bay (VD: "HAN", "SGN")
+   * @returns {Promise<{ success: boolean, data?: any, message: string }>}
+   */
+  getAirportByCode: async (airportCode) => {
+    try {
+      console.log("[AirportAPI] Getting airport by code:", airportCode);
+      const response = await apiHandler("get", `/airports/code/${airportCode}`);
+      console.log("[AirportAPI] getAirportByCode response:", response);
+
+      if (response.success && response.data) {
+        console.log("[AirportAPI] Found airport:", response.data);
+        return {
+          success: true,
+          data: response.data,
+          message: `Found airport for code ${airportCode}`,
+        };
+      }
+
+      return {
+        success: false,
+        message: `Airport with code ${airportCode} not found`,
+      };
+    } catch (error) {
+      console.error("[AirportAPI] Error getting airport by code:", error);
+      return {
+        success: false,
+        message: `Error finding airport for code ${airportCode}: ${error.message}`,
+      };
+    }
   },
 
   /**
@@ -168,9 +204,11 @@ export const airportApi = {
    */
   getPopularAirports: async (params = {}) => {
     // Tạm thời sử dụng getAllAirports
-    return this.getAllAirports({
-      size: params.limit || 50,
-    });
+    const queryParams = new URLSearchParams();
+    queryParams.append("size", params.limit || "50");
+    const endpoint = `/airports?${queryParams.toString()}`;
+
+    return apiHandler("get", endpoint);
   },
 
   /**
@@ -184,10 +222,12 @@ export const airportApi = {
    */
   getAirportsByCountry: async (country, params = {}) => {
     // Sử dụng getAllAirports và filter ở service layer
-    return this.getAllAirports({
-      page: params.page,
-      size: params.size || 100,
-    });
+    const queryParams = new URLSearchParams();
+    if (params.page !== undefined) queryParams.append("page", params.page);
+    queryParams.append("size", params.size || "100");
+    const endpoint = `/airports?${queryParams.toString()}`;
+
+    return apiHandler("get", endpoint);
   },
 
   /**
@@ -196,9 +236,11 @@ export const airportApi = {
    */
   getCountries: async () => {
     // Sử dụng getAllAirports và extract unique countries ở service layer
-    return this.getAllAirports({
-      size: 1000,
-    });
+    const queryParams = new URLSearchParams();
+    queryParams.append("size", "1000");
+    const endpoint = `/airports?${queryParams.toString()}`;
+
+    return apiHandler("get", endpoint);
   },
 
   /**
@@ -213,8 +255,10 @@ export const airportApi = {
    */
   getNearbyAirports: async (locationParams) => {
     // Tạm thời sử dụng getAllAirports, logic tính khoảng cách sẽ ở service layer
-    return this.getAllAirports({
-      size: 100,
-    });
+    const queryParams = new URLSearchParams();
+    queryParams.append("size", "100");
+    const endpoint = `/airports?${queryParams.toString()}`;
+
+    return apiHandler("get", endpoint);
   },
 };

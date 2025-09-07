@@ -4,9 +4,6 @@ import {
   getCurrentLocation,
 } from "@/utils/location-utils";
 
-/**
- * Service xử lý logic liên quan đến sân bay
- */
 class AirportService {
   constructor() {
     this.cache = new Map();
@@ -50,15 +47,67 @@ class AirportService {
   }
 
   /**
-   * Tìm kiếm sân bay với logic frontend
+   * Lấy thông tin airport theo code (sử dụng API mới)
+   * @param {string} airportCode - Mã sân bay
+   * @returns {Promise<object|null>}
+   */
+  async getAirportByCode(airportCode) {
+    try {
+      const response = await airportApi.getAirportByCode(airportCode);
+      if (response.success && response.data) {
+        return this.formatAirportForUI(response.data);
+      }
+      return null;
+    } catch (error) {
+      console.error("Error getting airport by code:", error);
+      return null;
+    }
+  }
+
+  /**
+   * Tìm kiếm sân bay sử dụng API searchAirports
+   * @param {string} query - Từ khóa tìm kiếm
+   * @param {object} options - Tùy chọn
+   * @returns {Promise<Array>}
+   */
+  async searchAirportsAPI(query, options = {}) {
+    if (!query || query.length < 2) return [];
+
+    try {
+      const response = await airportApi.searchAirports({
+        query,
+        limit: options.limit || 10,
+        country: options.country,
+      });
+
+      if (response.success && response.data) {
+        const airports = Array.isArray(response.data)
+          ? response.data
+          : response.data.content || [];
+
+        return airports.map((airport) => this.formatAirportForUI(airport));
+      }
+
+      return [];
+    } catch (error) {
+      console.error("API search error:", error);
+      // Fallback to local search
+      return this.searchAirportsLocal(query, options);
+    }
+  }
+
+  /**
+   * Tìm kiếm sân bay với logic frontend (local search)
    * @param {string} query - Từ khóa tìm kiếm
    * @param {object} options - Tùy chọn tìm kiếm
    * @returns {Promise<Array>}
    */
-  async searchAirports(query, options = {}) {
+  async searchAirportsLocal(query, options = {}) {
     if (!query || query.length < 2) return [];
 
-    const cacheKey = `search_${query.toLowerCase()}_${JSON.stringify(options)}`;
+    const cacheKey = `search_local_${query.toLowerCase()}_${JSON.stringify(
+      options
+    )}`;
 
     // Kiểm tra cache
     if (this.cache.has(cacheKey)) {
@@ -74,21 +123,34 @@ class AirportService {
 
       // Filter theo query
       const searchTerm = query.toLowerCase();
-      let filteredAirports = allAirports.filter(
-        (airport) =>
-          airport.city?.toLowerCase().includes(searchTerm) ||
-          airport.airportCode?.toLowerCase().includes(searchTerm) ||
-          airport.code?.toLowerCase().includes(searchTerm) ||
-          airport.airportName?.toLowerCase().includes(searchTerm) ||
-          airport.airport?.toLowerCase().includes(searchTerm) ||
-          airport.country?.toLowerCase().includes(searchTerm)
-      );
+      let filteredAirports = allAirports.filter((airport) => {
+        // Ensure all fields are strings before calling toLowerCase
+        const cityStr = Array.isArray(airport.city)
+          ? airport.city.join(" ")
+          : String(airport.city || "");
+        const airportCodeStr = String(airport.airportCode || "");
+        const codeStr = String(airport.code || "");
+        const airportNameStr = String(airport.airportName || "");
+        const airportStr = String(airport.airport || "");
+        const countryStr = String(airport.country || "");
+
+        return (
+          cityStr.toLowerCase().includes(searchTerm) ||
+          airportCodeStr.toLowerCase().includes(searchTerm) ||
+          codeStr.toLowerCase().includes(searchTerm) ||
+          airportNameStr.toLowerCase().includes(searchTerm) ||
+          airportStr.toLowerCase().includes(searchTerm) ||
+          countryStr.toLowerCase().includes(searchTerm)
+        );
+      });
 
       // Filter theo country nếu có
       if (options.country) {
-        filteredAirports = filteredAirports.filter((airport) =>
-          airport.country?.toLowerCase().includes(options.country.toLowerCase())
-        );
+        const countrySearchTerm = options.country.toLowerCase();
+        filteredAirports = filteredAirports.filter((airport) => {
+          const countryStr = String(airport.country || "");
+          return countryStr.toLowerCase().includes(countrySearchTerm);
+        });
       }
 
       // Limit kết quả
@@ -102,8 +164,49 @@ class AirportService {
 
       return limitedResults;
     } catch (error) {
-      console.error("Airport search error:", error);
+      console.error("Airport local search error:", error);
       return [];
+    }
+  }
+
+  /**
+   * Tìm kiếm sân bay (ưu tiên API, fallback local)
+   * @param {string} query - Từ khóa tìm kiếm
+   * @param {object} options - Tùy chọn tìm kiếm
+   * @returns {Promise<Array>}
+   */
+  async searchAirports(query, options = {}) {
+    if (!query || query.length < 2) return [];
+
+    // Ưu tiên sử dụng API search
+    try {
+      const apiResults = await this.searchAirportsAPI(query, options);
+      if (apiResults.length > 0) {
+        return apiResults;
+      }
+    } catch (error) {
+      console.warn("API search failed, falling back to local search:", error);
+    }
+
+    // Fallback to local search
+    return this.searchAirportsLocal(query, options);
+  }
+
+  /**
+   * Lấy thông tin airport theo ID
+   * @param {number} id - ID của sân bay
+   * @returns {Promise<object|null>}
+   */
+  async getAirportById(id) {
+    try {
+      const response = await airportApi.getAirportById(id);
+      if (response.success && response.data) {
+        return this.formatAirportForUI(response.data);
+      }
+      return null;
+    } catch (error) {
+      console.error("Error getting airport by ID:", error);
+      return null;
     }
   }
 
@@ -129,9 +232,11 @@ class AirportService {
 
       // Lọc theo quốc gia nếu có
       if (options.country) {
-        filteredAirports = allAirports.filter((airport) =>
-          airport.country?.toLowerCase().includes(options.country.toLowerCase())
-        );
+        const countrySearchTerm = options.country.toLowerCase();
+        filteredAirports = allAirports.filter((airport) => {
+          const countryStr = String(airport.country || "");
+          return countryStr.toLowerCase().includes(countrySearchTerm);
+        });
       }
 
       // Lọc chỉ lấy sân bay active
@@ -151,6 +256,33 @@ class AirportService {
     } catch (error) {
       console.error("Get all airports error:", error);
       return [];
+    }
+  }
+
+  /**
+   * Lấy sân bay phổ biến sử dụng API
+   * @param {object} options - Tùy chọn
+   * @returns {Promise<Array>}
+   */
+  async getPopularAirportsAPI(options = {}) {
+    try {
+      const response = await airportApi.getPopularAirports({
+        limit: options.limit || 50,
+        country: options.country,
+      });
+
+      if (response.success && response.data) {
+        const airports = Array.isArray(response.data)
+          ? response.data
+          : response.data.content || [];
+
+        return airports.map((airport) => this.formatAirportForUI(airport));
+      }
+
+      return [];
+    } catch (error) {
+      console.error("Get popular airports API error:", error);
+      return this.getPopularAirports(options);
     }
   }
 
@@ -188,9 +320,11 @@ class AirportService {
       // Lọc theo country nếu có
       let filteredAirports = allAirports;
       if (options.country) {
-        filteredAirports = allAirports.filter((airport) =>
-          airport.country?.toLowerCase().includes(options.country.toLowerCase())
-        );
+        const countrySearchTerm = options.country.toLowerCase();
+        filteredAirports = allAirports.filter((airport) => {
+          const countryStr = String(airport.country || "");
+          return countryStr.toLowerCase().includes(countrySearchTerm);
+        });
         console.log(
           `Service: Lọc theo country '${options.country}': ${filteredAirports.length} sân bay`
         );
@@ -329,27 +463,29 @@ class AirportService {
     const searchTerm = query.toLowerCase();
 
     return data
-      .filter(
-        (item) =>
-          item.city?.toLowerCase().includes(searchTerm) ||
-          item.airportCode?.toLowerCase().includes(searchTerm) ||
-          item.code?.toLowerCase().includes(searchTerm) ||
-          item.airportName?.toLowerCase().includes(searchTerm) ||
-          item.airport?.toLowerCase().includes(searchTerm) ||
-          item.country?.toLowerCase().includes(searchTerm)
-      )
-      .slice(0, limit);
-  }
+      .filter((item) => {
+        // Ensure all fields are strings before calling toLowerCase
+        const cityStr = Array.isArray(item.city)
+          ? item.city.join(" ")
+          : String(item.city || "");
+        const airportCodeStr = String(item.airportCode || "");
+        const codeStr = String(item.code || "");
+        const airportNameStr = String(item.airportName || "");
+        const airportStr = String(item.airport || "");
+        const countryStr = String(item.country || "");
 
-  /**
-   * Xóa cache
-   */
-  clearCache() {
-    this.cache.clear();
-    this.allAirports = [];
-    this.lastFetchTime = 0;
+        return (
+          cityStr.toLowerCase().includes(searchTerm) ||
+          airportCodeStr.toLowerCase().includes(searchTerm) ||
+          codeStr.toLowerCase().includes(searchTerm) ||
+          airportNameStr.toLowerCase().includes(searchTerm) ||
+          airportStr.toLowerCase().includes(searchTerm) ||
+          countryStr.toLowerCase().includes(searchTerm)
+        );
+      })
+      .slice(0, limit);
   }
 }
 
-// Export singleton instance
-export const airportService = new AirportService();
+export const serviceImplAirport = new AirportService();
+// export default airportService;

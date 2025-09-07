@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { airportService } from "@/services/airport-service";
+import { serviceImplAirport } from "@/services/airport-service.js";
 
 /**
  * Custom hook để quản lý tìm kiếm sân bay
@@ -23,7 +23,7 @@ export const useAirportSearch = (options = {}) => {
     if (includeAll) {
       const loadInitialAirports = async () => {
         try {
-          const airports = await airportService.getAllAirports({
+          const airports = await serviceImplAirport.getAllAirports({
             country: country,
             limit: 10, // Chỉ hiển thị 10 sân bay đầu tiên
           });
@@ -52,7 +52,7 @@ export const useAirportSearch = (options = {}) => {
 
       try {
         // Khi tìm kiếm, lấy nhiều kết quả hơn từ toàn bộ database
-        const results = await airportService.searchAirports(query, {
+        const results = await serviceImplAirport.searchAirports(query, {
           limit: maxResults,
           country,
         });
@@ -84,7 +84,7 @@ export const useAirportSearch = (options = {}) => {
   // Validate airport code
   const validateAirportCode = useCallback(async (code) => {
     try {
-      return await airportService.validateAirportCode(code);
+      return await serviceImplAirport.validateAirportCode(code);
     } catch (err) {
       console.error("Validate airport code error:", err);
       return false;
@@ -110,7 +110,7 @@ export const useAirportSearch = (options = {}) => {
         if (latitude && longitude) {
           // Nếu có tọa độ cụ thể
           console.log("📍 Sử dụng tọa độ cụ thể");
-          results = await airportService.getNearbyAirports(
+          results = await serviceImplAirport.getNearbyAirports(
             latitude,
             longitude,
             {
@@ -121,10 +121,11 @@ export const useAirportSearch = (options = {}) => {
         } else {
           // Auto-detect vị trí hiện tại
           console.log("🔍 Auto-detect vị trí hiện tại");
-          results = await airportService.getNearbyAirportsFromCurrentLocation({
-            country: country,
-            limit: maxResults,
-          });
+          results =
+            await serviceImplAirport.getNearbyAirportsFromCurrentLocation({
+              country: country,
+              limit: maxResults,
+            });
         }
 
         console.log(
@@ -158,7 +159,7 @@ export const useAirportSearch = (options = {}) => {
 
         // Fallback: trả về sân bay mặc định
         console.log("🔄 Hook: Fallback - lấy sân bay mặc định");
-        const fallbackResults = await airportService.getAllAirports({
+        const fallbackResults = await serviceImplAirport.getAllAirports({
           country: country || "Vietnam",
           limit: maxResults,
         });
@@ -186,7 +187,7 @@ export const useAirportSearch = (options = {}) => {
   // Get countries (extract từ airports data)
   const getCountries = useCallback(async () => {
     try {
-      const airports = await airportService.getAllAirportsData();
+      const airports = await serviceImplAirport.getAllAirportsData();
       const countries = [
         ...new Set(airports.map((airport) => airport.country)),
       ].filter(Boolean);

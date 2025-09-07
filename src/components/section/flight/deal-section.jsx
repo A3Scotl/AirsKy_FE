@@ -108,23 +108,7 @@ export default function DealsSection() {
   }
 
   if (!deals || deals.length === 0) {
-    return (
-      <section className="pb-8 pt-28 max-w-7xl mx-auto px-4 sm:px-20 lg:px-20">
-        <div className="mt-24">
-          <div className="flex justify-between items-center mb-2">
-            <h2 className="text-3xl font-bold text-gray-800 dark:text-white mb-2">
-              Ưu Đãi Chuyến Bay Hot
-            </h2>
-          </div>
-          <div className="flex justify-center items-center py-12">
-            <div className="text-gray-500 text-center">
-              <p className="text-lg font-semibold">Không có ưu đãi nào</p>
-              <p className="text-sm mt-2">Vui lòng quay lại sau</p>
-            </div>
-          </div>
-        </div>
-      </section>
-    );
+    return null; // Ẩn toàn bộ section nếu không có deal
   }
   return (
     <section className="pb-8 pt-28 max-w-7xl mx-auto px-4 sm:px-20 lg:px-20">

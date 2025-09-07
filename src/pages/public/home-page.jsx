@@ -24,7 +24,9 @@ function HomePage() {
 
   // Handle search from homepage
   const handleHomeSearch = (criteria) => {
-    // Update context with search criteria
+    console.log("🏠 Home search criteria:", criteria);
+
+    // Update context with search criteria (keep original object format)
     updateSearchCriteria(criteria);
 
     // Also use URL params as backup
@@ -58,11 +60,23 @@ function HomePage() {
     }
 
     if (criteria.departDate) {
-      params.append("departDate", criteria.departDate.toISOString());
+      // Use local date to avoid timezone conversion issues
+      const localDate = new Date(criteria.departDate);
+      const year = localDate.getFullYear();
+      const month = String(localDate.getMonth() + 1).padStart(2, "0");
+      const day = String(localDate.getDate()).padStart(2, "0");
+      const localDateString = `${year}-${month}-${day}`;
+      params.append("departDate", localDateString);
     }
 
     if (criteria.returnDate) {
-      params.append("returnDate", criteria.returnDate.toISOString());
+      // Use local date to avoid timezone conversion issues
+      const localDate = new Date(criteria.returnDate);
+      const year = localDate.getFullYear();
+      const month = String(localDate.getMonth() + 1).padStart(2, "0");
+      const day = String(localDate.getDate()).padStart(2, "0");
+      const localDateString = `${year}-${month}-${day}`;
+      params.append("returnDate", localDateString);
     }
 
     params.append("tripType", criteria.tripType || "oneway");
@@ -72,6 +86,8 @@ function HomePage() {
         criteria.passengers || { adults: 1, children: 0, infants: 0 }
       )
     );
+
+    console.log("🏠 Home search URL params:", params.toString());
 
     // Navigate with query params
     navigate(`/flights?${params.toString()}`);
@@ -233,7 +249,7 @@ function HomePage() {
       </div>
 
       {/* Chatbot Widget */}
-      <div className="">
+      <div>
         <ChatbotWidget />
       </div>
     </>

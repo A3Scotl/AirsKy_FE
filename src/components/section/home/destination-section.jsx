@@ -8,6 +8,7 @@ import { Pagination, Autoplay } from "swiper/modules";
 import "swiper/css";
 import "swiper/css/pagination";
 import { countryService } from "@/services/country-service";
+import { flightApi } from "@/apis/flight-api";
 import { Loader2 } from "lucide-react";
 
 export function DestinationSection() {
@@ -22,10 +23,14 @@ export function DestinationSection() {
 
   const handleDestinationClick = (countryName) => {
     // Tạo search criteria với from = "Việt Nam", to = country được click
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1); // Ngày mai
+
     const searchCriteria = {
       from: "Việt Nam",
       to: countryName,
       tripType: "oneway",
+      departDate: tomorrow, // Thêm ngày mặc định
       passengers: { adults: 1, children: 0, infants: 0 },
       searchCombinations: [], // Không cần combinations cho single search
     };
@@ -47,41 +52,64 @@ export function DestinationSection() {
 
       // Lấy danh sách quốc gia đang active từ API
       const countries = await countryService.getActiveCountries();
-      console.log("Active countries:", countries);
 
-      // Chuyển đổi dữ liệu quốc gia thành format phù hợp với destination
-      const formattedDestinations = countries
-        .filter((country) => country.countryName !== "Việt Nam")
-        .slice(0, 8)
-        .map((country) => ({
-          id: country.countryId,
-          country: country.countryName,
-          countryCode: country.countryCode,
-          image: country.thumbnail,
-          price: generateRandomPrice(),
-        }));
+      // Lọc bỏ Việt Nam (không cắt số lượng)
+      const filteredCountries = countries.filter(
+        (country) => country.countryName !== "Việt Nam"
+      );
 
-      setDestinations(formattedDestinations);
+      // Gọi API để lấy giá thấp nhất cho mỗi quốc gia
+      const destinationsWithPrices = [];
+
+      for (const country of filteredCountries) {
+        try {
+          const response = await flightApi.findFlightsBetweenCountries(
+            "Việt Nam",
+            country.countryName
+          );
+
+          if (
+            response.success &&
+            response.data &&
+            response.data?.content.length > 0
+          ) {
+            // Lọc ra basePrice thấp nhất
+            const minPrice = Math.min(
+              ...response.data?.content.map((flight) => flight.basePrice)
+            );
+            // Format giá thành chuỗi VNĐ
+            const formattedPrice = new Intl.NumberFormat("vi-VN", {
+              style: "currency",
+              currency: "VND",
+            }).format(minPrice);
+
+            destinationsWithPrices.push({
+              id: country.countryId,
+              country: country.countryName,
+              countryCode: country.countryCode,
+              image: country.thumbnail,
+              price: formattedPrice,
+              flightCount: response.data.content.length,
+            });
+
+            // Cập nhật state ngay lập tức khi có data cho quốc gia này
+            setDestinations([...destinationsWithPrices]);
+          }
+          // Nếu không có chuyến bay, bỏ qua (không thêm vào danh sách)
+        } catch (err) {
+          console.error(
+            `Error fetching flights for ${country.countryName}:`,
+            err
+          );
+          // Bỏ qua nếu có lỗi
+        }
+      }
     } catch (err) {
       console.error("Error loading destinations:", err);
       setError("Không thể tải danh sách điểm đến");
     } finally {
       setLoading(false);
     }
-  };
-
-  // Hàm tạo giá ngẫu nhiên cho demo
-  const generateRandomPrice = () => {
-    const prices = [
-      "3.000.000 vnđ",
-      "5.000.000 vnđ",
-      "8.000.000 vnđ",
-      "12.000.000 vnđ",
-      "15.000.000 vnđ",
-      "18.000.000 vnđ",
-      "20.000.000 vnđ",
-    ];
-    return prices[Math.floor(Math.random() * prices.length)];
   };
 
   if (loading) {
@@ -186,6 +214,7 @@ export function DestinationSection() {
                   <p className="text-xl font-semibold text-[#111827] dark:text-white mb-1">
                     {destination.country}
                   </p>
+                  <span>Có {destination.flightCount} chuyến bay</span>
                 </CardContent>
               </Card>
             </SwiperSlide>

@@ -95,15 +95,11 @@ const toRadians = (degrees) => {
  */
 export const getCurrentLocation = () => {
   return new Promise((resolve, reject) => {
-    console.log("🌍 Kiểm tra hỗ trợ geolocation...");
-
     if (!navigator.geolocation) {
       console.error("❌ Trình duyệt không hỗ trợ geolocation");
       reject(new Error("Geolocation is not supported"));
       return;
     }
-
-    console.log("✅ Trình duyệt hỗ trợ geolocation, đang lấy vị trí...");
 
     navigator.geolocation.getCurrentPosition(
       (position) => {
@@ -111,13 +107,13 @@ export const getCurrentLocation = () => {
           lat: position.coords.latitude,
           lon: position.coords.longitude,
         };
-        console.log("🎯 Lấy được vị trí hiện tại:", location);
-        console.log("📊 Chi tiết position:", {
-          latitude: position.coords.latitude,
-          longitude: position.coords.longitude,
-          accuracy: position.coords.accuracy,
-          timestamp: new Date(position.timestamp).toLocaleString(),
-        });
+        // console.log("🎯 Lấy được vị trí hiện tại:", location);
+        // console.log("📊 Chi tiết position:", {
+        //   latitude: position.coords.latitude,
+        //   longitude: position.coords.longitude,
+        //   accuracy: position.coords.accuracy,
+        //   timestamp: new Date(position.timestamp).toLocaleString(),
+        // });
         resolve(location);
       },
       (error) => {

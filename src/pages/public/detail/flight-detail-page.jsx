@@ -30,33 +30,98 @@ import {
 // Helper function to normalize flight data
 const normalizeFlightData = (flight) => {
   return {
-    airline: flight.airline || "Unknown Airline",
-    flightNumber: flight.flightNumber || "VN7210",
-    airlineLogo: flight.airlineLogo || "",
+    airline: flight.airline?.airlineName || "N/A",
+    flightNumber: flight.flightNumber || "N/A",
+    airlineLogo: flight.airline?.thumbnail || "N/A",
     departure: {
-      city: flight.from || flight.departure?.city || "Unknown",
-      code: flight.fromCode || flight.departure?.code || "XXX",
-      time: flight.departureTime || flight.departure?.time || "05:05",
-      date:
-        flight.date ||
-        flight.departure?.date ||
-        new Date().toLocaleDateString("vi-VN"),
+      city:
+        flight.departureAirport?.cityNames?.[0] ||
+        flight.departureAirport?.airportName ||
+        "N/A",
+      airportName: flight.departureAirport?.airportName || "N/A",
+      code: flight.departureAirport?.airportCode || "N/A",
+      time: flight.departureTime
+        ? new Date(flight.departureTime).toLocaleTimeString("vi-VN", {
+            hour: "2-digit",
+            minute: "2-digit",
+          })
+        : "N/A",
+      date: flight.departureTime
+        ? new Date(flight.departureTime).toLocaleDateString("vi-VN", {
+            weekday: "long",
+            day: "numeric",
+            month: "long",
+            year: "numeric",
+          })
+        : new Date().toLocaleDateString("vi-VN"),
     },
     arrival: {
-      city: flight.to || flight.arrival?.city || "Unknown",
-      code: flight.toCode || flight.arrival?.code || "XXX",
-      time: flight.arrivalTime || flight.arrival?.time || "07:10",
-      date:
-        flight.date ||
-        flight.arrival?.date ||
-        new Date().toLocaleDateString("vi-VN"),
+      city:
+        flight.arrivalAirport?.cityNames?.[0] ||
+        flight.arrivalAirport?.airportName ||
+        "N/A",
+      airportName: flight.arrivalAirport?.airportName || "N/A",
+      code: flight.arrivalAirport?.airportCode || "N/A",
+      time: flight.arrivalTime
+        ? new Date(flight.arrivalTime).toLocaleTimeString("vi-VN", {
+            hour: "2-digit",
+            minute: "2-digit",
+          })
+        : "N/A",
+      date: flight.arrivalTime
+        ? new Date(flight.arrivalTime).toLocaleDateString("vi-VN", {
+            weekday: "long",
+            day: "numeric",
+            month: "long",
+            year: "numeric",
+          })
+        : new Date().toLocaleDateString("vi-VN"),
     },
-    duration: flight.duration || "2h 30m",
-    stops: flight.stops || "Bay thẳng",
-    aircraft: flight.aircraft || "Airbus A321",
-    price: flight.priceNumeric || flight.price || 0,
-    id: flight.id || Date.now().toString(),
+    duration: flight.duration
+      ? `${Math.floor(flight.duration / 60)}h ${flight.duration % 60}m`
+      : "N/A",
+    stops: flight.stops || "N/A",
+    aircraft: flight.aircraft || "N/A",
+    price: flight.basePrice || flight.priceNumeric || flight.price || 0,
+    id: flight.flightId || flight.id || Date.now().toString(),
+    status: flight.status || "N/A",
+    availableSeats: flight.availableSeats || 0,
+    totalSeats: flight.totalSeats || 0,
+    gate: flight.gate || "N/A",
+    terminal: flight.terminal || "N/A",
+    type: flight.type || "N/A",
+    businessName: flight.businessName || "N/A",
   };
+};
+
+// Helper function to format stops display
+const formatStops = (stops) => {
+  if (!stops) return "N/A";
+
+  // Handle different formats of stops
+  if (typeof stops === "string") {
+    if (
+      stops.toLowerCase() === "non_stop" ||
+      stops.toLowerCase() === "bay thẳng"
+    ) {
+      return "Bay thẳng";
+    }
+    return stops;
+  }
+
+  // Handle array format
+  if (Array.isArray(stops)) {
+    if (stops.length === 0) return "Bay thẳng";
+    return `${stops.length} điểm dừng`;
+  }
+
+  // Handle number format
+  if (typeof stops === "number") {
+    if (stops === 0) return "Bay thẳng";
+    return `${stops} điểm dừng`;
+  }
+
+  return stops;
 };
 
 const FlightDetail = () => {
@@ -75,10 +140,6 @@ const FlightDetail = () => {
 
         // First try to get data from location state
         if (location.state && location.state.flight) {
-          console.log(
-            "Loading flight data from location state:",
-            location.state.flight
-          );
           const flight = location.state.flight;
 
           // Transform flight data to match expected structure
@@ -276,7 +337,7 @@ const FlightDetail = () => {
                   <span>•</span>
                   <span>{flightData.duration || "N/A"}</span>
                   <span>•</span>
-                  <span>{flightData.stops || "N/A"}</span>
+                  <span>{formatStops(flightData.stops) || "N/A"}</span>
                 </div>
               </div>
             </div>
@@ -312,7 +373,7 @@ const FlightDetail = () => {
                     </h3>
                     <p className="font-bold">
                       {flightData.duration || "N/A"} •{" "}
-                      {flightData.stops || "N/A"}
+                      {formatStops(flightData.stops) || "N/A"}
                     </p>
                     <p className="text-sm text-gray-600">
                       Máy bay: {flightData.aircraft || "N/A"}
@@ -691,9 +752,13 @@ const FlightDetail = () => {
                         <p className="text-gray-600 mb-6">
                           Xem đường bay từ{" "}
                           {flightData.departure?.city || flightData.from} đến{" "}
-                          {flightData.arrival?.city || flightData.to}
-                          với khoảng cách và thông tin chi tiết của chuyến bay{" "}
-                          {flightData.flightNumber || "VN7210"}.
+                          {flightData.arrival?.city || flightData.to} trên bản
+                          đồ với khoảng cách và thông tin chi tiết của chuyến
+                          bay{" "}
+                          <span className="font-semibold text-green-500">
+                            {flightData.flightNumber || "N/A"}{" "}
+                          </span>
+                          .
                         </p>
 
                         {/* Flight Route Map */}
@@ -740,12 +805,12 @@ const FlightDetail = () => {
                               </h4>
                             </div>
                             <p className="text-sm font-medium text-gray-800">
-                              {flightData.flightNumber || "VN7210"} •{" "}
-                              {flightData.aircraft || "Airbus A321"}
+                              {flightData.flightNumber || "N/A"} •{" "}
+                              {flightData.aircraft || "N/A"}
                             </p>
                             <p className="text-xs text-gray-600">
-                              Thời gian bay: {flightData.duration || "2g 05p"} •{" "}
-                              {flightData.stops || "Bay thẳng"}
+                              Thời gian bay: {flightData.duration || "N/A"} •{" "}
+                              {formatStops(flightData.stops)}
                             </p>
                           </div>
 

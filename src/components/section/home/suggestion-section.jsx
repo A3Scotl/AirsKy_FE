@@ -11,7 +11,9 @@ const formatPrice = (price) =>
 const FlightCard = ({ flight, onClick, main }) => {
   const navigate = useNavigate();
   const handleViewFlightDetails = (flight) =>
-    navigate("/detail/" + flight.id, { state: { flight } });
+    navigate("/detail/" + flight.id, {
+      state: { flight: flight.originalFlight },
+    });
 
   return (
     <Card
@@ -148,13 +150,6 @@ const FlightCard = ({ flight, onClick, main }) => {
           </div>
           <div className="flex items-center justify-between">
             <div>
-              {main && flight.discount && (
-                <div className="text-white/70 text-sm line-through mb-1">
-                  {formatPrice(
-                    Math.round(parseInt(flight.priceNumeric.replace(/\./g, "")) * 1.15)
-                  )}
-                </div>
-              )}
               <div
                 className={
                   main
@@ -194,11 +189,6 @@ const FlightCard = ({ flight, onClick, main }) => {
           </div>
         </div>
       </div>
-      {main && flight.discount && (
-        <div className="absolute top-4 right-4 bg-red-500 text-white px-3 py-1 rounded-full text-sm font-bold transform rotate-12">
-          -{flight.discount}%
-        </div>
-      )}
     </Card>
   );
 };
@@ -208,6 +198,9 @@ const SuggestionSection = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [selectedFlight, setSelectedFlight] = useState(null);
+
+  const navigate = useNavigate();
+  const handleViewAllFlights = () => navigate("/flights");
 
   useEffect(() => {
     const fetchDomesticFlights = async () => {
@@ -221,29 +214,68 @@ const SuggestionSection = () => {
         if (response.success && response.data) {
           // Map API response to component format
           const mappedFlights = response.data.content.map((flight, index) => ({
-            id: flight.flightId.toString(),
-            route: `${flight.fromCode} - ${flight.toCode}`,
-            from: flight.from.split(" - ")[0] || flight.from,
-            to: flight.to.split(" - ")[0] || flight.to,
-            fromCode: flight.fromCode,
-            toCode: flight.toCode,
-            priceNumeric: flight.basePrice.toString(),
-            duration: `${Math.floor(flight.duration / 60)}h ${
-              flight.duration % 60
-            }m`,
-            airline: flight.airlineName,
-            date: new Date(flight.departureTime).toLocaleDateString("vi-VN", {
-              weekday: "short",
-              day: "numeric",
-              month: "short",
-            }),
+            id:
+              flight.flight?.flightId?.toString() ||
+              flight.flightId?.toString() ||
+              index.toString(),
+            route: `${
+              flight.departureAirport?.airportCode || flight.fromCode || "UNK"
+            } - ${
+              flight.arrivalAirport?.airportCode || flight.toCode || "UNK"
+            }`,
+            from:
+              flight.departureAirport?.cityNames?.[0] ||
+              flight.departureAirport?.airportName ||
+              flight.from ||
+              "Unknown",
+            to:
+              flight.arrivalAirport?.cityNames?.[0] ||
+              flight.arrivalAirport?.airportName ||
+              flight.to ||
+              "Unknown",
+            fromCode:
+              flight.departureAirport?.airportCode || flight.fromCode || "UNK",
+            toCode:
+              flight.arrivalAirport?.airportCode || flight.toCode || "UNK",
+            priceNumeric: (
+              flight.flight?.basePrice ||
+              flight.basePrice ||
+              0
+            ).toString(),
+            duration:
+              flight.flight?.duration || flight.duration
+                ? `${Math.floor(
+                    (flight.flight?.duration || flight.duration) / 60
+                  )}h ${(flight.flight?.duration || flight.duration) % 60}m`
+                : "0h 0m",
+            airline:
+              flight.airline?.airlineName ||
+              flight.airlineName ||
+              "Unknown Airline",
+            date:
+              flight.flight?.departureTime || flight.departureTime
+                ? new Date(
+                    flight.flight?.departureTime || flight.departureTime
+                  ).toLocaleDateString("vi-VN", {
+                    weekday: "short",
+                    day: "numeric",
+                    month: "short",
+                  })
+                : "N/A",
             image:
               "https://images.unsplash.com/photo-1436491865332-7a61a109cc05?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8YWlycGxhbmV8ZW58MHx8MHx8fDA%3D",
-            description: `Chuyến bay ${flight.flightNumber} từ ${flight.fromCode} đến ${flight.toCode}`,
+            description: `Chuyến bay ${
+              flight.flight?.flightNumber || flight.flightNumber || "N/A"
+            } từ ${
+              flight.departureAirport?.airportCode || flight.fromCode || "UNK"
+            } đến ${
+              flight.arrivalAirport?.airportCode || flight.toCode || "UNK"
+            }`,
             isPopular: index === 0,
-            discount: index === 0 ? 15 : null,
-            availableSeats: flight.availableSeats,
-            status: flight.status,
+            availableSeats:
+              flight.flight?.availableSeats || flight.availableSeats || 0,
+            status: flight.flight?.status || flight.status || "ON_TIME",
+            originalFlight: flight, // Store original flight data for detail page
           }));
 
           setFlights(mappedFlights);
@@ -338,6 +370,7 @@ const SuggestionSection = () => {
             size="lg"
             variant="outline"
             className="bg-white hover:bg-blue-50 border-2 border-blue-200 hover:border-blue-300 text-blue-600 font-semibold px-8 py-3 rounded-xl shadow-md hover:shadow-lg transition-all"
+            onClick={handleViewAllFlights}
           >
             <Plane className="w-5 h-5 mr-2" />
             Xem tất cả

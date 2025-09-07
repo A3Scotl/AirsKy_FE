@@ -41,6 +41,18 @@ const TRAVEL_CLASSES = [
 
 // Date Picker Component
 function DatePicker({ date, onSelect, placeholder, disabled = false }) {
+  const handleDateSelect = (selectedDate) => {
+    console.log(
+      "DatePicker onSelect called with:",
+      selectedDate,
+      "type:",
+      typeof selectedDate
+    );
+    if (onSelect) {
+      onSelect(selectedDate);
+    }
+  };
+
   return (
     <Popover className="">
       <PopoverTrigger asChild>
@@ -63,7 +75,7 @@ function DatePicker({ date, onSelect, placeholder, disabled = false }) {
         <Calendar
           mode="single"
           selected={date}
-          onSelect={onSelect}
+          onSelect={handleDateSelect}
           disabled={(date) => date < new Date()}
           initialFocus
         />
@@ -108,7 +120,13 @@ export function SearchForm({ onSearch, initialValues }) {
           initialValues.departDate instanceof Date
             ? initialValues.departDate
             : new Date(initialValues.departDate);
+        console.log(
+          "SearchForm: Setting departDate from initialValues:",
+          departDate
+        );
         setDepartDate(departDate);
+      } else {
+        console.log("SearchForm: No departDate in initialValues");
       }
 
       // Handle return date
@@ -117,7 +135,13 @@ export function SearchForm({ onSearch, initialValues }) {
           initialValues.returnDate instanceof Date
             ? initialValues.returnDate
             : new Date(initialValues.returnDate);
+        console.log(
+          "SearchForm: Setting returnDate from initialValues:",
+          returnDate
+        );
         setReturnDate(returnDate);
+      } else {
+        console.log("SearchForm: No returnDate in initialValues");
       }
 
       // Handle from/to locations - support multiple selections
@@ -269,6 +293,25 @@ export function SearchForm({ onSearch, initialValues }) {
     }
   }, [initialValues]);
 
+  // Debug: Log date changes
+  useEffect(() => {
+    console.log(
+      "SearchForm: departDate changed:",
+      departDate,
+      "type:",
+      typeof departDate
+    );
+  }, [departDate]);
+
+  useEffect(() => {
+    console.log(
+      "SearchForm: returnDate changed:",
+      returnDate,
+      "type:",
+      typeof returnDate
+    );
+  }, [returnDate]);
+
   const updatePassenger = (type, value) => {
     setPassengers((prev) => ({
       ...prev,
@@ -333,9 +376,130 @@ export function SearchForm({ onSearch, initialValues }) {
     );
   };
 
+  // Check if form is valid for search
+  const isFormValid = () => {
+    if (tripType === "roundtrip") {
+      return (
+        fromLocations.length > 0 &&
+        toLocations.length > 0 &&
+        departDate &&
+        returnDate &&
+        returnDate > departDate
+      );
+    } else if (tripType === "oneway") {
+      return fromLocations.length > 0 && toLocations.length > 0 && departDate;
+    } else if (tripType === "multicity") {
+      if (!multiTrips || multiTrips.length < 2) return false;
+
+      return multiTrips.every((trip) => {
+        const hasFrom = trip.from && trip.from.length > 0;
+        const hasTo = trip.to && trip.to.length > 0;
+        const hasDate = trip.date;
+        const notSameAirport = !(
+          trip.from &&
+          trip.to &&
+          trip.from.some((fromLoc) =>
+            trip.to.some((toLoc) => fromLoc.airportCode === toLoc.airportCode)
+          )
+        );
+
+        return hasFrom && hasTo && hasDate && notSameAirport;
+      });
+    }
+    return false;
+  };
+
   const handleSearch = () => {
     // Clear previous errors
     setValidationErrors([]);
+
+    // Validation logic based on trip type
+    const errors = [];
+
+    if (tripType === "roundtrip") {
+      // Round trip validation
+      if (!fromLocations || fromLocations.length === 0) {
+        errors.push("Vui lòng chọn điểm khởi hành");
+      }
+      if (!toLocations || toLocations.length === 0) {
+        errors.push("Vui lòng chọn điểm đến");
+      }
+      if (!departDate) {
+        errors.push("Vui lòng chọn ngày đi");
+      }
+      if (!returnDate) {
+        errors.push("Vui lòng chọn ngày về");
+      }
+      if (departDate && returnDate && returnDate <= departDate) {
+        errors.push("Ngày về phải sau ngày đi");
+      }
+    } else if (tripType === "oneway") {
+      // One way validation
+      if (!fromLocations || fromLocations.length === 0) {
+        errors.push("Vui lòng chọn điểm khởi hành");
+      }
+      if (!toLocations || toLocations.length === 0) {
+        errors.push("Vui lòng chọn điểm đến");
+      }
+      if (!departDate) {
+        errors.push("Vui lòng chọn ngày đi");
+      }
+    } else if (tripType === "multicity") {
+      // Multi-city validation
+      if (!multiTrips || multiTrips.length < 2) {
+        errors.push("Vui lòng thêm ít nhất 2 chuyến bay");
+      } else {
+        multiTrips.forEach((trip, index) => {
+          if (!trip.from || trip.from.length === 0) {
+            errors.push(`Chuyến ${index + 1}: Vui lòng chọn điểm khởi hành`);
+          }
+          if (!trip.to || trip.to.length === 0) {
+            errors.push(`Chuyến ${index + 1}: Vui lòng chọn điểm đến`);
+          }
+          if (!trip.date) {
+            errors.push(`Chuyến ${index + 1}: Vui lòng chọn ngày đi`);
+          }
+          // Check if from and to are the same for each trip
+          if (
+            trip.from &&
+            trip.to &&
+            trip.from.length > 0 &&
+            trip.to.length > 0
+          ) {
+            const fromCodes = trip.from.map((loc) => loc.airportCode);
+            const toCodes = trip.to.map((loc) => loc.airportCode);
+            const hasSameAirport = fromCodes.some((fromCode) =>
+              toCodes.includes(fromCode)
+            );
+            if (hasSameAirport) {
+              errors.push(
+                `Chuyến ${
+                  index + 1
+                }: Điểm khởi hành và điểm đến không được trùng nhau`
+              );
+            }
+          }
+        });
+      }
+    }
+
+    // Check if from and to are the same airport
+    if (fromLocations.length > 0 && toLocations.length > 0) {
+      const fromCodes = fromLocations.map((loc) => loc.airportCode);
+      const toCodes = toLocations.map((loc) => loc.airportCode);
+      const hasSameAirport = fromCodes.some((fromCode) =>
+        toCodes.includes(fromCode)
+      );
+      if (hasSameAirport) {
+        errors.push("Điểm khởi hành và điểm đến không được trùng nhau");
+      }
+    }
+
+    // Set validation errors if any
+    if (errors.length > 0) {
+      setValidationErrors(errors);
+      return;
+    }
 
     if (onSearch) {
       // Support multiple from/to locations - create all combinations
@@ -376,7 +540,13 @@ export function SearchForm({ onSearch, initialValues }) {
         searchCombinations, // All from-to combinations
       };
 
-      console.log("Search criteria:", criteria);
+      console.log("SearchForm handleSearch - Current state:");
+      console.log("- departDate:", departDate, "type:", typeof departDate);
+      console.log("- returnDate:", returnDate, "type:", typeof returnDate);
+      console.log("- tripType:", tripType);
+      console.log("- fromLocations:", fromLocations);
+      console.log("- toLocations:", toLocations);
+      console.log("SearchForm handleSearch - criteria:", criteria);
       onSearch(criteria);
     }
   };
@@ -384,8 +554,8 @@ export function SearchForm({ onSearch, initialValues }) {
   return (
     <Card className="bg-white/95 backdrop-blur-sm dark:bg-gray-400/100 p-6 max-w-5xl mx-auto">
       <div className="space-y-6">
-        {/* Validation Errors - Hidden since we removed validation */}
-        {/* {validationErrors.length > 0 && (
+        {/* Validation Errors */}
+        {validationErrors.length > 0 && (
           <div className="bg-red-50 border border-red-200 rounded-lg p-4">
             <div className="flex items-start">
               <div className="flex-shrink-0">
@@ -415,7 +585,7 @@ export function SearchForm({ onSearch, initialValues }) {
               </div>
             </div>
           </div>
-        )} */}
+        )}
 
         {/* Tabs + Passenger Selector */}
         <div className="flex flex-col sm:flex-row sm:items-center gap-4">
@@ -573,10 +743,15 @@ export function SearchForm({ onSearch, initialValues }) {
               placeholder="Ngày về"
             />
             <Button
-              className="bg-blue-500 text-white hover:bg-blue-600"
+              className="bg-blue-500 text-white hover:bg-blue-600 disabled:bg-gray-400 disabled:cursor-not-allowed"
               onClick={handleSearch}
+              disabled={!isFormValid()}
             >
-              Tìm chuyến bay
+              {fromLocations.length > 1 || toLocations.length > 1
+                ? `Tìm chuyến bay (${
+                    fromLocations.length * toLocations.length
+                  } kết hợp)`
+                : "Tìm chuyến bay"}
             </Button>
           </div>
         )}
@@ -588,7 +763,6 @@ export function SearchForm({ onSearch, initialValues }) {
               placeholder="Từ đâu?"
               value={fromLocations}
               onChange={setFromLocations}
-              country="Vietnam"
             />
             <AirportAutocomplete
               placeholder="Đến đâu?"
@@ -601,8 +775,9 @@ export function SearchForm({ onSearch, initialValues }) {
               placeholder="Ngày đi"
             />
             <Button
-              className="bg-blue-500 text-white hover:bg-blue-600"
+              className="bg-blue-500 text-white hover:bg-blue-600 disabled:bg-gray-400 disabled:cursor-not-allowed"
               onClick={handleSearch}
+              disabled={!isFormValid()}
             >
               {fromLocations.length > 1 || toLocations.length > 1
                 ? `Tìm chuyến bay (${
@@ -695,8 +870,9 @@ export function SearchForm({ onSearch, initialValues }) {
               </Button>
 
               <Button
-                className="bg-blue-500 text-white hover:bg-blue-600 w-full sm:w-auto sm:ml-auto"
+                className="bg-blue-500 text-white hover:bg-blue-600 disabled:bg-gray-400 disabled:cursor-not-allowed w-full sm:w-auto sm:ml-auto"
                 onClick={handleSearch}
+                disabled={!isFormValid()}
               >
                 {fromLocations.length > 1 || toLocations.length > 1
                   ? `Tìm chuyến bay (${

@@ -13,7 +13,7 @@ export const TitleSync = () => {
           mutation.type === "childList" &&
           mutation.target.nodeName === "TITLE"
         ) {
-          console.log("Title updated:", document.title);
+          // console.log("Title updated:", document.title);
         }
       });
     });

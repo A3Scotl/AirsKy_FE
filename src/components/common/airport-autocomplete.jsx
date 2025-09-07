@@ -71,55 +71,191 @@ const AirportAutocomplete = ({
 
   // Logic hiển thị dữ liệu
   const destinationsToShow = () => {
+    let results = [];
+
     if (searchTerm.length >= 2) {
-      return searchResults; // Kết quả tìm kiếm
+      results = searchResults; // Kết quả tìm kiếm
     } else if (showingNearby && searchResults.length > 0) {
-      return searchResults; // Kết quả "gần tôi"
+      results = searchResults; // Kết quả "gần tôi"
     } else {
-      return allAirports; // Danh sách mặc định
+      results = allAirports; // Danh sách mặc định
     }
+
+    // Nếu có search term, sắp xếp kết quả để matching items hiện lên đầu
+    if (searchTerm.length >= 2) {
+      const upperTerm = searchTerm.toUpperCase().trim();
+      const exactMatches = [];
+      const partialMatches = [];
+      const others = [];
+
+      results.forEach((dest) => {
+        const cityNamesStr = Array.isArray(dest.cityNames)
+          ? dest.cityNames.join(" ").toUpperCase()
+          : String(dest.city || "").toUpperCase();
+        const airportCodeStr = String(dest.airportCode || "").toUpperCase();
+        const airportNameStr = String(dest.airportName || "").toUpperCase();
+
+        // Exact matches (ưu tiên cao nhất)
+        if (
+          airportCodeStr === upperTerm ||
+          (Array.isArray(dest.cityNames) &&
+            dest.cityNames[0]?.toUpperCase() === upperTerm)
+        ) {
+          exactMatches.push(dest);
+        }
+        // Partial matches
+        else if (
+          airportCodeStr.includes(upperTerm) ||
+          cityNamesStr.includes(upperTerm) ||
+          airportNameStr.includes(upperTerm)
+        ) {
+          partialMatches.push(dest);
+        }
+        // Others
+        else {
+          others.push(dest);
+        }
+      });
+
+      results = [...exactMatches, ...partialMatches, ...others];
+    }
+
+    // Sắp xếp để các sân bay đã select luôn hiển thị ở đầu (nếu không có search term)
+    if (selectedLocations.length > 0 && searchTerm.length < 2) {
+      const selectedCodes = selectedLocations.map((loc) => loc.airportCode);
+      const selectedResults = results.filter((dest) =>
+        selectedCodes.includes(dest.airportCode)
+      );
+      const unselectedResults = results.filter(
+        (dest) => !selectedCodes.includes(dest.airportCode)
+      );
+
+      return [...selectedResults, ...unselectedResults];
+    }
+
+    return results;
   };
 
-  // Debug: Log dữ liệu hiển thị
-  if (destinationsToShow.length > 0) {
-    console.log(
-      "🖥️ UI: Dữ liệu sẽ hiển thị:",
-      destinationsToShow.length,
-      "sân bay"
-    );
-    destinationsToShow.forEach((dest, index) => {
-      console.log(`🖥️ UI ${index + 1}:`, {
-        code: dest.airportCode,
-        city: dest.city,
-        distance: dest.distance,
-        hasDistance: dest.distance !== undefined,
-      });
+  // Parse search term to extract city and airport code
+  const parseSearchTerm = (term) => {
+    const trimmed = term.trim();
+    console.log("🔍 Parsing search term:", trimmed);
+
+    // Check if format is "City (CODE)"
+    const bracketMatch = trimmed.match(/^(.+?)\s*\(([^)]+)\)$/);
+    if (bracketMatch) {
+      const cityName = bracketMatch[1].trim();
+      const airportCode = bracketMatch[2].trim().toUpperCase();
+      console.log("✅ Parsed bracket format:", { cityName, airportCode });
+      return {
+        cityName,
+        airportCode,
+        displayName: `${cityName} (${airportCode})`,
+      };
+    }
+
+    // Check if it's just an airport code (3 letters)
+    if (/^[A-Z]{3}$/.test(trimmed.toUpperCase())) {
+      console.log("✅ Parsed as airport code:", trimmed.toUpperCase());
+      return {
+        cityName: trimmed.toUpperCase(),
+        airportCode: trimmed.toUpperCase(),
+        displayName: trimmed.toUpperCase(),
+      };
+    }
+
+    // Default: treat as city name, try to find matching airport
+    const upperTerm = trimmed.toUpperCase();
+    const matchingAirport = allAirports.find((airport) => {
+      const cityNamesStr = Array.isArray(airport.cityNames)
+        ? airport.cityNames.join(" ").toUpperCase()
+        : String(airport.city || "").toUpperCase();
+      const airportCodeStr = String(airport.airportCode || "").toUpperCase();
+      const airportNameStr = String(airport.airportName || "").toUpperCase();
+
+      // Ưu tiên tìm theo airport code trước
+      if (airportCodeStr === upperTerm) return true;
+
+      // Sau đó tìm theo tên thành phố (cityNames[0] hoặc city)
+      if (cityNamesStr.includes(upperTerm)) return true;
+
+      // Cuối cùng tìm theo tên sân bay
+      if (airportNameStr.includes(upperTerm)) return true;
+
+      return false;
     });
-  }
+
+    if (matchingAirport) {
+      console.log("✅ Found matching airport:", matchingAirport);
+      const primaryCityName =
+        Array.isArray(matchingAirport.cityNames) &&
+        matchingAirport.cityNames.length > 0
+          ? matchingAirport.cityNames[0]
+          : matchingAirport.city || trimmed;
+
+      return {
+        cityName: primaryCityName,
+        airportCode: matchingAirport.airportCode,
+        airportId: matchingAirport.airportId,
+        displayName: `${primaryCityName} (${matchingAirport.airportCode})`,
+      };
+    }
+
+    // Fallback: create custom location
+    console.log("⚠️ No matching airport found, creating custom location");
+    return {
+      cityName: trimmed,
+      airportCode: trimmed.toUpperCase(),
+      displayName: trimmed,
+    };
+  };
 
   const handleLocationSelect = (location) => {
+    // Lấy tên thành phố chính từ cityNames[0] hoặc city
+    const primaryCityName =
+      Array.isArray(location.cityNames) && location.cityNames.length > 0
+        ? location.cityNames[0]
+        : location.city || location.cityName || "Unknown";
+
+    // Đảm bảo dữ liệu được chuẩn hóa đúng cách
+    const normalizedLocation = {
+      airportId: location.airportId,
+      airportCode: location.airportCode,
+      cityNames:
+        Array.isArray(location.cityNames) && location.cityNames.length > 0
+          ? location.cityNames
+          : [primaryCityName],
+      city: primaryCityName,
+      country: location.country || "Vietnam",
+      airportName:
+        location.airportName ||
+        location.displayName ||
+        `${primaryCityName} (${location.airportCode})`,
+      displayName: `${primaryCityName} (${location.airportCode})`,
+    };
+
     if (!multiple) {
-      setSelectedLocations([location]);
-      onChange([location]);
+      setSelectedLocations([normalizedLocation]);
+      onChange([normalizedLocation]);
       setSearchTerm("");
       setIsOpen(false);
       return;
     }
 
     const isAlreadySelected = selectedLocations.some(
-      (loc) => loc.airportCode === location.airportCode
+      (loc) => loc.airportCode === normalizedLocation.airportCode
     );
 
     if (isAlreadySelected) {
       // If already selected, remove it (toggle behavior)
       const newSelection = selectedLocations.filter(
-        (loc) => loc.airportCode !== location.airportCode
+        (loc) => loc.airportCode !== normalizedLocation.airportCode
       );
       setSelectedLocations(newSelection);
       onChange(newSelection);
     } else {
       // If not selected, add it
-      const newSelection = [...selectedLocations, location];
+      const newSelection = [...selectedLocations, normalizedLocation];
       setSelectedLocations(newSelection);
       onChange(newSelection);
     }
@@ -138,12 +274,19 @@ const AirportAutocomplete = ({
   const handleKeyPress = (e) => {
     if (e.key === "Enter" && searchTerm.trim()) {
       e.preventDefault();
+
+      const parsed = parseSearchTerm(searchTerm);
+
       const customLocation = {
-        airportCode: searchTerm.toUpperCase(),
-        city: searchTerm,
-        country: "Tùy chỉnh",
-        airport: searchTerm,
+        airportId: parsed.airportId,
+        airportCode: parsed.airportCode,
+        cityNames: [parsed.cityName],
+        city: parsed.cityName,
+        country: parsed.airportId ? "Vietnam" : "Tùy chỉnh",
+        airportName: parsed.displayName,
       };
+
+      console.log("🎯 Created custom location from Enter key:", customLocation);
       handleLocationSelect(customLocation);
     }
   };
@@ -209,23 +352,49 @@ const AirportAutocomplete = ({
         )}
 
         {/* Input */}
-        <input
-          ref={inputRef}
-          type="text"
-          placeholder={
-            !multiple && selectedLocations.length > 0
-              ? `${selectedLocations[0].city} (${selectedLocations[0].airportCode})`
-              : selectedLocations.length === 0
-              ? placeholder
-              : ""
-          }
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          onKeyPress={handleKeyPress}
-          onFocus={() => !disabled && setIsOpen(true)}
-          disabled={disabled}
-          className="w-full border-none outline-none bg-transparent text-sm placeholder-gray-400"
-        />
+        <div className="flex items-center">
+          <input
+            ref={inputRef}
+            type="text"
+            placeholder={
+              !multiple && selectedLocations.length > 0
+                ? `${selectedLocations[0].city} (${selectedLocations[0].airportCode})`
+                : selectedLocations.length === 0
+                ? placeholder
+                : ""
+            }
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            onKeyPress={handleKeyPress}
+            onFocus={() => !disabled && setIsOpen(true)}
+            disabled={disabled}
+            className="flex-1 border-none outline-none bg-transparent text-sm placeholder-gray-400"
+          />
+          {searchTerm.trim() && (
+            <button
+              onClick={() => {
+                const parsed = parseSearchTerm(searchTerm);
+                const customLocation = {
+                  airportId: parsed.airportId,
+                  airportCode: parsed.airportCode,
+                  cityNames: [parsed.cityName],
+                  city: parsed.cityName,
+                  country: parsed.airportId ? "Vietnam" : "Tùy chỉnh",
+                  airportName: parsed.displayName,
+                };
+                console.log(
+                  "🎯 Created custom location from button click:",
+                  customLocation
+                );
+                handleLocationSelect(customLocation);
+              }}
+              className="ml-2 text-blue-600 hover:text-blue-800 text-sm font-medium"
+              title="Thêm địa điểm này"
+            >
+              Thêm
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Dropdown */}
@@ -305,7 +474,11 @@ const AirportAutocomplete = ({
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between">
                         <div className="font-medium text-sm text-gray-900 truncate">
-                          {destination.city} ({destination.airportCode})
+                          {Array.isArray(destination.cityNames) &&
+                          destination.cityNames.length > 0
+                            ? destination.cityNames[0]
+                            : destination.city || "Unknown"}{" "}
+                          ({destination.airportCode})
                         </div>
                         {destination.distance && (
                           <div className="text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded font-medium ml-2 flex-shrink-0">
@@ -332,8 +505,13 @@ const AirportAutocomplete = ({
               <div className="mb-2">
                 Không tìm thấy sân bay nào cho "{searchTerm}"
               </div>
-              <div className="text-xs text-gray-400">
-                Nhấn Enter để thêm địa điểm tùy chỉnh
+              <div className="text-xs text-gray-400 mb-2">Bạn có thể:</div>
+              <div className="text-xs text-blue-600">
+                • Nhập "Tên thành phố (MÃ)" (VD: "Hanoi (HAN)")
+                <br />• Nhập chỉ "MÃ" (VD: "HAN")
+                {/* <br />
+                • Nhập tên thành phố để tìm tự động */}
+                {/* <br />• Nhấn Enter hoặc nút "Thêm" để tạo địa điểm tùy chỉnh */}
               </div>
             </div>
           ) : !isLoading && searchTerm.length > 0 && searchTerm.length < 2 ? (

@@ -185,7 +185,7 @@ function AppRoutes() {
               <Route path="flights" element={<AdminFlights />} />
               <Route path="airports" element={<AdminAirport />} />
               <Route path="airlines" element={<AdminAirline />} />
-              <Route path="countries" element={<AdminCountry/>} />
+              <Route path="countries" element={<AdminCountry />} />
               <Route path="users" element={<AdminUsers />} />
               <Route path="payments" element={<AdminPayments />} />
               <Route path="reports" element={<AdminReports />} />
@@ -225,8 +225,8 @@ function App() {
                 duration={3000}
               />
               <AppRoutes />
-              <ChatbotWidget />
             </SearchProvider>
+            <ChatbotWidget />
           </AuthProvider>
         </ThemeProvider>
       </Router>
@@ -235,3 +235,4 @@ function App() {
 }
 
 export default App;
+
