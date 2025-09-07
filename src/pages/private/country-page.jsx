@@ -10,7 +10,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Loader2, Trash2, Pencil, Search, Filter } from "lucide-react";
+import {
+  Loader2,
+  Trash2,
+  Pencil,
+  Search,
+  Filter,
+  RotateCcw,
+} from "lucide-react";
 import {
   Table,
   TableBody,
@@ -22,6 +29,7 @@ import {
 import Pagination from "@/components/ui/pagination";
 import { countryApi } from "@/apis/country-api";
 import { useCountry } from "@/hooks/use-country";
+import { toast } from "sonner";
 
 const CountryPage = () => {
   const [modalOpen, setModalOpen] = useState(false);
@@ -38,6 +46,15 @@ const CountryPage = () => {
   const [itemsPerPage, setItemsPerPage] = useState(10);
 
   const { countries, loading, refresh } = useCountry();
+
+  // Thêm thông báo khi refresh dữ liệu
+  const handleRefresh = () => {
+    toast.promise(refresh(), {
+      loading: "Đang tải lại danh sách...",
+      success: "Đã cập nhật danh sách quốc gia!",
+      error: "Lỗi khi tải lại danh sách",
+    });
+  };
 
   // Filtered and sorted data
   const filteredAndSortedCountries = useMemo(() => {
@@ -104,6 +121,28 @@ const CountryPage = () => {
     setCurrentPage(1);
   }, [searchTerm, statusFilter, sortBy, sortOrder]);
 
+  // Thông báo kết quả tìm kiếm
+  React.useEffect(() => {
+    if (searchTerm.trim()) {
+      const resultCount = filteredAndSortedCountries.length;
+      if (resultCount === 0) {
+        toast.warning(`Không tìm thấy quốc gia nào cho "${searchTerm}"`);
+      } else {
+        toast.success(`Tìm thấy ${resultCount} quốc gia cho "${searchTerm}"`);
+      }
+    }
+  }, [searchTerm, filteredAndSortedCountries.length]);
+
+  // Thông báo khi thay đổi bộ lọc trạng thái
+  React.useEffect(() => {
+    if (statusFilter !== "all") {
+      const statusText =
+        statusFilter === "active" ? "đang hoạt động" : "ngừng hoạt động";
+      const resultCount = filteredAndSortedCountries.length;
+      toast.info(`Hiển thị ${resultCount} quốc gia ${statusText}`);
+    }
+  }, [statusFilter, filteredAndSortedCountries.length]);
+
   const handlePageChange = (page) => {
     setCurrentPage(page);
   };
@@ -120,62 +159,81 @@ const CountryPage = () => {
       setSortBy(field);
       setSortOrder("asc");
     }
+
+    // Thông báo sắp xếp
+    const fieldName =
+      {
+        countryCode: "mã quốc gia",
+        countryName: "tên quốc gia",
+      }[field] || field;
+
+    const orderText = sortOrder === "asc" ? "tăng dần" : "giảm dần";
+    toast.info(`Sắp xếp theo ${fieldName} ${orderText}`);
   };
 
   const handleAdd = () => {
     setEditData(null);
     setModalOpen(true);
+    toast.info("Mở form thêm quốc gia mới");
   };
 
   const handleEdit = (country) => {
     setEditData(country);
     setModalOpen(true);
+    toast.info(`Chỉnh sửa quốc gia: ${country.countryName}`);
   };
 
   const handleDelete = async (country) => {
     if (
       window.confirm(`Bạn có chắc muốn xóa quốc gia ${country.countryName}?`)
     ) {
-      try {
-        const response = await countryApi.deleteCountry(country.id);
-        if (response.success) {
-          // Refresh danh sách sử dụng hook
-          refresh();
-        } else {
-          alert("Lỗi khi xóa: " + response.message);
-        }
-      } catch (error) {
-        console.error("Lỗi xóa country:", error);
-        alert("Lỗi khi xóa quốc gia");
-      }
+      toast.promise(countryApi.deleteCountry(country.id), {
+        loading: "Đang xóa quốc gia...",
+        success: (response) => {
+          if (response.success) {
+            refresh();
+            return `Đã xóa quốc gia ${country.countryName} thành công!`;
+          } else {
+            throw new Error(response.message);
+          }
+        },
+        error: (error) => {
+          console.error("Lỗi xóa country:", error);
+          return "Lỗi khi xóa quốc gia. Vui lòng thử lại!";
+        },
+      });
     }
   };
 
   const handleSubmit = async (formData) => {
-    try {
-      let response;
-      if (editData) {
-        // Update
-        response = await countryApi.updateCountryWithImage(
-          editData.id,
-          formData
-        );
-      } else {
-        // Create
-        response = await countryApi.createCountryWithImage(formData);
-      }
+    const isUpdate = !!editData;
+    const countryName = formData.countryName;
 
-      if (response.success) {
-        setModalOpen(false);
-        // Refresh danh sách sử dụng hook
-        refresh();
-      } else {
-        alert("Lỗi: " + response.message);
+    toast.promise(
+      isUpdate
+        ? countryApi.updateCountryWithImage(editData.id, formData)
+        : countryApi.createCountryWithImage(formData),
+      {
+        loading: isUpdate
+          ? "Đang cập nhật quốc gia..."
+          : "Đang thêm quốc gia...",
+        success: (response) => {
+          if (response.success) {
+            setModalOpen(false);
+            refresh();
+            return isUpdate
+              ? `Đã cập nhật quốc gia ${countryName} thành công!`
+              : `Đã thêm quốc gia ${countryName} thành công!`;
+          } else {
+            throw new Error(response.message);
+          }
+        },
+        error: (error) => {
+          console.error("Lỗi submit:", error);
+          return "Lỗi khi lưu quốc gia. Vui lòng thử lại!";
+        },
       }
-    } catch (error) {
-      console.error("Lỗi submit:", error);
-      alert("Lỗi khi lưu quốc gia");
-    }
+    );
   };
 
   return (
@@ -188,7 +246,18 @@ const CountryPage = () => {
             Tổng cộng: {totalItems} quốc gia
           </p>
         </div>
-        <Button onClick={handleAdd}>Thêm quốc gia</Button>
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            onClick={handleRefresh}
+            disabled={loading}
+            className="flex items-center gap-2"
+          >
+            <RotateCcw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
+            Làm mới
+          </Button>
+          <Button onClick={handleAdd}>Thêm quốc gia</Button>
+        </div>
       </div>
 
       {/* Search and Filters */}
@@ -352,7 +421,11 @@ const CountryPage = () => {
 
       <CountryModal
         open={modalOpen}
-        onClose={() => setModalOpen(false)}
+        onClose={() => {
+          setModalOpen(false);
+          setEditData(null);
+          toast.info("Đã đóng form quốc gia");
+        }}
         onSubmit={handleSubmit}
         initialData={editData}
       />

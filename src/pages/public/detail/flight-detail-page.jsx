@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useNavigate, useLocation, useParams } from "react-router-dom";
+import { flightApi } from "@/apis/flight-api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -138,12 +139,24 @@ const FlightDetail = () => {
       try {
         setLoading(true);
 
+        console.log("[FlightDetail] useEffect triggered");
+        console.log("[FlightDetail] location.state:", location.state);
+        console.log("[FlightDetail] URL param id:", id);
+
         // First try to get data from location state
         if (location.state && location.state.flight) {
           const flight = location.state.flight;
+          console.log(
+            "[FlightDetail] Found flight data in location.state:",
+            flight
+          );
 
           // Transform flight data to match expected structure
           const transformedFlight = normalizeFlightData(flight);
+          console.log(
+            "[FlightDetail] Transformed flight data:",
+            transformedFlight
+          );
 
           setFlightData(transformedFlight);
           setLoading(false);
@@ -152,27 +165,60 @@ const FlightDetail = () => {
 
         // If no state data, try to fetch from API using flight ID
         if (id) {
-          console.log("Fetching flight data from API with ID:", id);
-          // Here you would call your flight API to get flight details by ID
-          // For now, we'll show an error message
-          console.error(
-            "Flight data not found in state and API call not implemented"
+          console.log(
+            "[FlightDetail] No state data, trying to fetch from API with ID:",
+            id
           );
-          setLoading(false);
-          return;
+
+          try {
+            const response = await flightApi.getFlightById(id);
+            console.log("[FlightDetail] API response:", response);
+
+            if (response.success && response.data) {
+              // Transform flight data to match expected structure
+              const transformedFlight = normalizeFlightData(response.data);
+              console.log(
+                "[FlightDetail] API transformed flight data:",
+                transformedFlight
+              );
+
+              setFlightData(transformedFlight);
+              setLoading(false);
+              return;
+            } else {
+              console.error(
+                "[FlightDetail] API call failed:",
+                response.message
+              );
+              setLoading(false);
+              return;
+            }
+          } catch (error) {
+            console.error(
+              "[FlightDetail] Error fetching flight from API:",
+              error
+            );
+            setLoading(false);
+            return;
+          }
         }
 
         // If no ID and no state data, show error
-        console.error("No flight ID or flight data provided");
+        console.error("[FlightDetail] No flight ID or flight data provided");
         setLoading(false);
       } catch (error) {
-        console.error("Error loading flight data:", error);
+        console.error("[FlightDetail] Error loading flight data:", error);
         setLoading(false);
       }
     };
 
     getFlightData();
   }, [location.state, id]);
+
+  // Debug: Log flightData changes
+  useEffect(() => {
+    console.log("[FlightDetail] flightData state changed:", flightData);
+  }, [flightData]);
 
   const flightInfo = flightData || {};
 
@@ -232,14 +278,21 @@ const FlightDetail = () => {
   const handleSelectFare = (fareId) => setSelectedFare(fareId);
 
   const handleProceedToBooking = (fareId) => {
+    console.log(
+      "[FlightDetail] handleProceedToBooking called with fareId:",
+      fareId
+    );
+    console.log("[FlightDetail] Current flightData:", flightData);
+
     if (!flightData) {
-      console.error("No flight data available");
+      console.error("[FlightDetail] No flight data available");
+      alert("Không có dữ liệu chuyến bay. Vui lòng tải lại trang.");
       return;
     }
 
     const selectedFareData = fareClasses.find((fare) => fare.id === fareId);
     if (!selectedFareData) {
-      console.error("Selected fare not found");
+      console.error("[FlightDetail] Selected fare not found:", fareId);
       return;
     }
 
@@ -250,9 +303,19 @@ const FlightDetail = () => {
       fareId: fareId,
     };
 
+    console.log(
+      "[FlightDetail] Prepared bookingFlightData:",
+      bookingFlightData
+    );
+
     // Store in localStorage and navigate
     localStorage.setItem("selectedFlight", JSON.stringify(bookingFlightData));
     localStorage.setItem("selectedFare", JSON.stringify(selectedFareData));
+
+    console.log("[FlightDetail] Data stored in localStorage");
+    console.log("[FlightDetail] Navigating to booking-stepper with state:", {
+      flightData: bookingFlightData,
+    });
 
     // Navigate with state as backup
     navigate("/booking-stepper", { state: { flightData: bookingFlightData } });
@@ -318,7 +381,7 @@ const FlightDetail = () => {
                   <img
                     src={flightData.airlineLogo || "N/A"}
                     alt={flightData.airline}
-                    className="w-12 h-12 rounded bg-white p-1"
+                    className="w-auto h-12 rounded bg-white p-1 object-cover"
                   />
                   <h1 className="text-4xl font-bold">
                     {flightData.departure?.city || flightData.from} →{" "}
@@ -327,7 +390,7 @@ const FlightDetail = () => {
                 </div>
                 <p className="text-xl mb-2">
                   {flightData.airline} Chuyến bay{" "}
-                  {flightData.flightNumber || "VN7210"}
+                  {flightData.flightNumber || "N/A"}
                 </p>
                 <div className="flex items-center justify-center gap-8 text-lg">
                   <span>

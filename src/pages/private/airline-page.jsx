@@ -10,7 +10,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Loader2, Trash2, Pencil, Search, Filter } from "lucide-react";
+import {
+  Loader2,
+  Trash2,
+  Pencil,
+  Search,
+  Filter,
+  RotateCcw,
+} from "lucide-react";
 import {
   Table,
   TableBody,
@@ -22,6 +29,7 @@ import {
 import Pagination from "@/components/ui/pagination";
 import { airlineApi } from "@/apis/airline-api";
 import { useAirline } from "@/hooks/use-airline";
+import { toast } from "sonner";
 
 const AirlinePage = () => {
   const [modalOpen, setModalOpen] = useState(false);
@@ -38,6 +46,15 @@ const AirlinePage = () => {
   const [itemsPerPage, setItemsPerPage] = useState(10);
 
   const { airlines, loading, refresh } = useAirline();
+
+  // Thêm thông báo khi refresh dữ liệu
+  const handleRefresh = () => {
+    toast.promise(refresh(), {
+      loading: "Đang tải lại danh sách...",
+      success: "Đã cập nhật danh sách hãng bay!",
+      error: "Lỗi khi tải lại danh sách",
+    });
+  };
 
   // Filtered and sorted data
   const filteredAndSortedAirlines = useMemo(() => {
@@ -108,6 +125,28 @@ const AirlinePage = () => {
     setCurrentPage(1);
   }, [searchTerm, statusFilter, sortBy, sortOrder]);
 
+  // Thông báo kết quả tìm kiếm
+  React.useEffect(() => {
+    if (searchTerm.trim()) {
+      const resultCount = filteredAndSortedAirlines.length;
+      if (resultCount === 0) {
+        toast.warning(`Không tìm thấy hãng bay nào cho "${searchTerm}"`);
+      } else {
+        toast.success(`Tìm thấy ${resultCount} hãng bay cho "${searchTerm}"`);
+      }
+    }
+  }, [searchTerm, filteredAndSortedAirlines.length]);
+
+  // Thông báo khi thay đổi bộ lọc trạng thái
+  React.useEffect(() => {
+    if (statusFilter !== "all") {
+      const statusText =
+        statusFilter === "active" ? "đang hoạt động" : "ngừng hoạt động";
+      const resultCount = filteredAndSortedAirlines.length;
+      toast.info(`Hiển thị ${resultCount} hãng bay ${statusText}`);
+    }
+  }, [statusFilter, filteredAndSortedAirlines.length]);
+
   const handlePageChange = (page) => {
     setCurrentPage(page);
   };
@@ -124,59 +163,79 @@ const AirlinePage = () => {
       setSortBy(field);
       setSortOrder("asc");
     }
+
+    // Thông báo sắp xếp
+    const fieldName =
+      {
+        airlineCode: "mã hãng bay",
+        airlineName: "tên hãng bay",
+        contact: "liên hệ",
+      }[field] || field;
+
+    const orderText = sortOrder === "asc" ? "tăng dần" : "giảm dần";
+    toast.info(`Sắp xếp theo ${fieldName} ${orderText}`);
   };
 
   const handleAdd = () => {
     setEditData(null);
     setModalOpen(true);
+    toast.info("Mở form thêm hãng bay mới");
   };
   const handleEdit = (airline) => {
     setEditData(airline);
     setModalOpen(true);
+    toast.info(`Chỉnh sửa hãng bay: ${airline.airlineName}`);
   };
   const handleDelete = async (airline) => {
     if (
       window.confirm(`Bạn có chắc muốn xóa hãng bay ${airline.airlineName}?`)
     ) {
-      try {
-        const response = await airlineApi.deleteAirline(airline.airlineId);
-        if (response.success) {
-          // Refresh danh sách sử dụng hook
-          refresh();
-        } else {
-          alert("Lỗi khi xóa: " + response.message);
-        }
-      } catch (error) {
-        console.error("Lỗi xóa airline:", error);
-        alert("Lỗi khi xóa hãng bay");
-      }
+      toast.promise(airlineApi.deleteAirline(airline.airlineId), {
+        loading: "Đang xóa hãng bay...",
+        success: (response) => {
+          if (response.success) {
+            refresh();
+            return `Đã xóa hãng bay ${airline.airlineName} thành công!`;
+          } else {
+            throw new Error(response.message);
+          }
+        },
+        error: (error) => {
+          console.error("Lỗi xóa airline:", error);
+          return "Lỗi khi xóa hãng bay. Vui lòng thử lại!";
+        },
+      });
     }
   };
   const handleSubmit = async (formData) => {
-    try {
-      let response;
-      if (editData) {
-        // Update
-        response = await airlineApi.updateAirlineWithImage(
-          editData.airlineId,
-          formData
-        );
-      } else {
-        // Create
-        response = await airlineApi.createAirlineWithImage(formData);
-      }
+    const isUpdate = !!editData;
+    const airlineName = formData.airlineName;
 
-      if (response.success) {
-        setModalOpen(false);
-        // Refresh danh sách sử dụng hook
-        refresh();
-      } else {
-        alert("Lỗi: " + response.message);
+    toast.promise(
+      isUpdate
+        ? airlineApi.updateAirlineWithImage(editData.airlineId, formData)
+        : airlineApi.createAirlineWithImage(formData),
+      {
+        loading: isUpdate
+          ? "Đang cập nhật hãng bay..."
+          : "Đang thêm hãng bay...",
+        success: (response) => {
+          if (response.success) {
+            setModalOpen(false);
+            refresh();
+            return isUpdate
+              ? `Đã cập nhật hãng bay ${airlineName} thành công!`
+              : `Đã thêm hãng bay ${airlineName} thành công!`;
+          } else {
+            throw new Error(response.message);
+          }
+        },
+        error: (error) => {
+          console.error("Lỗi submit:", error);
+          return "Lỗi khi lưu hãng bay. Vui lòng thử lại!";
+        },
       }
-    } catch (error) {
-      console.error("Lỗi submit:", error);
-      alert("Lỗi khi lưu hãng bay");
-    }
+    );
   };
 
   return (
@@ -189,7 +248,18 @@ const AirlinePage = () => {
             Tổng cộng: {totalItems} hãng bay
           </p>
         </div>
-        <Button onClick={handleAdd}>Thêm hãng bay</Button>
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            onClick={handleRefresh}
+            disabled={loading}
+            className="flex items-center gap-2"
+          >
+            <RotateCcw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
+            Làm mới
+          </Button>
+          <Button onClick={handleAdd}>Thêm hãng bay</Button>
+        </div>
       </div>
 
       {/* Search and Filters */}
@@ -369,7 +439,11 @@ const AirlinePage = () => {
 
       <AirlineModal
         open={modalOpen}
-        onClose={() => setModalOpen(false)}
+        onClose={() => {
+          setModalOpen(false);
+          setEditData(null);
+          toast.info("Đã đóng form hãng bay");
+        }}
         onSubmit={handleSubmit}
         initialData={editData}
       />

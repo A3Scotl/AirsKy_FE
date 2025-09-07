@@ -122,35 +122,41 @@ const CountryModal = ({ open, onClose, onSubmit, initialData }) => {
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
             {initialData ? "Cập nhật quốc gia" : "Thêm quốc gia"}
           </DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
-          <Input
-            label="Mã quốc gia"
-            name="country_code"
-            value={form.country_code}
-            onChange={handleChange}
-            maxLength={3}
-            required
-            placeholder="VD: VN"
-          />
-          <Input
-            label="Tên quốc gia"
-            name="country_name"
-            value={form.country_name}
-            onChange={handleChange}
-            maxLength={100}
-            required
-            placeholder="VD: Việt Nam"
-          />
-          <div className="">
-            <label className="block text-sm font-medium mb-2">
-              Ảnh thumbnail
-            </label>
+          <div>
+            <label className="block text-sm font-medium ">Mã quốc gia</label>
+            <Input
+              label="Mã quốc gia"
+              name="country_code"
+              value={form.country_code}
+              onChange={handleChange}
+              maxLength={3}
+              required
+              placeholder="VD: VN"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium">Tên quốc gia</label>
+            <Input
+              label="Tên quốc gia"
+              name="country_name"
+              value={form.country_name}
+              onChange={handleChange}
+              maxLength={100}
+              required
+              placeholder="VD: Việt Nam"
+            />
+          </div>
+
+          <div className="w-full">
+            <label className="block text-sm font-medium mb-2">Thumbnail</label>
             <ImageUpload
               value={form.thumbnail}
               onChange={handleThumbnailChange}

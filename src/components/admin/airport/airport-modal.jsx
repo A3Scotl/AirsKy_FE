@@ -87,14 +87,6 @@ const AirportModal = ({ open, onClose, onSubmit, initialData, countries }) => {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    // Log giá trị ảnh trước khi submit
-    console.log("[AirportModal] Submitting form data:");
-    console.log("- thumbnail:", form.thumbnail);
-    console.log("- thumbnailFile:", form.thumbnailFile);
-    console.log(
-      "- thumbnailFile instanceof File:",
-      form.thumbnailFile instanceof File
-    );
 
     const formData = {
       airportCode: form.airport_code,

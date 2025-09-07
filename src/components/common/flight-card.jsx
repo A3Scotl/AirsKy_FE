@@ -108,16 +108,11 @@ export function FlightCard({
     flightNumber: flight.flightNumber || flight.flightId || "N/A",
     flightId: flight.flightId,
 
-    // Airline info with computed logo - ensure we always get strings
+    // Airline info - ensure we always get strings for navigation
     airline:
       typeof flight.airline === "object" && flight.airline !== null
-        ? flight.airline
-        : {
-            airlineName:
-              flight.airlineName || flight.airline || "Unknown Airline",
-            airlineCode: flight.airlineCode || "",
-            thumbnail: flight.thumbnail,
-          },
+        ? flight.airline.airlineName || "Unknown Airline"
+        : flight.airlineName || flight.airline || "Unknown Airline",
     airlineName:
       flight.airlineName ||
       (typeof flight.airline === "object" && flight.airline?.airlineName) ||

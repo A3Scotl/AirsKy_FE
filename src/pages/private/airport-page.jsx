@@ -11,7 +11,14 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Trash2, Pencil, Search, Filter } from "lucide-react";
+import {
+  Loader2,
+  Trash2,
+  Pencil,
+  Search,
+  Filter,
+  RotateCcw,
+} from "lucide-react";
 import {
   Table,
   TableBody,
@@ -23,6 +30,7 @@ import {
 import Pagination from "@/components/ui/pagination";
 import { airportApi } from "@/apis/airport-api";
 import { countryApi } from "@/apis/country-api";
+import { toast } from "sonner";
 
 const AirportPage = () => {
   const [modalOpen, setModalOpen] = useState(false);
@@ -30,6 +38,27 @@ const AirportPage = () => {
   const [airports, setAirports] = useState([]);
   const [countries, setCountries] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  // Thêm thông báo khi refresh dữ liệu
+  const handleRefresh = async () => {
+    toast.promise(
+      (async () => {
+        const airportResponse = await airportApi.getAllAirports({ size: 1000 });
+        if (airportResponse.success) {
+          setAirports(
+            airportResponse.data.content || airportResponse.data || []
+          );
+        } else {
+          throw new Error(airportResponse.message);
+        }
+      })(),
+      {
+        loading: "Đang tải lại danh sách...",
+        success: "Đã cập nhật danh sách sân bay!",
+        error: "Lỗi khi tải lại danh sách",
+      }
+    );
+  };
 
   // Search, Filter, Sort states
   const [searchTerm, setSearchTerm] = useState("");
@@ -61,15 +90,7 @@ const AirportPage = () => {
         if (airportResponse.success) {
           const airportsData =
             airportResponse.data.content || airportResponse.data || [];
-          console.log("Airports data from API:", airportsData);
-          console.log(
-            "Sample airport country fields:",
-            airportsData.slice(0, 3).map((a) => ({
-              name: a.airportName,
-              country: a.country,
-              countryName: a.countryName,
-            }))
-          );
+
           setAirports(airportsData);
         }
       } catch (error) {
@@ -91,7 +112,7 @@ const AirportPage = () => {
       }
     });
     const result = Array.from(countrySet).sort();
-    console.log("Unique countries from airports:", result);
+
     return result;
   }, [airports]);
 
@@ -190,6 +211,36 @@ const AirportPage = () => {
     return filtered;
   }, [airports, searchTerm, statusFilter, countryFilter, sortBy, sortOrder]);
 
+  // Thông báo kết quả tìm kiếm
+  React.useEffect(() => {
+    if (searchTerm.trim()) {
+      const resultCount = filteredAndSortedAirports.length;
+      if (resultCount === 0) {
+        toast.warning(`Không tìm thấy sân bay nào cho "${searchTerm}"`);
+      } else {
+        toast.success(`Tìm thấy ${resultCount} sân bay cho "${searchTerm}"`);
+      }
+    }
+  }, [searchTerm, filteredAndSortedAirports.length]);
+
+  // Thông báo khi thay đổi bộ lọc trạng thái
+  React.useEffect(() => {
+    if (statusFilter !== "all") {
+      const statusText =
+        statusFilter === "active" ? "đang hoạt động" : "ngừng hoạt động";
+      const resultCount = filteredAndSortedAirports.length;
+      toast.info(`Hiển thị ${resultCount} sân bay ${statusText}`);
+    }
+  }, [statusFilter, filteredAndSortedAirports.length]);
+
+  // Thông báo khi thay đổi bộ lọc quốc gia
+  React.useEffect(() => {
+    if (countryFilter !== "all") {
+      const resultCount = filteredAndSortedAirports.length;
+      toast.info(`Hiển thị ${resultCount} sân bay từ ${countryFilter}`);
+    }
+  }, [countryFilter, filteredAndSortedAirports.length]);
+
   // Pagination logic
   const totalItems = filteredAndSortedAirports.length;
   const totalPages = Math.ceil(totalItems / itemsPerPage);
@@ -218,65 +269,102 @@ const AirportPage = () => {
       setSortBy(field);
       setSortOrder("asc");
     }
+
+    // Thông báo sắp xếp
+    const fieldName =
+      {
+        airportCode: "mã sân bay",
+        airportName: "tên sân bay",
+        city: "thành phố",
+      }[field] || field;
+
+    const orderText = sortOrder === "asc" ? "tăng dần" : "giảm dần";
+    toast.info(`Sắp xếp theo ${fieldName} ${orderText}`);
   };
 
   const handleAdd = () => {
     setEditData(null);
     setModalOpen(true);
+    toast.info("Mở form thêm sân bay mới");
   };
 
   const handleEdit = (airport) => {
     setEditData(airport);
     setModalOpen(true);
+    toast.info(`Chỉnh sửa sân bay: ${airport.airportName}`);
   };
 
   const handleDelete = async (airport) => {
     if (
       window.confirm(`Bạn có chắc muốn xóa sân bay ${airport.airportName}?`)
     ) {
-      try {
-        const response = await airportApi.deleteAirport(airport.airportId);
-        if (response.success) {
-          setAirports(
-            airports.filter((a) => a.airportId !== airport.airportId)
-          );
-        } else {
-          alert("Lỗi khi xóa: " + response.message);
-        }
-      } catch (error) {
-        console.error("Lỗi xóa sân bay:", error);
-        alert("Lỗi khi xóa sân bay");
-      }
+      toast.promise(airportApi.deleteAirport(airport.airportId), {
+        loading: "Đang xóa sân bay...",
+        success: (response) => {
+          if (response.success) {
+            setAirports(
+              airports.filter((a) => a.airportId !== airport.airportId)
+            );
+            return `Đã xóa sân bay ${airport.airportName} thành công!`;
+          } else {
+            throw new Error(response.message);
+          }
+        },
+        error: (error) => {
+          console.error("Lỗi xóa sân bay:", error);
+          return "Lỗi khi xóa sân bay. Vui lòng thử lại!";
+        },
+      });
     }
   };
 
   const handleSubmit = async (formData) => {
-    try {
-      let response;
-      if (editData) {
-        // Update
-        response = await airportApi.updateAirport(editData.airportId, formData);
-      } else {
-        // Create
-        response = await airportApi.createAirport(formData);
-      }
+    const isUpdate = !!editData;
+    const airportName = formData.airportName;
 
-      if (response.success) {
-        setModalOpen(false);
-        // Refresh danh sách (hoặc update local state)
-        const airportResponse = await airportApi.getAllAirports({ size: 1000 });
-        if (airportResponse.success) {
-          setAirports(
-            airportResponse.data.content || airportResponse.data || []
+    toast.promise(
+      (async () => {
+        let response;
+        if (editData) {
+          response = await airportApi.updateAirport(
+            editData.airportId,
+            formData
           );
+
+          console.log("[AirportPage] UPDATE AIRPORT response:", response);
+        } else {
+          response = await airportApi.createAirport(formData);
         }
-      } else {
-        alert("Lỗi: " + response.message);
+
+        if (response.success) {
+          setModalOpen(false);
+          // Refresh danh sách
+          const airportResponse = await airportApi.getAllAirports({
+            size: 1000,
+          });
+          if (airportResponse.success) {
+            setAirports(
+              airportResponse.data.content || airportResponse.data || []
+            );
+          }
+          return response;
+        } else {
+          throw new Error(response.message);
+        }
+      })(),
+      {
+        loading: isUpdate ? "Đang cập nhật sân bay..." : "Đang thêm sân bay...",
+        success: (response) => {
+          return isUpdate
+            ? `Đã cập nhật sân bay ${airportName} thành công!`
+            : `Đã thêm sân bay ${airportName} thành công!`;
+        },
+        error: (error) => {
+          console.error("Lỗi submit:", error);
+          return "Lỗi khi lưu sân bay. Vui lòng thử lại!";
+        },
       }
-    } catch (error) {
-      console.error("Lỗi submit:", error);
-      alert("Lỗi khi lưu sân bay");
-    }
+    );
   };
 
   return (
@@ -289,7 +377,18 @@ const AirportPage = () => {
             Tổng cộng: {totalItems} sân bay
           </p>
         </div>
-        <Button onClick={handleAdd}>Thêm sân bay</Button>
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            onClick={handleRefresh}
+            disabled={loading}
+            className="flex items-center gap-2"
+          >
+            <RotateCcw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
+            Làm mới
+          </Button>
+          <Button onClick={handleAdd}>Thêm sân bay</Button>
+        </div>
       </div>
 
       {/* Search and Filters */}
@@ -415,7 +514,7 @@ const AirportPage = () => {
                   </div>
                 </TableHead>
                 <TableHead>Quốc gia</TableHead>
-                <TableHead>Ảnh</TableHead>
+
                 <TableHead>Trạng thái</TableHead>
                 <TableHead>Thao tác</TableHead>
               </TableRow>
@@ -427,27 +526,12 @@ const AirportPage = () => {
                   <TableCell>{a.airportName}</TableCell>
                   <TableCell>
                     {(() => {
-                      console.log("Rendering airport:", a);
-                      console.log(
-                        "cityNames:",
-                        a.cityNames,
-                        "cityName:",
-                        a.cityName,
-                        "city:",
-                        a.city
-                      );
                       const cityData = a.cityNames || a.cityName || a.city;
-                      console.log(
-                        "Final cityData:",
-                        cityData,
-                        "Type:",
-                        typeof cityData
-                      );
 
                       // Xử lý trường hợp cityData là string
                       if (cityData && typeof cityData === "string") {
                         const cities = cityData.split(",");
-                        console.log("Split cities:", cities);
+
                         return (
                           <div className="flex flex-wrap gap-1">
                             {cities.map((city, index) => (
@@ -465,7 +549,6 @@ const AirportPage = () => {
 
                       // Xử lý trường hợp cityData là array
                       if (Array.isArray(cityData) && cityData.length > 0) {
-                        console.log("City data is array:", cityData);
                         return (
                           <div className="flex flex-wrap gap-1">
                             {cityData.map((city, index) => (
@@ -485,9 +568,7 @@ const AirportPage = () => {
                     })()}
                   </TableCell>
                   <TableCell>{a.country}</TableCell>
-                  <TableCell>
-                    <img src={a.thumbnail} alt={a.airportName} className="w-12 h-12 object-cover rounded-sm" />
-                  </TableCell>
+
                   <TableCell>
                     <span
                       className={a.active ? "text-green-600" : "text-gray-400"}
@@ -536,7 +617,11 @@ const AirportPage = () => {
 
       <AirportModal
         open={modalOpen}
-        onClose={() => setModalOpen(false)}
+        onClose={() => {
+          setModalOpen(false);
+          setEditData(null);
+          toast.info("Đã đóng form sân bay");
+        }}
         onSubmit={handleSubmit}
         initialData={editData}
         countries={countries}

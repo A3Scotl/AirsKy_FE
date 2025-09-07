@@ -107,10 +107,10 @@ const ImageUpload = ({
         </Label>
       )}
 
-      <div className="space-y-4">
+      <div className="space-y-4 max-w-2xl">
         {/* URL Input */}
         <div className="space-y-2">
-          <Label className="text-sm">Hoặc nhập URL ảnh:</Label>
+          <Label className="text-sm">Nhập url ảnh hoặc chọn file:</Label>
           <Input
             type="url"
             placeholder="https://example.com/image.jpg"
@@ -175,7 +175,7 @@ const ImageUpload = ({
         {/* Preview */}
         {preview && (
           <div className="relative">
-            <div className="relative w-full h-48 border rounded-lg overflow-hidden bg-muted">
+            <div className="relative h-48 border rounded-lg overflow-hidden bg-muted">
               <img
                 src={preview}
                 alt="Preview"
