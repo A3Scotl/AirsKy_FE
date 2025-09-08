@@ -17,18 +17,32 @@ const BlogCard = ({ blog, showLikeButton = true }) => {
   const [isLiked, setIsLiked] = useState(blog.isLiked || false);
   const [isLiking, setIsLiking] = useState(false);
 
-  // Format date
   const formatDate = (dateString) => {
-    if (!dateString) return "N/A";
-    try {
-      return new Date(dateString).toLocaleDateString("vi-VN", {
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-      });
-    } catch {
-      return "N/A";
-    }
+    const options = { year: "numeric", month: "long", day: "numeric" };
+    const date = new Date(dateString);
+    return date.toLocaleDateString("vi-VN", options);
+  };
+
+  // Function to extract and truncate text from HTML content (~10 words)
+  const getTruncatedExcerpt = (htmlContent, wordLimit = 10) => {
+    if (!htmlContent) return "";
+
+    // Create a temporary DOM element to parse HTML safely
+    const tempDiv = document.createElement("div");
+    tempDiv.innerHTML = htmlContent;
+
+    // Get text content (this automatically handles HTML entities)
+    const textContent = tempDiv.textContent || tempDiv.innerText || "";
+
+    // Split into words and truncate
+    const words = textContent.trim().split(/\s+/);
+    const truncatedWords = words.slice(0, wordLimit);
+
+    // Join words back and add ellipsis if truncated
+    const truncatedText = truncatedWords.join(" ");
+    const isTruncated = words.length > wordLimit;
+
+    return isTruncated ? truncatedText + "..." : truncatedText;
   };
 
   return (
@@ -76,8 +90,13 @@ const BlogCard = ({ blog, showLikeButton = true }) => {
         </h3>
 
         {/* Excerpt */}
-        {blog.excerpt && (
-          <p className="text-gray-600 mb-4 line-clamp-3">{blog.excerpt}</p>
+        {blog.content && (
+          <div
+            className="text-gray-600 mb-4 line-clamp-3"
+            dangerouslySetInnerHTML={{
+              __html: getTruncatedExcerpt(blog.content),
+            }}
+          />
         )}
 
         {/* Meta Info */}

@@ -310,9 +310,9 @@ const BlogPage = () => {
                         <h3 className="font-bold text-lg mb-2 line-clamp-2">
                           {blog.title}
                         </h3>
-                        <p className="text-gray-600 mb-4 line-clamp-2">
+                        {/* <p className="text-gray-600 mb-4 line-clamp-2">
                           {blog.excerpt}
-                        </p>
+                        </p> */}
                         <div className="flex items-center justify-between text-sm text-gray-500">
                           <div className="flex items-center gap-2">
                             <Calendar className="h-4 w-4" />

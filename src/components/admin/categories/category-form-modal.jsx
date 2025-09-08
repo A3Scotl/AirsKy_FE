@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/dialog";
 import { categoryApi } from "@/apis/category-api";
 import { X } from "lucide-react";
+import { toast } from "sonner";
 
 const CategoryFormModal = ({ isOpen, onClose, category, onSuccess }) => {
   const [formData, setFormData] = useState({
@@ -115,6 +116,11 @@ const CategoryFormModal = ({ isOpen, onClose, category, onSuccess }) => {
 
       if (result.success) {
         onSuccess();
+        toast.success(
+          category
+            ? "Cập nhật category thành công!"
+            : "Tạo category thành công!"
+        );
       } else {
         // Handle API errors
         if (result.message) {
@@ -124,13 +130,13 @@ const CategoryFormModal = ({ isOpen, onClose, category, onSuccess }) => {
               name: result.message,
             }));
           } else {
-            alert(result.message);
+            toast.error(result.message);
           }
         }
       }
     } catch (error) {
       console.error("Error submitting category:", error);
-      alert("Có lỗi xảy ra khi lưu category");
+      toast.error("Có lỗi xảy ra khi lưu category");
     } finally {
       setLoading(false);
     }

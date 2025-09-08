@@ -71,7 +71,7 @@ function DatePicker({ date, onSelect, placeholder, disabled = false }) {
           )}
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-auto p-0" align="start">
+      <PopoverContent className="w-auto p-0 z-999" align="start">
         <Calendar
           mode="single"
           selected={date}

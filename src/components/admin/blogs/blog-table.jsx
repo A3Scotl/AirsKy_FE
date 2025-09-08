@@ -14,6 +14,7 @@ import {
   Plus,
   MoreHorizontal,
 } from "lucide-react";
+import { toast } from "sonner";
 import BlogFormModal from "./blog-form-modal";
 import BlogDetailModal from "./blog-detail-modal";
 import { blogApi } from "@/apis/blog-api";
@@ -98,9 +99,10 @@ const BlogTable = ({
           console.log("Blog created successfully:", response.data);
           onAdd?.(response.data);
           setShowFormModal(false);
+          toast.success("Tạo bài viết thành công!");
         } else {
           console.error("Failed to create blog:", response.message);
-          alert("Lỗi tạo bài viết: " + response.message);
+          toast.error("Lỗi tạo bài viết: " + response.message);
         }
       } else {
         // Call API to update blog
@@ -112,15 +114,16 @@ const BlogTable = ({
           console.log("Blog updated successfully:", response.data);
           onEdit?.(selectedBlog.blogId, response.data);
           setShowFormModal(false);
+          toast.success("Cập nhật bài viết thành công!");
         } else {
           console.error("Failed to update blog:", response.message);
-          alert("Lỗi cập nhật bài viết: " + response.message);
+          toast.error("Lỗi cập nhật bài viết: " + response.message);
         }
       }
       // Don't close modal here, let success case handle it
     } catch (error) {
       console.error("Error saving blog:", error);
-      alert("Lỗi kết nối API: " + error.message);
+      toast.error("Lỗi kết nối API: " + error.message);
     }
   };
 
@@ -131,13 +134,14 @@ const BlogTable = ({
         if (response.success) {
           console.log("Blog deleted successfully");
           onDelete?.(blogId);
+          toast.success("Xóa bài viết thành công!");
         } else {
           console.error("Failed to delete blog:", response.message);
-          alert("Lỗi xóa bài viết: " + response.message);
+          toast.error("Lỗi xóa bài viết: " + response.message);
         }
       } catch (error) {
         console.error("Error deleting blog:", error);
-        alert("Lỗi kết nối API: " + error.message);
+        toast.error("Lỗi kết nối API: " + error.message);
       }
     }
   };
@@ -153,19 +157,22 @@ const BlogTable = ({
           `Blog ${isPublished ? "unpublished" : "published"} successfully`
         );
         onEdit?.(blogId, { isPublished: !isPublished });
+        toast.success(
+          `Bài viết đã ${isPublished ? "hủy đăng" : "đăng"} thành công!`
+        );
       } else {
         console.error(
           `Failed to ${isPublished ? "unpublish" : "publish"} blog:`,
           response.message
         );
-        alert(
+        toast.error(
           `Lỗi ${isPublished ? "hủy đăng" : "đăng"} bài viết: ` +
             response.message
         );
       }
     } catch (error) {
       console.error("Error toggling publish status:", error);
-      alert("Lỗi kết nối API: " + error.message);
+      toast.error("Lỗi kết nối API: " + error.message);
     }
   };
 

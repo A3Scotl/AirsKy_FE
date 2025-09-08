@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Edit, Trash2, Plus, Search, Eye } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { categoryApi } from "@/apis/category-api";
+import { toast } from "sonner";
 import CategoryFormModal from "./category-form-modal";
 import CategoryDetailModal from "./category-detail-modal";
 
@@ -130,12 +131,13 @@ const CategoryTable = () => {
       if (result.success) {
         // Refresh data
         fetchCategories(currentPage, itemsPerPage, searchTerm);
+        toast.success("Xóa category thành công!");
       } else {
-        alert(result.message || "Không thể xóa category");
+        toast.error(result.message || "Không thể xóa category");
       }
     } catch (error) {
       console.error("Error deleting category:", error);
-      alert("Có lỗi xảy ra khi xóa category");
+      toast.error("Có lỗi xảy ra khi xóa category");
     }
   };
 
@@ -145,8 +147,6 @@ const CategoryTable = () => {
     setEditingCategory(null);
     fetchCategories(currentPage, itemsPerPage, searchTerm);
   };
-
-  
 
   return (
     <div className="space-y-6">
@@ -394,4 +394,3 @@ const CategoryTable = () => {
 };
 
 export default CategoryTable;
-

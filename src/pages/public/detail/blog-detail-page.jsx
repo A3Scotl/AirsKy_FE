@@ -286,10 +286,6 @@ const BlogDetailPage = () => {
             </h1>
             <div className="flex items-center space-x-6 text-white/90">
               <div className="flex items-center">
-                <User className="w-5 h-5 mr-2" />
-                {post.authorName || "Ẩn danh"}
-              </div>
-              <div className="flex items-center">
                 <Calendar className="w-5 h-5 mr-2" />
                 {formatDate(post.createdAt || post.publishDate)}
               </div>
