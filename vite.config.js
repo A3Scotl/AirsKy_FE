@@ -1,29 +1,31 @@
-import { defineConfig } from "vite"
-import react from "@vitejs/plugin-react"
-import tailwindcss from "@tailwindcss/vite"
-import compression from "vite-plugin-compression"
-import { fileURLToPath } from "url"
-import path from "path"
+import { defineConfig } from "vite";
+import react from "@vitejs/plugin-react";
+import tailwindcss from "@tailwindcss/vite";
+import compression from "vite-plugin-compression";
+import { fileURLToPath } from "url";
+import path from "path";
 
-const __filename = fileURLToPath(import.meta.url)
-const __dirname = path.dirname(__filename)
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 export default defineConfig({
   plugins: [
-    react(),
+    react({
+      jsxRuntime: "automatic",
+    }),
     tailwindcss(),
     // nén gzip
     compression({
       algorithm: "gzip",
       ext: ".gz",
-      threshold: 10240
+      threshold: 10240,
     }),
     // nén brotli (mạnh hơn gzip)
     compression({
       algorithm: "brotliCompress",
       ext: ".br",
-      threshold: 10240
-    })
+      threshold: 10240,
+    }),
   ],
   resolve: {
     alias: {
@@ -50,21 +52,21 @@ export default defineConfig({
             "@radix-ui/react-slot",
             "@radix-ui/react-tooltip",
             "lucide-react",
-            "framer-motion"
+            "framer-motion",
           ],
           "utils-vendor": [
             "axios",
             "lodash",
             "clsx",
             "tailwind-merge",
-            "class-variance-authority"
+            "class-variance-authority",
           ],
           "editor-vendor": [
             "@ckeditor/ckeditor5-build-classic",
-            "@ckeditor/ckeditor5-react"
-          ]
-        }
-      }
+            "@ckeditor/ckeditor5-react",
+          ],
+        },
+      },
     },
     chunkSizeWarningLimit: 1000,
     target: "es2015",
@@ -72,11 +74,11 @@ export default defineConfig({
     terserOptions: {
       compress: {
         drop_console: true,
-        drop_debugger: true
-      }
-    }
+        drop_debugger: true,
+      },
+    },
   },
   optimizeDeps: {
-    include: ["react", "react-dom", "react-router-dom"]
-  }
-})
+    include: ["react", "react-dom", "react-router-dom"],
+  },
+});

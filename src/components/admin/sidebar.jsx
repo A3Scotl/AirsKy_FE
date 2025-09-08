@@ -31,8 +31,6 @@ const AdminSidebar = ({ sidebarOpen, setSidebarOpen }) => {
       location.pathname.startsWith("/admin/airports") ||
       location.pathname.startsWith("/admin/travel-classes") ||
       location.pathname.startsWith("/admin/airlines") ||
-      location.pathname.startsWith("/admin/gates") ||
-      location.pathname.startsWith("/admin/baggage") ||
       location.pathname.startsWith("/admin/countries")
   );
 
@@ -58,8 +56,6 @@ const AdminSidebar = ({ sidebarOpen, setSidebarOpen }) => {
         location.pathname.startsWith("/admin/airports") ||
         location.pathname.startsWith("/admin/travel-classes") ||
         location.pathname.startsWith("/admin/airlines") ||
-        location.pathname.startsWith("/admin/gates") ||
-        location.pathname.startsWith("/admin/baggage") ||
         location.pathname.startsWith("/admin/countries"),
 
       isExpandable: true,
@@ -89,23 +85,11 @@ const AdminSidebar = ({ sidebarOpen, setSidebarOpen }) => {
           current: location.pathname === "/admin/airlines",
         },
         {
-          name: "Sân đỗ",
-          href: "/admin/gates",
-          icon: FolderOpen,
-          current: location.pathname === "/admin/gates",
-        },
-        {
-          name: "Hành lý",
-          href: "/admin/baggage",
-          icon: Tag,
-          current: location.pathname === "/admin/baggage",
-        },
-        {
           name: "Quốc gia",
           href: "/admin/countries",
           icon: MapPin,
           current: location.pathname === "/admin/countries",
-        }
+        },
       ],
     },
     {

@@ -370,10 +370,10 @@ export function FlightCard({
             />
             <div className="flex items-center gap-2">
               <span className="text-sm font-medium">
-                {flightData.airline?.airlineName}
+                {flightData.airlineName}
               </span>
               <span className="text-xs text-gray-500">
-                ({flightData.airline?.airlineCode})
+                ({flightData.airlineCode})
               </span>
               {/* Hiển thị thông tin combination nếu có */}
               {flight.combination && (

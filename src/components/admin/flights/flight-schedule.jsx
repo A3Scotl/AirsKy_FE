@@ -49,11 +49,13 @@ const TEXT = {
   scheduleAFlight: "Lên Lịch Chuyến Bay",
   gate: "Cửa",
   status: {
-    "On Time": "Đúng Giờ",
-    Delayed: "Hoãn",
-    Boarding: "Đang Lên Máy Bay",
-    Departed: "Đã Khởi Hành",
-    Cancelled: "Đã Hủy",
+    SCHEDULED: "Đã Lên Lịch",
+    BOARDING: "Đang Lên Máy Bay",
+    DEPARTED: "Đã Khởi Hành",
+    DELAYED: "Hoãn",
+    CANCELLED: "Đã Hủy",
+    COMPLETED: "Hoàn Thành",
+    ON_TIME: "Đúng Giờ",
   },
 };
 
@@ -64,11 +66,13 @@ const FlightSchedule = ({ flights }) => {
 
   // Status color configuration
   const statusColors = {
-    "On Time": "bg-green-100 text-green-800 border-green-200",
-    Delayed: "bg-red-100 text-red-800 border-red-200",
-    Boarding: "bg-blue-100 text-blue-800 border-blue-200",
-    Departed: "bg-gray-100 text-gray-800 border-gray-200",
-    Cancelled: "bg-red-100 text-red-800 border-red-200",
+    SCHEDULED: "bg-green-100 text-green-800 border-green-200",
+    BOARDING: "bg-blue-100 text-blue-800 border-blue-200",
+    DEPARTED: "bg-gray-100 text-gray-800 border-gray-200",
+    DELAYED: "bg-red-100 text-red-800 border-red-200",
+    CANCELLED: "bg-red-100 text-red-800 border-red-200",
+    COMPLETED: "bg-green-100 text-green-800 border-green-200",
+    ON_TIME: "bg-green-100 text-green-800 border-green-200",
   };
 
   // Memoized calculations
@@ -81,9 +85,13 @@ const FlightSchedule = ({ flights }) => {
   }, []);
 
   const dailyFlights = useMemo(() => {
-    const dateStr = selectedDate.toISOString().split("T")[0];
+    const selectedDateObj = new Date(selectedDate);
+    if (isNaN(selectedDateObj.getTime())) return [];
+    const dateStr = selectedDateObj.toISOString().split("T")[0];
     return flights.filter((flight) => {
-      const flightDate = new Date(flight.departure).toISOString().split("T")[0];
+      const flightDateObj = new Date(flight.departureTime);
+      if (isNaN(flightDateObj.getTime())) return false;
+      const flightDate = flightDateObj.toISOString().split("T")[0];
       return flightDate === dateStr;
     });
   }, [flights, selectedDate]);
@@ -91,13 +99,21 @@ const FlightSchedule = ({ flights }) => {
   const filteredFlights = useMemo(() => {
     return filterAircraft === "all"
       ? dailyFlights
-      : dailyFlights.filter((f) => f.aircraft === filterAircraft);
+      : dailyFlights.filter((f) => {
+          const aircraftName =
+            typeof f.aircraft === "object"
+              ? f.aircraft?.aircraftName || f.aircraft?.aircraftCode || ""
+              : f.aircraft || "";
+          return aircraftName === filterAircraft;
+        });
   }, [dailyFlights, filterAircraft]);
 
   const flightsByHour = useMemo(() => {
     const grouped = {};
     dailyFlights.forEach((flight) => {
-      const hour = new Date(flight.departure).getHours();
+      const flightDateObj = new Date(flight.departureTime);
+      if (isNaN(flightDateObj.getTime())) return;
+      const hour = flightDateObj.getHours();
       const hourKey = `${hour.toString().padStart(2, "0")}:00`;
       if (!grouped[hourKey]) {
         grouped[hourKey] = [];
@@ -108,7 +124,17 @@ const FlightSchedule = ({ flights }) => {
   }, [dailyFlights]);
 
   const aircraftTypes = useMemo(() => {
-    return [...new Set(flights.map((f) => f.aircraft))];
+    const aircraftSet = new Set();
+    flights.forEach((f) => {
+      const aircraftName =
+        typeof f.aircraft === "object"
+          ? f.aircraft?.aircraftName || f.aircraft?.aircraftCode || ""
+          : f.aircraft || "";
+      if (aircraftName && typeof aircraftName === "string") {
+        aircraftSet.add(aircraftName);
+      }
+    });
+    return Array.from(aircraftSet);
   }, [flights]);
 
   // Navigate dates
@@ -132,7 +158,9 @@ const FlightSchedule = ({ flights }) => {
   };
 
   const formatTime = (dateTimeString) => {
-    return new Date(dateTimeString).toLocaleTimeString([], {
+    const dateObj = new Date(dateTimeString);
+    if (isNaN(dateObj.getTime())) return "Invalid Time";
+    return dateObj.toLocaleTimeString([], {
       hour: "2-digit",
       minute: "2-digit",
     });
@@ -140,6 +168,21 @@ const FlightSchedule = ({ flights }) => {
 
   const getStatusColor = (status) => {
     return statusColors[status] || "bg-gray-100 text-gray-800 border-gray-200";
+  };
+
+  const getAircraftDisplayName = (aircraft) => {
+    if (typeof aircraft === "object") {
+      return aircraft?.aircraftName || aircraft?.aircraftCode || "N/A";
+    }
+    return aircraft || "N/A";
+  };
+
+  const getBookedSeats = (flight) => {
+    return flight.totalSeats - (flight.availableSeats || 0);
+  };
+
+  const getTotalSeats = (flight) => {
+    return flight.totalSeats || 0;
   };
 
   return (
@@ -162,17 +205,17 @@ const FlightSchedule = ({ flights }) => {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">{TEXT.allAircraft}</SelectItem>
-                  {aircraftTypes.map((aircraft) => (
-                    <SelectItem key={aircraft} value={aircraft}>
+                  {aircraftTypes.map((aircraft, index) => (
+                    <SelectItem
+                      key={`aircraft-${index}-${aircraft}`}
+                      value={aircraft}
+                    >
                       {aircraft}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
-              <Button variant="outline" size="sm">
-                <Plus className="h-4 w-4 mr-2" />
-                {TEXT.addFlight}
-              </Button>
+              
             </div>
           </div>
         </CardHeader>
@@ -229,7 +272,10 @@ const FlightSchedule = ({ flights }) => {
               const filteredHourFlights =
                 filterAircraft === "all"
                   ? hourFlights
-                  : hourFlights.filter((f) => f.aircraft === filterAircraft);
+                  : hourFlights.filter((f) => {
+                      const aircraftName = getAircraftDisplayName(f.aircraft);
+                      return aircraftName === filterAircraft;
+                    });
 
               return (
                 <div
@@ -249,7 +295,7 @@ const FlightSchedule = ({ flights }) => {
                       <div className="space-y-2">
                         {filteredHourFlights.map((flight) => (
                           <div
-                            key={flight.id}
+                            key={flight.flightId || flight.id}
                             className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
                           >
                             <div className="flex items-center space-x-3">
@@ -262,22 +308,27 @@ const FlightSchedule = ({ flights }) => {
 
                               <div className="flex items-center space-x-1 text-sm text-gray-600">
                                 <MapPin className="h-3 w-3" />
-                                <span>{flight.route}</span>
+                                <span>
+                                  {flight.departureAirport?.airportCode ||
+                                    "N/A"}{" "}
+                                  →{" "}
+                                  {flight.arrivalAirport?.airportCode || "N/A"}
+                                </span>
                               </div>
 
                               <Badge variant="outline" className="text-xs">
-                                {flight.aircraft}
+                                {getAircraftDisplayName(flight.aircraft)}
                               </Badge>
                             </div>
 
                             <div className="flex items-center space-x-4">
                               <div className="text-right">
                                 <div className="text-sm font-medium">
-                                  {formatTime(flight.departure)} -{" "}
-                                  {formatTime(flight.arrival)}
+                                  {formatTime(flight.departureTime)} -{" "}
+                                  {formatTime(flight.arrivalTime)}
                                 </div>
                                 <div className="text-xs text-gray-500">
-                                  {TEXT.gate} {flight.gate} • {flight.duration}
+                                  {TEXT.gate} {flight.gate || "N/A"}
                                 </div>
                               </div>
 
@@ -289,7 +340,7 @@ const FlightSchedule = ({ flights }) => {
                               </Badge>
 
                               <div className="text-sm text-gray-600">
-                                {flight.booked}/{flight.capacity}
+                                {getBookedSeats(flight)}/{getTotalSeats(flight)}
                               </div>
                             </div>
                           </div>
@@ -334,13 +385,19 @@ const FlightSchedule = ({ flights }) => {
                   {TEXT.onTime}
                 </p>
                 <p className="text-2xl font-bold text-green-600">
-                  {filteredFlights.filter((f) => f.status === "On Time").length}
+                  {
+                    filteredFlights.filter(
+                      (f) => f.status === "SCHEDULED" || f.status === "ON_TIME"
+                    ).length
+                  }
                 </p>
                 <p className="text-xs text-gray-500">
                   {filteredFlights.length > 0
                     ? `${(
-                        (filteredFlights.filter((f) => f.status === "On Time")
-                          .length /
+                        (filteredFlights.filter(
+                          (f) =>
+                            f.status === "SCHEDULED" || f.status === "ON_TIME"
+                        ).length /
                           filteredFlights.length) *
                         100
                       ).toFixed(1)}%`
@@ -362,9 +419,12 @@ const FlightSchedule = ({ flights }) => {
                 <p className="text-2xl font-bold text-purple-600">
                   {filteredFlights.length > 0
                     ? `${(
-                        (filteredFlights.reduce((sum, f) => sum + f.booked, 0) /
+                        (filteredFlights.reduce(
+                          (sum, f) => sum + getBookedSeats(f),
+                          0
+                        ) /
                           filteredFlights.reduce(
-                            (sum, f) => sum + f.capacity,
+                            (sum, f) => sum + getTotalSeats(f),
                             0
                           )) *
                         100
@@ -372,7 +432,10 @@ const FlightSchedule = ({ flights }) => {
                     : "0%"}
                 </p>
                 <p className="text-xs text-gray-500">
-                  {filteredFlights.reduce((sum, f) => sum + f.booked, 0)}{" "}
+                  {filteredFlights.reduce(
+                    (sum, f) => sum + getBookedSeats(f),
+                    0
+                  )}{" "}
                   {TEXT.passengers}
                 </p>
               </div>
