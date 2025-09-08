@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Search,
   Filter,
@@ -32,78 +32,36 @@ import FlightTable from "@/components/admin/flights/flight-table";
 import FlightSchedule from "@/components/admin/flights/flight-schedule";
 import FlightFormModal from "@/components/admin/flights/flight-form-modal";
 import FlightDetailsModal from "@/components/admin/flights/flight-details-modal";
-
+import { flightApi } from "@/apis/flight-api";
+import { aircraftApi } from "@/apis/aircraft-api";
+import { handleFetch } from "@/utils/fetch-helper.js";
 const AdminFlights = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [aircraftFilter, setAircraftFilter] = useState("all");
   const [showFlightModal, setShowFlightModal] = useState(false);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [selectedFlight, setSelectedFlight] = useState(null);
   const [modalMode, setModalMode] = useState("add"); // "add" or "edit"
   const [activeTab, setActiveTab] = useState("overview");
-
-  // Mock flight data
-  const flights = [
-    {
-      id: "FL001",
-      flightNumber: "AS101",
-      aircraft: "Boeing 737-800",
-      route: "New York (JFK) → Los Angeles (LAX)",
-      departure: "2025-08-20 08:30",
-      arrival: "2025-08-20 11:45",
-      duration: "5h 15m",
-      status: "On Time",
-      capacity: 189,
-      booked: 156,
-      price: {
-        economy: 299,
-        business: 899,
-        first: 1599,
-      },
-      gate: "A12",
-      pilot: "Capt. Johnson",
-    },
-    {
-      id: "FL002",
-      flightNumber: "AS202",
-      aircraft: "Airbus A320",
-      route: "Chicago (ORD) → Miami (MIA)",
-      departure: "2025-08-20 15:20",
-      arrival: "2025-08-20 19:35",
-      duration: "3h 15m",
-      status: "Delayed",
-      capacity: 180,
-      booked: 165,
-      price: {
-        economy: 219,
-        business: 649,
-        first: 1199,
-      },
-      gate: "B8",
-      pilot: "Capt. Williams",
-    },
-    {
-      id: "FL003",
-      flightNumber: "AS303",
-      aircraft: "Boeing 777-300ER",
-      route: "Seattle (SEA) → Boston (BOS)",
-      departure: "2025-08-20 12:00",
-      arrival: "2025-08-20 20:15",
-      duration: "5h 15m",
-      status: "Boarding",
-      capacity: 396,
-      booked: 384,
-      price: {
-        economy: 349,
-        business: 1299,
-        first: 2499,
-      },
-      gate: "C15",
-      pilot: "Capt. Brown",
-    },
-  ];
-
+  const [flights, setFlights] = useState([]);
+  const [aircrafts,setAircrafts]= useState([]);
+  useEffect(() => {
+    handleFetch({
+      apiCall: flightApi.getAllFlights, 
+      setData: (data) => setFlights(data?.content),
+      setLoading: loading,
+      errorMessage: "Failed to fetch flights",
+    });
+    handleFetch({
+      apiCall: aircraftApi.getAllAircrafts, 
+      setData: (data) => setAircrafts(data),
+      setLoading: loading,
+      errorMessage: "Failed to fetch aircrafts",
+    });
+  }, []);
+  console.log(aircrafts);
   // Flight statistics
   const flightStats = [
     {
@@ -140,13 +98,7 @@ const AdminFlights = () => {
     },
   ];
 
-  const aircraftTypes = [
-    "Boeing 737-800",
-    "Boeing 777-300ER",
-    "Airbus A320",
-    "Airbus A350",
-    "Boeing 787-9",
-  ];
+  const aircraftTypes = aircrafts.map(a=>a.aircraftName)
 
   const handleViewFlight = (flight) => {
     setSelectedFlight(flight);
@@ -270,7 +222,8 @@ const AdminFlights = () => {
             <CardHeader>
               <CardTitle>Tổng quan</CardTitle>
               <CardDescription>
-                Quản lý tất cả các chuyến bay, xem trạng thái theo thời gian thực và thực hiện các cập nhật
+                Quản lý tất cả các chuyến bay, xem trạng thái theo thời gian
+                thực và thực hiện các cập nhật
               </CardDescription>
             </CardHeader>
             <CardContent>
