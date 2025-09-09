@@ -29,9 +29,10 @@ const AdminSidebar = ({ sidebarOpen, setSidebarOpen }) => {
     location.pathname.startsWith("/admin/flights") ||
       location.pathname.startsWith("/admin/seats") ||
       location.pathname.startsWith("/admin/airports") ||
+        location.pathname.startsWith("/admin/aircrafts") ||
       location.pathname.startsWith("/admin/travel-classes") ||
       location.pathname.startsWith("/admin/airlines") ||
-      location.pathname.startsWith("/admin/countries")
+      location.pathname.startsWith("/admin/countries") 
   );
 
   const navigation = [
@@ -54,6 +55,7 @@ const AdminSidebar = ({ sidebarOpen, setSidebarOpen }) => {
       current:
         location.pathname.startsWith("/admin/flights") ||
         location.pathname.startsWith("/admin/airports") ||
+        location.pathname.startsWith("/admin/aircrafts") ||
         location.pathname.startsWith("/admin/travel-classes") ||
         location.pathname.startsWith("/admin/airlines") ||
         location.pathname.startsWith("/admin/countries"),
@@ -71,6 +73,12 @@ const AdminSidebar = ({ sidebarOpen, setSidebarOpen }) => {
           href: "/admin/airports",
           icon: MapPin,
           current: location.pathname === "/admin/airports",
+        },
+        {
+          name: "Máy bay",
+          href: "/admin/aircrafts",
+          icon: Plane,
+          current: location.pathname === "/admin/aircrafts",
         },
         {
           name: "Hạng vé",

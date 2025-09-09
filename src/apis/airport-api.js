@@ -9,7 +9,8 @@ export const airportApi = {
    * @param {{
    *   airportCode: string,
    *   airportName: string,
-   *   countryId: string,
+   *   countryId?: string|number,
+   *   country?: string,
    *   cityNames?: string,
    *   thumbnail?: string,
    *   thumbnailFile?: File,
@@ -21,7 +22,11 @@ export const airportApi = {
     const formData = new FormData();
     formData.append("airportCode", airportData.airportCode);
     formData.append("airportName", airportData.airportName);
-    formData.append("countryId", airportData.countryId);
+    if (airportData.countryId) {
+      formData.append("countryId", airportData.countryId);
+    } else if (airportData.country) {
+      formData.append("country", airportData.country);
+    }
     if (airportData.cityNames)
       formData.append("cityNames", airportData.cityNames);
 
@@ -62,7 +67,8 @@ export const airportApi = {
    * @param {{
    *   airportCode: string,
    *   airportName: string,
-   *   countryId: string,
+   *   countryId?: string|number,
+   *   country?: string,
    *   cityNames?: string,
    *   thumbnail?: string,
    *   thumbnailFile?: File,
@@ -74,7 +80,11 @@ export const airportApi = {
     const formData = new FormData();
     formData.append("airportCode", airportData.airportCode);
     formData.append("airportName", airportData.airportName);
-    formData.append("countryId", airportData.countryId);
+    if (airportData.countryId) {
+      formData.append("countryId", airportData.countryId);
+    } else if (airportData.country) {
+      formData.append("country", airportData.country);
+    }
     if (airportData.cityNames)
       formData.append("cityNames", airportData.cityNames);
 

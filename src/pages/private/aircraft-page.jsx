@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useCallback } from "react";
-import CountryModal from "@/components/admin/countries/country-modal";
+import AircraftModal from "@/components/admin/aircrafts/aircraft-modal";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -35,9 +35,9 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import  Pagination  from "@/components/ui/pagination";
-import { countryApi } from "@/apis/country-api";
-import { useCountry } from "@/hooks/use-country";
+import Pagination from "@/components/ui/pagination";
+import { aircraftApi } from "@/apis/aircraft-api";
+import { useAircraft } from "@/hooks/use-aircraft";
 import { toast } from "sonner";
 
 // TanStack Table imports
@@ -51,88 +51,58 @@ import {
   createColumnHelper,
 } from "@tanstack/react-table";
 
-const CountryPage = () => {
+const AircraftPage = () => {
   const [modalOpen, setModalOpen] = useState(false);
   const [editData, setEditData] = useState(null);
 
   // TanStack Table states
   const [globalFilter, setGlobalFilter] = useState("");
   const [columnFilters, setColumnFilters] = useState([]);
-  const [sorting, setSorting] = useState([{ id: "countryName", desc: false }]);
+  const [sorting, setSorting] = useState([{ id: "aircraftName", desc: false }]);
   const [rowSelection, setRowSelection] = useState({});
   const [pagination, setPagination] = useState({
     pageIndex: 0,
     pageSize: 10,
   });
 
-  const { countries, loading, refresh } = useCountry();
+  // Aircraft data from hook
+  const { aircrafts, loading, fetchAircrafts } = useAircraft();
 
   // Create column helper
   const columnHelper = createColumnHelper();
 
   // Memoized handlers
-  const handleEdit = useCallback((country) => {
-    setEditData(country);
+  const handleEdit = useCallback((aircraft) => {
+    setEditData(aircraft);
     setModalOpen(true);
-    toast.info(`Chỉnh sửa quốc gia: ${country.countryName}`);
+    toast.info(`Chỉnh sửa máy bay: ${aircraft.aircraftName}`);
   }, []);
 
-  const handleToggleActive = useCallback(
-    async (country) => {
-      const newActiveStatus = !country.active;
-      const actionText = newActiveStatus ? "hiện" : "ẩn";
-
-      toast.promise(
-        (async () => {
-          const response = await countryApi.updateCountryWithImage(country.id, {
-            countryCode: country.countryCode,
-            countryName: country.countryName,
-            active: newActiveStatus,
-            existingThumbnail: country.thumbnail,
-          });
-
-          if (response.success) {
-            refresh();
-            return response;
-          } else {
-            throw new Error(response.message);
-          }
-        })(),
-        {
-          loading: `Đang ${actionText} quốc gia...`,
-          success: `Đã ${actionText} quốc gia ${country.countryName} thành công!`,
-          error: `Lỗi khi ${actionText} quốc gia`,
-        }
-      );
-    },
-    [refresh]
-  );
-
   const handleDelete = useCallback(
-    async (country) => {
+    async (aircraft) => {
       if (
         window.confirm(
-          `Bạn có chắc muốn xóa hẳn quốc gia ${country.countryName}?`
+          `Bạn có chắc muốn xóa hẳn máy bay ${aircraft.aircraftName}?`
         )
       ) {
-        toast.promise(countryApi.deleteCountry(country.id), {
-          loading: "Đang xóa quốc gia...",
+        toast.promise(aircraftApi.deleteAircraft(aircraft.aircraftId), {
+          loading: "Đang xóa máy bay...",
           success: (response) => {
             if (response.success) {
-              refresh();
-              return `Đã xóa hẳn quốc gia ${country.countryName} thành công!`;
+              fetchAircrafts();
+              return `Đã xóa hẳn máy bay ${aircraft.aircraftName} thành công!`;
             } else {
               throw new Error(response.message);
             }
           },
           error: (error) => {
-            console.error("Lỗi xóa country:", error);
-            return "Lỗi khi xóa quốc gia. Vui lòng thử lại!";
+            console.error("Lỗi xóa aircraft:", error);
+            return "Lỗi khi xóa máy bay. Vui lòng thử lại!";
           },
         });
       }
     },
-    [refresh]
+    [fetchAircrafts]
   );
 
   // Column definitions (memoized)
@@ -162,9 +132,9 @@ const CountryPage = () => {
         ),
       }),
 
-      // Country Code column
-      columnHelper.accessor("countryCode", {
-        header: "Mã quốc gia",
+      // Aircraft Code column
+      columnHelper.accessor("aircraftCode", {
+        header: "Mã máy bay",
         cell: (info) => (
           <div className="font-mono font-medium text-gray-900">
             {info.getValue()}
@@ -172,47 +142,29 @@ const CountryPage = () => {
         ),
       }),
 
-      // Country Name column
-      columnHelper.accessor("countryName", {
-        header: "Tên quốc gia",
+      // Aircraft Name column
+      columnHelper.accessor("aircraftName", {
+        header: "Tên máy bay",
         cell: (info) => (
           <div className="font-medium text-gray-900">{info.getValue()}</div>
         ),
       }),
 
-      // Thumbnail column
-      columnHelper.accessor("thumbnail", {
-        header: "Ảnh",
-        cell: (info) => {
-          const thumbnail = info.getValue();
-          const countryName = info.row.original.countryName;
-          return thumbnail ? (
-            <img
-              src={thumbnail}
-              alt={countryName}
-              className="w-12 h-12 object-cover rounded"
-            />
-          ) : (
-            <div className="w-12 h-12 bg-gray-200 rounded flex items-center justify-center text-xs text-gray-500">
-              No Image
-            </div>
-          );
-        },
+      // Total Seats column
+      columnHelper.accessor("totalSeats", {
+        header: "Tổng ghế",
+        cell: (info) => (
+          <div className="text-center font-medium">{info.getValue()}</div>
+        ),
       }),
 
-      // Status column
-      columnHelper.accessor("active", {
-        header: "Trạng thái",
+      // Seat Layout column
+      columnHelper.accessor("seatLayout", {
+        header: "Bố trí ghế",
         cell: (info) => (
-          <span
-            className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-              info.getValue()
-                ? "bg-green-100 text-green-800"
-                : "bg-red-100 text-red-800"
-            }`}
-          >
-            {info.getValue() ? "Hoạt động" : "Không hoạt động"}
-          </span>
+          <div className="font-mono text-sm text-gray-700">
+            {info.getValue() || "N/A"}
+          </div>
         ),
       }),
 
@@ -234,16 +186,6 @@ const CountryPage = () => {
                 Chỉnh sửa
               </DropdownMenuItem>
               <DropdownMenuItem
-                onClick={() => handleToggleActive(row.original)}
-              >
-                {row.original.active ? (
-                  <EyeOff className="mr-2 h-4 w-4" />
-                ) : (
-                  <Eye className="mr-2 h-4 w-4" />
-                )}
-                {row.original.active ? "Ẩn" : "Hiện"}
-              </DropdownMenuItem>
-              <DropdownMenuItem
                 onClick={() => handleDelete(row.original)}
                 className="text-red-600"
               >
@@ -255,12 +197,12 @@ const CountryPage = () => {
         ),
       }),
     ],
-    [handleEdit, handleToggleActive, handleDelete]
+    [handleEdit, handleDelete]
   );
 
   // Create table instance
   const table = useReactTable({
-    data: countries,
+    data: aircrafts,
     columns,
     getCoreRowModel: getCoreRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
@@ -283,77 +225,40 @@ const CountryPage = () => {
 
   // Bulk actions
   const selectedRows = table.getSelectedRowModel().rows;
-  const selectedCountries = useMemo(
+  const selectedAircrafts = useMemo(
     () => selectedRows.map((row) => row.original),
     [selectedRows]
   );
 
   const handleBulkDelete = useCallback(async () => {
-    if (selectedCountries.length === 0) return;
+    if (selectedAircrafts.length === 0) return;
 
     if (
       !window.confirm(
-        `Bạn có chắc chắn muốn xóa ${selectedCountries.length} quốc gia đã chọn?`
+        `Bạn có chắc chắn muốn xóa ${selectedAircrafts.length} máy bay đã chọn?`
       )
     )
       return;
 
     try {
-      const deletePromises = selectedCountries.map((country) =>
-        countryApi.deleteCountry(country.id)
+      const deletePromises = selectedAircrafts.map((aircraft) =>
+        aircraftApi.deleteAircraft(aircraft.aircraftId)
       );
-
       await Promise.all(deletePromises);
-      refresh();
+      toast.success(`Đã xóa ${selectedAircrafts.length} máy bay thành công!`);
+      fetchAircrafts();
       setRowSelection({});
-      toast.success(`Đã xóa ${selectedCountries.length} quốc gia thành công!`);
     } catch (error) {
-      console.error("Error bulk deleting countries:", error);
-      toast.error("Có lỗi xảy ra khi xóa quốc gia");
+      console.error("Error bulk deleting aircrafts:", error);
+      toast.error("Có lỗi xảy ra khi xóa máy bay");
     }
-  }, [selectedCountries, refresh]);
-
-  const handleBulkToggleActive = useCallback(
-    async (newActiveStatus) => {
-      if (selectedCountries.length === 0) return;
-
-      const actionText = newActiveStatus ? "hiện" : "ẩn";
-      if (
-        !window.confirm(
-          `Bạn có chắc chắn muốn ${actionText} ${selectedCountries.length} quốc gia đã chọn?`
-        )
-      )
-        return;
-
-      try {
-        const updatePromises = selectedCountries.map((country) =>
-          countryApi.updateCountryWithImage(country.id, {
-            countryCode: country.countryCode,
-            countryName: country.countryName,
-            active: newActiveStatus,
-            existingThumbnail: country.thumbnail,
-          })
-        );
-
-        await Promise.all(updatePromises);
-        refresh();
-        setRowSelection({});
-        toast.success(
-          `Đã ${actionText} ${selectedCountries.length} quốc gia thành công!`
-        );
-      } catch (error) {
-        console.error("Error bulk toggling countries:", error);
-        toast.error(`Có lỗi xảy ra khi ${actionText} quốc gia`);
-      }
-    },
-    [selectedCountries, refresh]
-  );
+  }, [selectedAircrafts, fetchAircrafts]);
 
   // Handle refresh
   const handleRefresh = () => {
-    toast.promise(refresh(), {
+    toast.promise(fetchAircrafts(), {
       loading: "Đang tải lại danh sách...",
-      success: "Đã cập nhật danh sách quốc gia!",
+      success: "Đã cập nhật danh sách máy bay!",
       error: "Lỗi khi tải lại danh sách",
     });
   };
@@ -361,35 +266,33 @@ const CountryPage = () => {
   const handleAdd = () => {
     setEditData(null);
     setModalOpen(true);
-    toast.info("Mở form thêm quốc gia mới");
+    toast.info("Mở form thêm máy bay mới");
   };
 
   const handleSubmit = async (formData) => {
     const isUpdate = !!editData;
-    const countryName = formData.countryName;
+    const aircraftName = formData.aircraftName;
 
     toast.promise(
       isUpdate
-        ? countryApi.updateCountryWithImage(editData.id, formData)
-        : countryApi.createCountryWithImage(formData),
+        ? aircraftApi.updateAircraft(editData.aircraftId, formData)
+        : aircraftApi.createAircraft(formData),
       {
-        loading: isUpdate
-          ? "Đang cập nhật quốc gia..."
-          : "Đang thêm quốc gia...",
+        loading: isUpdate ? "Đang cập nhật máy bay..." : "Đang thêm máy bay...",
         success: (response) => {
           if (response.success) {
             setModalOpen(false);
-            refresh();
+            fetchAircrafts();
             return isUpdate
-              ? `Đã cập nhật quốc gia ${countryName} thành công!`
-              : `Đã thêm quốc gia ${countryName} thành công!`;
+              ? `Đã cập nhật máy bay ${aircraftName} thành công!`
+              : `Đã thêm máy bay ${aircraftName} thành công!`;
           } else {
             throw new Error(response.message);
           }
         },
         error: (error) => {
           console.error("Lỗi submit:", error);
-          return "Lỗi khi lưu quốc gia. Vui lòng thử lại!";
+          return "Lỗi khi lưu máy bay. Vui lòng thử lại!";
         },
       }
     );
@@ -402,12 +305,14 @@ const CountryPage = () => {
 
   return (
     <div className="space-y-6">
+     
+
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-2xl font-bold">Quản lý Quốc gia</h1>
+          <h1 className="text-2xl font-bold">Quản lý Máy bay</h1>
           <p className="text-sm text-gray-600 mt-1">
-            Tổng cộng: {countries.length} quốc gia
+            Tổng cộng: {aircrafts.length} máy bay
           </p>
         </div>
         <div className="flex gap-2">
@@ -420,7 +325,7 @@ const CountryPage = () => {
             <RotateCcw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
             Làm mới
           </Button>
-          <Button onClick={handleAdd}>Thêm quốc gia</Button>
+          <Button onClick={handleAdd}>Thêm máy bay</Button>
         </div>
       </div>
 
@@ -432,81 +337,33 @@ const CountryPage = () => {
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
               <Input
-                placeholder="Tìm kiếm theo tên hoặc mã quốc gia..."
+                placeholder="Tìm kiếm theo tên hoặc mã máy bay..."
                 value={globalFilter ?? ""}
                 onChange={(event) => setGlobalFilter(event.target.value)}
                 className="pl-10"
               />
             </div>
           </div>
-
-          {/* Status Filter */}
-          <div className="w-full lg:w-48">
-            <Select
-              value={
-                columnFilters.find((f) => f.id === "active")?.value || "all"
-              }
-              onValueChange={(value) => {
-                setColumnFilters((prev) => {
-                  const newFilters = prev.filter((f) => f.id !== "active");
-                  if (value !== "all") {
-                    newFilters.push({
-                      id: "active",
-                      value: value === "active",
-                    });
-                  }
-                  return newFilters;
-                });
-              }}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Lọc theo trạng thái" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Tất cả trạng thái</SelectItem>
-                <SelectItem value="active">Đang hoạt động</SelectItem>
-                <SelectItem value="inactive">Ẩn</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
         </div>
       </Card>
 
-      {/* Bulk Actions Bar */}
-      {selectedCountries.length > 0 && (
+       {/* Bulk Actions Bar */}
+      {selectedAircrafts.length > 0 && (
         <Card className="p-4 bg-blue-50 border-blue-200">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <span className="text-sm font-medium text-blue-900">
-                Đã chọn {selectedCountries.length} quốc gia
+                Đã chọn {selectedAircrafts.length} máy bay
               </span>
             </div>
             <div className="flex gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => handleBulkToggleActive(true)}
-                className="text-green-600 border-green-600 hover:bg-green-50"
-              >
-                <Eye className="w-4 h-4 mr-2" />
-                Hiện ({selectedCountries.length})
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => handleBulkToggleActive(false)}
-                className="text-orange-600 border-orange-600 hover:bg-orange-50"
-              >
-                <EyeOff className="w-4 h-4 mr-2" />
-                Ẩn ({selectedCountries.length})
-              </Button>
               <Button
                 variant="destructive"
                 size="sm"
                 onClick={handleBulkDelete}
               >
                 <Trash2 className="w-4 h-4 mr-2" />
-                Xóa ({selectedCountries.length})
+                Xóa ({selectedAircrafts.length})
               </Button>
             </div>
           </div>
@@ -574,7 +431,7 @@ const CountryPage = () => {
                     colSpan={columns.length}
                     className="h-24 text-center"
                   >
-                    Không có quốc gia nào.
+                    Không có máy bay nào.
                   </TableCell>
                 </TableRow>
               )}
@@ -583,30 +440,30 @@ const CountryPage = () => {
         )}
       </Card>
 
-      {/* Pagination */}
-            {table.getFilteredRowModel().rows.length > 0 && (
-              <Pagination
-                currentPage={pagination.pageIndex + 1}
-                totalPages={table.getPageCount()}
-                itemsPerPage={pagination.pageSize}
-                totalItems={table.getFilteredRowModel().rows.length}
-                onPageChange={(page) =>
-                  setPagination((prev) => ({ ...prev, pageIndex: page - 1 }))
-                }
-                onPageSizeChange={(size) =>
-                  setPagination((prev) => ({ ...prev, pageSize: size, pageIndex: 0 }))
-                }
-                showPageSizeSelector={true}
-                showInfo={true}
-              />
-            )}
+     {/* Pagination */}
+      {table.getFilteredRowModel().rows.length > 0 && (
+        <Pagination
+          currentPage={pagination.pageIndex + 1}
+          totalPages={table.getPageCount()}
+          itemsPerPage={pagination.pageSize}
+          totalItems={table.getFilteredRowModel().rows.length}
+          onPageChange={(page) =>
+            setPagination((prev) => ({ ...prev, pageIndex: page - 1 }))
+          }
+          onPageSizeChange={(size) =>
+            setPagination((prev) => ({ ...prev, pageSize: size, pageIndex: 0 }))
+          }
+          showPageSizeSelector={true}
+          showInfo={true}
+        />
+      )}
 
-      <CountryModal
+      <AircraftModal
         open={modalOpen}
         onClose={() => {
           setModalOpen(false);
           setEditData(null);
-          toast.info("Đã đóng form quốc gia");
+          toast.info("Đã đóng form máy bay");
         }}
         onSubmit={handleSubmit}
         initialData={editData}
@@ -615,4 +472,4 @@ const CountryPage = () => {
   );
 };
 
-export default CountryPage;
+export default AircraftPage;

@@ -58,6 +58,7 @@ const AdminBlog = lazy(() => import("@/pages/private/blog-page"));
 const AdminCategory = lazy(() => import("@/pages/private/category-page"));
 const AdminDeal = lazy(() => import("@/pages/private/deal-page"));
 const AdminAirport = lazy(() => import("@/pages/private/airport-page"));
+const AdminAircraft = lazy(() => import("@/pages/private/aircraft-page"));
 const AdminAirline = lazy(() => import("@/pages/private/airline-page"));
 const AdminCountry = lazy(() => import("@/pages/private/country-page"));
 const AdminClasses = lazy(() => import("@/pages/private/classes-page"));
@@ -185,6 +186,7 @@ function AppRoutes() {
               <Route path="bookings" element={<AdminBooking />} />
               <Route path="flights" element={<AdminFlights />} />
               <Route path="airports" element={<AdminAirport />} />
+              <Route path="aircrafts" element={<AdminAircraft />} />
               <Route path="airlines" element={<AdminAirline />} />
               <Route path="countries" element={<AdminCountry />} />
               <Route path="users" element={<AdminUsers />} />
