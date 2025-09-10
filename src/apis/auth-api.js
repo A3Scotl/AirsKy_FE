@@ -7,7 +7,7 @@ export const authApi = {
   /**
    * Gửi yêu cầu đăng nhập
    * @param {{ email: string, password: string }} credentials - Thông tin đăng nhập
-   * @returns {Promise<{ success: boolean, data?: any, message: string }>}
+   * @returns {Promise<{ success: boolean, data?: any, message: string, error?: string }>}
    */
   login: async (credentials) => {
     return apiHandler("post", "/auth/login", credentials);
@@ -40,7 +40,7 @@ export const authApi = {
   /**
    * Quên mật khẩu --> nhập email
    * @param {{ email: string}} credentials
-   * @returns {Promise<{ success: boolean, data?: any, message: string }>}
+   * @returns {Promise<{ success: boolean, data?: any, message: string, error?: string }>}
    */
   forgotPasswordRequest: async (credentials) => {
     return apiHandler("post", "/auth/forgot-password", credentials);
@@ -50,7 +50,7 @@ export const authApi = {
    * --> nhập OtpCode đã nhận từ forgotPasswordRequest
    * --> Nhập pass mới
    * @param {{ email: string, otpCode: String,newPassword: String }} credentials
-   * @returns {Promise<{ success: boolean, data?: any, message: string }>}
+   * @returns {Promise<{ success: boolean, data?: any, message: string, error?: string }>}
    */
   resetPassword: async (credentials) => {
     return apiHandler("post", "/auth/reset-password", credentials);
@@ -58,7 +58,7 @@ export const authApi = {
   /**
    * Gửi lại mã xác thực
    * @param {{ email: string}} credentials
-   * @returns {Promise<{ success: boolean, data?: any, message: string }>}
+   * @returns {Promise<{ success: boolean, data?: any, message: string, error?: string }>}
    */
   resendOtpCode: async (credentials) => {
     return apiHandler("post", "/auth/resend-verification", credentials);

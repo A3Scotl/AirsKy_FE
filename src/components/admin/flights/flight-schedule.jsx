@@ -8,6 +8,7 @@ import {
   ChevronRight,
   Filter,
   Plus,
+  ArrowRightLeft,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -36,7 +37,7 @@ const TEXT = {
   previousDay: "Ngày Trước",
   nextDay: "Ngày Tiếp",
   flightsScheduled: "chuyến bay đã lên lịch",
-  dailyTimeline: "Lịch Trình Hàng Ngày",
+  dailyTimeline: "Lịch Trình trong Ngày",
   flights: "chuyến bay",
   noFlightsScheduled: "Không có chuyến bay nào được lên lịch",
   totalFlights: "Tổng Chuyến Bay",
@@ -49,13 +50,10 @@ const TEXT = {
   scheduleAFlight: "Lên Lịch Chuyến Bay",
   gate: "Cửa",
   status: {
-    SCHEDULED: "Đã Lên Lịch",
-    BOARDING: "Đang Lên Máy Bay",
+    ON_TIME: "Đúng Giờ",
     DEPARTED: "Đã Khởi Hành",
     DELAYED: "Hoãn",
     CANCELLED: "Đã Hủy",
-    COMPLETED: "Hoàn Thành",
-    ON_TIME: "Đúng Giờ",
   },
 };
 
@@ -66,14 +64,37 @@ const FlightSchedule = ({ flights }) => {
 
   // Status color configuration
   const statusColors = {
-    SCHEDULED: "bg-green-100 text-green-800 border-green-200",
-    BOARDING: "bg-blue-100 text-blue-800 border-blue-200",
+    ON_TIME: "bg-green-100 text-green-800 border-green-200",
     DEPARTED: "bg-gray-100 text-gray-800 border-gray-200",
     DELAYED: "bg-red-100 text-red-800 border-red-200",
     CANCELLED: "bg-red-100 text-red-800 border-red-200",
-    COMPLETED: "bg-green-100 text-green-800 border-green-200",
-    ON_TIME: "bg-green-100 text-green-800 border-green-200",
   };
+
+  // Màu sắc cho các nhóm khứ hồi
+  const roundTripGroupColors = [
+    "bg-blue-50 border-blue-200",
+    "bg-green-50 border-green-200",
+    "bg-purple-50 border-purple-200",
+    "bg-orange-50 border-orange-200",
+    "bg-pink-50 border-pink-200",
+    "bg-indigo-50 border-indigo-200",
+    "bg-teal-50 border-teal-200",
+    "bg-yellow-50 border-yellow-200",
+  ];
+
+  // Map để lưu màu cho từng nhóm
+  const groupColorMap = useMemo(() => {
+    const map = {};
+    let colorIndex = 0;
+    flights.forEach((flight) => {
+      if (flight.roundTripGroupId && !map[flight.roundTripGroupId]) {
+        map[flight.roundTripGroupId] =
+          roundTripGroupColors[colorIndex % roundTripGroupColors.length];
+        colorIndex++;
+      }
+    });
+    return map;
+  }, [flights]);
 
   // Memoized calculations
   const timeSlots = useMemo(() => {
@@ -170,6 +191,19 @@ const FlightSchedule = ({ flights }) => {
     return statusColors[status] || "bg-gray-100 text-gray-800 border-gray-200";
   };
 
+  // Get round trip color
+  const getRoundTripColor = (flight) => {
+    if (flight.roundTripGroupId) {
+      return (
+        groupColorMap[flight.roundTripGroupId]
+          ?.replace("bg-", "bg-")
+          .replace("border-", "border-") ||
+        "bg-blue-100 text-blue-800 border-blue-200"
+      );
+    }
+    return getStatusColor(flight.status);
+  };
+
   const getAircraftDisplayName = (aircraft) => {
     if (typeof aircraft === "object") {
       return aircraft?.aircraftName || aircraft?.aircraftCode || "N/A";
@@ -215,7 +249,6 @@ const FlightSchedule = ({ flights }) => {
                   ))}
                 </SelectContent>
               </Select>
-              
             </div>
           </div>
         </CardHeader>
@@ -238,9 +271,21 @@ const FlightSchedule = ({ flights }) => {
               <h2 className="text-xl font-bold text-gray-900">
                 {formatDate(selectedDate)}
               </h2>
-              <p className="text-sm text-gray-600">
-                {filteredFlights.length} {TEXT.flightsScheduled}
-              </p>
+              <div className="flex items-center justify-center space-x-4 text-sm text-gray-600">
+                <span>
+                  {filteredFlights.length} {TEXT.flightsScheduled}
+                </span>
+                {filteredFlights.filter((f) => f.roundTripGroupId).length >
+                  0 && (
+                  <span className="flex items-center space-x-1">
+                    <ArrowRightLeft className="h-3 w-3" />
+                    <span>
+                      {filteredFlights.filter((f) => f.roundTripGroupId).length}{" "}
+                      khứ hồi
+                    </span>
+                  </span>
+                )}
+              </div>
             </div>
 
             <Button
@@ -260,9 +305,21 @@ const FlightSchedule = ({ flights }) => {
         <CardHeader>
           <CardTitle className="flex items-center justify-between">
             <span>{TEXT.dailyTimeline}</span>
-            <Badge variant="outline" className="text-sm">
-              {filteredFlights.length} {TEXT.flights}
-            </Badge>
+            <div className="flex items-center space-x-2">
+              <Badge variant="outline" className="text-sm">
+                {filteredFlights.length} {TEXT.flights}
+              </Badge>
+              {filteredFlights.filter((f) => f.roundTripGroupId).length > 0 && (
+                <Badge
+                  variant="outline"
+                  className="text-sm bg-blue-50 text-blue-700 border-blue-200"
+                >
+                  <ArrowRightLeft className="h-3 w-3 mr-1" />
+                  {filteredFlights.filter((f) => f.roundTripGroupId).length} khứ
+                  hồi
+                </Badge>
+              )}
+            </div>
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -293,58 +350,93 @@ const FlightSchedule = ({ flights }) => {
                   <div className="flex-1 py-2">
                     {filteredHourFlights.length > 0 ? (
                       <div className="space-y-2">
-                        {filteredHourFlights.map((flight) => (
-                          <div
-                            key={flight.flightId || flight.id}
-                            className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
-                          >
-                            <div className="flex items-center space-x-3">
-                              <div className="flex items-center space-x-2">
-                                <Plane className="h-4 w-4 text-blue-600" />
-                                <span className="font-semibold text-blue-600">
-                                  {flight.flightNumber}
-                                </span>
-                              </div>
+                        {filteredHourFlights.map((flight) => {
+                          // Xác định màu nền cho nhóm khứ hồi
+                          const isRoundTrip = !!flight.roundTripGroupId;
+                          const groupColor = isRoundTrip
+                            ? groupColorMap[flight.roundTripGroupId]
+                            : "";
 
-                              <div className="flex items-center space-x-1 text-sm text-gray-600">
-                                <MapPin className="h-3 w-3" />
-                                <span>
-                                  {flight.departureAirport?.airportCode ||
-                                    "N/A"}{" "}
-                                  →{" "}
-                                  {flight.arrivalAirport?.airportCode || "N/A"}
-                                </span>
-                              </div>
-
-                              <Badge variant="outline" className="text-xs">
-                                {getAircraftDisplayName(flight.aircraft)}
-                              </Badge>
-                            </div>
-
-                            <div className="flex items-center space-x-4">
-                              <div className="text-right">
-                                <div className="text-sm font-medium">
-                                  {formatTime(flight.departureTime)} -{" "}
-                                  {formatTime(flight.arrivalTime)}
+                          return (
+                            <div
+                              key={flight.flightId || flight.id}
+                              className={`flex items-center justify-between p-3 rounded-lg transition-colors ${
+                                groupColor
+                                  ? `${groupColor} border-l-4 hover:bg-opacity-80`
+                                  : "bg-gray-50 hover:bg-gray-100"
+                              }`}
+                              style={
+                                groupColor
+                                  ? {
+                                      borderLeftColor: groupColor
+                                        .split(" ")[1]
+                                        .replace("border-", "")
+                                        .replace("-200", ""),
+                                    }
+                                  : {}
+                              }
+                            >
+                              <div className="flex items-center space-x-3">
+                                <div className="flex items-center space-x-2">
+                                  {isRoundTrip && (
+                                    <ArrowRightLeft className="h-4 w-4 text-blue-600" />
+                                  )}
+                                  <Plane className="h-4 w-4 text-blue-600" />
+                                  <span className="font-semibold text-blue-600">
+                                    {flight.flightNumber}
+                                  </span>
+                                  {isRoundTrip && (
+                                    <Badge
+                                      variant="outline"
+                                      className="text-xs"
+                                    >
+                                      {flight.roundTripGroupId}
+                                    </Badge>
+                                  )}
                                 </div>
-                                <div className="text-xs text-gray-500">
-                                  {TEXT.gate} {flight.gate || "N/A"}
+
+                                <div className="flex items-center space-x-1 text-sm text-gray-600">
+                                  <MapPin className="h-3 w-3" />
+                                  <span>
+                                    {flight.departureAirport?.airportCode ||
+                                      "N/A"}{" "}
+                                    →{" "}
+                                    {flight.arrivalAirport?.airportCode ||
+                                      "N/A"}
+                                  </span>
+                                </div>
+
+                                <Badge variant="outline" className="text-xs">
+                                  {getAircraftDisplayName(flight.aircraft)}
+                                </Badge>
+                              </div>
+
+                              <div className="flex items-center space-x-4">
+                                <div className="text-right">
+                                  <div className="text-sm font-medium">
+                                    {formatTime(flight.departureTime)} -{" "}
+                                    {formatTime(flight.arrivalTime)}
+                                  </div>
+                                  <div className="text-xs text-gray-500">
+                                    {TEXT.gate} {flight.gate || "N/A"}
+                                  </div>
+                                </div>
+
+                                <Badge
+                                  variant="outline"
+                                  className={getRoundTripColor(flight)}
+                                >
+                                  {TEXT.status[flight.status] || flight.status}
+                                </Badge>
+
+                                <div className="text-sm text-gray-600">
+                                  {getBookedSeats(flight)}/
+                                  {getTotalSeats(flight)}
                                 </div>
                               </div>
-
-                              <Badge
-                                variant="outline"
-                                className={getStatusColor(flight.status)}
-                              >
-                                {TEXT.status[flight.status] || flight.status}
-                              </Badge>
-
-                              <div className="text-sm text-gray-600">
-                                {getBookedSeats(flight)}/{getTotalSeats(flight)}
-                              </div>
                             </div>
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     ) : (
                       <div className="text-sm text-gray-400 italic">
@@ -385,19 +477,13 @@ const FlightSchedule = ({ flights }) => {
                   {TEXT.onTime}
                 </p>
                 <p className="text-2xl font-bold text-green-600">
-                  {
-                    filteredFlights.filter(
-                      (f) => f.status === "SCHEDULED" || f.status === "ON_TIME"
-                    ).length
-                  }
+                  {filteredFlights.filter((f) => f.status === "ON_TIME").length}
                 </p>
                 <p className="text-xs text-gray-500">
                   {filteredFlights.length > 0
                     ? `${(
-                        (filteredFlights.filter(
-                          (f) =>
-                            f.status === "SCHEDULED" || f.status === "ON_TIME"
-                        ).length /
+                        (filteredFlights.filter((f) => f.status === "ON_TIME")
+                          .length /
                           filteredFlights.length) *
                         100
                       ).toFixed(1)}%`

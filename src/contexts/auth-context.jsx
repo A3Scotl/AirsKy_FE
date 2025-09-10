@@ -18,6 +18,20 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     const initializeAuth = () => {
       const token = localStorage.getItem("token");
+      const savedUser = localStorage.getItem("user");
+
+      // Try to load from localStorage first
+      if (savedUser) {
+        try {
+          const userData = JSON.parse(savedUser);
+          setUser(userData);
+          setLoading(false);
+          return;
+        } catch (error) {
+          console.error("Error parsing saved user:", error);
+          localStorage.removeItem("user");
+        }
+      }
 
       if (!token) {
         setLoading(false);
@@ -38,6 +52,7 @@ export function AuthProvider({ children }) {
         }
 
         const userData = {
+          id: decoded.id || decoded.sub, // Add id field
           email: decoded.sub,
           role: decoded.role,
           exp: decoded.exp,

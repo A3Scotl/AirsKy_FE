@@ -21,12 +21,25 @@ export const apiHandler = async (method, url, data = null, config = {}) => {
       message: response.message || "Thành công",
     };
   } catch (error) {
-    const message = error?.message || "Lỗi không xác định";
-    toast.error(message);
+    const errorData = error?.response?.data;
+    const message =
+      errorData?.message || error?.message || "Lỗi không xác định";
+    const errorDetail = errorData?.error;
+
+    // Xử lý thông báo riêng cho tài khoản bị khóa
+    if (errorDetail === "Account is deactivated") {
+      toast.error(
+        "Tài khoản của bạn đã bị khóa. Vui lòng liên hệ admin để mở khóa."
+      );
+    } else {
+      toast.error(message);
+    }
+
     return {
       success: false,
       data: null,
       message,
+      error: errorDetail,
     };
   }
 };

@@ -16,12 +16,39 @@ import {
   Clock,
   MapPin,
   Plane,
+  ArrowRightLeft,
 } from "lucide-react";
 
 const FlightCalendar = ({ flights }) => {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState(null);
   const [selectedFlight, setSelectedFlight] = useState(null);
+
+  // Màu sắc cho các nhóm khứ hồi
+  const roundTripGroupColors = [
+    "bg-blue-100 text-blue-800 border-blue-300",
+    "bg-green-100 text-green-800 border-green-300",
+    "bg-purple-100 text-purple-800 border-purple-300",
+    "bg-orange-100 text-orange-800 border-orange-300",
+    "bg-pink-100 text-pink-800 border-pink-300",
+    "bg-indigo-100 text-indigo-800 border-indigo-300",
+    "bg-teal-100 text-teal-800 border-teal-300",
+    "bg-yellow-100 text-yellow-800 border-yellow-300",
+  ];
+
+  // Map để lưu màu cho từng nhóm
+  const groupColorMap = useMemo(() => {
+    const map = {};
+    let colorIndex = 0;
+    flights.forEach((flight) => {
+      if (flight.roundTripGroupId && !map[flight.roundTripGroupId]) {
+        map[flight.roundTripGroupId] =
+          roundTripGroupColors[colorIndex % roundTripGroupColors.length];
+        colorIndex++;
+      }
+    });
+    return map;
+  }, [flights]);
 
   // Get days in month
   const getDaysInMonth = (date) => {
@@ -97,15 +124,22 @@ const FlightCalendar = ({ flights }) => {
   // Get status color
   const getStatusColor = (status) => {
     const colors = {
-      SCHEDULED: "bg-green-100 text-green-800",
-      BOARDING: "bg-blue-100 text-blue-800",
+      ON_TIME: "bg-green-100 text-green-800",
       DEPARTED: "bg-gray-100 text-gray-800",
       DELAYED: "bg-red-100 text-red-800",
       CANCELLED: "bg-red-100 text-red-800",
-      COMPLETED: "bg-green-100 text-green-800",
-      ON_TIME: "bg-green-100 text-green-800",
     };
     return colors[status] || "bg-gray-100 text-gray-800";
+  };
+
+  // Get round trip color
+  const getRoundTripColor = (flight) => {
+    if (flight.roundTripGroupId) {
+      return (
+        groupColorMap[flight.roundTripGroupId] || "bg-blue-100 text-blue-800"
+      );
+    }
+    return getStatusColor(flight.status);
   };
 
   const getAircraftDisplayName = (aircraft) => {
@@ -204,13 +238,25 @@ const FlightCalendar = ({ flights }) => {
                       {dayFlights.slice(0, 3).map((flight, idx) => (
                         <div
                           key={flight.flightId || idx}
-                          className="text-xs bg-blue-100 text-blue-800 px-1 py-0.5 rounded truncate"
+                          className={`text-xs px-1 py-0.5 rounded truncate flex items-center space-x-1 ${
+                            flight.roundTripGroupId
+                              ? `${
+                                  groupColorMap[flight.roundTripGroupId] ||
+                                  "bg-blue-100 text-blue-800"
+                                } border`
+                              : "bg-blue-100 text-blue-800"
+                          }`}
                           onClick={(e) => {
                             e.stopPropagation();
                             setSelectedFlight(flight);
                           }}
                         >
-                          {flight.flightNumber}
+                          {flight.roundTripGroupId && (
+                            <ArrowRightLeft className="h-2 w-2 flex-shrink-0" />
+                          )}
+                          <span className="truncate">
+                            {flight.flightNumber}
+                          </span>
                         </div>
                       ))}
                       {dayFlights.length > 3 && (
@@ -246,15 +292,36 @@ const FlightCalendar = ({ flights }) => {
                   .map((flight) => (
                     <div
                       key={flight.flightId || flight.id}
-                      className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 cursor-pointer"
+                      className={`flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 cursor-pointer ${
+                        flight.roundTripGroupId ? "border-l-4" : ""
+                      }`}
+                      style={
+                        flight.roundTripGroupId
+                          ? {
+                              borderLeftColor:
+                                groupColorMap[flight.roundTripGroupId]
+                                  ?.split(" ")[1]
+                                  ?.replace("text-", "")
+                                  .replace("-800", "") || "#3b82f6",
+                            }
+                          : {}
+                      }
                       onClick={() => setSelectedFlight(flight)}
                     >
                       <div className="flex items-center space-x-4">
                         <div className="flex items-center space-x-2">
+                          {flight.roundTripGroupId && (
+                            <ArrowRightLeft className="h-5 w-5 text-blue-600" />
+                          )}
                           <Plane className="h-5 w-5 text-blue-600" />
                           <span className="font-semibold text-blue-600">
                             {flight.flightNumber}
                           </span>
+                          {flight.roundTripGroupId && (
+                            <Badge variant="outline" className="text-xs">
+                              {flight.roundTripGroupId}
+                            </Badge>
+                          )}
                         </div>
 
                         <div className="flex items-center space-x-2 text-sm">
@@ -292,7 +359,7 @@ const FlightCalendar = ({ flights }) => {
                       </div>
 
                       <div className="flex items-center space-x-2">
-                        <Badge className={getStatusColor(flight.status)}>
+                        <Badge className={getRoundTripColor(flight)}>
                           {flight.status}
                         </Badge>
                         <span className="text-sm text-gray-600">
@@ -334,8 +401,14 @@ const FlightCalendar = ({ flights }) => {
                   <label className="text-sm font-medium text-gray-600">
                     Số hiệu chuyến bay
                   </label>
-                  <p className="text-lg font-semibold">
+                  <p className="text-lg font-semibold flex items-center space-x-2">
                     {selectedFlight.flightNumber}
+                    {selectedFlight.roundTripGroupId && (
+                      <Badge variant="outline" className="text-xs">
+                        <ArrowRightLeft className="h-3 w-3 mr-1" />
+                        {selectedFlight.roundTripGroupId}
+                      </Badge>
+                    )}
                   </p>
                 </div>
                 <div>
@@ -395,7 +468,7 @@ const FlightCalendar = ({ flights }) => {
                   <label className="text-sm font-medium text-gray-600">
                     Trạng thái
                   </label>
-                  <Badge className={getStatusColor(selectedFlight.status)}>
+                  <Badge className={getRoundTripColor(selectedFlight)}>
                     {selectedFlight.status}
                   </Badge>
                 </div>
@@ -415,6 +488,27 @@ const FlightCalendar = ({ flights }) => {
                   </p>
                 </div>
               </div>
+
+              {selectedFlight.roundTripGroupId && (
+                <div className="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                  <div className="flex items-center space-x-2 mb-2">
+                    <ArrowRightLeft className="h-4 w-4 text-blue-600" />
+                    <span className="font-medium text-blue-800">
+                      Chuyến bay khứ hồi
+                    </span>
+                  </div>
+                  <p className="text-sm text-blue-700">
+                    Mã nhóm:{" "}
+                    <span className="font-mono font-medium">
+                      {selectedFlight.roundTripGroupId}
+                    </span>
+                  </p>
+                  <p className="text-xs text-blue-600 mt-1">
+                    Các chuyến bay trong cùng nhóm sẽ có màu nền tương tự để dễ
+                    nhận biết
+                  </p>
+                </div>
+              )}
             </div>
           )}
         </DialogContent>

@@ -48,6 +48,7 @@ import {
 import { toast } from "sonner";
 import { authApi } from "@/apis/auth-api";
 import { useAuth } from "@/contexts/auth-context";
+import SessionInfo from "@/components/auth/session-info";
 
 const AdminProfilePage = () => {
   const { user } = useAuth();
@@ -329,7 +330,7 @@ const AdminProfilePage = () => {
 
         {/* Main Content Tabs */}
         <Tabs defaultValue="profile" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="profile" className="flex items-center gap-2">
               <User className="h-4 w-4" />
               Thông tin cá nhân
@@ -344,6 +345,10 @@ const AdminProfilePage = () => {
             >
               <Bell className="h-4 w-4" />
               Thông báo
+            </TabsTrigger>
+            <TabsTrigger value="session" className="flex items-center gap-2">
+              <Database className="h-4 w-4" />
+              Session
             </TabsTrigger>
             <TabsTrigger value="settings" className="flex items-center gap-2">
               <Settings className="h-4 w-4" />
@@ -424,28 +429,13 @@ const AdminProfilePage = () => {
                       />
                     </div>
 
-                    <div className="space-y-2">
-                      <Label htmlFor="address">Địa chỉ</Label>
-                      <Textarea
-                        id="address"
-                        value={profileData.address}
-                        onChange={(e) =>
-                          setProfileData({
-                            ...profileData,
-                            address: e.target.value,
-                          })
-                        }
-                        rows={3}
-                      />
-                    </div>
-
                     <Button
                       type="submit"
                       disabled={isLoading}
                       className="w-full"
                     >
                       <Save className="h-4 w-4 mr-2" />
-                      {isLoading ? "Updating..." : "Update Profile"}
+                      {isLoading ? "Đang cập nhật" : "Cập nhật thông tin"}
                     </Button>
                   </form>
                 </CardContent>
@@ -495,24 +485,6 @@ const AdminProfilePage = () => {
                   </div>
 
                   <Separator />
-
-                  <div>
-                    <Label className="text-sm font-medium text-gray-600 mb-2 block">
-                      Quyền hạn
-                    </Label>
-                    <div className="flex flex-wrap gap-2">
-                      {profileData.permissions.map((permission, index) => (
-                        <Badge
-                          key={index}
-                          variant="outline"
-                          className="text-xs"
-                        >
-                          <CheckCircle className="h-3 w-3 mr-1 text-green-500" />
-                          {permission}
-                        </Badge>
-                      ))}
-                    </div>
-                  </div>
                 </CardContent>
               </Card>
             </div>
@@ -737,6 +709,11 @@ const AdminProfilePage = () => {
                 </div>
               </CardContent>
             </Card>
+          </TabsContent>
+
+          {/* Session Tab */}
+          <TabsContent value="session">
+            <SessionInfo />
           </TabsContent>
 
           {/* Settings Tab */}

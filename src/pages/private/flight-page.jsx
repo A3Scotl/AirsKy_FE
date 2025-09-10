@@ -137,12 +137,7 @@ const AdminFlights = () => {
 
     // Tính hiệu suất đúng giờ (chuyến bay không bị delay hoặc cancel)
     const onTimeFlights = todayFlights.filter(
-      (flight) =>
-        flight.status === "ON_TIME" ||
-        flight.status === "SCHEDULED" ||
-        flight.status === "BOARDING" ||
-        flight.status === "DEPARTED" ||
-        flight.status === "COMPLETED"
+      (flight) => flight.status === "ON_TIME" || flight.status === "DEPARTED"
     ).length;
     const onTimeRate =
       totalFlightsToday > 0
@@ -154,11 +149,7 @@ const AdminFlights = () => {
       return (
         departureDate >= today &&
         departureDate < tomorrow &&
-        (flight.status === "ON_TIME" ||
-          flight.status === "SCHEDULED" ||
-          flight.status === "BOARDING" ||
-          flight.status === "DEPARTED" ||
-          flight.status === "COMPLETED")
+        (flight.status === "ON_TIME" || flight.status === "DEPARTED")
       );
     }).length;
     const prevOnTimeRate =
@@ -210,16 +201,16 @@ const AdminFlights = () => {
           ).toFixed(1)
         : "0";
 
-    // Tính số chuyến bay đã hoàn thành
+    // Tính số chuyến bay đã hoàn thành (sử dụng DEPARTED làm proxy)
     const completedFlights = todayFlights.filter(
-      (flight) => flight.status === "COMPLETED"
+      (flight) => flight.status === "DEPARTED"
     ).length;
     const prevCompletedFlights = prevFlights.filter((flight) => {
       const departureDate = new Date(flight.departureTime);
       return (
         departureDate >= today &&
         departureDate < tomorrow &&
-        flight.status === "COMPLETED"
+        flight.status === "DEPARTED"
       );
     }).length;
     const completedChange =
@@ -519,12 +510,9 @@ const AdminFlights = () => {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">Tất cả</SelectItem>
-                    <SelectItem value="scheduled">Đã lên lịch</SelectItem>
                     <SelectItem value="on-time">Đúng giờ</SelectItem>
-                    <SelectItem value="boarding">Đang lên máy bay</SelectItem>
                     <SelectItem value="departed">Đã khởi hành</SelectItem>
                     <SelectItem value="delayed">Trễ</SelectItem>
-                    <SelectItem value="completed">Hoàn thành</SelectItem>
                     <SelectItem value="cancelled">Đã hủy</SelectItem>
                   </SelectContent>
                 </Select>

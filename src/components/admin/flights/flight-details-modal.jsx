@@ -78,15 +78,10 @@ const FlightDetailsModal = ({ flight, open, onClose, onEdit, onDelete }) => {
   if (!open || !flight) return null;
 
   const statusConfig = {
-    SCHEDULED: {
+    ON_TIME: {
       style: "bg-green-100 text-green-800 border-green-200",
       icon: CheckCircle,
       label: TEXT.scheduled,
-    },
-    BOARDING: {
-      style: "bg-blue-100 text-blue-800 border-blue-200",
-      icon: Clock,
-      label: TEXT.boarding,
     },
     DEPARTED: {
       style: "bg-gray-100 text-gray-800 border-gray-200",
@@ -103,19 +98,9 @@ const FlightDetailsModal = ({ flight, open, onClose, onEdit, onDelete }) => {
       icon: AlertCircle,
       label: TEXT.cancelled,
     },
-    COMPLETED: {
-      style: "bg-green-100 text-green-800 border-green-200",
-      icon: CheckCircle,
-      label: TEXT.completed,
-    },
-    ON_TIME: {
-      style: "bg-green-100 text-green-800 border-green-200",
-      icon: CheckCircle,
-      label: TEXT.scheduled,
-    },
   };
 
-  const currentStatus = statusConfig[flight.status] || statusConfig.SCHEDULED;
+  const currentStatus = statusConfig[flight.status] || statusConfig.ON_TIME;
   const StatusIcon = currentStatus.icon;
 
   const formatDuration = (minutes) => {
@@ -341,14 +326,14 @@ const FlightDetailsModal = ({ flight, open, onClose, onEdit, onDelete }) => {
                     {TEXT.bookedSeats}
                   </span>
                   <span className="font-semibold">
-                    {flight.totalSeats - flight.availableSeats}
+                    {flight.aircraft.totalSeats - flight.availableSeats}
                   </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-sm text-gray-600">
                     {TEXT.totalCapacity}
                   </span>
-                  <span className="font-semibold">{flight.totalSeats}</span>
+                  <span className="font-semibold">{flight.aircraft.totalSeats}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-sm text-gray-600">

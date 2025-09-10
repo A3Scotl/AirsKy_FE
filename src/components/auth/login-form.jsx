@@ -42,12 +42,20 @@ export default function LoginForm({ setCurrentView }) {
       const token = response.data?.accessToken;
       localStorage.setItem("token", token);
 
+      console.log("Login response data:", response.data);
+      console.log("Token:", token);
+
       const decoded = jwtDecode(token);
+      console.log("Decoded JWT:", decoded);
+
       const userData = {
+        id: response.data?.user?.id || decoded.id || decoded.sub, // Try multiple sources
         email: decoded.sub,
         role: decoded.role,
         exp: decoded.exp,
       };
+
+      console.log("User data to save:", userData);
 
       login(userData);
       toast.success(response.message);

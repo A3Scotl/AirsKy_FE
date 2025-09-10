@@ -50,6 +50,7 @@ const UserTable = ({
   searchQuery,
   statusFilter,
   roleFilter,
+  currentUser,
   onViewUser,
   onEditUser,
   onDeleteUser,
@@ -62,6 +63,9 @@ const UserTable = ({
 
   const getStatusBadge = (status) => {
     const variants = {
+      "Hoạt động": "bg-green-100 text-green-800 border-green-200",
+      "Đã khóa": "bg-red-100 text-red-800 border-red-200",
+      "Đang chờ": "bg-yellow-100 text-yellow-800 border-yellow-200",
       Active: "bg-green-100 text-green-800 border-green-200",
       Suspended: "bg-red-100 text-red-800 border-red-200",
       Pending: "bg-yellow-100 text-yellow-800 border-yellow-200",
@@ -71,6 +75,7 @@ const UserTable = ({
 
   const getRoleBadge = (role) => {
     const variants = {
+      CUSTOMER: "bg-blue-100 text-blue-800",
       Customer: "bg-blue-100 text-blue-800",
       Premium: "bg-purple-100 text-purple-800",
       Admin: "bg-orange-100 text-orange-800",
@@ -80,6 +85,7 @@ const UserTable = ({
 
   const getRoleIcon = (role) => {
     const icons = {
+      CUSTOMER: User,
       Customer: User,
       Premium: Crown,
       Admin: Shield,
@@ -89,6 +95,9 @@ const UserTable = ({
 
   const getStatusIcon = (status) => {
     const icons = {
+      "Hoạt động": CheckCircle,
+      "Đã khóa": XCircle,
+      "Đang chờ": Clock,
       Active: CheckCircle,
       Suspended: XCircle,
       Pending: Clock,
@@ -98,15 +107,22 @@ const UserTable = ({
 
   const filteredUsers = users.filter((user) => {
     const matchesSearch =
-      user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      user.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      user.id.toLowerCase().includes(searchQuery.toLowerCase());
+      (user.name?.toLowerCase() || "").includes(
+        searchQuery?.toLowerCase() || ""
+      ) ||
+      (user.email?.toLowerCase() || "").includes(
+        searchQuery?.toLowerCase() || ""
+      ) ||
+      (user.id?.toLowerCase() || "").includes(searchQuery?.toLowerCase() || "");
 
     const matchesStatus =
-      statusFilter === "all" || user.status.toLowerCase() === statusFilter;
+      statusFilter === "all" ||
+      (user.status?.toLowerCase() || "") === statusFilter ||
+      (statusFilter === "active" && user.status === "Hoạt động") ||
+      (statusFilter === "suspended" && user.status === "Đã khóa");
 
     const matchesRole =
-      roleFilter === "all" || user.role.toLowerCase() === roleFilter;
+      roleFilter === "all" || (user.role?.toLowerCase() || "") === roleFilter;
 
     return matchesSearch && matchesStatus && matchesRole;
   });
@@ -127,17 +143,19 @@ const UserTable = ({
   };
 
   const formatLastLogin = (dateTimeString) => {
+    if (!dateTimeString) return "Chưa đăng nhập";
+
     const date = new Date(dateTimeString);
     const now = new Date();
     const diffMs = now - date;
     const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
 
     if (diffDays === 0) {
-      return "Today";
+      return "Hôm nay";
     } else if (diffDays === 1) {
-      return "Yesterday";
+      return "Hôm qua";
     } else if (diffDays < 7) {
-      return `${diffDays} days ago`;
+      return `${diffDays} ngày trước`;
     } else {
       return formatDate(dateTimeString);
     }
@@ -158,14 +176,14 @@ const UserTable = ({
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>User</TableHead>
-              <TableHead>Contact</TableHead>
-              <TableHead>Role</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Activity</TableHead>
-              <TableHead>Bookings</TableHead>
-              <TableHead>Spent</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
+              <TableHead>Khách hàng</TableHead>
+              <TableHead>Liên hệ</TableHead>
+              <TableHead>Vai trò</TableHead>
+              <TableHead>Trạng thái</TableHead>
+              <TableHead>Hoạt động</TableHead>
+              <TableHead>Đặt vé</TableHead>
+              <TableHead>Chi tiêu</TableHead>
+              <TableHead className="text-right">Hành động</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -242,9 +260,9 @@ const UserTable = ({
 
                   <TableCell>
                     <div className="text-sm">
-                      <div>Joined {formatDate(user.joinDate)}</div>
+                      <div>Tham gia {formatDate(user.joinDate)}</div>
                       <div className="text-gray-500">
-                        Last: {formatLastLogin(user.lastLogin)}
+                        Lần cuối: {formatLastLogin(user.lastLogin)}
                       </div>
                     </div>
                   </TableCell>
@@ -252,7 +270,7 @@ const UserTable = ({
                   <TableCell>
                     <div className="text-center">
                       <div className="font-semibold">{user.totalBookings}</div>
-                      <div className="text-xs text-gray-500">bookings</div>
+                      <div className="text-xs text-gray-500">đặt vé</div>
                     </div>
                   </TableCell>
 
@@ -261,7 +279,7 @@ const UserTable = ({
                       <div className="font-semibold">
                         ${user.totalSpent.toLocaleString()}
                       </div>
-                      <div className="text-xs text-gray-500">total</div>
+                      <div className="text-xs text-gray-500">tổng</div>
                     </div>
                   </TableCell>
 
@@ -278,7 +296,7 @@ const UserTable = ({
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                        <DropdownMenuLabel>Hành động</DropdownMenuLabel>
                         <DropdownMenuItem
                           onClick={() => {
                             setSelectedUser(user);
@@ -286,31 +304,43 @@ const UserTable = ({
                           }}
                         >
                           <Eye className="mr-2 h-4 w-4" />
-                          View Details
+                          Xem chi tiết
                         </DropdownMenuItem>
                         <DropdownMenuItem
                           onClick={() => onEditUser && onEditUser(user)}
                         >
                           <Edit className="mr-2 h-4 w-4" />
-                          Edit User
+                          Chỉnh sửa
                         </DropdownMenuItem>
                         <DropdownMenuItem>
                           <Mail className="mr-2 h-4 w-4" />
-                          Send Email
+                          Gửi email
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
-                        {user.status === "Active" ? (
+                        {user.status === "Hoạt động" ||
+                        user.status === "Active" ? (
                           <DropdownMenuItem
                             onClick={() => onSuspendUser && onSuspendUser(user)}
                             className="text-orange-600"
+                            disabled={
+                              user.id?.toString() ===
+                              currentUser?.id?.toString()
+                            }
                           >
                             <UserX className="mr-2 h-4 w-4" />
-                            Suspend User
+                            Khóa tài khoản
                           </DropdownMenuItem>
                         ) : (
-                          <DropdownMenuItem className="text-green-600">
+                          <DropdownMenuItem
+                            onClick={() => onSuspendUser && onSuspendUser(user)}
+                            className="text-green-600"
+                            disabled={
+                              user.id?.toString() ===
+                              currentUser?.id?.toString()
+                            }
+                          >
                             <UserCheck className="mr-2 h-4 w-4" />
-                            Activate User
+                            Mở khóa tài khoản
                           </DropdownMenuItem>
                         )}
                         <DropdownMenuSeparator />
@@ -319,7 +349,7 @@ const UserTable = ({
                           className="text-red-600"
                         >
                           <Trash2 className="mr-2 h-4 w-4" />
-                          Delete User
+                          Xóa khách hàng
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
@@ -335,9 +365,9 @@ const UserTable = ({
       {totalPages > 1 && (
         <div className="flex items-center justify-between">
           <div className="text-sm text-gray-700">
-            Showing {(currentPage - 1) * itemsPerPage + 1} to{" "}
-            {Math.min(currentPage * itemsPerPage, filteredUsers.length)} of{" "}
-            {filteredUsers.length} users
+            Hiển thị {(currentPage - 1) * itemsPerPage + 1} đến{" "}
+            {Math.min(currentPage * itemsPerPage, filteredUsers.length)} của{" "}
+            {filteredUsers.length} khách hàng
           </div>
           <div className="flex items-center space-x-2">
             <Button
@@ -346,7 +376,7 @@ const UserTable = ({
               onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
               disabled={currentPage === 1}
             >
-              Previous
+              Trước
             </Button>
 
             {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
@@ -382,7 +412,7 @@ const UserTable = ({
               }
               disabled={currentPage === totalPages}
             >
-              Next
+              Tiếp theo
             </Button>
           </div>
         </div>
@@ -393,10 +423,10 @@ const UserTable = ({
         <div className="text-center py-12">
           <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
           <h3 className="text-lg font-medium text-gray-900 mb-2">
-            No users found
+            Không tìm thấy khách hàng nào
           </h3>
           <p className="text-gray-600">
-            Try adjusting your search or filter criteria
+            Thử điều chỉnh từ khóa tìm kiếm hoặc bộ lọc
           </p>
         </div>
       )}
@@ -409,6 +439,7 @@ const UserTable = ({
           setSelectedUser(null);
         }}
         user={selectedUser}
+        currentUser={currentUser}
         onEditUser={(user) => {
           setShowDetailsModal(false);
           onEditUser && onEditUser(user);

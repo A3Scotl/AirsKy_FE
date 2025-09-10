@@ -10,6 +10,8 @@ import {
   AlertTriangle,
   CheckCircle,
   Pause,
+  ArrowRightLeft,
+  Link,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -40,16 +42,37 @@ const FlightTable = ({
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
+  // Màu sắc cho các nhóm khứ hồi
+  const roundTripGroupColors = [
+    "bg-blue-50 border-blue-200",
+    "bg-green-50 border-green-200",
+    "bg-purple-50 border-purple-200",
+    "bg-orange-50 border-orange-200",
+    "bg-pink-50 border-pink-200",
+    "bg-indigo-50 border-indigo-200",
+    "bg-teal-50 border-teal-200",
+    "bg-yellow-50 border-yellow-200",
+  ];
+
+  // Map để lưu màu cho từng nhóm
+  const groupColorMap = useMemo(() => {
+    const map = {};
+    let colorIndex = 0;
+    flights.forEach((flight) => {
+      if (flight.roundTripGroupId && !map[flight.roundTripGroupId]) {
+        map[flight.roundTripGroupId] =
+          roundTripGroupColors[colorIndex % roundTripGroupColors.length];
+        colorIndex++;
+      }
+    });
+    return map;
+  }, [flights]);
+
   const statusConfig = {
-    SCHEDULED: {
+    ON_TIME: {
       variant: "outline",
       className: "bg-green-100 text-green-800 border-green-200",
       icon: CheckCircle,
-    },
-    BOARDING: {
-      variant: "outline",
-      className: "bg-blue-100 text-blue-800 border-blue-200",
-      icon: Pause,
     },
     DEPARTED: {
       variant: "outline",
@@ -65,16 +88,6 @@ const FlightTable = ({
       variant: "destructive",
       className: "bg-red-100 text-red-800 border-red-200",
       icon: AlertTriangle,
-    },
-    COMPLETED: {
-      variant: "default",
-      className: "bg-green-100 text-green-800 border-green-200",
-      icon: CheckCircle,
-    },
-    ON_TIME: {
-      variant: "outline",
-      className: "bg-green-100 text-green-800 border-green-200",
-      icon: CheckCircle,
     },
   };
 
@@ -125,12 +138,9 @@ const FlightTable = ({
       // Sửa logic status filter để match với dữ liệu thực
       const statusMapping = {
         "on-time": "ON_TIME",
-        delayed: "DELAYED",
-        boarding: "BOARDING",
         departed: "DEPARTED",
+        delayed: "DELAYED",
         cancelled: "CANCELLED",
-        scheduled: "SCHEDULED",
-        completed: "COMPLETED",
       };
 
       const actualStatusFilter = statusMapping[statusFilter] || statusFilter;
@@ -184,7 +194,8 @@ const FlightTable = ({
               <TableHead>Tỷ lệ lấp đầy</TableHead>
               <TableHead>Cổng</TableHead>
               <TableHead>Điểm dừng</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
+              <TableHead>Nhóm khứ hồi</TableHead>
+              <TableHead className="text-right">Thao tác</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -193,13 +204,31 @@ const FlightTable = ({
                 variant,
                 className,
                 icon: StatusIcon,
-              } = statusConfig[flight.status] || statusConfig.SCHEDULED;
+              } = statusConfig[flight.status] || statusConfig.ON_TIME;
               const loadFactor = calculateLoadFactor(flight);
+
+              // Xác định màu nền cho nhóm khứ hồi
+              const isRoundTrip = !!flight.roundTripGroupId;
+              const groupColor = isRoundTrip
+                ? groupColorMap[flight.roundTripGroupId]
+                : "";
 
               return (
                 <TableRow
                   key={`${flight.flightId}-${flight.flightNumber}-${flight.departureTime}`}
-                  className="hover:bg-gray-50"
+                  className={`hover:bg-gray-50 ${
+                    groupColor ? `${groupColor} border-l-4` : ""
+                  }`}
+                  style={
+                    groupColor
+                      ? {
+                          borderLeftColor: groupColor
+                            .split(" ")[1]
+                            .replace("border-", "")
+                            .replace("-200", ""),
+                        }
+                      : {}
+                  }
                 >
                   <TableCell>
                     <div className="font-semibold text-blue-600">
@@ -300,11 +329,38 @@ const FlightTable = ({
                   <TableCell>
                     <div className="text-sm">
                       {flight.stops === "NON_STOP"
-                        ? "Direct"
+                        ? "Bay thẳng"
                         : flight.stopsList?.length > 0
-                        ? `${flight.stopsList.length} stop(s)`
-                        : "Direct"}
+                        ? `${flight.stopsList.length} điểm dừng`
+                        : "Bay thẳng"}
                     </div>
+                  </TableCell>
+                  <TableCell>
+                    {isRoundTrip ? (
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger>
+                            <Badge
+                              variant="outline"
+                              className="flex items-center space-x-1 bg-white"
+                            >
+                              <ArrowRightLeft className="h-3 w-3" />
+                              <span className="text-xs font-mono">
+                                {flight.roundTripGroupId}
+                              </span>
+                            </Badge>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>Chuyến bay khứ hồi</p>
+                            <p className="text-xs text-gray-500">
+                              Nhóm: {flight.roundTripGroupId}
+                            </p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    ) : (
+                      <span className="text-gray-400 text-xs">-</span>
+                    )}
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex items-center justify-end space-x-1">
