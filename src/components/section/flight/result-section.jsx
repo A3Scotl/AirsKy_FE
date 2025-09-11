@@ -20,6 +20,7 @@ import DealsSection from "./deal-section";
 import { FlightFlexSearch } from "../../common/flight-flex-search";
 import { FlightCard } from "../../common/flight-card";
 import { useSearch } from "../../../contexts/search-context";
+import { flightApi } from "../../../apis/flight-api";
 
 import {
   FLIGHTS_PER_PAGE,
@@ -28,7 +29,6 @@ import {
   FARE_OPTIONS,
   getDepartureTimeSlot,
 } from "./flight-constants.jsx";
-import { useFlightData } from "../../../hooks/use-flight-search.js";
 import { EmptyState } from "./flight-components.jsx";
 
 // Main Component
@@ -38,141 +38,714 @@ export function FlightSearchResults() {
   const [searchParams] = useSearchParams();
   const { searchCriteria, updateSearchCriteria, clearSearchCriteria } =
     useSearch();
-  const { allFlights, loading, error } = useFlightData(searchCriteria);
-
-  // Debug: Log when allFlights changes
-  useEffect(() => {
-    console.log("📊 Result Section: allFlights updated:", {
-      totalFlights: allFlights.length,
-      hasFlights: allFlights.length > 0,
-      firstFlight: allFlights[0] || null,
-      searchCriteria: searchCriteria,
-    });
-    if (allFlights.length > 0) {
-      console.log("✅ Result Section: Flights received from flight hook!");
-    }
-  }, [allFlights, searchCriteria]);
 
   const [filters, setFilters] = useState(DEFAULT_FILTERS);
-  const [activeTab, setActiveTab] = useState("all");
-  const [expandedFlights, setExpandedFlights] = useState(new Set());
+  const [activeTab, setActiveTab] = useState("ONE_WAY");
+  const [tabExpandedFlights, setTabExpandedFlights] = useState({}); // Separate expanded flights per tab
   const [selectedFares, setSelectedFares] = useState({});
   const [showMobileFilters, setShowMobileFilters] = useState(false);
-  const [currentPage, setCurrentPage] = useState(1);
+  const [tabPages, setTabPages] = useState({}); // Separate pagination per tab
   const [showAllCombinations, setShowAllCombinations] = useState(false);
+
+  // Flight data states (changed to itineraries for better handling of multi-leg trips)
+  const [allItineraries, setAllItineraries] = useState([]);
+  const [allFlights, setAllFlights] = useState([]); // Store all flights for filtering
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [flightsLoaded, setFlightsLoaded] = useState(false); // Prevent multiple loads
 
   // Ref for results section to scroll to
   const resultsRef = useRef(null);
 
-  // Reset page when filters change
+  // Load all flights on component mount (only once)
   useEffect(() => {
-    setCurrentPage(1);
+    if (!flightsLoaded && !loading) {
+      loadAllFlights();
+    }
+  }, [flightsLoaded, loading]);
+
+  // Filter flights when they're first loaded (only on initial load, not on tab changes)
+  useEffect(() => {
+    if (
+      allFlights.length > 0 &&
+      flightsLoaded &&
+      !loading &&
+      allItineraries.length === 0
+    ) {
+      filterFlightsByTripType(allFlights, activeTab);
+    }
+  }, [allFlights, flightsLoaded, loading, allItineraries.length]); // Removed activeTab to prevent double filtering
+
+  // Reset page when filters change for current tab
+  useEffect(() => {
+    setTabPages((prev) => ({
+      ...prev,
+      [activeTab]: 1,
+    }));
   }, [filters, searchCriteria, activeTab]);
 
-  // Reset showAllCombinations when search criteria changes
+  // Initialize expanded flights and pages for tabs when component mounts
   useEffect(() => {
-    setShowAllCombinations(false);
-  }, [searchCriteria]);
+    setTabExpandedFlights((prev) => ({
+      ...prev,
+      [activeTab]: prev[activeTab] || new Set(),
+    }));
+    setTabPages((prev) => ({
+      ...prev,
+      [activeTab]: prev[activeTab] || 1,
+    }));
+  }, [activeTab]);
 
-  // Scroll to results section when flights are loaded
+  // Auto search when searchCriteria is set from destination click (only if no flights loaded)
   useEffect(() => {
-    if (allFlights.length > 0 && resultsRef.current && !loading) {
-      console.log("📍 Scrolling to results section");
+    if (
+      searchCriteria &&
+      !loading &&
+      allItineraries.length === 0 &&
+      allFlights.length === 0 &&
+      !flightsLoaded
+    ) {
+      // Check if we have direct flights data from destination click
+      if (location.state?.flightsData) {
+        processFlightsData(location.state.flightsData);
+      } else {
+        handleSearch(searchCriteria);
+      }
+    }
+  }, [
+    searchCriteria,
+    location.state,
+    allFlights.length,
+    allItineraries.length,
+    loading,
+    flightsLoaded,
+  ]);
+
+  // Scroll to results section when itineraries are loaded
+  useEffect(() => {
+    if (allItineraries.length > 0 && resultsRef.current && !loading) {
       resultsRef.current.scrollIntoView({
         behavior: "smooth",
         block: "start",
       });
     }
-  }, [allFlights.length, loading]);
+  }, [allItineraries.length, loading]);
 
-  const handleSearch = useCallback(
-    (criteria) => {
-      console.log(
-        "🎯 RESULT PAGE: handleSearch called with criteria:",
-        criteria
+  const handleResetFilters = useCallback(() => {
+    setFilters(DEFAULT_FILTERS);
+    setActiveTab("ONE_WAY");
+    setTabPages((prev) => ({
+      ...prev,
+      ONE_WAY: 1,
+    }));
+    setTabExpandedFlights((prev) => ({
+      ...prev,
+      ONE_WAY: new Set(),
+    }));
+  }, []);
+
+  // Filter flights by trip type and convert to itineraries
+  const filterFlightsByTripType = useCallback((flights, tripType) => {
+    let filteredFlights = [];
+
+    if (tripType === "ONE_WAY") {
+      filteredFlights = flights.filter(
+        (flight) =>
+          flight.tripType === "ONE_WAY" || flight.tripType === "one_way"
       );
-      console.log("🎯 RESULT PAGE: Current location state:", location.state);
+    } else if (tripType === "ROUND_TRIP") {
+      // For ROUND_TRIP, we need to group flights into pairs
+      const roundTripFlights = flights.filter(
+        (flight) =>
+          flight.tripType === "ROUND_TRIP" ||
+          flight.tripType === "round_trip" ||
+          flight.type === "ROUND_TRIP" ||
+          flight.type === "round_trip"
+      );
 
-      console.log("🔍 Search criteria received from form:", criteria);
-
-      // Only clear location state if we're coming from a destination click
-      // and the new search is significantly different
-      const shouldClearLocationState =
-        location.state?.searchCriteria &&
-        (criteria.from !== location.state.searchCriteria.from ||
-          criteria.to !== location.state.searchCriteria.to);
-
-      console.log("🔄 Location state decision:", {
-        hasLocationState: !!location.state?.searchCriteria,
-        shouldClearLocationState,
-        locationFrom: location.state?.searchCriteria?.from,
-        newFrom: criteria.from,
-        locationTo: location.state?.searchCriteria?.to,
-        newTo: criteria.to,
-      });
-
-      if (shouldClearLocationState && window.history.replaceState) {
-        console.log(
-          "🧹 Clearing location state due to different search criteria"
+      // If no round trip flights found, try to create pairs from one-way flights
+      if (roundTripFlights.length === 0) {
+        const oneWayFlights = flights.filter(
+          (flight) =>
+            flight.tripType === "ONE_WAY" ||
+            flight.tripType === "one_way" ||
+            flight.type === "ONE_WAY" ||
+            flight.type === "one_way" ||
+            (!flight.tripType && !flight.type)
         );
-        window.history.replaceState({}, "", window.location.pathname);
-      }
 
-      // Update URL params to sync with search criteria
-      const urlParams = new URLSearchParams();
-      if (criteria.from) {
-        const fromValue =
-          typeof criteria.from === "string"
-            ? criteria.from
-            : criteria.from.airportCode
-            ? `${criteria.from.city} (${criteria.from.airportCode})`
-            : "";
-        if (fromValue) urlParams.set("from", fromValue);
-      }
-      if (criteria.to) {
-        const toValue =
-          typeof criteria.to === "string"
-            ? criteria.to
-            : criteria.to.airportCode
-            ? `${criteria.to.city} (${criteria.to.airportCode})`
-            : "";
-        if (toValue) urlParams.set("to", toValue);
-      }
-      if (criteria.departDate) {
-        // Use local date to avoid timezone conversion issues
-        const localDate = new Date(criteria.departDate);
-        const year = localDate.getFullYear();
-        const month = String(localDate.getMonth() + 1).padStart(2, "0");
-        const day = String(localDate.getDate()).padStart(2, "0");
-        const localDateString = `${year}-${month}-${day}`;
-        urlParams.set("departDate", localDateString);
-      }
-      if (criteria.returnDate) {
-        // Use local date to avoid timezone conversion issues
-        const localDate = new Date(criteria.returnDate);
-        const year = localDate.getFullYear();
-        const month = String(localDate.getMonth() + 1).padStart(2, "0");
-        const day = String(localDate.getDate()).padStart(2, "0");
-        const localDateString = `${year}-${month}-${day}`;
-        urlParams.set("returnDate", localDateString);
-      }
-      if (criteria.tripType) {
-        urlParams.set("tripType", criteria.tripType);
-      }
-      if (criteria.passengers) {
-        urlParams.set("passengers", JSON.stringify(criteria.passengers));
-      }
+        // Group flights by route (departure -> arrival)
+        const routeGroups = {};
+        oneWayFlights.forEach((flight) => {
+          const routeKey = `${flight.departureAirport?.airportCode}-${flight.arrivalAirport?.airportCode}`;
+          if (!routeGroups[routeKey]) {
+            routeGroups[routeKey] = [];
+          }
+          routeGroups[routeKey].push(flight);
+        });
 
-      console.log("🔗 URL params to be set:", urlParams.toString());
+        // Create round trip pairs from routes that have both directions
+        const flightPairs = [];
+        Object.keys(routeGroups).forEach((routeKey) => {
+          const [dep, arr] = routeKey.split("-");
+          const returnRouteKey = `${arr}-${dep}`;
 
-      // Update URL without triggering navigation
-      const newUrl = `${window.location.pathname}?${urlParams.toString()}`;
-      window.history.replaceState({}, "", newUrl);
+          if (
+            routeGroups[returnRouteKey] &&
+            routeGroups[routeKey].length > 0 &&
+            routeGroups[returnRouteKey].length > 0
+          ) {
+            // Take first flight from each direction to create a pair
+            const outbound = routeGroups[routeKey][0];
+            const inbound = routeGroups[returnRouteKey][0];
 
-      // Update search criteria in context
-      updateSearchCriteria(criteria);
+            flightPairs.push({
+              outbound,
+              inbound,
+            });
+          }
+        });
 
-      // Auto-scroll to results section after search submission
+        filteredFlights = flightPairs;
+      } else {
+        // Group existing round trip flights by roundTripGroupId or create pairs based on route
+        const flightPairs = [];
+        const processedFlights = new Set();
+
+        for (const flight of roundTripFlights) {
+          if (processedFlights.has(flight.flightId)) continue;
+
+          // Try to find matching return flight
+          let matchingReturnFlight = null;
+
+          if (flight.roundTripGroupId) {
+            // If flight has roundTripGroupId, find the matching flight
+            matchingReturnFlight = roundTripFlights.find(
+              (f) =>
+                f.roundTripGroupId === flight.roundTripGroupId &&
+                f.flightId !== flight.flightId &&
+                !processedFlights.has(f.flightId)
+            );
+          } else {
+            // If no roundTripGroupId, try to find by route (reverse direction)
+            matchingReturnFlight = roundTripFlights.find(
+              (f) =>
+                f.departureAirport?.airportCode ===
+                  flight.arrivalAirport?.airportCode &&
+                f.arrivalAirport?.airportCode ===
+                  flight.departureAirport?.airportCode &&
+                f.flightId !== flight.flightId &&
+                !processedFlights.has(f.flightId)
+            );
+          }
+
+          if (matchingReturnFlight) {
+            // Create a pair
+            const outbound =
+              flight.departureTime < matchingReturnFlight.departureTime
+                ? flight
+                : matchingReturnFlight;
+            const inbound =
+              flight.departureTime < matchingReturnFlight.departureTime
+                ? matchingReturnFlight
+                : flight;
+
+            flightPairs.push({
+              outbound,
+              inbound,
+            });
+
+            processedFlights.add(flight.flightId);
+            processedFlights.add(matchingReturnFlight.flightId);
+          } else {
+            // If no matching flight found, treat as single flight (shouldn't happen for round trip)
+            console.warn(
+              "No matching return flight found for:",
+              flight.flightId
+            );
+          }
+        }
+
+        filteredFlights = flightPairs;
+      }
+    } else if (tripType === "MULTI_CITY") {
+      filteredFlights = flights.filter(
+        (flight) =>
+          flight.tripType === "MULTI_CITY" || flight.tripType === "multi_city"
+      );
+    } else {
+      // Default to ONE_WAY if unknown trip type
+      filteredFlights = flights.filter(
+        (flight) =>
+          flight.tripType === "ONE_WAY" || flight.tripType === "one_way"
+      );
+    }
+
+    // Convert to itineraries format
+    let itineraries = [];
+
+    if (tripType === "ROUND_TRIP") {
+      // For ROUND_TRIP, each pair becomes an itinerary with two legs
+      itineraries = filteredFlights.map((pair, index) => ({
+        itineraryId: `roundtrip-${pair.outbound.flightId}-${
+          pair.inbound.flightId || index
+        }`,
+        tripType: tripType,
+        legs: [pair.outbound, pair.inbound],
+        totalPrice:
+          (pair.outbound.basePrice || 0) + (pair.inbound.basePrice || 0),
+        totalDuration:
+          (pair.outbound.duration || 0) + (pair.inbound.duration || 0),
+        totalStops:
+          (pair.outbound.stopsList?.length || 0) +
+          (pair.inbound.stopsList?.length || 0),
+      }));
+    } else {
+      // For ONE_WAY and MULTI_CITY, each flight is a single-leg itinerary
+      itineraries = filteredFlights.map((flight, index) => ({
+        itineraryId: `${tripType.toLowerCase()}-${flight.flightId || index}`,
+        tripType: tripType,
+        legs: [flight],
+        totalPrice: flight.basePrice || 0,
+        totalDuration: flight.duration || 0,
+        totalStops: flight.stopsList?.length || 0,
+      }));
+    }
+
+    setAllItineraries(itineraries);
+  }, []);
+
+  // Filter flights when they're first loaded
+  const handleTripTypeChange = useCallback(
+    (newTripType) => {
+      setActiveTab((prevActiveTab) => {
+        if (prevActiveTab !== newTripType) {
+          // Reset expanded flights for the new tab
+          setTabExpandedFlights((prev) => ({
+            ...prev,
+            [newTripType]: new Set(),
+          }));
+
+          // Reset page for the new tab
+          setTabPages((prev) => ({
+            ...prev,
+            [newTripType]: 1,
+          }));
+
+          // Filter flights immediately when trip type changes (only if flights are loaded)
+          if (allFlights.length > 0 && flightsLoaded && !loading) {
+            filterFlightsByTripType(allFlights, newTripType);
+          }
+
+          return newTripType;
+        }
+
+        return prevActiveTab;
+      });
+    },
+    [allFlights, flightsLoaded, loading]
+  );
+
+  // Load all flights from API
+  const loadAllFlights = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const response = await flightApi.getAllFlights({ size: 100 });
+
+      if (response.success && response.data?.content) {
+        setAllFlights(response.data.content);
+
+        // Reset expanded flights for all tabs when new flights are loaded
+        setTabExpandedFlights({});
+        setTabPages({});
+
+        // Flights loaded successfully - filtering will happen when activeTab changes
+      } else {
+        console.warn("⚠️ No flights data received");
+        setAllFlights([]);
+        setAllItineraries([]);
+      }
+    } catch (err) {
+      console.error("❌ Error loading flights:", err);
+      setError("Không thể tải danh sách chuyến bay");
+      setAllFlights([]);
+      setAllItineraries([]);
+    } finally {
+      setLoading(false);
+      setFlightsLoaded(true); // Mark as loaded to prevent re-loading
+    }
+  }, []);
+
+  const toggleDetails = useCallback(
+    (itineraryId) => {
+      setTabExpandedFlights((prev) => {
+        const currentTabExpanded = prev[activeTab] || new Set();
+        const newSet = new Set(currentTabExpanded);
+        if (newSet.has(itineraryId)) {
+          newSet.delete(itineraryId);
+        } else {
+          newSet.add(itineraryId);
+        }
+        return {
+          ...prev,
+          [activeTab]: newSet,
+        };
+      });
+    },
+    [activeTab]
+  );
+
+  const handleSelectFare = useCallback((itineraryId, fareId) => {
+    setSelectedFares((prev) => ({ ...prev, [itineraryId]: fareId }));
+  }, []);
+
+  const handleProceedToBooking = useCallback(
+    (itinerary, fareData) => {
+      // Handle round trip fare selection
+      if (
+        typeof fareData === "object" &&
+        fareData.outbound &&
+        fareData.return
+      ) {
+        const outboundFare = FARE_OPTIONS.find(
+          (fare) => fare.id === fareData.outbound
+        );
+        const returnFare = FARE_OPTIONS.find(
+          (fare) => fare.id === fareData.return
+        );
+
+        localStorage.setItem("selectedItinerary", JSON.stringify(itinerary));
+        localStorage.setItem(
+          "selectedOutboundFare",
+          JSON.stringify(outboundFare)
+        );
+        localStorage.setItem("selectedReturnFare", JSON.stringify(returnFare));
+        navigate("/booking-stepper", {
+          state: {
+            itinerary,
+            selectedOutboundFare: outboundFare,
+            selectedReturnFare: returnFare,
+          },
+        });
+      } else {
+        // Handle one way fare selection
+        const selectedFare = FARE_OPTIONS.find((fare) => fare.id === fareData);
+        localStorage.setItem("selectedItinerary", JSON.stringify(itinerary));
+        localStorage.setItem("selectedFare", JSON.stringify(selectedFare));
+        navigate("/booking-stepper", {
+          state: { itinerary, selectedFare },
+        });
+      }
+    },
+    [navigate]
+  );
+
+  // Handle flight search with optimized itinerary processing
+  const handleSearch = useCallback(
+    async (searchData) => {
+      setLoading(true);
+      setError(null);
+
+      // Helper function to format date consistently
+      const formatDateForAPI = (dateInput) => {
+        if (!dateInput) return null;
+        const date = new Date(dateInput);
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, "0");
+        const day = String(date.getDate()).padStart(2, "0");
+        const formatted = `${year}-${month}-${day}`;
+        console.log("formatDateForAPI:", {
+          input: dateInput,
+          inputType: typeof dateInput,
+          localDateString: date.toLocaleDateString("vi-VN"), // Use local date string instead of ISO
+          formatted,
+        });
+        return formatted;
+      };
+
+      try {
+        // Prepare request data based on trip type
+        let requestData = {};
+
+        if (searchData.tripType === "ONE_WAY") {
+          // Handle multiple airport combinations
+          const fromAirports = searchData.fromLocations || [searchData.from];
+          const toAirports = searchData.toLocations || [searchData.to];
+
+          // If only single airport pair, use simple format as per API spec
+          if (fromAirports.length === 1 && toAirports.length === 1) {
+            requestData = {
+              tripType: "ONE_WAY",
+              departureAirportId:
+                fromAirports[0]?.airportId || fromAirports[0]?.id,
+              arrivalAirportId: toAirports[0]?.airportId || toAirports[0]?.id,
+              outboundDepartureDate: formatDateForAPI(searchData.departDate),
+            };
+          } else {
+            // Multiple combinations - create combinations array
+            const combinations = [];
+            fromAirports.forEach((from) => {
+              toAirports.forEach((to) => {
+                if (from?.airportId !== to?.airportId) {
+                  // Avoid same airport
+                  combinations.push({
+                    departureAirportId: from?.airportId || from?.id,
+                    arrivalAirportId: to?.airportId || to?.id,
+                    outboundDepartureDate: formatDateForAPI(
+                      searchData.departDate
+                    ),
+                  });
+                }
+              });
+            });
+
+            requestData = {
+              tripType: "ONE_WAY",
+              combinations: combinations, // Send all combinations
+            };
+          }
+        } else if (searchData.tripType === "ROUND_TRIP") {
+          // Handle multiple airport combinations for round trip
+          const fromAirports = searchData.fromLocations || [searchData.from];
+          const toAirports = searchData.toLocations || [searchData.to];
+
+          // If only single airport pair, use simple format as per API spec
+          if (fromAirports.length === 1 && toAirports.length === 1) {
+            requestData = {
+              tripType: "ROUND_TRIP",
+              departureAirportId:
+                fromAirports[0]?.airportId || fromAirports[0]?.id,
+              arrivalAirportId: toAirports[0]?.airportId || toAirports[0]?.id,
+              outboundDepartureDate: searchData.departDate
+                ? (() => {
+                    const date = new Date(searchData.departDate);
+                    const year = date.getFullYear();
+                    const month = String(date.getMonth() + 1).padStart(2, "0");
+                    const day = String(date.getDate()).padStart(2, "0");
+                    return `${year}-${month}-${day}`;
+                  })()
+                : null,
+              returnDate: searchData.returnDate
+                ? (() => {
+                    const date = new Date(searchData.returnDate);
+                    const year = date.getFullYear();
+                    const month = String(date.getMonth() + 1).padStart(2, "0");
+                    const day = String(date.getDate()).padStart(2, "0");
+                    return `${year}-${month}-${day}`;
+                  })()
+                : null,
+            };
+          } else {
+            // Multiple combinations - create combinations array
+            const combinations = [];
+            fromAirports.forEach((from) => {
+              toAirports.forEach((to) => {
+                if (from?.airportId !== to?.airportId) {
+                  // Avoid same airport
+                  combinations.push({
+                    departureAirportId: from?.airportId || from?.id,
+                    arrivalAirportId: to?.airportId || to?.id,
+                    outboundDepartureDate: formatDateForAPI(
+                      searchData.departDate
+                    ),
+                    returnDate: formatDateForAPI(searchData.returnDate),
+                  });
+                }
+              });
+            });
+
+            requestData = {
+              tripType: "ROUND_TRIP",
+              combinations: combinations, // Send all combinations
+            };
+          }
+        } else if (searchData.tripType === "MULTI_CITY") {
+          requestData = {
+            tripType: "MULTI_CITY",
+            multiCityLegs:
+              searchData.multiTrips?.map((trip) => ({
+                departureAirportId:
+                  trip.from?.[0]?.airportId || trip.from?.[0]?.id,
+                arrivalAirportId: trip.to?.[0]?.airportId || trip.to?.[0]?.id,
+                departureDate: formatDateForAPI(trip.date),
+              })) || [],
+          };
+        }
+
+        const response = await flightApi.searchUnifiedFlights(requestData);
+
+        if (response.success) {
+          // Process the response data into itineraries based on trip type
+          let itineraries = [];
+
+          if (
+            searchData.tripType === "ONE_WAY" &&
+            response.data.oneWayFlights?.content
+          ) {
+            // For ONE_WAY with combinations, each flight is a single-leg itinerary
+            itineraries = response.data.oneWayFlights.content.map(
+              (flight, index) => ({
+                itineraryId: `oneway-${flight.flightId || index}`,
+                tripType: "ONE_WAY",
+                legs: [flight],
+                totalPrice: flight.basePrice || 0,
+                totalDuration: flight.duration || 0,
+                totalStops: flight.stopsList?.length || 0,
+                // Add route info for display
+                routeInfo: `${
+                  flight.departureAirport?.airportCode || "N/A"
+                } → ${flight.arrivalAirport?.airportCode || "N/A"}`,
+              })
+            );
+          } else if (
+            searchData.tripType === "ROUND_TRIP" &&
+            response.data.roundTripPairs
+          ) {
+            // For ROUND_TRIP with combinations, each pair is an itinerary with two legs
+            itineraries = response.data.roundTripPairs.map((pair, index) => ({
+              itineraryId: `roundtrip-${pair.outbound.flightId || index}`,
+              tripType: "ROUND_TRIP",
+              legs: [pair.outbound, pair.inbound],
+              totalPrice:
+                (pair.outbound.basePrice || 0) + (pair.inbound.basePrice || 0),
+              totalDuration:
+                (pair.outbound.duration || 0) + (pair.inbound.duration || 0),
+              totalStops:
+                (pair.outbound.stopsList?.length || 0) +
+                (pair.inbound.stopsList?.length || 0),
+              // Add route info for display
+              routeInfo: `${
+                pair.outbound.departureAirport?.airportCode || "N/A"
+              } ↔ ${pair.outbound.arrivalAirport?.airportCode || "N/A"}`,
+            }));
+          } else if (
+            searchData.tripType === "MULTI_CITY" &&
+            response.data.multiCityFlights
+          ) {
+            // For MULTI_CITY, we need to create combinations of flights from each leg
+            // Assuming API returns flights per leg, we create Cartesian product of itineraries
+            // If too many, limit to top N combinations sorted by price or duration
+            const legs = response.data.multiCityFlights.map(
+              (leg) => leg.content || []
+            );
+
+            // Helper to generate combinations (recursive for multiple legs)
+            const generateCombinations = (legs, current = [], index = 0) => {
+              if (index === legs.length) {
+                return [current];
+              }
+              const combinations = [];
+              for (const flight of legs[index]) {
+                combinations.push(
+                  ...generateCombinations(legs, [...current, flight], index + 1)
+                );
+              }
+              return combinations;
+            };
+
+            const allCombinations = generateCombinations(legs);
+
+            // Limit to reasonable number (e.g., 50) and sort by total price
+            const limitedCombinations = allCombinations
+              .map((combo, comboIndex) => {
+                const totalPrice = combo.reduce(
+                  (sum, f) => sum + (f.basePrice || 0),
+                  0
+                );
+                const totalDuration = combo.reduce(
+                  (sum, f) => sum + (f.duration || 0),
+                  0
+                );
+                const totalStops = combo.reduce(
+                  (sum, f) => sum + (f.stopsList?.length || 0),
+                  0
+                );
+                return {
+                  itineraryId: `multicity-${comboIndex}`,
+                  tripType: "MULTI_CITY",
+                  legs: combo,
+                  totalPrice,
+                  totalDuration,
+                  totalStops,
+                };
+              })
+              .sort((a, b) => a.totalPrice - b.totalPrice)
+              .slice(0, 50); // Limit to 50 to prevent performance issues
+
+            itineraries = limitedCombinations;
+          }
+
+          setAllItineraries(itineraries);
+
+          // Update search criteria with proper format for SearchForm
+          const updatedSearchCriteria = {
+            ...searchData,
+            // Ensure arrays are preserved for SearchForm compatibility
+            fromLocations:
+              searchData.fromLocations ||
+              (searchData.from ? [searchData.from] : []),
+            toLocations:
+              searchData.toLocations || (searchData.to ? [searchData.to] : []),
+            // Keep single values for backward compatibility
+            from: searchData.fromLocations?.[0] || searchData.from,
+            to: searchData.toLocations?.[0] || searchData.to,
+          };
+
+          updateSearchCriteria(updatedSearchCriteria);
+
+          // Reset expanded flights and pages when new search results are loaded
+          setTabExpandedFlights({});
+          setTabPages({});
+
+          // Scroll to results
+          setTimeout(() => {
+            if (resultsRef.current) {
+              resultsRef.current.scrollIntoView({
+                behavior: "smooth",
+                block: "start",
+              });
+            }
+          }, 100);
+        } else {
+          setError(response.message || "Có lỗi xảy ra khi tìm kiếm chuyến bay");
+          setAllItineraries([]);
+        }
+      } catch (err) {
+        setError("Không thể kết nối đến máy chủ. Vui lòng thử lại sau.");
+        setAllItineraries([]);
+      } finally {
+        setLoading(false);
+      }
+    },
+    [updateSearchCriteria]
+  );
+
+  // Process direct flights data from destination click
+  const processFlightsData = useCallback((flights) => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      // Convert flights array to itineraries format (same as ONE_WAY processing)
+      const itineraries = flights.map((flight, index) => ({
+        itineraryId: `oneway-${flight.flightId || index}`,
+        tripType: "ONE_WAY",
+        legs: [flight],
+        totalPrice: flight.basePrice || 0,
+        totalDuration: flight.duration || 0,
+        totalStops: flight.stopsList?.length || 0,
+      }));
+
+      setAllItineraries(itineraries);
+      setLoading(false);
+
+      // Reset expanded flights and pages when new flights are processed
+      setTabExpandedFlights({});
+      setTabPages({});
+
+      // Scroll to results
       setTimeout(() => {
         if (resultsRef.current) {
           resultsRef.current.scrollIntoView({
@@ -180,239 +753,291 @@ export function FlightSearchResults() {
             block: "start",
           });
         }
-      }, 100); // Small delay to ensure DOM updates
-    },
-    [location.state, updateSearchCriteria]
-  );
-
-  const handleResetFilters = useCallback(() => {
-    setFilters(DEFAULT_FILTERS);
-    setActiveTab("all");
-    setCurrentPage(1);
+      }, 100);
+    } catch (err) {
+      console.error("Error processing flights data:", err);
+      setError("Có lỗi xảy ra khi xử lý dữ liệu chuyến bay");
+      setAllItineraries([]);
+      setLoading(false);
+    }
   }, []);
 
-  const toggleDetails = useCallback((flightId) => {
-    setExpandedFlights((prev) => {
-      const newSet = new Set(prev);
-      if (newSet.has(flightId)) {
-        newSet.delete(flightId);
-      } else {
-        newSet.add(flightId);
-      }
-      return newSet;
-    });
-  }, []);
-
-  const handleSelectFare = useCallback((flightId, fareId) => {
-    setSelectedFares((prev) => ({ ...prev, [flightId]: fareId }));
-  }, []);
-
-  const handleProceedToBooking = useCallback(
-    (flight, fareId) => {
-      const selectedFare = FARE_OPTIONS.find((fare) => fare.id === fareId);
-      localStorage.setItem("selectedFlight", JSON.stringify(flight));
-      localStorage.setItem("selectedFare", JSON.stringify(selectedFare));
-      navigate("/booking-stepper", {
-        state: { flight, selectedFare },
-      });
-    },
-    [navigate]
-  );
-
-  const filteredAndSortedFlights = useMemo(() => {
-    let filtered = allFlights.filter((flight) => {
-      // Price filter
+  const filteredAndSortedItineraries = useMemo(() => {
+    let filtered = allItineraries.filter((itinerary) => {
+      // Price filter (use totalPrice)
       if (
-        flight.priceNumeric < filters.priceRange[0] ||
-        flight.priceNumeric > filters.priceRange[1]
+        itinerary.totalPrice < filters.priceRange[0] ||
+        itinerary.totalPrice > filters.priceRange[1]
       ) {
         return false;
       }
 
-      // Airline filter
-      if (
-        filters.airlines.length > 0 &&
-        !filters.airlines.includes(flight.airline)
-      ) {
-        return false;
-      }
-
-      // Departure time filter
-      if (filters.departureTime.length > 0) {
-        const flightTimeSlot = getDepartureTimeSlot(flight.departureTime);
-        if (!filters.departureTime.includes(flightTimeSlot)) {
+      // Airline filter (check if any leg matches selected airlines)
+      if (filters.airlines.length > 0) {
+        const itineraryAirlines = new Set(
+          itinerary.legs.map((leg) => leg.airline?.airlineName || leg.airline)
+        );
+        if (
+          !filters.airlines.some((airline) => itineraryAirlines.has(airline))
+        ) {
           return false;
         }
       }
 
-      return true;
-    });
+      // aircraft filter - Filter flights by aircraft type
+      // This handles various data structures from the API
+      if (filters.aircraft && filters.aircraft.length > 0) {
+        const itineraryAircrafts = new Set();
 
-    // Remove duplicates
-    filtered = filtered.filter((flight, index, self) => {
-      return index === self.findIndex((f) => f.id === flight.id);
-    });
+        // Collect all possible aircraft identifiers from itinerary legs
+        itinerary.legs.forEach((leg) => {
+          // Try to get aircraft info from various possible fields
+          const aircraftInfo =
+            leg.aircraft ||
+            leg.aircraftId ||
+            leg.aircraftName ||
+            leg.aircraftCode;
 
-    // Tab filter
-    filtered = filtered.filter((flight) => {
-      if (activeTab === "all") return true;
-      if (activeTab === "domestic" && flight.type !== "DOMESTIC") return false;
-      if (activeTab === "international" && flight.type !== "INTERNATIONAL")
-        return false;
-      if (activeTab === "one-way" && flight.type !== "ONE_WAY") return false;
-      return true;
-    });
-
-    // Group round-trip flights by roundTripGroupId
-    const groupedFlights = [];
-    const processedGroupIds = new Set();
-
-    filtered.forEach((flight) => {
-      if (
-        flight.roundTripGroupId &&
-        flight.tripType === "ROUND_TRIP" &&
-        !processedGroupIds.has(flight.roundTripGroupId)
-      ) {
-        // Find all flights with the same roundTripGroupId
-        const roundTripGroup = filtered.filter(
-          (f) =>
-            f.roundTripGroupId === flight.roundTripGroupId &&
-            f.tripType === "ROUND_TRIP"
-        );
-
-        if (roundTripGroup.length === 2) {
-          // Determine outbound and return based on departure airport
-          // The flight departing from the original departure airport is outbound
-          const originalDepartureAirportId =
-            searchCriteria?.from?.airportId || searchCriteria?.from?.id;
-
-          let outboundFlight, returnFlight;
-
-          if (originalDepartureAirportId) {
-            outboundFlight = roundTripGroup.find(
-              (f) =>
-                f.departureAirport?.airportId === originalDepartureAirportId
-            );
-            returnFlight = roundTripGroup.find(
-              (f) =>
-                f.departureAirport?.airportId !== originalDepartureAirportId
-            );
-          } else {
-            // Fallback: assume first flight is outbound, second is return
-            outboundFlight = roundTripGroup[0];
-            returnFlight = roundTripGroup[1];
+          if (aircraftInfo) {
+            if (typeof aircraftInfo === "object") {
+              // If aircraft is an object, try to get name/code from it
+              const name = aircraftInfo.aircraftName || aircraftInfo.name;
+              const code = aircraftInfo.aircraftCode || aircraftInfo.code;
+              if (name) itineraryAircrafts.add(name);
+              if (code) itineraryAircrafts.add(code);
+            } else {
+              // If aircraft is a string/number, add it directly
+              itineraryAircrafts.add(String(aircraftInfo));
+            }
           }
+        });
 
-          if (outboundFlight && returnFlight) {
-            groupedFlights.push({
-              ...outboundFlight,
-              isRoundTripDisplay: true,
-              outboundFlight,
-              returnFlight,
-              combinedPrice:
-                (outboundFlight.basePrice || 0) + (returnFlight.basePrice || 0),
-              id: `roundtrip-${flight.roundTripGroupId}`,
-              flightId: `roundtrip-${flight.roundTripGroupId}`,
+        // If no aircraft info available in any leg, skip filtering
+        if (itineraryAircrafts.size === 0) {
+          console.warn(
+            "No aircraft information available for filtering - skipping aircraft filter"
+          );
+        } else {
+          // Check if any selected aircraft matches any aircraft in the itinerary
+          const hasMatchingAircraft = filters.aircraft.some(
+            (selectedAircraft) =>
+              itineraryAircrafts.has(selectedAircraft) ||
+              // Also check partial matches (case-insensitive)
+              Array.from(itineraryAircrafts).some(
+                (itineraryAircraft) =>
+                  itineraryAircraft
+                    .toLowerCase()
+                    .includes(selectedAircraft.toLowerCase()) ||
+                  selectedAircraft
+                    .toLowerCase()
+                    .includes(itineraryAircraft.toLowerCase())
+              )
+          );
+
+          if (!hasMatchingAircraft) {
+            return false;
+          }
+        }
+      }
+
+      // stops filter
+      if (filters.stops && filters.stops.length > 0) {
+        const totalStops = itinerary.totalStops || 0;
+        let stopCategory = "";
+        if (totalStops === 0) {
+          stopCategory = "non-stop";
+        } else if (totalStops === 1) {
+          stopCategory = "1-stop";
+        } else if (totalStops >= 2) {
+          stopCategory = "2-stops";
+        }
+
+        if (!filters.stops.includes(stopCategory)) {
+          return false;
+        }
+      }
+
+      // duration filter
+      if (filters.duration && filters.duration.length > 0) {
+        const totalDuration = itinerary.totalDuration || 0;
+        let durationCategory = "";
+        if (totalDuration <= 180) {
+          // 3 hours
+          durationCategory = "short";
+        } else if (totalDuration <= 360) {
+          // 6 hours
+          durationCategory = "medium";
+        } else {
+          durationCategory = "long";
+        }
+
+        if (!filters.duration.includes(durationCategory)) {
+          return false;
+        }
+      }
+
+      // Departure time filter - Filter flights by departure time slot
+      // Supports multiple time formats: ISO string, HH:MM string, Date object, timestamp
+      if (filters.departureTime && filters.departureTime.length > 0) {
+        const firstLegDepartureTime = itinerary.legs[0]?.departureTime;
+
+        if (firstLegDepartureTime) {
+          const firstLegTimeSlot = getDepartureTimeSlot(firstLegDepartureTime);
+
+          if (firstLegTimeSlot) {
+            // Debug log to see what time slot is being calculated
+            console.log("Departure time filter:", {
+              departureTime: firstLegDepartureTime,
+              calculatedSlot: firstLegTimeSlot,
+              selectedSlots: filters.departureTime,
+              itineraryId: itinerary.itineraryId,
             });
-            processedGroupIds.add(flight.roundTripGroupId);
+
+            if (!filters.departureTime.includes(firstLegTimeSlot)) {
+              return false;
+            }
           } else {
-            // If we can't properly identify outbound/return, add them separately
-            roundTripGroup.forEach((f) => groupedFlights.push(f));
-            processedGroupIds.add(flight.roundTripGroupId);
+            // If unable to determine time slot, skip this filter for this itinerary
+            console.warn(
+              "Unable to determine time slot for departure time:",
+              firstLegDepartureTime,
+              "in itinerary:",
+              itinerary.itineraryId
+            );
           }
         } else {
-          // Single flight or incomplete round-trip group
-          groupedFlights.push(flight);
-          processedGroupIds.add(flight.roundTripGroupId);
+          // If no departure time available, skip this filter
+          console.warn(
+            "No departure time available for itinerary:",
+            itinerary.itineraryId
+          );
         }
-      } else if (!flight.roundTripGroupId || flight.tripType !== "ROUND_TRIP") {
-        // Regular single flights
-        groupedFlights.push(flight);
       }
+
+      return true;
     });
 
-    // Sort flights
-    groupedFlights.sort((a, b) => {
-      // For round-trip groups, use combined price
-      const priceA = a.isRoundTripDisplay
-        ? a.combinedPrice
-        : a.priceNumeric || a.basePrice || 0;
-      const priceB = b.isRoundTripDisplay
-        ? b.combinedPrice
-        : b.priceNumeric || b.basePrice || 0;
+    // Tab filter - filter by trip type or flight type
+    filtered = filtered.filter((itinerary) => {
+      if (activeTab === "all") return true;
 
+      // Trip type filters
+      if (activeTab === "one-way" && itinerary.tripType !== "ONE_WAY")
+        return false;
+      if (activeTab === "round-trip" && itinerary.tripType !== "ROUND_TRIP")
+        return false;
+      if (activeTab === "multi-city" && itinerary.tripType !== "MULTI_CITY")
+        return false;
+
+      // Flight type filters (domestic/international)
+      if (
+        activeTab === "domestic" &&
+        itinerary.legs.some((leg) => leg.type !== "DOMESTIC")
+      )
+        return false;
+      if (
+        activeTab === "international" &&
+        itinerary.legs.some((leg) => leg.type !== "INTERNATIONAL")
+      )
+        return false;
+
+      return true;
+    });
+
+    // Sort itineraries
+    filtered.sort((a, b) => {
       switch (filters.sortBy) {
         case "price-asc":
-          return priceA - priceB;
+          return a.totalPrice - b.totalPrice;
         case "price-desc":
-          return priceB - priceA;
+          return b.totalPrice - a.totalPrice;
         case "departure-asc":
-          return a.departureTime.localeCompare(b.departureTime);
+          return (
+            new Date(a.legs[0]?.departureTime).getTime() -
+            new Date(b.legs[0]?.departureTime).getTime()
+          );
         case "departure-desc":
-          return b.departureTime.localeCompare(a.departureTime);
+          return (
+            new Date(b.legs[0]?.departureTime).getTime() -
+            new Date(a.legs[0]?.departureTime).getTime()
+          );
         default:
           return 0;
       }
     });
 
-    return groupedFlights;
-  }, [allFlights, filters, activeTab]);
-
-  console.log("📊 DEBUG: Filtering results:", {
-    allFlightsLength: allFlights.length,
-    filteredLength: filteredAndSortedFlights.length,
-    filters,
-    activeTab,
-  });
+    return filtered;
+  }, [allItineraries, filters, activeTab]);
 
   // Prepare initial values for SearchForm
   const searchFormInitialValues = useMemo(() => {
-    if (!searchCriteria) return null;
+    if (!searchCriteria) {
+      // Use default trip type when no search criteria
+      return {
+        tripType: "ONE_WAY", // Use fixed default instead of activeTab
+        passengers: {
+          adults: 1,
+          children: 0,
+          infants: 0,
+        },
+        travelClass: "Phổ thông",
+      };
+    }
+
+    // Convert single values to arrays for SearchForm compatibility
+    const fromLocations =
+      searchCriteria.fromLocations ||
+      (searchCriteria.from ? [searchCriteria.from] : []);
+    const toLocations =
+      searchCriteria.toLocations ||
+      (searchCriteria.to ? [searchCriteria.to] : []);
 
     return {
-      tripType: searchCriteria.tripType || "oneway",
+      tripType: searchCriteria.tripType || "ONE_WAY",
       passengers: searchCriteria.passengers || {
         adults: 1,
         children: 0,
         infants: 0,
       },
       travelClass: searchCriteria.travelClass || "Phổ thông",
-      departDate: searchCriteria.departDate,
-      returnDate: searchCriteria.returnDate,
-      from: searchCriteria.from,
-      to: searchCriteria.to,
+      departDate: searchCriteria.departDate
+        ? new Date(searchCriteria.departDate)
+        : null,
+      returnDate: searchCriteria.returnDate
+        ? new Date(searchCriteria.returnDate)
+        : null,
+      fromLocations: fromLocations,
+      toLocations: toLocations,
+      multiTrips: searchCriteria.multiTrips,
     };
   }, [searchCriteria]);
 
-  // Pagination calculations
-  const totalFlights = filteredAndSortedFlights.length;
-  const totalPages = Math.ceil(totalFlights / FLIGHTS_PER_PAGE);
+  // Pagination calculations for current tab
+  const currentPage = tabPages[activeTab] || 1;
+  const totalItineraries = filteredAndSortedItineraries.length;
+  const totalPages = Math.ceil(totalItineraries / FLIGHTS_PER_PAGE);
   const startIndex = (currentPage - 1) * FLIGHTS_PER_PAGE;
-  const currentFlights = filteredAndSortedFlights.slice(
+  const currentItineraries = filteredAndSortedItineraries.slice(
     startIndex,
     startIndex + FLIGHTS_PER_PAGE
   );
 
-  console.log("currentFlights", currentFlights);
-  console.log("📊 DEBUG: Flight rendering info:", {
-    totalFlights,
-    currentFlightsLength: currentFlights.length,
-    hasCurrentFlights: currentFlights.length > 0,
-    firstFlight: currentFlights[0] || "No flights",
-    loading,
-    error,
-  });
-
-  const handlePageChange = useCallback((page) => {
-    setCurrentPage(page);
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  }, []);
+  const handlePageChange = useCallback(
+    (page) => {
+      setTabPages((prev) => ({
+        ...prev,
+        [activeTab]: page,
+      }));
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    },
+    [activeTab]
+  );
 
   const getResultsTitle = useCallback(() => {
     if (!searchCriteria) {
       return {
         title:
-          totalFlights > 0
+          totalItineraries > 0
             ? "Các chuyến bay phổ biến"
             : "Tìm chuyến bay phù hợp",
         showExpandButton: false,
@@ -511,7 +1136,7 @@ export function FlightSearchResults() {
       title: "Khám phá các chuyến bay giá tốt",
       showExpandButton: false,
     };
-  }, [searchCriteria, totalFlights, showAllCombinations]);
+  }, [searchCriteria, totalItineraries, showAllCombinations]);
 
   return (
     <div className="mx-auto">
@@ -541,6 +1166,7 @@ export function FlightSearchResults() {
             <SearchForm
               onSearch={handleSearch}
               initialValues={searchFormInitialValues}
+              onTripTypeChange={handleTripTypeChange}
             />
           </div>
         </div>
@@ -548,120 +1174,12 @@ export function FlightSearchResults() {
 
       <DealsSection />
 
-      {/* Debug Panel - Chỉ hiển thị trong development */}
-      {/* {process.env.NODE_ENV === "development" && (
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-4">
-          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-            <h3 className="text-sm font-semibold text-yellow-800 mb-2">
-              🔍 Debug: Search Criteria Info
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
-              <div>
-                <strong className="text-yellow-700">Source:</strong>
-                <span className="ml-2 text-yellow-600">
-                  {location.state?.searchCriteria
-                    ? "🎯 Destination Click"
-                    : searchParams.get("from") || searchParams.get("to")
-                    ? "🔗 URL Params (Home Page)"
-                    : searchCriteria
-                    ? "📱 Context"
-                    : "📋 Default (No Criteria)"}
-                </span>
-              </div>
-              <div>
-                <strong className="text-yellow-700">API Call:</strong>
-                <span className="ml-2 text-yellow-600">
-                  {!searchCriteria
-                    ? "getAllFlights({ size: 200 })"
-                    : searchCriteria.searchCombinations?.length > 1
-                    ? `Multiple searches: ${searchCriteria.searchCombinations.length} combinations`
-                    : typeof searchCriteria.from === "string" &&
-                      typeof searchCriteria.to === "string" &&
-                      !searchCriteria.from.includes("(") &&
-                      !searchCriteria.to.includes("(")
-                    ? `findFlightsBetweenCountries("${searchCriteria.from}", "${searchCriteria.to}", { size: 50 })`
-                    : searchCriteria.tripType === "oneway"
-                    ? "searchOneWayFlights({ departureAirportId, arrivalAirportId, date, size: 100 })"
-                    : searchCriteria.tripType === "roundtrip"
-                    ? "searchRoundTripFlights({ departureAirportId, arrivalAirportId, outboundDate, returnDate, size: 100 })"
-                    : "getAllFlights({ size: 200 })"}
-                </span>
-              </div>
-              <div>
-                <strong className="text-yellow-700">From:</strong>
-                <span className="ml-2 text-yellow-600">
-                  "
-                  {typeof searchCriteria?.from === "string"
-                    ? searchCriteria.from
-                    : JSON.stringify(searchCriteria?.from) || "N/A"}
-                  "
-                </span>
-              </div>
-              <div>
-                <strong className="text-yellow-700">To:</strong>
-                <span className="ml-2 text-yellow-600">
-                  "
-                  {typeof searchCriteria?.to === "string"
-                    ? searchCriteria.to
-                    : JSON.stringify(searchCriteria?.to) || "N/A"}
-                  "
-                </span>
-              </div>
-              <div>
-                <strong className="text-yellow-700">Trip Type:</strong>
-                <span className="ml-2 text-yellow-600">
-                  {searchCriteria?.tripType || "N/A"}
-                </span>
-              </div>
-              <div>
-                <strong className="text-yellow-700">Combinations:</strong>
-                <span className="ml-2 text-yellow-600">
-                  {searchCriteria?.searchCombinations?.length || 0} combinations
-                  {showAllCombinations && " (showing all)"}
-                </span>
-              </div>
-              <div>
-                <strong className="text-yellow-700">Airport IDs:</strong>
-                <span className="ml-2 text-yellow-600">
-                  {searchCriteria?.from && searchCriteria?.to
-                    ? "Processed by flight hook"
-                    : "N/A"}
-                </span>
-              </div>
-              <div>
-                <strong className="text-yellow-700">Passengers:</strong>
-                <span className="ml-2 text-yellow-600">
-                  {searchCriteria?.passengers
-                    ? JSON.stringify(searchCriteria.passengers)
-                    : "N/A"}
-                </span>
-              </div>
-              <div>
-                <strong className="text-yellow-700">URL Params:</strong>
-                <span className="ml-2 text-yellow-600">
-                  from="{searchParams.get("from")}", to="
-                  {searchParams.get("to")}"
-                </span>
-              </div>
-              <div>
-                <strong className="text-yellow-700">Location State:</strong>
-                <span className="ml-2 text-yellow-600">
-                  {location.state?.searchCriteria
-                    ? "Has criteria"
-                    : "No criteria"}
-                </span>
-              </div>
-            </div>
-          </div>
-        </div>
-      )} */}
-
       {/* Flight Flex Search - Chỉ hiển thị khi có search criteria */}
       {searchCriteria && (
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-6 pt-16">
           <FlightFlexSearch
             searchCriteria={searchCriteria}
-            allFlights={allFlights}
+            allFlights={allItineraries.flatMap((it) => it.legs)} // Pass flattened legs for flex search if needed
             onDateSelect={(dateSelection) => {
               if (
                 typeof dateSelection === "object" &&
@@ -688,7 +1206,10 @@ export function FlightSearchResults() {
       )}
 
       {/* Results Section */}
-      <div ref={resultsRef} className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8">
+      <div
+        ref={resultsRef}
+        className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8"
+      >
         <div className="flex flex-col lg:flex-row gap-4 lg:gap-6">
           <div className="hidden lg:block w-80 flex-shrink-0">
             <FlightFilters
@@ -720,7 +1241,7 @@ export function FlightSearchResults() {
                   )}
                 </div>
                 <div className="flex items-center gap-2">
-                  {searchCriteria && totalFlights > 0 && (
+                  {searchCriteria && totalItineraries > 0 && (
                     <Button
                       variant="ghost"
                       size="sm"
@@ -732,24 +1253,33 @@ export function FlightSearchResults() {
                     </Button>
                   )}
                   <p className="text-xs sm:text-sm text-gray-600">
-                    {totalFlights > 0 && (
+                    {totalItineraries > 0 && (
                       <>
-                        {totalFlights} chuyến bay tìm thấy
-                        {searchCriteria?.searchCombinations?.length > 1 && (
+                        {totalItineraries} chuyến bay tìm thấy
+                        {searchCriteria?.fromLocations?.length > 1 ||
+                        searchCriteria?.toLocations?.length > 1 ? (
+                          <span className="text-blue-600">
+                            {" "}
+                            từ{" "}
+                            {(searchCriteria.fromLocations?.length || 1) *
+                              (searchCriteria.toLocations?.length || 1)}{" "}
+                            kết hợp sân bay
+                          </span>
+                        ) : searchCriteria?.searchCombinations?.length > 1 ? (
                           <span className="text-blue-600">
                             {" "}
                             từ {searchCriteria.searchCombinations.length} tuyến
                           </span>
-                        )}
+                        ) : null}
                         <span className="ml-2">
                           (Trang {currentPage} / {totalPages})
                         </span>
                       </>
                     )}
-                    {totalFlights === 0 &&
+                    {totalItineraries === 0 &&
                       searchCriteria &&
                       "Không có chuyến bay nào"}
-                    {totalFlights === 0 &&
+                    {totalItineraries === 0 &&
                       !searchCriteria &&
                       "Sử dụng form tìm kiếm để bắt đầu"}
                   </p>
@@ -802,51 +1332,16 @@ export function FlightSearchResults() {
               </div>
             )}
 
-            {/* Error Display */}
-            {/* {error && (
-              <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
-                <div className="flex items-start">
-                  <div className="flex-shrink-0">
-                    <svg
-                      className="h-5 w-5 text-red-400"
-                      viewBox="0 0 20 20"
-                      fill="currentColor"
-                    >
-                      <path
-                        fillRule="evenodd"
-                        d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
-                        clipRule="evenodd"
-                      />
-                    </svg>
-                  </div>
-                  <div className="ml-3">
-                    <h3 className="text-sm font-medium text-red-800">
-                      Lỗi tải dữ liệu
-                    </h3>
-                    <p className="text-sm text-red-700 mt-1">{error}</p>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => window.location.reload()}
-                      className="mt-2 text-red-600 border-red-300 hover:bg-red-50"
-                    >
-                      Thử lại
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            )} */}
-
-            {/* Flight Results List */}
+            {/* Itinerary Results List */}
             <div className="space-y-3 sm:space-y-4">
               {loading ? (
                 <EmptyState type="loading" />
-              ) : totalFlights > 0 ? (
-                currentFlights.map((flight, index) => (
+              ) : totalItineraries > 0 ? (
+                currentItineraries.map((itinerary) => (
                   <FlightCard
-                    key={`flight-${flight.id}-${index}`}
-                    flight={flight}
-                    expandedFlights={expandedFlights}
+                    key={itinerary.itineraryId}
+                    flight={itinerary} // Now passing itinerary object
+                    expandedFlights={tabExpandedFlights[activeTab] || new Set()}
                     selectedFares={selectedFares}
                     onToggleDetails={toggleDetails}
                     onSelectFare={handleSelectFare}
@@ -870,12 +1365,12 @@ export function FlightSearchResults() {
             </div>
 
             {/* Pagination */}
-            {totalFlights > 0 && (
+            {totalItineraries > 0 && (
               <Pagination
                 currentPage={currentPage}
                 totalPages={totalPages}
                 itemsPerPage={FLIGHTS_PER_PAGE}
-                totalItems={totalFlights}
+                totalItems={totalItineraries}
                 onPageChange={handlePageChange}
                 showPageSizeSelector={false}
                 showFirstLast={false}

@@ -153,8 +153,12 @@ const AdminReportPage = () => {
             <PopoverTrigger asChild>
               <Button variant="outline" className="w-auto">
                 <CalendarIcon className="mr-2 h-4 w-4" />
-                {dateRange?.from ? (
-                  dateRange.to ? (
+                {dateRange?.from &&
+                dateRange.from instanceof Date &&
+                !isNaN(dateRange.from.getTime()) ? (
+                  dateRange.to &&
+                  dateRange.to instanceof Date &&
+                  !isNaN(dateRange.to.getTime()) ? (
                     <>
                       {format(dateRange.from, "dd/MM/yyyy")} -{" "}
                       {format(dateRange.to, "dd/MM/yyyy")}

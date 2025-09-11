@@ -20,33 +20,107 @@ const FlightInfo = ({ flightDetails }) => (
     <div className="flex flex-col lg:flex-row lg:justify-between lg:items-start gap-6">
       {/* Thông tin chuyến bay */}
       <div className="flex-1">
-        <div className="flex items-center gap-3 mb-4">
-          <div className="text-2xl font-bold text-gray-900 dark:text-white">
-            {flightDetails.from} → {flightDetails.to}
-          </div>
-          <div className="px-3 py-1 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded-full text-sm font-medium">
-            {flightDetails.fare}
-          </div>
-        </div>
+        {/* Hiển thị thông tin itinerary nếu có */}
+        {flightDetails.isMultiCity && flightDetails.legs ? (
+          <div className="mb-4">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="text-xl font-bold text-gray-900 dark:text-white">
+                Chuyến bay đa chặng ({flightDetails.totalLegs} chặng)
+              </div>
+              <div className="px-3 py-1 bg-purple-100 dark:bg-purple-900 text-purple-800 dark:text-purple-200 rounded-full text-sm font-medium">
+                {flightDetails.tripType === "MULTI_CITY"
+                  ? "Đa chặng"
+                  : flightDetails.tripType}
+              </div>
+            </div>
 
+            {/* Hiển thị từng chặng */}
+            <div className="space-y-3">
+              {flightDetails.legs.map((leg, index) => (
+                <div
+                  key={index}
+                  className="border-l-4 border-blue-500 pl-4 py-2 bg-gray-50 dark:bg-gray-700 rounded-r-lg"
+                >
+                  <div className="flex items-center gap-3 mb-2">
+                    <div className="text-lg font-semibold text-gray-900 dark:text-white">
+                      Chặng {index + 1}:{" "}
+                      {leg.departureAirport?.code || leg.from} →{" "}
+                      {leg.arrivalAirport?.code || leg.to}
+                    </div>
+                    <div className="px-2 py-1 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded text-xs font-medium">
+                      {leg.flightNumber}
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-sm text-gray-600 dark:text-gray-300">
+                    <div>
+                      <span className="font-medium text-gray-900 dark:text-white">
+                        Ngày:
+                      </span>{" "}
+                      {leg.departureDate || leg.date}
+                    </div>
+                    <div>
+                      <span className="font-medium text-gray-900 dark:text-white">
+                        Hãng:
+                      </span>{" "}
+                      {typeof leg.airline === "object"
+                        ? leg.airline?.airlineName || leg.airline?.name
+                        : leg.airline}
+                    </div>
+                    <div>
+                      <span className="font-medium text-gray-900 dark:text-white">
+                        Máy bay:
+                      </span>{" "}
+                      {typeof leg.aircraft === "object"
+                        ? leg.aircraft?.aircraftName || leg.aircraft?.name
+                        : leg.aircraft || leg.aircraftName}
+                    </div>
+                    <div>
+                      <span className="font-medium text-gray-900 dark:text-white">
+                        Thời gian:
+                      </span>{" "}
+                      {leg.duration}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : (
+          /* Hiển thị thông tin chuyến bay đơn */
+          <div className="flex items-center gap-3 mb-4">
+            <div className="text-2xl font-bold text-gray-900 dark:text-white">
+              {flightDetails.departureAirport?.code || flightDetails.from} →{" "}
+              {flightDetails.arrivalAirport?.code || flightDetails.to}
+            </div>
+            <div className="px-3 py-1 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded-full text-sm font-medium">
+              {flightDetails.fare || flightDetails.fareClass || "Economy"}
+            </div>
+          </div>
+        )}
+
+        {/* Thông tin chung cho cả single và multi-city */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-gray-600 dark:text-gray-300">
           <div>
             <span className="font-medium text-gray-900 dark:text-white">
               Ngày:
             </span>{" "}
-            {flightDetails.date}
+            {flightDetails.departureDate || flightDetails.date}
           </div>
           <div>
             <span className="font-medium text-gray-900 dark:text-white">
               Hãng bay:
             </span>{" "}
-            {flightDetails.airline}
+            {typeof flightDetails.airline === "object"
+              ? flightDetails.airline?.airlineName ||
+                flightDetails.airline?.name
+              : flightDetails.airline}
           </div>
           <div>
             <span className="font-medium text-gray-900 dark:text-white">
               Hạng vé:
             </span>{" "}
-            {flightDetails.fare}
+            {flightDetails.fare || flightDetails.fareClass || "Economy"}
           </div>
           {flightDetails.duration && (
             <div>
@@ -64,12 +138,15 @@ const FlightInfo = ({ flightDetails }) => (
               {flightDetails.availableSeats}
             </div>
           )}
-          {flightDetails.aircraft && (
+          {(flightDetails.aircraft || flightDetails.aircraftName) && (
             <div>
               <span className="font-medium text-gray-900 dark:text-white">
                 Máy bay:
               </span>{" "}
-              {flightDetails.aircraft}
+              {typeof flightDetails.aircraft === "object"
+                ? flightDetails.aircraft?.aircraftName ||
+                  flightDetails.aircraft?.name
+                : flightDetails.aircraft || flightDetails.aircraftName}
             </div>
           )}
         </div>
@@ -230,21 +307,190 @@ export function FlightBookingStepper() {
         location.state.flightData
       );
       setFlightData(location.state.flightData);
-      if (location.state.flightData.selectedFare) {
+      if (
+        location.state.flightData.selectedFare &&
+        location.state.flightData.selectedFare !== "undefined" &&
+        location.state.flightData.selectedFare !== undefined
+      ) {
         setSelectedFare(location.state.flightData.selectedFare);
+      }
+    }
+    // Check for itinerary data in location state
+    else if (location.state?.itineraryData) {
+      console.log(
+        "[BookingStepper] LOADING ITINERARY data from location state:",
+        location.state.itineraryData
+      );
+
+      const parsedItinerary = location.state.itineraryData;
+
+      // Validate itinerary data
+      if (
+        parsedItinerary &&
+        parsedItinerary.legs &&
+        Array.isArray(parsedItinerary.legs) &&
+        parsedItinerary.legs.length > 0
+      ) {
+        // Handle multi-leg itinerary
+        const flightDataFromItinerary = {
+          itineraryId: parsedItinerary.itineraryId || `itinerary-${Date.now()}`,
+          tripType: parsedItinerary.tripType || "ONE_WAY",
+          legs: parsedItinerary.legs,
+          // Use first leg as primary flight data for display
+          ...parsedItinerary.legs[0],
+          // Add additional itinerary info
+          totalLegs: parsedItinerary.legs.length,
+          isMultiCity:
+            parsedItinerary.tripType === "MULTI_CITY" ||
+            parsedItinerary.legs.length > 1,
+          // Preserve original itinerary data
+          originalItinerary: parsedItinerary,
+        };
+
+        setFlightData(flightDataFromItinerary);
+
+        // If there's a selected fare in itinerary, use it
+        if (parsedItinerary.selectedFare) {
+          setSelectedFare(parsedItinerary.selectedFare);
+        }
+      }
+      // Handle single flight stored as "itinerary"
+      else if (
+        parsedItinerary &&
+        (parsedItinerary.flightNumber || parsedItinerary.flightId)
+      ) {
+        console.log(
+          "[BookingStepper] Single flight data stored as itinerary:",
+          parsedItinerary
+        );
+
+        // Convert single flight to flightData format
+        const flightDataFromSingleFlight = {
+          ...parsedItinerary,
+          itineraryId: parsedItinerary.flightId || `single-${Date.now()}`,
+          tripType: "ONE_WAY",
+          legs: [parsedItinerary], // Wrap single flight in legs array for consistency
+          totalLegs: 1,
+          isMultiCity: false,
+          // Preserve original data
+          originalItinerary: parsedItinerary,
+        };
+
+        setFlightData(flightDataFromSingleFlight);
+
+        // If there's a selected fare, use it
+        if (parsedItinerary.selectedFare) {
+          setSelectedFare(parsedItinerary.selectedFare);
+        }
+      } else {
+        console.warn(
+          "[BookingStepper] Invalid itinerary data structure in location state"
+        );
       }
     } else {
       // Fallback to localStorage
       const storedFlight = localStorage.getItem("selectedFlight");
       const storedFare = localStorage.getItem("selectedFare");
+      const storedItinerary = localStorage.getItem("selectedItinerary");
 
       console.log(
         "[BookingStepper] localStorage selectedFlight:",
         storedFlight
       );
       console.log("[BookingStepper] localStorage selectedFare:", storedFare);
+      console.log(
+        "[BookingStepper] localStorage selectedItinerary:",
+        storedItinerary
+      );
 
-      if (storedFlight) {
+      // Check for selectedItinerary first (new priority)
+      if (
+        storedItinerary &&
+        storedItinerary !== "undefined" &&
+        storedItinerary !== "null"
+      ) {
+        try {
+          const parsedItinerary = JSON.parse(storedItinerary);
+          console.log(
+            "[BookingStepper] Loading itinerary data from localStorage:",
+            parsedItinerary
+          );
+
+          // Validate itinerary data
+          if (
+            parsedItinerary &&
+            parsedItinerary.legs &&
+            Array.isArray(parsedItinerary.legs) &&
+            parsedItinerary.legs.length > 0
+          ) {
+            // Handle multi-leg itinerary
+            const flightDataFromItinerary = {
+              itineraryId:
+                parsedItinerary.itineraryId || `itinerary-${Date.now()}`,
+              tripType: parsedItinerary.tripType || "ONE_WAY",
+              legs: parsedItinerary.legs,
+              // Use first leg as primary flight data for display
+              ...parsedItinerary.legs[0],
+              // Add additional itinerary info
+              totalLegs: parsedItinerary.legs.length,
+              isMultiCity:
+                parsedItinerary.tripType === "MULTI_CITY" ||
+                parsedItinerary.legs.length > 1,
+              // Preserve original itinerary data
+              originalItinerary: parsedItinerary,
+            };
+
+            setFlightData(flightDataFromItinerary);
+
+            // If there's a selected fare in itinerary, use it
+            if (parsedItinerary.selectedFare) {
+              setSelectedFare(parsedItinerary.selectedFare);
+            }
+          }
+          // Handle single flight stored as "itinerary"
+          else if (
+            parsedItinerary &&
+            (parsedItinerary.flightNumber || parsedItinerary.flightId)
+          ) {
+            console.log(
+              "[BookingStepper] Single flight data stored as itinerary:",
+              parsedItinerary
+            );
+
+            // Convert single flight to flightData format
+            const flightDataFromSingleFlight = {
+              ...parsedItinerary,
+              itineraryId: parsedItinerary.flightId || `single-${Date.now()}`,
+              tripType: "ONE_WAY",
+              legs: [parsedItinerary], // Wrap single flight in legs array for consistency
+              totalLegs: 1,
+              isMultiCity: false,
+              // Preserve original data
+              originalItinerary: parsedItinerary,
+            };
+
+            setFlightData(flightDataFromSingleFlight);
+
+            // If there's a selected fare, use it
+            if (parsedItinerary.selectedFare) {
+              setSelectedFare(parsedItinerary.selectedFare);
+            }
+          } else {
+            console.warn("[BookingStepper] Invalid itinerary data structure");
+          }
+        } catch (error) {
+          console.error(
+            "[BookingStepper] Error parsing itinerary data from localStorage:",
+            error
+          );
+        }
+      }
+      // Fallback to individual flight/fare if no itinerary
+      else if (
+        storedFlight &&
+        storedFlight !== "undefined" &&
+        storedFlight !== "null"
+      ) {
         try {
           const parsedFlight = JSON.parse(storedFlight);
           console.log(
@@ -260,7 +506,7 @@ export function FlightBookingStepper() {
         }
       }
 
-      if (storedFare) {
+      if (storedFare && storedFare !== "undefined" && storedFare !== "null") {
         try {
           const parsedFare = JSON.parse(storedFare);
           console.log(
@@ -369,7 +615,10 @@ export function FlightBookingStepper() {
       priceBreakdown,
       duration: flightData.duration || "N/A",
       availableSeats: flightData.availableSeats || "N/A",
-      aircraft: flightData.aircraft || "N/A",
+      aircraft:
+        typeof flightData.aircraft === "object" && flightData.aircraft !== null
+          ? flightData.aircraft.aircraftName || "Boeing 737"
+          : flightData.aircraft || "N/A",
     };
 
     console.log("[BookingStepper] Final formatted result:", result);

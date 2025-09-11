@@ -4,6 +4,9 @@ export const FLIGHTS_PER_PAGE = 6;
 export const DEFAULT_FILTERS = {
   priceRange: [100000, 10000000],
   airlines: [],
+  aircraft: [],
+  stops: [],
+  duration: [],
   departureTime: [],
   sortBy: "price-asc",
 };
@@ -53,7 +56,42 @@ export const FARE_OPTIONS = [
 ];
 
 export const getDepartureTimeSlot = (time) => {
-  const hour = Number.parseInt(time.split(":")[0]);
+  if (!time) return null;
+
+  let hour;
+
+  // Handle different time formats
+  if (typeof time === "string") {
+    // Check if it's ISO date string (e.g., "2025-09-11T14:30:00")
+    if (time.includes("T")) {
+      const date = new Date(time);
+      hour = date.getHours();
+    } else if (time.includes(":")) {
+      // Handle "HH:MM" format
+      hour = Number.parseInt(time.split(":")[0]);
+    } else {
+      // Try to parse as date string
+      const date = new Date(time);
+      if (!isNaN(date.getTime())) {
+        hour = date.getHours();
+      } else {
+        console.warn("Unable to parse time string:", time);
+        return null;
+      }
+    }
+  } else if (time instanceof Date) {
+    // Handle Date object
+    hour = time.getHours();
+  } else if (typeof time === "number") {
+    // Handle timestamp
+    const date = new Date(time);
+    hour = date.getHours();
+  } else {
+    console.warn("Unsupported time format:", time);
+    return null;
+  }
+
+  // Return time slot based on hour
   if (hour >= 0 && hour < 6) return "early-morning";
   if (hour >= 6 && hour < 12) return "morning";
   if (hour >= 12 && hour < 18) return "afternoon";

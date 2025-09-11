@@ -191,4 +191,22 @@ export const flightApi = {
     const endpoint = `/flights/roundtrip-group?${queryString}`;
     return apiHandler("get", endpoint);
   },
+
+  /**
+   * Tìm chuyến bay thống nhất (unified search)
+   * @param {object} request - { tripType, adultCount, childCount, infantCount, travelClass, departureAirportId, arrivalAirportId, outboundDepartureDate, returnDate, multiCityLegs, segments }
+   * @param {{ page?: number, size?: number, sort?: string }} params
+   * @returns {Promise<{ success: boolean, data?: any, message: string }>}
+   */
+  searchUnifiedFlights: async (request, params = {}) => {
+    const queryParams = new URLSearchParams();
+    if (params.page !== undefined) queryParams.append("page", params.page);
+    if (params.size !== undefined) queryParams.append("size", params.size);
+    if (params.sort) queryParams.append("sort", params.sort);
+    const queryString = queryParams.toString();
+    const endpoint = queryString
+      ? `/flights/search-unified?${queryString}`
+      : "/flights/search-unified";
+    return apiHandler("post", endpoint, request);
+  },
 };

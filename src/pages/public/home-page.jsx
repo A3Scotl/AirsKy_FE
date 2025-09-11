@@ -231,7 +231,7 @@ function HomePage() {
           <div className="absolute inset-0 mx-auto px-4 sm:px-6 lg:px-8 top-[45%] w-full z-99">
             <div
               data-swiper-parallax="0"
-              className="relative z-10 max-w-4xl mx-auto"
+              className="relative z-10 max-w-6xl mx-auto"
             >
               <div className="search-form-overlay">
                 <SearchForm onSearch={handleHomeSearch} />

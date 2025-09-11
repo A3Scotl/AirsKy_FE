@@ -21,27 +21,39 @@ export function DestinationSection() {
     loadDestinations();
   }, []);
 
-  const handleDestinationClick = (countryName) => {
-    // Tạo search criteria với from = "Việt Nam", to = country được click
+  const handleDestinationClick = (destination) => {
+    // Tạo search criteria với airportId từ destination
     const tomorrow = new Date();
     tomorrow.setDate(tomorrow.getDate() + 1); // Ngày mai
 
     const searchCriteria = {
-      from: "Việt Nam",
-      to: countryName,
-      tripType: "oneway",
+      from: {
+        airportId: destination.departureAirport.airportId,
+        airportName: destination.departureAirport.airportName,
+        country: "Việt Nam",
+      },
+      to: {
+        airportId: destination.arrivalAirport.airportId,
+        airportName: destination.arrivalAirport.airportName,
+        country: destination.country,
+      },
+      tripType: "ONE_WAY",
       departDate: tomorrow, // Thêm ngày mặc định
       passengers: { adults: 1, children: 0, infants: 0 },
       searchCombinations: [], // Không cần combinations cho single search
     };
 
-    console.log("🚀 Destination clicked:", countryName);
+    console.log("🚀 Destination clicked:", destination.country);
     console.log("📋 Search criteria to send:", searchCriteria);
+    console.log("✈️ Flights data to send:", destination.flights);
     console.log("🧭 Navigating to: /flights");
 
-    // Navigate đến result page với search criteria
+    // Navigate đến result page với search criteria và flights data
     navigate("/flights", {
-      state: { searchCriteria },
+      state: {
+        searchCriteria,
+        flightsData: destination.flights, // Truyền trực tiếp data chuyến bay
+      },
     });
   };
 
@@ -90,6 +102,9 @@ export function DestinationSection() {
               image: country.thumbnail,
               price: formattedPrice,
               flightCount: response.data.content.length,
+              departureAirport: response.data.content[0].departureAirport,
+              arrivalAirport: response.data.content[0].arrivalAirport,
+              flights: response.data.content, // Lưu toàn bộ data chuyến bay
             });
 
             // Cập nhật state ngay lập tức khi có data cho quốc gia này
@@ -195,7 +210,7 @@ export function DestinationSection() {
             <SwiperSlide key={destination.id || destination.countryCode}>
               <Card
                 className="overflow-hidden hover:shadow-lg transition-shadow cursor-pointer"
-                onClick={() => handleDestinationClick(destination.country)}
+                onClick={() => handleDestinationClick(destination)}
               >
                 <div className="relative">
                   <img

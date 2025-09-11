@@ -21,9 +21,9 @@ import { format } from "date-fns";
 import AirportAutocomplete from "./airport-autocomplete";
 
 const TRIP_TYPES = [
-  { key: "roundtrip", label: "Khứ hồi" },
-  { key: "oneway", label: "Một chiều" },
-  { key: "multicity", label: "Nhiều thành phố" },
+  { key: "ROUND_TRIP", label: "Khứ hồi" },
+  { key: "ONE_WAY", label: "Một chiều" },
+  { key: "MULTI_CITY", label: "Nhiều thành phố" },
 ];
 
 const PASSENGER_TYPES = [
@@ -32,24 +32,27 @@ const PASSENGER_TYPES = [
   { key: "infants", label: "Em bé", sub: "< 2 tuổi", min: 0 },
 ];
 
-const TRAVEL_CLASSES = [
-  "Phổ thông",
-  "Phổ thông cao cấp",
-  "Thương gia",
-  "Hạng nhất",
-];
+const TRAVEL_CLASSES = ["Phổ thông", "Phổ thông cao cấp", "Thương gia"];
 
 // Date Picker Component
 function DatePicker({ date, onSelect, placeholder, disabled = false }) {
   const handleDateSelect = (selectedDate) => {
-    console.log(
-      "DatePicker onSelect called with:",
-      selectedDate,
-      "type:",
-      typeof selectedDate
-    );
-    if (onSelect) {
-      onSelect(selectedDate);
+    // Additional validation to prevent invalid dates
+    if (
+      selectedDate &&
+      selectedDate instanceof Date &&
+      !isNaN(selectedDate.getTime())
+    ) {
+      // Ensure the date is not in the past (with some buffer for timezone issues)
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      selectedDate.setHours(0, 0, 0, 0);
+
+      if (selectedDate >= today) {
+        if (onSelect) {
+          onSelect(selectedDate);
+        }
+      }
     }
   };
 
@@ -64,7 +67,7 @@ function DatePicker({ date, onSelect, placeholder, disabled = false }) {
           disabled={disabled}
         >
           <CalendarIcon className="mr-2 h-4 w-4 dark:text-white" />
-          {date ? (
+          {date && date instanceof Date && !isNaN(date.getTime()) ? (
             format(date, "dd/MM/yyyy")
           ) : (
             <span className="dark:text-white">{placeholder}</span>
@@ -76,7 +79,11 @@ function DatePicker({ date, onSelect, placeholder, disabled = false }) {
           mode="single"
           selected={date}
           onSelect={handleDateSelect}
-          disabled={(date) => date < new Date()}
+          disabled={(date) => {
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            return date < today;
+          }}
           initialFocus
         />
       </PopoverContent>
@@ -84,8 +91,8 @@ function DatePicker({ date, onSelect, placeholder, disabled = false }) {
   );
 }
 
-export function SearchForm({ onSearch, initialValues }) {
-  const [tripType, setTripType] = useState("roundtrip");
+export function SearchForm({ onSearch, initialValues, onTripTypeChange }) {
+  const [tripType, setTripType] = useState("ROUND_TRIP");
   const [fromLocations, setFromLocations] = useState([]);
   const [toLocations, setToLocations] = useState([]);
   const [departDate, setDepartDate] = useState();
@@ -103,214 +110,50 @@ export function SearchForm({ onSearch, initialValues }) {
   });
   const [travelClass, setTravelClass] = useState("Phổ thông");
 
-  // Update form when initialValues change
+  // Track if trip type was changed by user (not programmatically)
+  const tripTypeChangedByUser = useRef(false);
+
+  // Handle initial values
   useEffect(() => {
     if (initialValues) {
-      console.log("SearchForm received initialValues:", initialValues);
-      console.log("initialValues.from:", initialValues.from);
-      console.log("initialValues.to:", initialValues.to);
+      tripTypeChangedByUser.current = false; // Reset flag when initialValues change
+      setTripType(initialValues.tripType || "ROUND_TRIP");
 
-      if (initialValues.tripType) setTripType(initialValues.tripType);
-      if (initialValues.passengers) setPassengers(initialValues.passengers);
-      if (initialValues.travelClass) setTravelClass(initialValues.travelClass);
+      // Handle both array format (fromLocations/toLocations) and single format (from/to)
+      setFromLocations(
+        initialValues.fromLocations ||
+          (initialValues.from ? [initialValues.from] : [])
+      );
+      setToLocations(
+        initialValues.toLocations ||
+          (initialValues.to ? [initialValues.to] : [])
+      );
 
-      // Handle departure date
-      if (initialValues.departDate) {
-        const departDate =
-          initialValues.departDate instanceof Date
-            ? initialValues.departDate
-            : new Date(initialValues.departDate);
-        console.log(
-          "SearchForm: Setting departDate from initialValues:",
-          departDate
-        );
-        setDepartDate(departDate);
-      } else {
-        console.log("SearchForm: No departDate in initialValues");
-      }
-
-      // Handle return date
-      if (initialValues.returnDate) {
-        const returnDate =
-          initialValues.returnDate instanceof Date
-            ? initialValues.returnDate
-            : new Date(initialValues.returnDate);
-        console.log(
-          "SearchForm: Setting returnDate from initialValues:",
-          returnDate
-        );
-        setReturnDate(returnDate);
-      } else {
-        console.log("SearchForm: No returnDate in initialValues");
-      }
-
-      // Handle from/to locations - support multiple selections
-      if (initialValues.from) {
-        if (Array.isArray(initialValues.from)) {
-          // Handle array of locations (multiple selections)
-          const processedLocations = initialValues.from
-            .map((location) => {
-              if (typeof location === "string") {
-                // Parse "City (CODE)" format
-                const match = location.match(/^(.+)\s*\(([^)]+)\)$/);
-                if (match) {
-                  return {
-                    city: match[1].trim(),
-                    airportCode: match[2],
-                    displayName: location,
-                  };
-                }
-              } else if (typeof location === "object" && location.airportCode) {
-                // Already in object format
-                return location;
-              }
-              return location;
-            })
-            .filter((location) => location && location.airportCode); // Filter out invalid locations
-
-          // Remove duplicates from processed locations
-          const uniqueProcessedLocations = processedLocations.filter(
-            (location, index, self) =>
-              index ===
-              self.findIndex((loc) => loc.airportCode === location.airportCode)
-          );
-
-          // Only update if the processed locations are different from current ones
-          const currentFromCodes = fromLocations
-            .map((loc) => loc.airportCode)
-            .sort();
-          const newFromCodes = uniqueProcessedLocations
-            .map((loc) => loc.airportCode)
-            .sort();
-          const fromChanged =
-            JSON.stringify(currentFromCodes) !== JSON.stringify(newFromCodes);
-
-          if (fromChanged) {
-            console.log("Updating fromLocations:", uniqueProcessedLocations);
-            setFromLocations(uniqueProcessedLocations);
-          }
-        } else if (typeof initialValues.from === "string") {
-          // Parse "City (CODE)" format
-          const match = initialValues.from.match(/^(.+)\s*\(([^)]+)\)$/);
-          if (match) {
-            const newLocation = {
-              city: match[1].trim(),
-              airportCode: match[2],
-              displayName: initialValues.from,
-            };
-
-            // Only update if different from current
-            const currentFromCodes = fromLocations.map(
-              (loc) => loc.airportCode
-            );
-            if (!currentFromCodes.includes(newLocation.airportCode)) {
-              setFromLocations([newLocation]);
-            }
-          }
-        } else if (
-          typeof initialValues.from === "object" &&
-          initialValues.from.airportCode
-        ) {
-          // Only update if different from current
-          const currentFromCodes = fromLocations.map((loc) => loc.airportCode);
-          if (!currentFromCodes.includes(initialValues.from.airportCode)) {
-            setFromLocations([initialValues.from]);
-          }
+      setDepartDate(initialValues.departDate || undefined);
+      setReturnDate(initialValues.returnDate || undefined);
+      setPassengers(
+        initialValues.passengers || {
+          adults: 1,
+          children: 0,
+          infants: 0,
         }
-      }
-
-      if (initialValues.to) {
-        if (Array.isArray(initialValues.to)) {
-          // Handle array of locations (multiple selections)
-          const processedLocations = initialValues.to
-            .map((location) => {
-              if (typeof location === "string") {
-                // Parse "City (CODE)" format
-                const match = location.match(/^(.+)\s*\(([^)]+)\)$/);
-                if (match) {
-                  return {
-                    city: match[1].trim(),
-                    airportCode: match[2],
-                    displayName: location,
-                  };
-                }
-              } else if (typeof location === "object" && location.airportCode) {
-                // Already in object format
-                return location;
-              }
-              return location;
-            })
-            .filter((location) => location && location.airportCode); // Filter out invalid locations
-
-          // Remove duplicates from processed locations
-          const uniqueProcessedLocations = processedLocations.filter(
-            (location, index, self) =>
-              index ===
-              self.findIndex((loc) => loc.airportCode === location.airportCode)
-          );
-
-          // Only update if the processed locations are different from current ones
-          const currentToCodes = toLocations
-            .map((loc) => loc.airportCode)
-            .sort();
-          const newToCodes = uniqueProcessedLocations
-            .map((loc) => loc.airportCode)
-            .sort();
-          const toChanged =
-            JSON.stringify(currentToCodes) !== JSON.stringify(newToCodes);
-
-          if (toChanged) {
-            console.log("Updating toLocations:", uniqueProcessedLocations);
-            setToLocations(uniqueProcessedLocations);
-          }
-        } else if (typeof initialValues.to === "string") {
-          // Parse "City (CODE)" format
-          const match = initialValues.to.match(/^(.+)\s*\(([^)]+)\)$/);
-          if (match) {
-            const newLocation = {
-              city: match[1].trim(),
-              airportCode: match[2],
-              displayName: initialValues.to,
-            };
-
-            // Only update if different from current
-            const currentToCodes = toLocations.map((loc) => loc.airportCode);
-            if (!currentToCodes.includes(newLocation.airportCode)) {
-              setToLocations([newLocation]);
-            }
-          }
-        } else if (
-          typeof initialValues.to === "object" &&
-          initialValues.to.airportCode
-        ) {
-          // Only update if different from current
-          const currentToCodes = toLocations.map((loc) => loc.airportCode);
-          if (!currentToCodes.includes(initialValues.to.airportCode)) {
-            setToLocations([initialValues.to]);
-          }
-        }
-      }
+      );
+      setTravelClass(initialValues.travelClass || "Phổ thông");
+      setMultiTrips(
+        initialValues.multiTrips || [
+          { from: [], to: [], date: null },
+          { from: [], to: [], date: null },
+        ]
+      );
     }
   }, [initialValues]);
 
-  // Debug: Log date changes
+  // Notify parent when trip type changes (only if changed by user)
   useEffect(() => {
-    console.log(
-      "SearchForm: departDate changed:",
-      departDate,
-      "type:",
-      typeof departDate
-    );
-  }, [departDate]);
-
-  useEffect(() => {
-    console.log(
-      "SearchForm: returnDate changed:",
-      returnDate,
-      "type:",
-      typeof returnDate
-    );
-  }, [returnDate]);
+    if (onTripTypeChange && tripTypeChangedByUser.current) {
+      onTripTypeChange(tripType);
+    }
+  }, [tripType, onTripTypeChange]);
 
   const updatePassenger = (type, value) => {
     setPassengers((prev) => ({
@@ -340,27 +183,6 @@ export function SearchForm({ onSearch, initialValues }) {
     passengers.infants > 0 ? `, ${passengers.infants} Em bé` : ""
   } - ${travelClass}`;
 
-  const handleReset = () => {
-    setTripType("roundtrip");
-    setFromLocations([]);
-    setToLocations([]);
-    setDepartDate(undefined);
-    setReturnDate(undefined);
-    setMultiTrips([
-      { from: [], to: [], date: null },
-      { from: [], to: [], date: null },
-    ]);
-    setPassengers({
-      adults: 1,
-      children: 0,
-      infants: 0,
-    });
-    setTravelClass("Phổ thông");
-
-    // Optional: Show a brief success message
-    console.log("Form reset successfully");
-  };
-
   // Check if form has any data to reset
   const hasDataToReset = () => {
     return (
@@ -372,13 +194,13 @@ export function SearchForm({ onSearch, initialValues }) {
       passengers.children > 0 ||
       passengers.infants > 0 ||
       travelClass !== "Phổ thông" ||
-      tripType !== "roundtrip"
+      tripType !== "ROUND_TRIP"
     );
   };
 
   // Check if form is valid for search
   const isFormValid = () => {
-    if (tripType === "roundtrip") {
+    if (tripType === "ROUND_TRIP") {
       return (
         fromLocations.length > 0 &&
         toLocations.length > 0 &&
@@ -386,9 +208,9 @@ export function SearchForm({ onSearch, initialValues }) {
         returnDate &&
         returnDate > departDate
       );
-    } else if (tripType === "oneway") {
+    } else if (tripType === "ONE_WAY") {
       return fromLocations.length > 0 && toLocations.length > 0 && departDate;
-    } else if (tripType === "multicity") {
+    } else if (tripType === "MULTI_CITY") {
       if (!multiTrips || multiTrips.length < 2) return false;
 
       return multiTrips.every((trip) => {
@@ -409,150 +231,72 @@ export function SearchForm({ onSearch, initialValues }) {
     return false;
   };
 
+  // Handle search submission
   const handleSearch = () => {
-    // Clear previous errors
-    setValidationErrors([]);
-
-    // Validation logic based on trip type
-    const errors = [];
-
-    if (tripType === "roundtrip") {
-      // Round trip validation
-      if (!fromLocations || fromLocations.length === 0) {
-        errors.push("Vui lòng chọn điểm khởi hành");
-      }
-      if (!toLocations || toLocations.length === 0) {
-        errors.push("Vui lòng chọn điểm đến");
-      }
-      if (!departDate) {
-        errors.push("Vui lòng chọn ngày đi");
-      }
-      if (!returnDate) {
-        errors.push("Vui lòng chọn ngày về");
-      }
-      if (departDate && returnDate && returnDate <= departDate) {
-        errors.push("Ngày về phải sau ngày đi");
-      }
-    } else if (tripType === "oneway") {
-      // One way validation
-      if (!fromLocations || fromLocations.length === 0) {
-        errors.push("Vui lòng chọn điểm khởi hành");
-      }
-      if (!toLocations || toLocations.length === 0) {
-        errors.push("Vui lòng chọn điểm đến");
-      }
-      if (!departDate) {
-        errors.push("Vui lòng chọn ngày đi");
-      }
-    } else if (tripType === "multicity") {
-      // Multi-city validation
-      if (!multiTrips || multiTrips.length < 2) {
-        errors.push("Vui lòng thêm ít nhất 2 chuyến bay");
-      } else {
-        multiTrips.forEach((trip, index) => {
-          if (!trip.from || trip.from.length === 0) {
-            errors.push(`Chuyến ${index + 1}: Vui lòng chọn điểm khởi hành`);
-          }
-          if (!trip.to || trip.to.length === 0) {
-            errors.push(`Chuyến ${index + 1}: Vui lòng chọn điểm đến`);
-          }
-          if (!trip.date) {
-            errors.push(`Chuyến ${index + 1}: Vui lòng chọn ngày đi`);
-          }
-          // Check if from and to are the same for each trip
-          if (
-            trip.from &&
-            trip.to &&
-            trip.from.length > 0 &&
-            trip.to.length > 0
-          ) {
-            const fromCodes = trip.from.map((loc) => loc.airportCode);
-            const toCodes = trip.to.map((loc) => loc.airportCode);
-            const hasSameAirport = fromCodes.some((fromCode) =>
-              toCodes.includes(fromCode)
-            );
-            if (hasSameAirport) {
-              errors.push(
-                `Chuyến ${
-                  index + 1
-                }: Điểm khởi hành và điểm đến không được trùng nhau`
-              );
-            }
-          }
-        });
-      }
-    }
-
-    // Check if from and to are the same airport
-    if (fromLocations.length > 0 && toLocations.length > 0) {
-      const fromCodes = fromLocations.map((loc) => loc.airportCode);
-      const toCodes = toLocations.map((loc) => loc.airportCode);
-      const hasSameAirport = fromCodes.some((fromCode) =>
-        toCodes.includes(fromCode)
-      );
-      if (hasSameAirport) {
-        errors.push("Điểm khởi hành và điểm đến không được trùng nhau");
-      }
-    }
-
-    // Set validation errors if any
-    if (errors.length > 0) {
-      setValidationErrors(errors);
+    if (!isFormValid()) {
       return;
     }
 
-    if (onSearch) {
-      // Support multiple from/to locations - create all combinations
-      const fromLocs =
-        Array.isArray(fromLocations) && fromLocations.length > 0
-          ? fromLocations
-          : [];
-      const toLocs =
-        Array.isArray(toLocations) && toLocations.length > 0 ? toLocations : [];
+    let searchData = {
+      tripType,
+      passengers,
+      travelClass,
+    };
 
-      // Create all combinations of from-to pairs (only if we have both from and to)
-      const searchCombinations = [];
-      if (fromLocs.length > 0 && toLocs.length > 0) {
-        fromLocs.forEach((fromLoc) => {
-          toLocs.forEach((toLoc) => {
-            // Skip if from and to are the same airport
-            if (fromLoc.airportCode !== toLoc.airportCode) {
-              searchCombinations.push({
-                from: fromLoc,
-                to: toLoc,
-                departDate,
-                returnDate,
-              });
-            }
-          });
-        });
-      }
-
-      const criteria = {
-        tripType,
-        from: fromLocs.length === 1 ? fromLocs[0] : fromLocs, // Keep backward compatibility
-        to: toLocs.length === 1 ? toLocs[0] : toLocs, // Keep backward compatibility
-        departDate,
-        returnDate,
-        passengers,
-        travelClass,
-        multiTrips: tripType === "multicity" ? multiTrips : null,
-        searchCombinations, // All from-to combinations
+    if (tripType === "ROUND_TRIP") {
+      searchData = {
+        ...searchData,
+        fromLocations: fromLocations, // Send all selected locations
+        toLocations: toLocations, // Send all selected locations
+        departDate:
+          departDate &&
+          departDate instanceof Date &&
+          !isNaN(departDate.getTime())
+            ? departDate
+            : null,
+        returnDate:
+          returnDate &&
+          returnDate instanceof Date &&
+          !isNaN(returnDate.getTime())
+            ? returnDate
+            : null,
       };
+    } else if (tripType === "ONE_WAY") {
+      searchData = {
+        ...searchData,
+        fromLocations: fromLocations, // Send all selected locations
+        toLocations: toLocations, // Send all selected locations
+        departDate:
+          departDate &&
+          departDate instanceof Date &&
+          !isNaN(departDate.getTime())
+            ? departDate
+            : null,
+      };
+    } else if (tripType === "MULTI_CITY") {
+      searchData = {
+        ...searchData,
+        multiTrips,
+      };
+    }
 
-      console.log("SearchForm handleSearch - Current state:");
-      console.log("- departDate:", departDate, "type:", typeof departDate);
-      console.log("- returnDate:", returnDate, "type:", typeof returnDate);
-      console.log("- tripType:", tripType);
-      console.log("- fromLocations:", fromLocations);
-      console.log("- toLocations:", toLocations);
-      console.log("SearchForm handleSearch - criteria:", criteria);
-      onSearch(criteria);
+    console.log("Submitting search data:", searchData);
+    if (onSearch) {
+      onSearch(searchData);
     }
   };
 
+  const handleReset = () => {
+    setTripType("ROUND_TRIP");
+    setFromLocations([]);
+    setToLocations([]);
+    setDepartDate();
+    setReturnDate();
+    setValidationErrors([]);
+  };
+
   return (
-    <Card className="bg-white/95 backdrop-blur-sm dark:bg-gray-400/100 p-6 max-w-5xl mx-auto">
+    <Card className="bg-white/95 backdrop-blur-sm dark:bg-gray-400/100 p-6 max-w-6xl mx-auto">
       <div className="space-y-6">
         {/* Validation Errors */}
         {validationErrors.length > 0 && (
@@ -593,7 +337,10 @@ export function SearchForm({ onSearch, initialValues }) {
             {TRIP_TYPES.map((tab) => (
               <div
                 key={tab.key}
-                onClick={() => setTripType(tab.key)}
+                onClick={() => {
+                  tripTypeChangedByUser.current = true;
+                  setTripType(tab.key);
+                }}
                 className={`px-3 sm:px-4 py-2 cursor-pointer transition-colors text-sm sm:text-base rounded-md ${
                   tripType === tab.key
                     ? "bg-blue-500 text-white"
@@ -719,33 +466,66 @@ export function SearchForm({ onSearch, initialValues }) {
         </div>
 
         {/* Round Trip Form */}
-        {tripType === "roundtrip" && (
+        {tripType === "ROUND_TRIP" && (
           <div className="grid md:grid-cols-5 gap-4">
-            <AirportAutocomplete
-              placeholder="Từ đâu?"
-              value={fromLocations}
-              onChange={setFromLocations}
-              // country="Vietnam"
-            />
-            <AirportAutocomplete
-              placeholder="Đến đâu?"
-              value={toLocations}
-              onChange={setToLocations}
-            />
-            <DatePicker
-              date={departDate}
-              onSelect={setDepartDate}
-              placeholder="Ngày đi"
-            />
-            <DatePicker
-              date={returnDate}
-              onSelect={setReturnDate}
-              placeholder="Ngày về"
-            />
+            <div className="relative">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Từ sân bay
+              </label>
+              <AirportAutocomplete
+                placeholder="Chọn sân bay đi"
+                value={fromLocations}
+                onChange={setFromLocations}
+                multiple={true}
+              />
+              {fromLocations.length > 1 && (
+                <div className="text-xs text-blue-600 mt-1">
+                  Đã chọn {fromLocations.length} sân bay đi
+                </div>
+              )}
+            </div>
+            <div className="relative">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Đến sân bay
+              </label>
+              <AirportAutocomplete
+                placeholder="Chọn sân bay đến"
+                value={toLocations}
+                onChange={setToLocations}
+                multiple={true}
+              />
+              {toLocations.length > 1 && (
+                <div className="text-xs text-blue-600 mt-1">
+                  Đã chọn {toLocations.length} sân bay đến
+                </div>
+              )}
+            </div>
+            <div className="relative">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Ngày đi
+              </label>
+              <DatePicker
+                date={departDate}
+                onSelect={setDepartDate}
+                placeholder="Chọn ngày đi"
+              />
+            </div>
+
+            <div className="relative">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Ngày về
+              </label>
+              <DatePicker
+                date={returnDate}
+                onSelect={setReturnDate}
+                placeholder="Chọn ngày về"
+              />
+            </div>
+
             <Button
-              className="bg-blue-500 text-white hover:bg-blue-600 disabled:bg-gray-400 disabled:cursor-not-allowed"
-              onClick={handleSearch}
+              className="bg-blue-500 text-white hover:bg-blue-600 disabled:bg-gray-400 disabled:cursor-not-allowed mt-6"
               disabled={!isFormValid()}
+              onClick={handleSearch}
             >
               {fromLocations.length > 1 || toLocations.length > 1
                 ? `Tìm chuyến bay (${
@@ -757,25 +537,54 @@ export function SearchForm({ onSearch, initialValues }) {
         )}
 
         {/* One Way Form */}
-        {tripType === "oneway" && (
+        {tripType === "ONE_WAY" && (
           <div className="grid md:grid-cols-4 gap-4">
-            <AirportAutocomplete
-              placeholder="Từ đâu?"
-              value={fromLocations}
-              onChange={setFromLocations}
-            />
-            <AirportAutocomplete
-              placeholder="Đến đâu?"
-              value={toLocations}
-              onChange={setToLocations}
-            />
-            <DatePicker
-              date={departDate}
-              onSelect={setDepartDate}
-              placeholder="Ngày đi"
-            />
+            <div className="relative">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Từ sân bay
+              </label>
+              <AirportAutocomplete
+                placeholder="Chọn sân bay đi"
+                value={fromLocations}
+                onChange={setFromLocations}
+                multiple={true}
+              />
+              {fromLocations.length > 1 && (
+                <div className="text-xs text-blue-600 mt-1">
+                  Đã chọn {fromLocations.length} sân bay đi
+                </div>
+              )}
+            </div>
+            <div className="relative">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Đến sân bay
+              </label>
+              <AirportAutocomplete
+                placeholder="Chọn sân bay đến "
+                value={toLocations}
+                onChange={setToLocations}
+                multiple={true}
+              />
+              {toLocations.length > 1 && (
+                <div className="text-xs text-blue-600 mt-1">
+                  Đã chọn {toLocations.length} sân bay đến
+                </div>
+              )}
+            </div>
+
+            <div className="relative">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Ngày đi
+              </label>
+              <DatePicker
+                date={departDate}
+                onSelect={setDepartDate}
+                placeholder="Chọn ngày đi"
+              />
+            </div>
+
             <Button
-              className="bg-blue-500 text-white hover:bg-blue-600 disabled:bg-gray-400 disabled:cursor-not-allowed"
+              className="bg-blue-500 text-white hover:bg-blue-600 disabled:bg-gray-400 disabled:cursor-not-allowed mt-6"
               onClick={handleSearch}
               disabled={!isFormValid()}
             >
@@ -789,7 +598,7 @@ export function SearchForm({ onSearch, initialValues }) {
         )}
 
         {/* Multi-city Form */}
-        {tripType === "multicity" && (
+        {tripType === "MULTI_CITY" && (
           <div className="space-y-4">
             {multiTrips.map((trip, index) => (
               <div

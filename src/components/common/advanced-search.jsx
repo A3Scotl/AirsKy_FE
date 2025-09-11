@@ -53,7 +53,7 @@ const AdvancedSearch = ({
     const newDateFilters = { ...dateFilters };
     const newActiveFilters = { ...activeFilters };
 
-    if (date) {
+    if (date && date instanceof Date && !isNaN(date.getTime())) {
       newDateFilters[key] = date;
       newActiveFilters[key] = format(date, "yyyy-MM-dd");
     } else {
@@ -116,7 +116,9 @@ const AdvancedSearch = ({
                   className="w-full justify-start text-left font-normal"
                 >
                   <CalendarIcon className="mr-2 h-4 w-4" />
-                  {dateFilters[key] ? (
+                  {dateFilters[key] &&
+                  dateFilters[key] instanceof Date &&
+                  !isNaN(dateFilters[key].getTime()) ? (
                     format(dateFilters[key], "PPP")
                   ) : (
                     <span>{placeholder || `Chọn ${label.toLowerCase()}`}</span>
