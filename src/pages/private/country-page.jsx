@@ -35,10 +35,11 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import  Pagination  from "@/components/ui/pagination";
+import Pagination from "@/components/ui/pagination";
 import { countryApi } from "@/apis/country-api";
 import { useCountry } from "@/hooks/use-country";
 import { toast } from "sonner";
+import ExportButton from "@/components/common/export-button";
 
 // TanStack Table imports
 import {
@@ -420,6 +421,7 @@ const CountryPage = () => {
             <RotateCcw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
             Làm mới
           </Button>
+          <ExportButton entity="countries" />
           <Button onClick={handleAdd}>Thêm quốc gia</Button>
         </div>
       </div>
@@ -584,22 +586,22 @@ const CountryPage = () => {
       </Card>
 
       {/* Pagination */}
-            {table.getFilteredRowModel().rows.length > 0 && (
-              <Pagination
-                currentPage={pagination.pageIndex + 1}
-                totalPages={table.getPageCount()}
-                itemsPerPage={pagination.pageSize}
-                totalItems={table.getFilteredRowModel().rows.length}
-                onPageChange={(page) =>
-                  setPagination((prev) => ({ ...prev, pageIndex: page - 1 }))
-                }
-                onPageSizeChange={(size) =>
-                  setPagination((prev) => ({ ...prev, pageSize: size, pageIndex: 0 }))
-                }
-                showPageSizeSelector={true}
-                showInfo={true}
-              />
-            )}
+      {table.getFilteredRowModel().rows.length > 0 && (
+        <Pagination
+          currentPage={pagination.pageIndex + 1}
+          totalPages={table.getPageCount()}
+          itemsPerPage={pagination.pageSize}
+          totalItems={table.getFilteredRowModel().rows.length}
+          onPageChange={(page) =>
+            setPagination((prev) => ({ ...prev, pageIndex: page - 1 }))
+          }
+          onPageSizeChange={(size) =>
+            setPagination((prev) => ({ ...prev, pageSize: size, pageIndex: 0 }))
+          }
+          showPageSizeSelector={true}
+          showInfo={true}
+        />
+      )}
 
       <CountryModal
         open={modalOpen}

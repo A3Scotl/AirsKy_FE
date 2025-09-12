@@ -42,6 +42,7 @@ const UserDetailsModal = ({
   open,
   onClose,
   user,
+  currentUser,
   onEditUser,
   onSuspendUser,
   onDeleteUser,
@@ -286,23 +287,8 @@ const UserDetailsModal = ({
                       </div>
                     </div>
 
-                    <div className="flex items-center space-x-3">
-                      <MapPin className="h-4 w-4 text-gray-400" />
-                      <div>
-                        <p className="text-sm text-gray-500">Country</p>
-                        <p className="font-medium">{user.country}</p>
-                      </div>
-                    </div>
-
-                    {user.address && (
-                      <div className="flex items-center space-x-3">
-                        <MapPinIcon className="h-4 w-4 text-gray-400" />
-                        <div>
-                          <p className="text-sm text-gray-500">Address</p>
-                          <p className="font-medium">{user.address}</p>
-                        </div>
-                      </div>
-                    )}
+                    
+                  
                   </CardContent>
                 </Card>
 
@@ -450,6 +436,7 @@ const UserDetailsModal = ({
                       variant="outline"
                       className="w-full justify-start"
                       onClick={() => onEditUser && onEditUser(user)}
+                      disabled={user?.email === currentUser?.email}
                     >
                       <Edit className="h-4 w-4 mr-2" />
                       Edit User Details
@@ -460,6 +447,7 @@ const UserDetailsModal = ({
                         variant="outline"
                         className="w-full justify-start text-orange-600 border-orange-200"
                         onClick={() => onSuspendUser && onSuspendUser(user)}
+                        disabled={user?.email === currentUser?.email}
                       >
                         <AlertTriangle className="h-4 w-4 mr-2" />
                         Suspend Account
@@ -468,6 +456,8 @@ const UserDetailsModal = ({
                       <Button
                         variant="outline"
                         className="w-full justify-start text-green-600 border-green-200"
+                        onClick={() => onSuspendUser && onSuspendUser(user)}
+                        disabled={user?.email === currentUser?.email}
                       >
                         <UserCheck className="h-4 w-4 mr-2" />
                         Activate Account
@@ -485,6 +475,7 @@ const UserDetailsModal = ({
                       variant="destructive"
                       className="w-full"
                       onClick={() => onDeleteUser && onDeleteUser(user)}
+                      disabled={user?.email === currentUser?.email}
                     >
                       <X className="h-4 w-4 mr-2" />
                       Delete User Account

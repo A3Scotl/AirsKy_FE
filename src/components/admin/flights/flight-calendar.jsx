@@ -77,12 +77,27 @@ const FlightCalendar = ({ flights }) => {
   // Get flights for a specific date
   const getFlightsForDate = (date) => {
     if (!date) return [];
-    const dateStr = date.toISOString().split("T")[0];
+
     return flights.filter((flight) => {
-      const flightDate = new Date(flight.departureTime)
-        .toISOString()
-        .split("T")[0];
-      return flightDate === dateStr;
+      if (!flight.departureTime) return false;
+
+      // Tạo date object từ departureTime và chỉ lấy phần ngày
+      const flightDate = new Date(flight.departureTime);
+
+      // So sánh chỉ phần ngày (không bao gồm thời gian) để tránh vấn đề timezone
+      const flightYear = flightDate.getFullYear();
+      const flightMonth = flightDate.getMonth();
+      const flightDay = flightDate.getDate();
+
+      const targetYear = date.getFullYear();
+      const targetMonth = date.getMonth();
+      const targetDay = date.getDate();
+
+      return (
+        flightYear === targetYear &&
+        flightMonth === targetMonth &&
+        flightDay === targetDay
+      );
     });
   };
 
@@ -110,12 +125,21 @@ const FlightCalendar = ({ flights }) => {
   // Check if date is today
   const isToday = (date) => {
     const today = new Date();
-    return date.toDateString() === today.toDateString();
+    return (
+      date.getFullYear() === today.getFullYear() &&
+      date.getMonth() === today.getMonth() &&
+      date.getDate() === today.getDate()
+    );
   };
 
   // Check if date is selected
   const isSelected = (date) => {
-    return selectedDate && date.toDateString() === selectedDate.toDateString();
+    return (
+      selectedDate &&
+      date.getFullYear() === selectedDate.getFullYear() &&
+      date.getMonth() === selectedDate.getMonth() &&
+      date.getDate() === selectedDate.getDate()
+    );
   };
 
   const daysInMonth = getDaysInMonth(currentDate);
@@ -211,7 +235,7 @@ const FlightCalendar = ({ flights }) => {
 
               return (
                 <div
-                  key={date.toISOString()}
+                  key={`${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`}
                   className={`
                     min-h-[100px] p-2 border rounded-lg cursor-pointer transition-colors
                     ${
@@ -484,7 +508,7 @@ const FlightCalendar = ({ flights }) => {
                   </label>
                   <p>
                     {selectedFlight.availableSeats || 0}/
-                    {selectedFlight.totalSeats || 0}
+                    {selectedFlight.aircraft?.totalSeats || 0}
                   </p>
                 </div>
               </div>

@@ -26,6 +26,7 @@ import PaymentAnalytics from "@/components/admin/payments/payment-analytics";
 import PaymentTable from "@/components/admin/payments/payment-table";
 import PaymentDetailsModal from "@/components/admin/payments/payment-details-modal";
 import RefundModal from "@/components/admin/payments/payment-refund-modal";
+import ExportButton from "@/components/common/export-button";
 
 const AdminPaymentPage = () => {
   const [activeTab, setActiveTab] = useState("transactions");
@@ -88,7 +89,8 @@ const AdminPaymentPage = () => {
             Quản lý thanh toán
           </h1>
           <p className="text-gray-600 mt-1">
-            Giám sát giao dịch, quản lý hoàn tiền và phân tích dữ liệu thanh toán
+            Giám sát giao dịch, quản lý hoàn tiền và phân tích dữ liệu thanh
+            toán
           </p>
         </div>
         <div className="flex items-center space-x-3">
@@ -103,14 +105,7 @@ const AdminPaymentPage = () => {
             />
             <span>Làm mới</span>
           </Button>
-          <Button
-            variant="outline"
-            onClick={handleExportData}
-            className="flex items-center space-x-2"
-          >
-            <Download className="h-4 w-4" />
-            <span>Xuất</span>
-          </Button>
+          <ExportButton entity="payments" />
         </div>
       </div>
 
@@ -164,7 +159,9 @@ const AdminPaymentPage = () => {
                 <p className="text-2xl font-bold">
                   ${paymentStats.averageTransaction}
                 </p>
-                <p className="text-xs text-gray-500">Giá trị giao dịch trung bình</p>
+                <p className="text-xs text-gray-500">
+                  Giá trị giao dịch trung bình
+                </p>
                 <p className="text-xs text-purple-600">
                   {paymentStats.successRate}% tỷ lệ thành công
                 </p>
@@ -232,7 +229,9 @@ const AdminPaymentPage = () => {
                 <SelectItem value="credit_card">Thẻ tín dụng</SelectItem>
                 <SelectItem value="debit_card">Thẻ ghi nợ</SelectItem>
                 <SelectItem value="paypal">PayPal</SelectItem>
-                <SelectItem value="bank_transfer">Chuyển khoản ngân hàng</SelectItem>
+                <SelectItem value="bank_transfer">
+                  Chuyển khoản ngân hàng
+                </SelectItem>
               </SelectContent>
             </Select>
 
@@ -245,7 +244,9 @@ const AdminPaymentPage = () => {
                 <SelectItem value="30">30 ngày qua</SelectItem>
                 <SelectItem value="90">3 tháng qua</SelectItem>
                 <SelectItem value="365">1 năm qua</SelectItem>
-                <SelectItem value="custom">Khoảng thời gian tùy chỉnh</SelectItem>
+                <SelectItem value="custom">
+                  Khoảng thời gian tùy chỉnh
+                </SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -284,8 +285,6 @@ const AdminPaymentPage = () => {
                 />
               </CardContent>
             </Card>
-
-           
           </div>
         </TabsContent>
 

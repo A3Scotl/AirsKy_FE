@@ -1,8 +1,8 @@
 import axios from "axios";
 import axiosRetry from "axios-retry";
 
-const API_BASE_URL = import.meta.env.VITE_BASE_API || "http://localhost:8080/api/v1";
-
+const API_BASE_URL =
+  import.meta.env.VITE_BASE_API || "http://localhost:8080/api/v1";
 
 const axiosInstance = axios.create({
   baseURL: API_BASE_URL,
@@ -12,10 +12,10 @@ const axiosInstance = axios.create({
   },
 });
 
-// Retry logic 
+// Retry logic
 axiosRetry(axiosInstance, {
   retries: 3,
-  retryDelay: (retryCount) => retryCount * 1000, 
+  retryDelay: (retryCount) => retryCount * 1000,
   retryCondition: (error) => {
     const method = error?.config?.method?.toLowerCase();
     return ["get", "head"].includes(method);
@@ -39,6 +39,11 @@ axiosInstance.interceptors.request.use(
 axiosInstance.interceptors.response.use(
   (response) => response.data,
   (error) => {
+    if (error?.response?.status === 401) {
+      localStorage.removeItem("token");
+      localStorage.removeItem("user");
+    }
+
     const message =
       error?.response?.data?.message ||
       error?.response?.data?.error ||

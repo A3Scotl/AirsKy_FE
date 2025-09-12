@@ -17,7 +17,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Select,
   SelectContent,
@@ -31,6 +30,7 @@ import UserDetailsModal from "@/components/admin/users/user-details-modal";
 import { userApi } from "@/apis/user-api";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/auth-context";
+import ExportButton from "@/components/common/export-button";
 
 const AdminUsers = () => {
   const { user: currentUser } = useAuth();
@@ -40,8 +40,7 @@ const AdminUsers = () => {
   const [showUserModal, setShowUserModal] = useState(false);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
-  const [modalMode, setModalMode] = useState("add"); // "add" or "edit"
-  const [activeTab, setActiveTab] = useState("overview");
+  const [modalMode, setModalMode] = useState("add");
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [pagination, setPagination] = useState({
@@ -56,48 +55,61 @@ const AdminUsers = () => {
     newRegistrations: 0,
   });
 
-  // Fetch users from API with server-side filtering and pagination
+  // Fetch users from API with client-side filtering and pagination
   const fetchUsers = async (params = {}) => {
     try {
       setLoading(true);
+
+      // If filters are applied, fetch all data for client-side filtering
+      const hasFilters = statusFilter !== "all" || roleFilter !== "all";
       const apiParams = {
-        page: params.page ?? pagination.page,
-        size: params.size ?? pagination.size,
+        page: hasFilters ? 0 : params.page ?? pagination.page,
+        size: hasFilters ? 1000 : params.size ?? pagination.size,
         search: params.search ?? searchQuery,
       };
 
-      // Add status filter if not 'all'
-      if (statusFilter !== "all") {
-        apiParams.active = statusFilter === "Hoạt động";
-      }
-
-      // Add role filter if not 'all'
-      if (roleFilter !== "all") {
-        apiParams.role = roleFilter;
-      }
-
       const response = await userApi.getAllUsers(apiParams);
 
-      console.log("User API Response:", response);
-      console.log("Current User:", currentUser);
-      console.log("Current User ID:", currentUser?.id);
-      console.log("Current User type of ID:", typeof currentUser?.id);
-
       if (response.success && response.data?.content) {
-        // Filter out current admin user
-        const filteredUsers = response.data.content.filter(
+        let allUsers = response.data.content.filter(
           (user) => user?.id?.toString() !== currentUser?.id?.toString()
         );
 
-        console.log("Original content:", response.data.content.length, "users");
-        console.log("Filtered Users:", filteredUsers.length, "users");
-        console.log("Current user ID:", currentUser?.id);
-        console.log(
-          "User IDs in content:",
-          response.data.content.map((u) => u.id)
-        );
+        // Apply client-side filters
+        let filteredUsers = allUsers;
 
-        const transformedUsers = filteredUsers.map((user) => ({
+        if (statusFilter !== "all") {
+          const isActive = statusFilter === "Hoạt động";
+          filteredUsers = filteredUsers.filter(
+            (user) => user?.active === isActive
+          );
+        }
+
+        if (roleFilter !== "all") {
+          filteredUsers = filteredUsers.filter(
+            (user) => user?.role === roleFilter
+          );
+        }
+
+        // Implement client-side pagination for filtered results
+        const pageSize = params.size ?? pagination.size;
+        const totalFiltered = filteredUsers.length;
+        const totalPages = Math.ceil(totalFiltered / pageSize);
+
+        // Reset to page 0 if current page is out of bounds after filtering
+        let currentPage = params.page ?? pagination.page;
+        if (currentPage >= totalPages && totalPages > 0) {
+          currentPage = 0;
+        }
+
+        const startIndex = currentPage * pageSize;
+        const endIndex = startIndex + pageSize;
+        const paginatedUsers = filteredUsers.slice(startIndex, endIndex);
+
+      
+
+        // Transform paginated users for display
+        const transformedUsers = paginatedUsers.map((user) => ({
           id: user?.id?.toString() || "N/A",
           name:
             `${user?.firstName || ""} ${user?.lastName || ""}`.trim() || "N/A",
@@ -105,7 +117,7 @@ const AdminUsers = () => {
           phone: user?.phone || "N/A",
           role: user?.role || "CUSTOMER",
           status: user?.active ? "Hoạt động" : "Đã khóa",
-          active: user?.active,
+          active: user?.active || false,
           avatar: null,
           joinDate: user?.createdAt
             ? new Date(user.createdAt).toISOString().split("T")[0]
@@ -124,33 +136,24 @@ const AdminUsers = () => {
           },
         }));
 
-        console.log(
-          "Setting users to state:",
-          transformedUsers.length,
-          "users"
-        );
-        console.log("Users state before set:", users.length, "users");
-
         setUsers(transformedUsers);
 
         setPagination({
-          page: response.data?.pageable?.pageNumber ?? 0,
-          size: response.data?.pageable?.pageSize ?? 10,
-          totalElements: response.data?.totalElements ?? 0,
-          totalPages: response.data?.totalPages ?? 0,
+          page: currentPage,
+          size: pageSize,
+          totalElements: totalFiltered,
+          totalPages: totalPages,
         });
 
-        // Calculate stats from response or users
-        const totalCustomers = response.data?.totalElements ?? 0;
-        const activeCustomers =
-          transformedUsers?.filter((u) => u.active).length ?? 0;
-        const newRegistrations =
-          transformedUsers?.filter(
-            (u) =>
-              u.joinDate !== "N/A" &&
-              new Date(u.joinDate) >
-                new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
-          ).length ?? 0; // Last 30 days, adjust as needed
+        // Calculate stats from all users (not filtered) for overview
+        const totalCustomers = allUsers.length;
+        const activeCustomers = allUsers.filter((u) => u.active).length;
+        const newRegistrations = allUsers.filter(
+          (u) =>
+            u.createdAt &&
+            new Date(u.createdAt) >
+              new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
+        ).length; // Last 30 days
 
         setUserStats({
           totalCustomers,
@@ -209,15 +212,6 @@ const AdminUsers = () => {
     const newActive = !user.active;
     const action = newActive ? "mở khóa" : "khóa";
 
-    console.log(
-      "Toggle user:",
-      user.name,
-      "from",
-      user.active,
-      "to",
-      newActive
-    );
-
     if (
       window.confirm(
         `Bạn có chắc chắn muốn ${action} tài khoản của khách hàng ${user.name}?`
@@ -227,8 +221,6 @@ const AdminUsers = () => {
         const response = await userApi.toggleActive(user.id, {
           active: newActive,
         });
-
-        console.log("Toggle response:", response);
 
         if (response.success) {
           toast.success(
@@ -296,14 +288,8 @@ const AdminUsers = () => {
           </p>
         </div>
         <div className="flex space-x-3">
-          <Button variant="outline" className="hidden sm:flex">
-            <Download className="h-4 w-4 mr-2" />
-            Xuất
-          </Button>
-          <Button
-            className="bg-blue-600 hover:bg-blue-700"
-            onClick={handleAddUser}
-          >
+          <ExportButton entity="users" />
+          <Button onClick={handleAddUser}>
             <Plus className="h-4 w-4 mr-2" />
             Thêm khách hàng
           </Button>
@@ -366,84 +352,78 @@ const AdminUsers = () => {
         </Card>
       </div>
 
-      {/* Main Content Tabs */}
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-1">
-          <TabsTrigger value="overview">Tổng quan</TabsTrigger>
-        </TabsList>
+      {/* Main Content */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Quản lý khách hàng</CardTitle>
+          <CardDescription>
+            Xem và quản lý tất cả tài khoản khách hàng và chi tiết của họ
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {/* Filters */}
+          <div className="flex flex-col lg:flex-row gap-4 mb-6">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+              <Input
+                placeholder="Tìm kiếm theo tên, email, hoặc ID..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10"
+              />
+            </div>
 
-        <TabsContent value="overview" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Quản lý khách hàng</CardTitle>
-              <CardDescription>
-                Xem và quản lý tất cả tài khoản khách hàng và chi tiết của họ
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {/* Filters */}
-              <div className="flex flex-col lg:flex-row gap-4 mb-6">
-                <div className="relative flex-1">
-                  <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                  <Input
-                    placeholder="Tìm kiếm theo tên, email, hoặc ID..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-10"
-                  />
-                </div>
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="w-full lg:w-48">
+                <SelectValue placeholder="Lọc theo trạng thái" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tất cả trạng thái</SelectItem>
+                <SelectItem value="Hoạt động">Đang hoạt động</SelectItem>
+                <SelectItem value="Đã khóa">Đã khóa</SelectItem>
+              </SelectContent>
+            </Select>
 
-                <Select value={statusFilter} onValueChange={setStatusFilter}>
-                  <SelectTrigger className="w-full lg:w-48">
-                    <SelectValue placeholder="Lọc theo trạng thái" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Tất cả trạng thái</SelectItem>
-                    <SelectItem value="Hoạt động">Đang hoạt động</SelectItem>
-                    <SelectItem value="Đã khóa">Đã khóa</SelectItem>
-                  </SelectContent>
-                </Select>
+            <Select value={roleFilter} onValueChange={setRoleFilter}>
+              <SelectTrigger className="w-full lg:w-48">
+                <SelectValue placeholder="Lọc theo vai trò" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tất cả vai trò</SelectItem>
+                <SelectItem value="ADMIN">Quản trị viên</SelectItem>
+                <SelectItem value="CUSTOMER">Khách hàng</SelectItem>
+                <SelectItem value="BUSINESS">Doanh nghiệp</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
 
-                <Select value={roleFilter} onValueChange={setRoleFilter}>
-                  <SelectTrigger className="w-full lg:w-48">
-                    <SelectValue placeholder="Lọc theo vai trò" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Tất cả vai trò</SelectItem>
-                    <SelectItem value="CUSTOMER">Khách hàng</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {loading ? (
-                <div className="flex justify-center items-center py-12">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-                  <span className="ml-2 text-gray-600">
-                    Đang tải danh sách khách hàng...
-                  </span>
-                </div>
-              ) : (
-                <UserTable
-                  users={users}
-                  searchQuery={searchQuery}
-                  statusFilter={statusFilter}
-                  roleFilter={roleFilter}
-                  currentUser={currentUser}
-                  onViewUser={handleViewUser}
-                  onEditUser={handleEditUser}
-                  onDeleteUser={handleDeleteUser}
-                  onSuspendUser={handleSuspendUser}
-                  pagination={pagination}
-                  onPageChange={(newPage) => fetchUsers({ page: newPage })}
-                  onPageSizeChange={(newSize) =>
-                    fetchUsers({ size: newSize, page: 0 })
-                  }
-                />
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+          {loading ? (
+            <div className="flex justify-center items-center py-12">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+              <span className="ml-2 text-gray-600">
+                Đang tải danh sách khách hàng...
+              </span>
+            </div>
+          ) : (
+            <UserTable
+              users={users}
+              searchQuery={searchQuery}
+              statusFilter={statusFilter}
+              roleFilter={roleFilter}
+              currentUser={currentUser}
+              onViewUser={handleViewUser}
+              onEditUser={handleEditUser}
+              onDeleteUser={handleDeleteUser}
+              onSuspendUser={handleSuspendUser}
+              pagination={pagination}
+              onPageChange={(newPage) => fetchUsers({ page: newPage })}
+              onPageSizeChange={(newSize) =>
+                fetchUsers({ size: newSize, page: 0 })
+              }
+            />
+          )}
+        </CardContent>
+      </Card>
 
       {/* User Form Modal */}
       <UserFormModal
@@ -461,6 +441,7 @@ const AdminUsers = () => {
         onClose={() => setShowDetailsModal(false)}
         onEdit={handleEditUser}
         onDelete={handleDeleteUser}
+        currentUser={currentUser}
       />
     </div>
   );

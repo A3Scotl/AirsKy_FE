@@ -41,6 +41,7 @@ import { flightApi } from "@/apis/flight-api";
 import { aircraftApi } from "@/apis/aircraft-api";
 import { handleFetch } from "@/utils/fetch-helper.js";
 import { toast } from "sonner";
+import ExportButton from "@/components/common/export-button";
 const AdminFlights = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -59,7 +60,6 @@ const AdminFlights = () => {
     handleFetch({
       apiCall: () => flightApi.getAllFlights({ size: 1000 }), // Lấy nhiều flights hơn
       setData: (data) => {
-        console.log("Flights data:", data); // Debug log
         const newFlights = data?.content || data;
         setPreviousFlights(flights); // Lưu dữ liệu cũ để tính % thay đổi
         setFlights(newFlights);
@@ -77,12 +77,12 @@ const AdminFlights = () => {
     });
   }, []);
 
-  // Hàm tính toán thống kê chuyến bay thực tế
+  // Hàm tính toán thống kê chuyến bay toàn diện
   const calculateFlightStats = (currentFlights, prevFlights = []) => {
     if (!currentFlights || currentFlights.length === 0) {
       return [
         {
-          title: "Tổng chuyến bay hôm nay",
+          title: "Tổng chuyến bay",
           value: "0",
           change: "0%",
           isPositive: true,
@@ -90,26 +90,81 @@ const AdminFlights = () => {
           color: "bg-blue-500",
         },
         {
-          title: "Hiệu suất đúng giờ",
+          title: "Chuyến bay hoạt động",
+          value: "0",
+          change: "0%",
+          isPositive: true,
+          icon: CheckCircle,
+          color: "bg-green-500",
+        },
+        {
+          title: "Tỷ lệ đúng giờ",
           value: "0%",
           change: "0%",
           isPositive: true,
           icon: Clock,
-          color: "bg-green-500",
+          color: "bg-indigo-500",
         },
-
         {
-          title: "Chuyến bay bị trì hoãn",
+          title: "Tổng doanh thu",
+          value: "0 VND",
+          change: "0%",
+          isPositive: true,
+          icon: DollarSign,
+          color: "bg-green-600",
+        },
+        {
+          title: "Tỷ lệ lấp đầy",
+          value: "0%",
+          change: "0%",
+          isPositive: true,
+          icon: Users,
+          color: "bg-purple-500",
+        },
+        {
+          title: "Chuyến bay hôm nay",
           value: "0",
           change: "0%",
           isPositive: true,
-          icon: AlertCircle,
+          icon: Calendar,
           color: "bg-orange-500",
         },
       ];
     }
 
-    // Lọc chuyến bay hôm nay
+    // === THỐNG KÊ TỔNG QUÁT ===
+    const totalFlights = currentFlights.length;
+    const activeFlights = currentFlights.filter(
+      (flight) => flight.status !== "CANCELLED"
+    ).length;
+    const activeRate =
+      totalFlights > 0 ? ((activeFlights / totalFlights) * 100).toFixed(1) : 0;
+
+    // Tính tỷ lệ đúng giờ (chuyến bay ON_TIME hoặc DEPARTED)
+    const onTimeFlights = currentFlights.filter(
+      (flight) => flight.status === "ON_TIME" || flight.status === "DEPARTED"
+    ).length;
+    const onTimeRate =
+      totalFlights > 0 ? ((onTimeFlights / totalFlights) * 100).toFixed(1) : 0;
+
+    // Tính tổng doanh thu ước tính
+    const totalRevenue = currentFlights.reduce((sum, flight) => {
+      const bookedSeats = flight.totalSeats - (flight.availableSeats || 0);
+      return sum + bookedSeats * (flight.basePrice || 0);
+    }, 0);
+
+    // Tính tỷ lệ lấp đầy trung bình
+    const totalSeats = currentFlights.reduce(
+      (sum, flight) => sum + (flight.totalSeats || 0),
+      0
+    );
+    const bookedSeats = currentFlights.reduce((sum, flight) => {
+      return sum + (flight.totalSeats - (flight.availableSeats || 0));
+    }, 0);
+    const occupancyRate =
+      totalSeats > 0 ? ((bookedSeats / totalSeats) * 100).toFixed(1) : 0;
+
+    // === THỐNG KÊ HÔM NAY ===
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const tomorrow = new Date(today);
@@ -120,181 +175,131 @@ const AdminFlights = () => {
       return departureDate >= today && departureDate < tomorrow;
     });
 
-    // Tính tổng chuyến bay hôm nay
-    const totalFlightsToday = todayFlights.length;
-    const prevTotalFlightsToday = prevFlights.filter((flight) => {
-      const departureDate = new Date(flight.departureTime);
-      return departureDate >= today && departureDate < tomorrow;
-    }).length;
-    const totalChange =
-      prevTotalFlightsToday > 0
-        ? (
-            ((totalFlightsToday - prevTotalFlightsToday) /
-              prevTotalFlightsToday) *
-            100
-          ).toFixed(1)
-        : "0";
+    const todayFlightsCount = todayFlights.length;
 
-    // Tính hiệu suất đúng giờ (chuyến bay không bị delay hoặc cancel)
-    const onTimeFlights = todayFlights.filter(
+    // === TÍNH % THAY ĐỔI ===
+    const prevTotalFlights = prevFlights.length;
+    const prevActiveFlights = prevFlights.filter(
+      (flight) => flight.status !== "CANCELLED"
+    ).length;
+    const prevOnTimeFlights = prevFlights.filter(
       (flight) => flight.status === "ON_TIME" || flight.status === "DEPARTED"
     ).length;
-    const onTimeRate =
-      totalFlightsToday > 0
-        ? ((onTimeFlights / totalFlightsToday) * 100).toFixed(1)
-        : 0;
-
-    const prevOnTimeFlights = prevFlights.filter((flight) => {
-      const departureDate = new Date(flight.departureTime);
-      return (
-        departureDate >= today &&
-        departureDate < tomorrow &&
-        (flight.status === "ON_TIME" || flight.status === "DEPARTED")
-      );
-    }).length;
-    const prevOnTimeRate =
-      prevTotalFlightsToday > 0
-        ? ((prevOnTimeFlights / prevTotalFlightsToday) * 100).toFixed(1)
-        : 0;
-    const onTimeChange =
-      prevOnTimeRate > 0 ? (onTimeRate - prevOnTimeRate).toFixed(1) : "0";
-
-    // Tính số chuyến bay bị trì hoãn
-    const delayedFlights = todayFlights.filter(
-      (flight) => flight.status === "DELAYED"
-    ).length;
-    const prevDelayedFlights = prevFlights.filter((flight) => {
-      const departureDate = new Date(flight.departureTime);
-      return (
-        departureDate >= today &&
-        departureDate < tomorrow &&
-        flight.status === "DELAYED"
-      );
-    }).length;
-    const delayedChange =
-      prevDelayedFlights > 0
-        ? (
-            ((delayedFlights - prevDelayedFlights) / prevDelayedFlights) *
-            100
-          ).toFixed(1)
-        : "0";
-
-    // Tính tổng doanh thu ước tính
-    const estimatedRevenue = todayFlights.reduce((sum, flight) => {
+    const prevTotalRevenue = prevFlights.reduce((sum, flight) => {
       const bookedSeats = flight.totalSeats - (flight.availableSeats || 0);
       return sum + bookedSeats * (flight.basePrice || 0);
     }, 0);
-    const prevEstimatedRevenue = prevFlights
-      .filter((flight) => {
-        const departureDate = new Date(flight.departureTime);
-        return departureDate >= today && departureDate < tomorrow;
-      })
-      .reduce((sum, flight) => {
-        const bookedSeats = flight.totalSeats - (flight.availableSeats || 0);
-        return sum + bookedSeats * (flight.basePrice || 0);
-      }, 0);
+    const prevTotalSeats = prevFlights.reduce(
+      (sum, flight) => sum + (flight.totalSeats || 0),
+      0
+    );
+    const prevBookedSeats = prevFlights.reduce((sum, flight) => {
+      return sum + (flight.totalSeats - (flight.availableSeats || 0));
+    }, 0);
+
+    const prevTodayFlights = prevFlights.filter((flight) => {
+      const departureDate = new Date(flight.departureTime);
+      return departureDate >= today && departureDate < tomorrow;
+    }).length;
+
+    // Tính % thay đổi
+    const totalChange =
+      prevTotalFlights > 0
+        ? (
+            ((totalFlights - prevTotalFlights) / prevTotalFlights) *
+            100
+          ).toFixed(1)
+        : "0";
+
+    const activeChange =
+      prevActiveFlights > 0
+        ? (
+            ((activeFlights - prevActiveFlights) / prevActiveFlights) *
+            100
+          ).toFixed(1)
+        : "0";
+
+    const onTimeChange =
+      prevOnTimeFlights > 0
+        ? (
+            ((onTimeFlights - prevOnTimeFlights) / prevOnTimeFlights) *
+            100
+          ).toFixed(1)
+        : "0";
+
     const revenueChange =
-      prevEstimatedRevenue > 0
+      prevTotalRevenue > 0
         ? (
-            ((estimatedRevenue - prevEstimatedRevenue) / prevEstimatedRevenue) *
+            ((totalRevenue - prevTotalRevenue) / prevTotalRevenue) *
             100
           ).toFixed(1)
         : "0";
 
-    // Tính số chuyến bay đã hoàn thành (sử dụng DEPARTED làm proxy)
-    const completedFlights = todayFlights.filter(
-      (flight) => flight.status === "DEPARTED"
-    ).length;
-    const prevCompletedFlights = prevFlights.filter((flight) => {
-      const departureDate = new Date(flight.departureTime);
-      return (
-        departureDate >= today &&
-        departureDate < tomorrow &&
-        flight.status === "DEPARTED"
-      );
-    }).length;
-    const completedChange =
-      prevCompletedFlights > 0
-        ? (
-            ((completedFlights - prevCompletedFlights) / prevCompletedFlights) *
-            100
-          ).toFixed(1)
+    const prevOccupancyRate =
+      prevTotalSeats > 0
+        ? ((prevBookedSeats / prevTotalSeats) * 100).toFixed(1)
+        : 0;
+    const occupancyChange =
+      prevOccupancyRate > 0
+        ? (occupancyRate - prevOccupancyRate).toFixed(1)
         : "0";
 
-    // Tính tỷ lệ hủy chuyến
-    const cancelledFlights = todayFlights.filter(
-      (flight) => flight.status === "CANCELLED"
-    ).length;
-    const cancellationRate =
-      totalFlightsToday > 0
-        ? ((cancelledFlights / totalFlightsToday) * 100).toFixed(1)
-        : 0;
-    const prevCancelledFlights = prevFlights.filter((flight) => {
-      const departureDate = new Date(flight.departureTime);
-      return (
-        departureDate >= today &&
-        departureDate < tomorrow &&
-        flight.status === "CANCELLED"
-      );
-    }).length;
-    const prevCancellationRate =
-      prevTotalFlightsToday > 0
-        ? ((prevCancelledFlights / prevTotalFlightsToday) * 100).toFixed(1)
-        : 0;
-    const cancellationChange =
-      prevCancellationRate > 0
-        ? (cancellationRate - prevCancellationRate).toFixed(1)
+    const todayChange =
+      prevTodayFlights > 0
+        ? (
+            ((todayFlightsCount - prevTodayFlights) / prevTodayFlights) *
+            100
+          ).toFixed(1)
         : "0";
 
     return [
       {
-        title: "Tổng chuyến bay hôm nay",
-        value: totalFlightsToday.toString(),
+        title: "Tổng chuyến bay",
+        value: totalFlights.toString(),
         change: `${totalChange > 0 ? "+" : ""}${totalChange}%`,
         isPositive: totalChange >= 0,
         icon: Plane,
         color: "bg-blue-500",
       },
       {
-        title: "Hiệu suất đúng giờ",
+        title: "Chuyến bay hoạt động",
+        value: activeFlights.toString(),
+        change: `${activeChange > 0 ? "+" : ""}${activeChange}%`,
+        isPositive: activeChange >= 0,
+        icon: CheckCircle,
+        color: "bg-green-500",
+      },
+      {
+        title: "Tỷ lệ đúng giờ",
         value: `${onTimeRate}%`,
         change: `${onTimeChange > 0 ? "+" : ""}${onTimeChange}%`,
         isPositive: onTimeChange >= 0,
         icon: Clock,
-        color: "bg-green-500",
-      },
-
-      {
-        title: "Chuyến bay bị trì hoãn",
-        value: delayedFlights.toString(),
-        change: `${delayedChange > 0 ? "+" : ""}${delayedChange}%`,
-        isPositive: delayedChange <= 0, // Giảm số chuyến delay là tốt
-        icon: AlertCircle,
-        color: "bg-orange-500",
+        color: "bg-indigo-500",
       },
       {
-        title: "Doanh thu ước tính",
-        value: `${(estimatedRevenue / 1000000).toFixed(1)}M VND`,
+        title: "Tổng doanh thu",
+        value: `${(totalRevenue / 1000000).toFixed(1)}M VND`,
         change: `${revenueChange > 0 ? "+" : ""}${revenueChange}%`,
         isPositive: revenueChange >= 0,
         icon: DollarSign,
         color: "bg-green-600",
       },
       {
-        title: "Chuyến bay hoàn thành",
-        value: completedFlights.toString(),
-        change: `${completedChange > 0 ? "+" : ""}${completedChange}%`,
-        isPositive: completedChange >= 0,
-        icon: CheckCircle,
-        color: "bg-indigo-500",
+        title: "Tỷ lệ lấp đầy",
+        value: `${occupancyRate}%`,
+        change: `${occupancyChange > 0 ? "+" : ""}${occupancyChange}%`,
+        isPositive: occupancyChange >= 0,
+        icon: Users,
+        color: "bg-purple-500",
       },
       {
-        title: "Tỷ lệ hủy chuyến",
-        value: `${cancellationRate}%`,
-        change: `${cancellationChange > 0 ? "+" : ""}${cancellationChange}%`,
-        isPositive: cancellationChange <= 0, // Giảm tỷ lệ hủy là tốt
-        icon: X,
-        color: "bg-red-500",
+        title: "Chuyến bay hôm nay",
+        value: todayFlightsCount.toString(),
+        change: `${todayChange > 0 ? "+" : ""}${todayChange}%`,
+        isPositive: todayChange >= 0,
+        icon: Calendar,
+        color: "bg-orange-500",
       },
     ];
   };
@@ -352,19 +357,12 @@ const AdminFlights = () => {
   };
 
   const handleSaveFlight = async (flightData, isEdit) => {
-    console.log("=== FLIGHT SAVE DEBUG ===");
-    console.log("Flight data to save:", JSON.stringify(flightData, null, 2));
-    console.log("Is edit mode:", isEdit);
-
     try {
       if (isEdit) {
-        // Cập nhật chuyến bay
-        console.log("Calling updateFlight API with ID:", flightData.flightId);
         const result = await flightApi.updateFlight(
           flightData.flightId,
           flightData
         );
-        console.log("Update result:", result);
 
         if (result.success) {
           toast.success("Cập nhật chuyến bay thành công!");
@@ -379,10 +377,7 @@ const AdminFlights = () => {
           toast.error(`Lỗi cập nhật chuyến bay: ${result.message}`);
         }
       } else {
-        // Tạo chuyến bay mới
-        console.log("Calling createFlight API");
         const result = await flightApi.createFlight(flightData);
-        console.log("Create result:", result);
 
         if (result.success) {
           toast.success("Tạo chuyến bay thành công!");
@@ -415,14 +410,8 @@ const AdminFlights = () => {
           </p>
         </div>
         <div className="flex space-x-3">
-          <Button variant="outline" className="hidden sm:flex">
-            <Download className="h-4 w-4 mr-2" />
-            Xuất
-          </Button>
-          <Button
-            className="bg-blue-600 hover:bg-blue-700"
-            onClick={handleAddFlight}
-          >
+          <ExportButton entity="flights" />
+          <Button onClick={handleAddFlight}>
             <Plus className="h-4 w-4 mr-2" />
             Thêm chuyến bay
           </Button>

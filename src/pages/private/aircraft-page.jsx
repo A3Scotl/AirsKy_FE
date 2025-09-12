@@ -39,6 +39,7 @@ import Pagination from "@/components/ui/pagination";
 import { aircraftApi } from "@/apis/aircraft-api";
 import { useAircraft } from "@/hooks/use-aircraft";
 import { toast } from "sonner";
+import ExportButton from "@/components/common/export-button";
 
 // TanStack Table imports
 import {
@@ -305,8 +306,6 @@ const AircraftPage = () => {
 
   return (
     <div className="space-y-6">
-     
-
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
@@ -325,6 +324,7 @@ const AircraftPage = () => {
             <RotateCcw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
             Làm mới
           </Button>
+          <ExportButton entity="aircrafts" />
           <Button onClick={handleAdd}>Thêm máy bay</Button>
         </div>
       </div>
@@ -347,7 +347,7 @@ const AircraftPage = () => {
         </div>
       </Card>
 
-       {/* Bulk Actions Bar */}
+      {/* Bulk Actions Bar */}
       {selectedAircrafts.length > 0 && (
         <Card className="p-4 bg-blue-50 border-blue-200">
           <div className="flex items-center justify-between">
@@ -440,7 +440,7 @@ const AircraftPage = () => {
         )}
       </Card>
 
-     {/* Pagination */}
+      {/* Pagination */}
       {table.getFilteredRowModel().rows.length > 0 && (
         <Pagination
           currentPage={pagination.pageIndex + 1}

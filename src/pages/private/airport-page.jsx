@@ -40,6 +40,7 @@ import Pagination from "@/components/ui/pagination";
 import { airportApi } from "@/apis/airport-api";
 import { countryApi } from "@/apis/country-api";
 import { toast } from "sonner";
+import ExportButton from "@/components/common/export-button";
 
 // TanStack Table imports
 import {
@@ -554,6 +555,7 @@ const AirportPage = () => {
             <RotateCcw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
             Làm mới
           </Button>
+          <ExportButton entity="airports" />
           <Button onClick={handleAdd}>Thêm sân bay</Button>
         </div>
       </div>

@@ -51,7 +51,6 @@ const UserFormModal = ({
     lastName: "",
     email: "",
     phone: "",
-    country: "",
     role: "Customer",
     password: "",
     confirmPassword: "",
@@ -63,8 +62,6 @@ const UserFormModal = ({
     address: "",
     dateOfBirth: "",
     gender: "",
-    occupation: "",
-    emergencyContact: "",
     accountNotes: "",
   };
 
@@ -82,7 +79,6 @@ const UserFormModal = ({
           user.lastName || user.name?.split(" ").slice(1).join(" ") || "",
         email: user.email || "",
         phone: user.phone || "",
-        country: user.country || "",
         role: user.role || "Customer",
         password: "", // Never populate password in edit mode
         confirmPassword: "",
@@ -94,8 +90,6 @@ const UserFormModal = ({
         address: user.address || "",
         dateOfBirth: user.dateOfBirth || "",
         gender: user.gender || "",
-        occupation: user.occupation || "",
-        emergencyContact: user.emergencyContact || "",
         accountNotes: user.accountNotes || "",
       });
     } else {

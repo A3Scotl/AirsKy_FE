@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import ExportButton from "@/components/common/export-button";
 
 const AdminDealPage = () => {
   const [deals, setDeals] = useState([]);
@@ -119,15 +120,10 @@ const AdminDealPage = () => {
         formData.append("thumbnail", dealData.thumbnail);
       }
 
-      // log ra các trường
-      console.log("Form Data to be sent:");
-      for (let [key, value] of formData.entries()) {
-        console.log(`${key}:`, value);
-      }
+     
 
       const res = await dealApi.createDeal(formData);
-      console.log("API Response:");
-      console.log(res);
+   
       if (res.success) {
         fetchDeals();
       } else {
@@ -192,8 +188,6 @@ const AdminDealPage = () => {
 
   const handleDeleteDeal = (dealId) => {
     if (window.confirm("Bạn có chắc chắn muốn xóa deal này?")) {
-      // API call to delete deal
-      console.log("Deleting deal:", dealId);
       fetchDeals(); // Refresh data
     }
   };
@@ -202,13 +196,7 @@ const AdminDealPage = () => {
     fetchDeals();
   };
 
-  const handleExport = () => {
-    // Logic to export deals data
-    console.log("Exporting deals data...");
-  };
-
   const getStatsCards = () => {
-    console.log("deals", deals);
     const totalDeals = deals.length;
     const activeDeals = deals.filter(
       (deal) => deal.isActive && !deal.isExpired
@@ -262,10 +250,7 @@ const AdminDealPage = () => {
             <RefreshCw className="h-4 w-4 mr-2" />
             Làm mới
           </Button>
-          <Button variant="outline" onClick={handleExport}>
-            <Download className="h-4 w-4 mr-2" />
-            Xuất Excel
-          </Button>
+          <ExportButton entity="deals" />
         </div>
       </div>
 

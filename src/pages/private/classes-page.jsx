@@ -22,6 +22,7 @@ import Pagination from "@/components/ui/pagination";
 import { classesApi } from "@/apis/classes-api";
 import { handleFetch } from "@/utils/fetch-helper.js";
 import { toast } from "sonner";
+import ExportButton from "@/components/common/export-button";
 // import TravelClassModal from "@/components/admin/travel-classes/travel-class-modal"; // Assuming a modal for travel classes
 
 const ClassesPage = () => {
@@ -44,7 +45,7 @@ const ClassesPage = () => {
   useEffect(() => {
     handleFetch({
       apiCall: classesApi.getAllClasses, // Adjust to your actual API method
-      setData: (data)=> setTravelClasses(data?.content),
+      setData: (data) => setTravelClasses(data?.content),
       setLoading,
       errorMessage: "Failed to fetch travel classes",
     });
@@ -58,7 +59,9 @@ const ClassesPage = () => {
     if (searchTerm) {
       filtered = filtered.filter(
         (travelClass) =>
-          travelClass.className?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          travelClass.className
+            ?.toLowerCase()
+            .includes(searchTerm.toLowerCase()) ||
           travelClass.benefits?.toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
@@ -66,10 +69,14 @@ const ClassesPage = () => {
     // Apply status filter (e.g., refundable or changeable)
     if (statusFilter !== "all") {
       filtered = filtered.filter((travelClass) => {
-        if (statusFilter === "refundable") return travelClass.refundable === true;
-        if (statusFilter === "non_refundable") return travelClass.refundable === false;
-        if (statusFilter === "changeable") return travelClass.changeable === true;
-        if (statusFilter === "non_changeable") return travelClass.changeable === false;
+        if (statusFilter === "refundable")
+          return travelClass.refundable === true;
+        if (statusFilter === "non_refundable")
+          return travelClass.refundable === false;
+        if (statusFilter === "changeable")
+          return travelClass.changeable === true;
+        if (statusFilter === "non_changeable")
+          return travelClass.changeable === false;
         return true;
       });
     }
@@ -109,7 +116,10 @@ const ClassesPage = () => {
   const totalPages = Math.ceil(totalItems / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
-  const currentTravelClasses = filteredAndSortedTravelClasses.slice(startIndex, endIndex);
+  const currentTravelClasses = filteredAndSortedTravelClasses.slice(
+    startIndex,
+    endIndex
+  );
 
   // Reset to first page when filters change
   useEffect(() => {
@@ -145,11 +155,19 @@ const ClassesPage = () => {
   };
 
   const handleDelete = async (travelClass) => {
-    if (window.confirm(`Are you sure you want to delete travel class ${travelClass.className}?`)) {
+    if (
+      window.confirm(
+        `Are you sure you want to delete travel class ${travelClass.className}?`
+      )
+    ) {
       try {
-        const response = await classesApi.deleteTravelClass(travelClass.classId);
+        const response = await classesApi.deleteTravelClass(
+          travelClass.classId
+        );
         if (response.success) {
-          toast.success(`Travel class ${travelClass.className} deleted successfully`);
+          toast.success(
+            `Travel class ${travelClass.className} deleted successfully`
+          );
           // Refresh the list
           handleFetch({
             apiCall: classesApi.getAllTravelClasses,
@@ -172,14 +190,19 @@ const ClassesPage = () => {
       let response;
       if (editData) {
         // Update
-        response = await classesApi.updateTravelClass(editData.classId, formData);
+        response = await classesApi.updateTravelClass(
+          editData.classId,
+          formData
+        );
       } else {
         // Create
         response = await classesApi.createTravelClass(formData);
       }
 
       if (response.success) {
-        toast.success(`Travel class ${editData ? "updated" : "created"} successfully`);
+        toast.success(
+          `Travel class ${editData ? "updated" : "created"} successfully`
+        );
         setModalOpen(false);
         // Refresh the list
         handleFetch({
@@ -207,7 +230,10 @@ const ClassesPage = () => {
             Tổng cộng: {totalItems} hạng vé
           </p>
         </div>
-        <Button onClick={handleAdd}>Thêm hạng vé</Button>
+        <div className="flex gap-2">
+          <ExportButton entity="classes" />
+          <Button onClick={handleAdd}>Thêm hạng vé</Button>
+        </div>
       </div>
 
       {/* Search and Filters */}
@@ -235,7 +261,9 @@ const ClassesPage = () => {
               <SelectContent>
                 <SelectItem value="all">Tất cả trạng thái</SelectItem>
                 <SelectItem value="refundable">Được hoàn trả</SelectItem>
-                <SelectItem value="non_refundable">Không được hoàn trả</SelectItem>
+                <SelectItem value="non_refundable">
+                  Không được hoàn trả
+                </SelectItem>
                 <SelectItem value="changeable">Có thể đổi vé</SelectItem>
                 <SelectItem value="non_changeable">Không thể đổi vé</SelectItem>
               </SelectContent>
@@ -258,8 +286,12 @@ const ClassesPage = () => {
               <SelectContent>
                 <SelectItem value="className-asc">Tên A-Z</SelectItem>
                 <SelectItem value="className-desc">Tên Z-A</SelectItem>
-                <SelectItem value="priceMultiplier-asc">Nhân giá Low-High</SelectItem>
-                <SelectItem value="priceMultiplier-desc">Nhân giá High-Low</SelectItem>
+                <SelectItem value="priceMultiplier-asc">
+                  Nhân giá Low-High
+                </SelectItem>
+                <SelectItem value="priceMultiplier-desc">
+                  Nhân giá High-Low
+                </SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -314,18 +346,32 @@ const ClassesPage = () => {
                 <TableRow key={tc.classId}>
                   <TableCell>{tc.className}</TableCell>
                   <TableCell>{tc.benefits || "N/A"}</TableCell>
-                  <TableCell>{tc.priceMultiplier?.toFixed(2) || "N/A"}</TableCell>
                   <TableCell>
-                    <span className={tc.refundable ? "text-green-600" : "text-gray-400"}>
+                    {tc.priceMultiplier?.toFixed(2) || "N/A"}
+                  </TableCell>
+                  <TableCell>
+                    <span
+                      className={
+                        tc.refundable ? "text-green-600" : "text-gray-400"
+                      }
+                    >
                       {tc.refundable ? "Co" : "Không"}
                     </span>
                   </TableCell>
                   <TableCell>
-                    <span className={tc.changeable ? "text-green-600" : "text-gray-400"}>
+                    <span
+                      className={
+                        tc.changeable ? "text-green-600" : "text-gray-400"
+                      }
+                    >
                       {tc.changeable ? "Có" : "Không"}
                     </span>
                   </TableCell>
-                  <TableCell>{tc.cancellationFee ? `$${tc.cancellationFee.toFixed(2)}` : "N/A"}</TableCell>
+                  <TableCell>
+                    {tc.cancellationFee
+                      ? `$${tc.cancellationFee.toFixed(2)}`
+                      : "N/A"}
+                  </TableCell>
                   <TableCell>
                     <div className="flex gap-2">
                       <Button

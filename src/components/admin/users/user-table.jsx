@@ -44,6 +44,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import Pagination from "@/components/ui/pagination";
+import { MoreHorizontal } from "lucide-react";
 
 const UserTable = ({
   users,
@@ -55,11 +57,12 @@ const UserTable = ({
   onEditUser,
   onDeleteUser,
   onSuspendUser,
+  pagination,
+  onPageChange,
+  onPageSizeChange,
 }) => {
-  const [currentPage, setCurrentPage] = useState(1);
   const [selectedUser, setSelectedUser] = useState(null);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
-  const itemsPerPage = 10;
 
   const getStatusBadge = (status) => {
     const variants = {
@@ -105,33 +108,7 @@ const UserTable = ({
     return icons[status] || CheckCircle;
   };
 
-  const filteredUsers = users.filter((user) => {
-    const matchesSearch =
-      (user.name?.toLowerCase() || "").includes(
-        searchQuery?.toLowerCase() || ""
-      ) ||
-      (user.email?.toLowerCase() || "").includes(
-        searchQuery?.toLowerCase() || ""
-      ) ||
-      (user.id?.toLowerCase() || "").includes(searchQuery?.toLowerCase() || "");
-
-    const matchesStatus =
-      statusFilter === "all" ||
-      (user.status?.toLowerCase() || "") === statusFilter ||
-      (statusFilter === "active" && user.status === "Hoạt động") ||
-      (statusFilter === "suspended" && user.status === "Đã khóa");
-
-    const matchesRole =
-      roleFilter === "all" || (user.role?.toLowerCase() || "") === roleFilter;
-
-    return matchesSearch && matchesStatus && matchesRole;
-  });
-
-  const totalPages = Math.ceil(filteredUsers.length / itemsPerPage);
-  const paginatedUsers = filteredUsers.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
-  );
+  const displayUsers = users;
 
   const formatDate = (dateString) => {
     const date = new Date(dateString);
@@ -187,7 +164,7 @@ const UserTable = ({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {paginatedUsers.map((user) => {
+            {displayUsers.map((user) => {
               const StatusIcon = getStatusIcon(user.status);
               const RoleIcon = getRoleIcon(user.role);
 
@@ -202,8 +179,16 @@ const UserTable = ({
                         </AvatarFallback>
                       </Avatar>
                       <div>
-                        <div className="font-semibold text-gray-900">
-                          {user.name}
+                        <div className="font-semibold text-gray-900 flex items-center space-x-2">
+                          <span>{user.name}</span>
+                          {user.email === currentUser?.email && (
+                            <Badge
+                              variant="outline"
+                              className="text-xs bg-blue-50 text-blue-700 border-blue-200"
+                            >
+                              Tài khoản của bạn
+                            </Badge>
+                          )}
                         </div>
                         <div className="text-sm text-gray-500">
                           ID: {user.id}
@@ -226,10 +211,6 @@ const UserTable = ({
                       <div className="flex items-center space-x-1 text-sm text-gray-600">
                         <Phone className="h-3 w-3 text-gray-400" />
                         <span>{user.phone}</span>
-                      </div>
-                      <div className="flex items-center space-x-1 text-sm text-gray-600">
-                        <MapPin className="h-3 w-3 text-gray-400" />
-                        <span>{user.country}</span>
                       </div>
                     </div>
                   </TableCell>
@@ -290,9 +271,16 @@ const UserTable = ({
                           variant="ghost"
                           size="sm"
                           className="h-8 w-8 p-0"
+                          disabled={user.email === currentUser?.email}
                         >
                           <span className="sr-only">Open menu</span>
-                          <div className="h-4 w-4">⋯</div>
+                          <div className="h-4 w-4">
+                            {user.email === currentUser?.email ? (
+                              <></>
+                            ) : (
+                              <MoreHorizontal className="h-4 w-4" />
+                            )}
+                          </div>
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
@@ -302,17 +290,21 @@ const UserTable = ({
                             setSelectedUser(user);
                             setShowDetailsModal(true);
                           }}
+                          disabled={user.email === currentUser?.email}
                         >
                           <Eye className="mr-2 h-4 w-4" />
                           Xem chi tiết
                         </DropdownMenuItem>
                         <DropdownMenuItem
                           onClick={() => onEditUser && onEditUser(user)}
+                          disabled={user.email === currentUser?.email}
                         >
                           <Edit className="mr-2 h-4 w-4" />
                           Chỉnh sửa
                         </DropdownMenuItem>
-                        <DropdownMenuItem>
+                        <DropdownMenuItem
+                          disabled={user.email === currentUser?.email}
+                        >
                           <Mail className="mr-2 h-4 w-4" />
                           Gửi email
                         </DropdownMenuItem>
@@ -322,10 +314,7 @@ const UserTable = ({
                           <DropdownMenuItem
                             onClick={() => onSuspendUser && onSuspendUser(user)}
                             className="text-orange-600"
-                            disabled={
-                              user.id?.toString() ===
-                              currentUser?.id?.toString()
-                            }
+                            disabled={user.email === currentUser?.email}
                           >
                             <UserX className="mr-2 h-4 w-4" />
                             Khóa tài khoản
@@ -334,10 +323,7 @@ const UserTable = ({
                           <DropdownMenuItem
                             onClick={() => onSuspendUser && onSuspendUser(user)}
                             className="text-green-600"
-                            disabled={
-                              user.id?.toString() ===
-                              currentUser?.id?.toString()
-                            }
+                            disabled={user.email === currentUser?.email}
                           >
                             <UserCheck className="mr-2 h-4 w-4" />
                             Mở khóa tài khoản
@@ -347,6 +333,7 @@ const UserTable = ({
                         <DropdownMenuItem
                           onClick={() => onDeleteUser && onDeleteUser(user)}
                           className="text-red-600"
+                          disabled={user.email === currentUser?.email}
                         >
                           <Trash2 className="mr-2 h-4 w-4" />
                           Xóa khách hàng
@@ -362,64 +349,23 @@ const UserTable = ({
       </div>
 
       {/* Pagination */}
-      {totalPages > 1 && (
-        <div className="flex items-center justify-between">
-          <div className="text-sm text-gray-700">
-            Hiển thị {(currentPage - 1) * itemsPerPage + 1} đến{" "}
-            {Math.min(currentPage * itemsPerPage, filteredUsers.length)} của{" "}
-            {filteredUsers.length} khách hàng
-          </div>
-          <div className="flex items-center space-x-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
-              disabled={currentPage === 1}
-            >
-              Trước
-            </Button>
-
-            {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-              let pageNum;
-              if (totalPages <= 5) {
-                pageNum = i + 1;
-              } else if (currentPage <= 3) {
-                pageNum = i + 1;
-              } else if (currentPage >= totalPages - 2) {
-                pageNum = totalPages - 4 + i;
-              } else {
-                pageNum = currentPage - 2 + i;
-              }
-
-              return (
-                <Button
-                  key={pageNum}
-                  variant={pageNum === currentPage ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setCurrentPage(pageNum)}
-                  className="w-8 h-8 p-0"
-                >
-                  {pageNum}
-                </Button>
-              );
-            })}
-
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() =>
-                setCurrentPage(Math.min(totalPages, currentPage + 1))
-              }
-              disabled={currentPage === totalPages}
-            >
-              Tiếp theo
-            </Button>
-          </div>
-        </div>
+      {pagination && (
+        <Pagination
+          currentPage={pagination.page + 1}
+          totalPages={pagination.totalPages}
+          itemsPerPage={pagination.size}
+          totalItems={pagination.totalElements}
+          onPageChange={(page) => onPageChange && onPageChange(page - 1)}
+          onPageSizeChange={(size) =>
+            onPageSizeChange && onPageSizeChange(size)
+          }
+          showPageSizeSelector={true}
+          showInfo={true}
+        />
       )}
 
       {/* No Results */}
-      {filteredUsers.length === 0 && (
+      {displayUsers.length === 0 && (
         <div className="text-center py-12">
           <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
           <h3 className="text-lg font-medium text-gray-900 mb-2">

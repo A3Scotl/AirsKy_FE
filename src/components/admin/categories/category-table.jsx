@@ -335,11 +335,6 @@ const CategoryTable = () => {
       if (result.success && result.data) {
         let filteredData = result.data.content || [];
 
-        // Debug: Log the first category to see the structure
-        if (filteredData.length > 0) {
-          console.log("Sample category data:", filteredData[0]);
-        }
-
         // Client-side search if needed
         if (search.trim()) {
           filteredData = filteredData.filter(
@@ -372,16 +367,33 @@ const CategoryTable = () => {
     fetchCategories(currentPage, itemsPerPage, searchTerm);
   }, [currentPage, itemsPerPage]);
 
+  // Debounced search effect
+  useEffect(() => {
+    const debounceTimer = setTimeout(() => {
+      if (searchTerm !== "") {
+        setCurrentPage(1); // Reset to first page when searching
+        fetchCategories(1, itemsPerPage, searchTerm);
+      } else {
+        // If search term is empty, fetch all categories
+        fetchCategories(1, itemsPerPage, "");
+      }
+    }, 500); // 500ms debounce delay
+
+    return () => clearTimeout(debounceTimer);
+  }, [searchTerm]);
+
   // Handle search
   const handleSearch = () => {
     setCurrentPage(1); // Reset to first page when searching
     fetchCategories(1, itemsPerPage, searchTerm);
   };
 
-  // Handle search on Enter
+  // Handle search on Enter (optional - search already works on input change)
   const handleSearchKeyPress = (e) => {
     if (e.key === "Enter") {
-      handleSearch();
+      // Clear any pending debounce and trigger immediate search
+      setCurrentPage(1);
+      fetchCategories(1, itemsPerPage, searchTerm);
     }
   };
 
@@ -530,16 +542,22 @@ const CategoryTable = () => {
               onKeyPress={handleSearchKeyPress}
               className="w-full sm:w-64"
             />
-            <Button onClick={handleSearch} variant="outline">
+            {/* Search button removed - search now works on input change */}
+            {/* <Button onClick={handleSearch} variant="outline">
               <Search className="h-4 w-4" />
-            </Button>
+            </Button> */}
           </div>
 
           {/* Create button */}
-          <Button onClick={handleCreateCategory} className="whitespace-nowrap">
-            <Plus className="h-4 w-4 mr-2" />
-            Thêm Category
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              onClick={handleCreateCategory}
+              className="whitespace-nowrap"
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Thêm Category
+            </Button>
+          </div>
         </div>
       </div>
 

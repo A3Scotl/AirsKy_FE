@@ -39,6 +39,7 @@ import {
 } from "@/utils/export";
 import { bookingFilters } from "@/utils/filter-configs";
 import { toast } from "sonner";
+import ExportButton from "@/components/common/export-button";
 
 // Import modal components
 import BookingDetailsModal from "@/components/admin/bookings/booking-details-modal";
@@ -339,37 +340,7 @@ const AdminBookings = () => {
             </div>
 
             {/* Export Button */}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" className="whitespace-nowrap">
-                  <Download className="h-4 w-4 mr-2" />
-                  {TEXT.export}
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem
-                  onClick={() => handleExport(exportFormats.CSV)}
-                >
-                  <FileText className="h-4 w-4 mr-2" />
-                  {TEXT.exportCSV}
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={() => handleExport(exportFormats.JSON)}
-                >
-                  <FileText className="h-4 w-4 mr-2" />
-                  {TEXT.exportJSON}
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={() => {
-                    exportBookingSummary(filteredBookings);
-                    toast.success("Xuất báo cáo tổng hợp thành công");
-                  }}
-                >
-                  <BarChart3 className="h-4 w-4 mr-2" />
-                  {TEXT.exportSummary}
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <ExportButton entity="bookings" />
           </div>
 
           {/* Bookings Table */}

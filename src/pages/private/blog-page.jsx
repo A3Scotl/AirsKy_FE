@@ -20,6 +20,8 @@ import {
 } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import ExportButton from "@/components/common/export-button";
+import { getEntityExportConfig } from "@/utils/export-config";
 
 const AdminBlogPage = () => {
   const [blogs, setBlogs] = useState([]);
@@ -61,8 +63,6 @@ const AdminBlogPage = () => {
       if (statusFilter === "all") {
         response = await blogApi.getAllBlogs(params);
       } else {
-        // For now, get all blogs and filter on frontend
-        // Later you can add backend filters
         response = await blogApi.getAllBlogs(params);
       }
 
@@ -147,11 +147,6 @@ const AdminBlogPage = () => {
     fetchBlogs();
   };
 
-  const handleExport = () => {
-    // Logic to export blogs data
-    console.log("Exporting blogs data...");
-  };
-
   const getStatsCards = () => {
     const totalBlogs = blogs.length;
     const publishedBlogs = blogs.filter((blog) => blog.isPublished).length;
@@ -204,13 +199,9 @@ const AdminBlogPage = () => {
             <RefreshCw className="h-4 w-4 mr-2" />
             Làm mới
           </Button>
-          <Button variant="outline" onClick={handleExport}>
-            <Download className="h-4 w-4 mr-2" />
-            Xuất Excel
-          </Button>
+          <ExportButton entity="blogs" />
         </div>
       </div>
-
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {getStatsCards().map((stat, index) => (
@@ -229,7 +220,6 @@ const AdminBlogPage = () => {
           </Card>
         ))}
       </div>
-
       {/* Filters */}
       <Card>
         <CardHeader>
@@ -280,7 +270,6 @@ const AdminBlogPage = () => {
           </div>
         </CardContent>
       </Card>
-
       {/* Blog Table */}
       <BlogTable
         blogs={blogs}
@@ -295,6 +284,7 @@ const AdminBlogPage = () => {
         onDelete={handleDeleteBlog}
         loading={loading}
       />
+      
     </div>
   );
 };
