@@ -25,19 +25,22 @@ const heroSlides = [
     bgImage:
       "https://plus.unsplash.com/premium_photo-1679758629394-606fb157a7cc?q=80&w=1632&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
     title: "Đặt Vé Máy Bay Cực Dễ Dàng",
-    subtitle: "Sắp xếp hành trình của bạn chỉ trong vài phút. Tìm kiếm, so sánh và đặt vé máy bay với giá tốt nhất, mọi lúc, mọi nơi.",
+    subtitle:
+      "Sắp xếp hành trình của bạn chỉ trong vài phút. Tìm kiếm, so sánh và đặt vé máy bay với giá tốt nhất, mọi lúc, mọi nơi.",
   },
   {
     bgImage:
       "https://plus.unsplash.com/premium_photo-1679758629516-6fe7a51fad5c?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1yZWxhdGVkfDF8fHxlbnwwfHx8fHw%3D",
     title: "Hành Trình Bất Tận - Vé Máy Bay Trực Tuyến",
-    subtitle: "Bắt đầu chuyến phiêu lưu của bạn ngay từ bây giờ. Với giao diện thân thiện, dễ sử dụng, việc đặt vé máy bay chưa bao giờ nhanh chóng và tiện lợi đến thế.",
+    subtitle:
+      "Bắt đầu chuyến phiêu lưu của bạn ngay từ bây giờ. Với giao diện thân thiện, dễ sử dụng, việc đặt vé máy bay chưa bao giờ nhanh chóng và tiện lợi đến thế.",
   },
   {
     bgImage:
       "https://plus.unsplash.com/premium_photo-1661963039521-84141380d85f?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1yZWxhdGVkfDE2fHx8ZW58MHx8fHx8",
     title: "Cổng Kết Nối Bầu Trời",
-    subtitle: "Mọi chuyến bay, mọi điểm đến, trong tầm tay bạn. Chúng tôi mang đến cho bạn trải nghiệm đặt vé trực tuyến liền mạch, an toàn và đáng tin cậy.",
+    subtitle:
+      "Mọi chuyến bay, mọi điểm đến, trong tầm tay bạn. Chúng tôi mang đến cho bạn trải nghiệm đặt vé trực tuyến liền mạch, an toàn và đáng tin cậy.",
   },
 ];
 
@@ -304,9 +307,6 @@ function HomePage() {
                                 filter:
                                   "drop-shadow(0 1px 2px rgba(0, 0, 0, 0.1))",
                               }}
-                              onError={(e) => {
-                                e.target.src = "/abstract-airline-logo.png";
-                              }}
                             />
                           </div>
                           <h4 className="text-sm font-medium text-gray-900 dark:text-white mb-1">
@@ -331,9 +331,6 @@ function HomePage() {
         <BlogSection />
 
         <FAQSection />
-
-        {/* Reviews Section - Commented out as in original */}
-        {/* <ReviewsSection /> */}
       </div>
 
       <ChatbotWidget />

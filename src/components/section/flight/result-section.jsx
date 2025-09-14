@@ -459,7 +459,7 @@ export function FlightSearchResults() {
         console.log("formatDateForAPI:", {
           input: dateInput,
           inputType: typeof dateInput,
-          localDateString: date.toLocaleDateString("vi-VN"), // Use local date string instead of ISO
+          localDateString: date.toLocaleDateString("vi-VN"),
           formatted,
         });
         return formatted;
@@ -584,7 +584,6 @@ export function FlightSearchResults() {
             searchData.tripType === "ONE_WAY" &&
             response.data.oneWayFlights?.content
           ) {
-            // For ONE_WAY with combinations, each flight is a single-leg itinerary
             itineraries = response.data.oneWayFlights.content.map(
               (flight, index) => ({
                 itineraryId: `oneway-${flight.flightId || index}`,
@@ -624,14 +623,10 @@ export function FlightSearchResults() {
             searchData.tripType === "MULTI_CITY" &&
             response.data.multiCityFlights
           ) {
-            // For MULTI_CITY, we need to create combinations of flights from each leg
-            // Assuming API returns flights per leg, we create Cartesian product of itineraries
-            // If too many, limit to top N combinations sorted by price or duration
             const legs = response.data.multiCityFlights.map(
               (leg) => leg.content || []
             );
 
-            // Helper to generate combinations (recursive for multiple legs)
             const generateCombinations = (legs, current = [], index = 0) => {
               if (index === legs.length) {
                 return [current];

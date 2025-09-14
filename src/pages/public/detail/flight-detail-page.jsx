@@ -8,7 +8,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import FlightRouteMap from "@/components/common/flight-route-map";
-import CustomStepper from "@/lib/Stepper";
 import {
   Clock,
   Plane,
@@ -19,6 +18,7 @@ import {
   AlertCircle,
   ArrowRight,
   Check,
+  CheckCircle,
   Wifi,
   Monitor,
   Utensils,
@@ -27,8 +27,300 @@ import {
   Headphones,
   Bed,
   Map,
+  ArrowRightLeft,
   ChevronRight,
 } from "lucide-react";
+
+// Utility functions for date/time formatting
+const formatTime = (dateTimeString, options = {}) => {
+  if (!dateTimeString) return "N/A";
+
+  try {
+    const date = new Date(dateTimeString);
+    if (isNaN(date.getTime())) return "N/A";
+
+    return date.toLocaleTimeString("vi-VN", {
+      hour: "2-digit",
+      minute: "2-digit",
+      ...options,
+    });
+  } catch (error) {
+    console.warn("[formatTime] Error formatting time:", error);
+    return "N/A";
+  }
+};
+
+const formatDate = (dateTimeString, options = {}) => {
+  if (!dateTimeString) return "N/A";
+
+  try {
+    const date = new Date(dateTimeString);
+    if (isNaN(date.getTime())) return "N/A";
+
+    return date.toLocaleDateString("vi-VN", {
+      weekday: "long",
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+      ...options,
+    });
+  } catch (error) {
+    console.warn("[formatDate] Error formatting date:", error);
+    return "N/A";
+  }
+};
+
+const formatDateTime = (dateTimeString) => {
+  if (!dateTimeString) return "N/A";
+
+  try {
+    const date = new Date(dateTimeString);
+    if (isNaN(date.getTime())) return "N/A";
+
+    const time = date.toLocaleTimeString("vi-VN", {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+
+    const dateStr = date.toLocaleDateString("vi-VN", {
+      weekday: "long",
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    });
+
+    return `${time} - ${dateStr}`;
+  } catch (error) {
+    console.warn("[formatDateTime] Error formatting date time:", error);
+    return "N/A";
+  }
+};
+
+const formatDuration = (minutes) => {
+  if (!minutes || minutes <= 0) return "N/A";
+
+  const hours = Math.floor(minutes / 60);
+  const mins = minutes % 60;
+
+  if (hours === 0) {
+    // Handle minutes only
+    if (mins === 30) {
+      return "nửa tiếng";
+    } else {
+      return `${mins} phút`;
+    }
+  } else if (mins === 0) {
+    // Handle hours only
+    if (hours === 1) {
+      return "1 tiếng";
+    } else {
+      return `${hours} tiếng`;
+    }
+  } else {
+    // Handle both hours and minutes
+    const hourText = hours === 1 ? "1 tiếng" : `${hours} tiếng`;
+    if (mins === 30) {
+      return `${hourText} rưỡi`;
+    } else {
+      return `${hourText} ${mins} phút`;
+    }
+  }
+};
+
+// Helper function to get flight legs for map
+const getFlightLegs = (flightData) => {
+  if (!flightData) return [];
+
+  // Helper to create segments for a flight with stops
+  const createSegments = (flight, dep, arr) => {
+    const segments = [];
+    const stops = flight.stopsList || [];
+
+    if (stops.length === 0) {
+      // Direct flight
+      segments.push({
+        from: dep,
+        to: arr,
+        flight: flight,
+      });
+    } else {
+      // Flight with stops
+      let currentDep = dep;
+
+      stops.forEach((stop, index) => {
+        segments.push({
+          from: currentDep,
+          to: {
+            city: stop.airportName,
+            airportName: stop.airportName,
+            code: stop.airportCode,
+            time: stop.arrivalTime,
+          },
+          flight: flight,
+          isStop: true,
+          stopIndex: index,
+        });
+
+        currentDep = {
+          city: stop.airportName,
+          airportName: stop.airportName,
+          code: stop.airportCode,
+          time: stop.arrivalTime,
+        };
+      });
+
+      // Final segment to arrival
+      segments.push({
+        from: currentDep,
+        to: arr,
+        flight: flight,
+      });
+    }
+
+    return segments;
+  };
+
+  if (flightData.isRoundTrip) {
+    return [
+      {
+        ...flightData.outboundFlight,
+        direction: "Outbound",
+        flight: flightData.outboundFlight,
+        dep: flightData.outboundFlight.departure,
+        arr: flightData.outboundFlight.arrival,
+        segments: createSegments(
+          flightData.outboundFlight,
+          flightData.outboundFlight.departure,
+          flightData.outboundFlight.arrival
+        ),
+      },
+      {
+        ...flightData.returnFlight,
+        direction: "Inbound",
+        flight: flightData.returnFlight,
+        dep: flightData.returnFlight.departure,
+        arr: flightData.returnFlight.arrival,
+        segments: createSegments(
+          flightData.returnFlight,
+          flightData.returnFlight.departure,
+          flightData.returnFlight.arrival
+        ),
+      },
+    ];
+  } else if (flightData.isMultiCity) {
+    return flightData.multiCityLegs.map((leg, index) => ({
+      ...leg,
+      direction: `Leg ${index + 1}`,
+      flight: leg,
+      dep: leg.departure,
+      arr: leg.arrival,
+      segments: createSegments(leg, leg.departure, leg.arrival),
+    }));
+  } else {
+    // One-way flight
+    return [
+      {
+        ...flightData,
+        direction: "Outbound",
+        flight: flightData,
+        dep: flightData.departure,
+        arr: flightData.arrival,
+        segments: createSegments(
+          flightData,
+          flightData.departure,
+          flightData.arrival
+        ),
+      },
+    ];
+  }
+};
+
+// Helper function to get airport coordinates map
+const getAirportCoordsMap = (flightData) => {
+  if (!flightData) return {};
+
+  const coordsMap = {};
+
+  const addAirport = (airport) => {
+    if (airport && airport.code) {
+      coordsMap[airport.code] = {
+        lat: airport.lat || 0,
+        lon: airport.lon || 0,
+        name: airport.city || airport.airportName || airport.code,
+        code: airport.code,
+      };
+    }
+  };
+
+  const addStops = (flight) => {
+    const stops = flight.stopsList || [];
+    stops.forEach((stop) => {
+      if (stop.airportCode) {
+        coordsMap[stop.airportCode] = {
+          lat: 0, // Default coordinates, can be enhanced with real data
+          lon: 0,
+          name: stop.airportName || stop.airportCode,
+          code: stop.airportCode,
+        };
+      }
+    });
+  };
+
+  if (flightData.isRoundTrip) {
+    addAirport(flightData.outboundFlight?.departure);
+    addAirport(flightData.outboundFlight?.arrival);
+    addStops(flightData.outboundFlight);
+    addAirport(flightData.returnFlight?.departure);
+    addAirport(flightData.returnFlight?.arrival);
+    addStops(flightData.returnFlight);
+  } else if (flightData.isMultiCity) {
+    flightData.multiCityLegs.forEach((leg) => {
+      addAirport(leg.departure);
+      addAirport(leg.arrival);
+      addStops(leg);
+    });
+  } else {
+    addAirport(flightData.departure);
+    addAirport(flightData.arrival);
+    addStops(flightData);
+  }
+
+  return coordsMap;
+};
+
+// Helper function to get processed search data
+const getProcessedSearchData = (flightData) => {
+  if (!flightData) return { tripType: "one_way" };
+
+  if (flightData.isRoundTrip) {
+    return {
+      tripType: "round_trip",
+      from: flightData.outboundFlight?.departure?.code || flightData.fromCode,
+      to: flightData.outboundFlight?.arrival?.code || flightData.toCode,
+      returnFrom: flightData.returnFlight?.departure?.code || flightData.toCode,
+      returnTo: flightData.returnFlight?.arrival?.code || flightData.fromCode,
+      // Add the actual flight objects for the map component
+      outboundFlight: flightData.outboundFlight,
+      returnFlight: flightData.returnFlight,
+    };
+  } else if (flightData.isMultiCity) {
+    return {
+      tripType: "multi_city",
+      legs: flightData.multiCityLegs.map((leg) => ({
+        from: leg.departure?.code,
+        to: leg.arrival?.code,
+        stops: leg.stopsList?.map((stop) => stop.airportCode) || [],
+      })),
+    };
+  } else {
+    return {
+      tripType: "one_way",
+      from: flightData.departure?.code || flightData.fromCode,
+      to: flightData.arrival?.code || flightData.toCode,
+      stops: flightData.stopsList?.map((stop) => stop.airportCode) || [],
+    };
+  }
+};
 
 // Helper function to combine travel classes from round trip flights
 const combineRoundTripClasses = (outboundClasses, inboundClasses) => {
@@ -80,21 +372,88 @@ const combineRoundTripClasses = (outboundClasses, inboundClasses) => {
   return Object.values(combinedClasses);
 };
 
-// Helper function to normalize flight data
-const normalizeFlightData = (flight) => {
-  console.log("[normalizeFlightData] Input flight data:", flight);
-
-  // Check if this is a round-trip or multi-city itinerary
+// Helper function to detect flight type
+const detectFlightType = (flight) => {
   const isItinerary = flight.tripType && flight.legs;
   const isRoundTrip =
     isItinerary && flight.tripType === "ROUND_TRIP" && flight.legs?.length >= 2;
-  const isMultiCity =
+  const isRoundTripDirect =
+    !isItinerary &&
+    flight.tripType === "ROUND_TRIP" &&
+    flight.outboundFlight &&
+    flight.returnFlight;
+
+  // Handle multi-city detection - check both itinerary format and direct format
+  const isMultiCityItinerary =
     isItinerary && flight.tripType === "MULTI_CITY" && flight.legs?.length > 1;
+  const isMultiCityDirect =
+    !isItinerary &&
+    (flight.type === "MULTI_CITY" || flight.businessName === "Multi-City") &&
+    flight.stopsList &&
+    flight.stopsList.length > 0;
+
+  const isMultiCity = isMultiCityItinerary || isMultiCityDirect;
+
+  return {
+    isItinerary,
+    isRoundTrip,
+    isRoundTripDirect,
+    isMultiCity,
+    isMultiCityItinerary,
+    isMultiCityDirect,
+  };
+};
+
+// Helper function to build common flight properties
+const buildCommonFlightProperties = (processedFlight) => {
+  // Build departure object
+  processedFlight.departure = {
+    city:
+      processedFlight.departureAirport?.airportName ||
+      processedFlight.departureAirport?.cityNames?.[0] ||
+      processedFlight.departureAirport?.cityName ||
+      "N/A",
+    airportName: processedFlight.departureAirport?.airportName || "N/A",
+    code:
+      processedFlight.departureAirport?.airportCode ||
+      processedFlight.fromCode ||
+      "N/A",
+    time: formatTime(processedFlight.departureTime),
+    date: formatDate(processedFlight.departureTime),
+  };
+
+  // Build arrival object
+  processedFlight.arrival = {
+    city:
+      processedFlight.arrivalAirport?.airportName ||
+      processedFlight.arrivalAirport?.cityNames?.[0] ||
+      processedFlight.arrivalAirport?.cityName ||
+      "N/A",
+    airportName: processedFlight.arrivalAirport?.airportName || "N/A",
+    code:
+      processedFlight.arrivalAirport?.airportCode ||
+      processedFlight.toCode ||
+      "N/A",
+    time: formatTime(processedFlight.arrivalTime),
+    date: formatDate(processedFlight.arrivalTime),
+  };
+
+  // Format duration
+  processedFlight.duration = formatDuration(processedFlight.duration);
+
+  return processedFlight;
+};
+
+// Helper function to normalize flight data
+const normalizeFlightData = (flight) => {
+  // Detect flight type
+  const flightType = detectFlightType(flight);
+  const { isRoundTrip, isRoundTripDirect, isMultiCity } = flightType;
 
   let processedFlight;
 
   if (isRoundTrip) {
-    // Handle round-trip itinerary
+    // Handle round-trip itinerary with legs array
     const outbound = flight.legs[0];
     const returnFlight = flight.legs[1];
 
@@ -157,6 +516,261 @@ const normalizeFlightData = (flight) => {
         returnFlight.totalSeats || 0
       ),
     };
+  } else if (isRoundTripDirect) {
+    const outbound = flight.outboundFlight;
+    const returnFlight = flight.returnFlight;
+
+    processedFlight = {
+      // Basic flight info
+      id: flight.itineraryId || flight.flightId || Date.now().toString(),
+      flightId: flight.itineraryId || flight.flightId || Date.now().toString(),
+      flightNumber:
+        flight.flightNumber ||
+        `${outbound.flightNumber || "N/A"} / ${
+          returnFlight.flightNumber || "N/A"
+        }`,
+
+      // Airline info
+      airline:
+        flight.airline ||
+        outbound.airline?.airlineName ||
+        outbound.airlineName ||
+        "N/A",
+      airlineName:
+        flight.airlineName ||
+        outbound.airline?.airlineName ||
+        outbound.airlineName ||
+        "N/A",
+      airlineLogo:
+        flight.airlineLogo ||
+        outbound.airline?.thumbnail ||
+        outbound.airline?.logo ||
+        "/placeholder.svg",
+
+      // Round-trip specific data
+      isRoundTrip: true,
+      tripType: "ROUND_TRIP",
+      outboundFlight: normalizeFlightData(outbound),
+      returnFlight: normalizeFlightData(returnFlight),
+      totalPrice:
+        flight.totalPrice || flight.priceNumeric || flight.basePrice || 0,
+
+      // Use outbound for primary display
+      departureTime: outbound.departureTime,
+      departureAirport: outbound.departureAirport || {},
+      from: outbound.departureAirport?.airportCode || outbound.from || "N/A",
+      fromCode:
+        outbound.departureAirport?.airportCode || outbound.fromCode || "N/A",
+
+      arrivalTime: returnFlight.arrivalTime,
+      arrivalAirport: returnFlight.arrivalAirport || {},
+      to: returnFlight.arrivalAirport?.airportCode || returnFlight.to || "N/A",
+      toCode:
+        returnFlight.arrivalAirport?.airportCode ||
+        returnFlight.toCode ||
+        "N/A",
+
+      // Combined duration
+      duration: (outbound.duration || 0) + (returnFlight.duration || 0),
+
+      // Travel classes - combine both directions
+      flightTravelClasses: combineRoundTripClasses(
+        outbound.flightTravelClasses || [],
+        returnFlight.flightTravelClasses || []
+      ),
+
+      // Status and availability
+      status: flight.status || outbound.status || "Scheduled",
+      availableSeats:
+        flight.availableSeats ||
+        Math.min(
+          outbound.availableSeats || 0,
+          returnFlight.availableSeats || 0
+        ),
+      totalSeats:
+        flight.totalSeats ||
+        Math.min(outbound.totalSeats || 0, returnFlight.totalSeats || 0),
+
+      // Additional fields
+      gate: flight.gate || outbound.gate,
+      terminal: flight.terminal || outbound.terminal,
+      stops: flight.stops || outbound.stops,
+      stopsList: flight.stopsList || outbound.stopsList || [],
+      aircraft: flight.aircraft || outbound.aircraft,
+      type: flight.type || outbound.type,
+      businessName: flight.businessName || outbound.businessName,
+    };
+  } else if (flightType.isMultiCityDirect) {
+    // Handle multi-city direct (with stopsList but no legs array)
+    const stopsList = flight.stopsList || [];
+    const totalStops = stopsList.length;
+
+    processedFlight = {
+      // Basic flight info
+      id: flight.flightId || flight.id || Date.now().toString(),
+      flightId: flight.flightId || flight.id || Date.now().toString(),
+      flightNumber: `${totalStops + 1} chặng`, // departure + stops + arrival
+
+      // Airline info
+      airline: flight.airline || "Multiple Airlines",
+      airlineName: flight.airlineName || "Multiple Airlines",
+      airlineLogo: flight.airlineLogo || "/placeholder.svg",
+
+      // Multi-city specific data
+      isMultiCity: true,
+      tripType: "MULTI_CITY",
+      type: "MULTI_CITY",
+      businessName: flight.businessName || "Multi-City",
+
+      // Create legs from stopsList
+      multiCityLegs: [], // Will be populated below
+      totalPrice: flight.totalPrice || flight.price || flight.basePrice || 0,
+
+      // Use original departure and final arrival
+      departureTime: flight.departureTime,
+      departureAirport: flight.departureAirport || {},
+      from: flight.departureAirport?.airportCode || flight.from || "N/A",
+      fromCode:
+        flight.departureAirport?.airportCode || flight.fromCode || "N/A",
+
+      arrivalTime: flight.arrivalTime,
+      arrivalAirport: flight.arrivalAirport || {},
+      to: flight.arrivalAirport?.airportCode || flight.to || "N/A",
+      toCode: flight.arrivalAirport?.airportCode || flight.toCode || "N/A",
+
+      // Total duration
+      duration: flight.duration || 0,
+
+      // Travel classes
+      flightTravelClasses: flight.flightTravelClasses || [],
+
+      // Status and availability
+      status: flight.status || "Scheduled",
+      availableSeats: flight.availableSeats || 0,
+      totalSeats: flight.totalSeats || 0,
+
+      // Additional fields
+      gate: flight.gate || "TBA",
+      terminal: flight.terminal || "TBA",
+      stops: totalStops,
+      stopsList: stopsList,
+      aircraft: flight.aircraft || "Multiple Aircraft",
+    };
+
+    // Create legs from stopsList
+    let currentDeparture = {
+      city:
+        flight.departureAirport.airportName ||
+        flight.departureAirport?.cityNames?.[0] ||
+        flight.departureAirport?.cityName ||
+        "N/A",
+      airportName: flight.departureAirport?.airportName || "N/A",
+      code: flight.departureAirport?.airportCode || flight.fromCode || "N/A",
+      time: formatDateTime(flight.departureTime),
+    };
+
+    stopsList.forEach((stop, index) => {
+      const leg = {
+        id: `leg-${index + 1}`,
+        flightNumber: `${flight.flightNumber || "N/A"}-${index + 1}`,
+        airline: flight.airline || "N/A",
+        airlineName: flight.airlineName || "N/A",
+        airlineLogo: flight.airlineLogo || "/placeholder.svg",
+
+        departure: currentDeparture,
+        departureTime: currentDeparture.time,
+        departureAirport: flight.departureAirport,
+
+        arrival: {
+          city: stop.airportName,
+          airportName: stop.airportName,
+          code: stop.airportCode,
+          time: formatDateTime(stop.arrivalTime),
+        },
+        arrivalTime: stop.arrivalTime,
+        arrivalAirport: {
+          airportCode: stop.airportCode,
+          airportName: stop.airportName,
+          cityName: stop.airportName,
+        },
+
+        duration: formatDuration(stop.duration) || 0,
+        stops: 0,
+        stopsList: [],
+        aircraft: flight.aircraft || "Boeing 737",
+
+        from: currentDeparture.code,
+        fromCode: currentDeparture.code,
+        to: stop.airportCode,
+        toCode: stop.airportCode,
+
+        price: flight.price || 0,
+        basePrice: flight.basePrice || 0,
+        availableSeats: flight.availableSeats || 0,
+        totalSeats: flight.totalSeats || 0,
+        status: flight.status || "Scheduled",
+
+        flightTravelClasses: flight.flightTravelClasses || [],
+      };
+
+      processedFlight.multiCityLegs.push(leg);
+
+      // Update current departure for next leg
+      currentDeparture = {
+        city: stop.airportName,
+        airportName: stop.airportName,
+        code: stop.airportCode,
+        time:
+          formatDateTime(stop.departureTime) ||
+          formatDateTime(stop.arrivalTime),
+      };
+    });
+
+    // Add final leg to destination
+    const finalLeg = {
+      id: `leg-${totalStops + 1}`,
+      flightNumber: `${flight.flightNumber || "N/A"}-${totalStops + 1}`,
+      airline: flight.airline || "N/A",
+      airlineName: flight.airlineName || "N/A",
+      airlineLogo: flight.airlineLogo || "/placeholder.svg",
+
+      departure: currentDeparture,
+      departureTime: currentDeparture.time,
+      departureAirport: flight.departureAirport,
+
+      arrival: {
+        city:
+          flight.arrivalAirport.airportName ||
+          flight.arrivalAirport?.cityNames?.[0] ||
+          flight.arrivalAirport?.cityName ||
+          "N/A",
+        airportName: flight.arrivalAirport?.airportName || "N/A",
+        code: flight.arrivalAirport?.airportCode || flight.toCode || "N/A",
+        time: formatDateTime(flight.arrivalTime),
+      },
+      arrivalTime: flight.arrivalTime,
+      arrivalAirport: flight.arrivalAirport,
+
+      duration: 0, // Calculate if needed
+      stops: 0,
+      stopsList: [],
+      aircraft: flight.aircraft || "Boeing 737",
+
+      from: currentDeparture.code,
+      fromCode: currentDeparture.code,
+      to: flight.arrivalAirport?.airportCode || flight.toCode || "N/A",
+      toCode: flight.arrivalAirport?.airportCode || flight.toCode || "N/A",
+
+      price: flight.price || 0,
+      basePrice: flight.basePrice || 0,
+      availableSeats: flight.availableSeats || 0,
+      totalSeats: flight.totalSeats || 0,
+      status: flight.status || "Scheduled",
+
+      flightTravelClasses: flight.flightTravelClasses || [],
+    };
+
+    processedFlight.multiCityLegs.push(finalLeg);
   } else if (isMultiCity) {
     // Handle multi-city itinerary
     const firstLeg = flight.legs[0];
@@ -281,68 +895,8 @@ const normalizeFlightData = (flight) => {
     };
   }
 
-  // Build departure object (common for all types)
-  processedFlight.departure = {
-    city:
-      processedFlight.departureAirport?.cityNames?.[0] ||
-      processedFlight.departureAirport?.cityName ||
-      processedFlight.departureAirport?.airportName ||
-      "N/A",
-    airportName: processedFlight.departureAirport?.airportName || "N/A",
-    code:
-      processedFlight.departureAirport?.airportCode ||
-      processedFlight.fromCode ||
-      "N/A",
-    time: processedFlight.departureTime
-      ? new Date(processedFlight.departureTime).toLocaleTimeString("vi-VN", {
-          hour: "2-digit",
-          minute: "2-digit",
-        })
-      : "N/A",
-    date: processedFlight.departureTime
-      ? new Date(processedFlight.departureTime).toLocaleDateString("vi-VN", {
-          weekday: "long",
-          day: "numeric",
-          month: "long",
-          year: "numeric",
-        })
-      : new Date().toLocaleDateString("vi-VN"),
-  };
-
-  // Build arrival object (common for all types)
-  processedFlight.arrival = {
-    city:
-      processedFlight.arrivalAirport?.cityNames?.[0] ||
-      processedFlight.arrivalAirport?.cityName ||
-      processedFlight.arrivalAirport?.airportName ||
-      "N/A",
-    airportName: processedFlight.arrivalAirport?.airportName || "N/A",
-    code:
-      processedFlight.arrivalAirport?.airportCode ||
-      processedFlight.toCode ||
-      "N/A",
-    time: processedFlight.arrivalTime
-      ? new Date(processedFlight.arrivalTime).toLocaleTimeString("vi-VN", {
-          hour: "2-digit",
-          minute: "2-digit",
-        })
-      : "N/A",
-    date: processedFlight.arrivalTime
-      ? new Date(processedFlight.arrivalTime).toLocaleDateString("vi-VN", {
-          weekday: "long",
-          day: "numeric",
-          month: "long",
-          year: "numeric",
-        })
-      : new Date().toLocaleDateString("vi-VN"),
-  };
-
-  // Format duration
-  processedFlight.duration = processedFlight.duration
-    ? `${Math.floor(processedFlight.duration / 60)}h ${
-        processedFlight.duration % 60
-      }m`
-    : "N/A";
+  // Build common flight properties
+  processedFlight = buildCommonFlightProperties(processedFlight);
 
   console.log("[normalizeFlightData] Processed flight data:", processedFlight);
   return processedFlight;
@@ -389,6 +943,7 @@ const FlightDetail = () => {
   const [loading, setLoading] = useState(true);
   const [fareOptions, setFareOptions] = useState([]);
   const [fareSelectionStep, setFareSelectionStep] = useState("outbound"); // 'outbound' or 'return'
+  const [selectedFares, setSelectedFares] = useState({}); // Track fares like RoundTripFareSelection
 
   // Stepper configuration for round-trip
   const roundTripSteps = [
@@ -403,17 +958,9 @@ const FlightDetail = () => {
       try {
         setLoading(true);
 
-        console.log("[FlightDetail] useEffect triggered");
-        console.log("[FlightDetail] location.state:", location.state);
-        console.log("[FlightDetail] URL param id:", id);
-
         // First try to get data from location state
         if (location.state && location.state.flight) {
           const flight = location.state.flight;
-          console.log(
-            "[FlightDetail] Found flight data in location.state:",
-            flight
-          );
 
           // Handle different flight data structures
           let flightToProcess = flight;
@@ -558,17 +1105,19 @@ const FlightDetail = () => {
   // Handle fare selection for different flight types
   const handleSelectFare = (fareId) => {
     if (flightData?.isRoundTrip) {
-      // For round-trip, we need to select both outbound and return fares
-      if (!outboundFare) {
-        setOutboundFare(fareId);
-        setFareSelectionStep("return"); // Move to return fare selection
-      } else if (!returnFare) {
-        setReturnFare(fareId);
-        // Stay on return step until user proceeds to booking
-      } else {
-        // If both are selected, reset and start over
-        setOutboundFare(fareId);
-        setReturnFare(null);
+      // For round-trip, use selectedFares object like RoundTripFareSelection
+      const key =
+        fareSelectionStep === "outbound"
+          ? `${flightData.itineraryId || flightData.id}-outbound`
+          : `${flightData.itineraryId || flightData.id}-return`;
+
+      setSelectedFares((prev) => ({
+        ...prev,
+        [key]: fareId,
+      }));
+
+      // Auto-advance to next step for outbound, stay on return
+      if (fareSelectionStep === "outbound") {
         setFareSelectionStep("return");
       }
     } else {
@@ -579,18 +1128,19 @@ const FlightDetail = () => {
 
   const handleSelectOutboundFare = (fareId) => {
     setOutboundFare(fareId);
-    setFareSelectionStep("return"); // Move to return fare selection
+    // Don't automatically move to return step - wait for user to click "Next"
   };
 
   const handleSelectReturnFare = (fareId) => {
     setReturnFare(fareId);
-    // Stay on return step
+    // Stay on return step - user can proceed to booking when ready
   };
 
   const handleResetFareSelection = () => {
     setOutboundFare(null);
     setReturnFare(null);
     setSelectedFare(null);
+    setSelectedFares({});
     setFareSelectionStep("outbound"); // Reset to first step
   };
 
@@ -602,6 +1152,19 @@ const FlightDetail = () => {
   const handleNextToReturn = () => {
     if (outboundFare) {
       setFareSelectionStep("return");
+    }
+  };
+
+  // Helper functions like RoundTripFareSelection
+  const handleNext = () => {
+    if (fareSelectionStep === "outbound") {
+      setFareSelectionStep("return");
+    }
+  };
+
+  const handlePrev = () => {
+    if (fareSelectionStep === "return") {
+      setFareSelectionStep("outbound");
     }
   };
 
@@ -622,16 +1185,21 @@ const FlightDetail = () => {
 
     if (flight.isRoundTrip) {
       // Handle round-trip booking
-      if (!outboundFare || !returnFare) {
+      const outboundFareId =
+        selectedFares[`${flight.itineraryId || flight.id}-outbound`];
+      const returnFareId =
+        selectedFares[`${flight.itineraryId || flight.id}-return`];
+
+      if (!outboundFareId || !returnFareId) {
         alert("Vui lòng chọn hạng vé cho cả chuyến đi và chuyến về.");
         return;
       }
 
       const outboundFareData = flight.outboundFlight?.flightTravelClasses?.find(
-        (fare) => fare.id === outboundFare
+        (fare) => fare.id === outboundFareId
       );
       const returnFareData = flight.returnFlight?.flightTravelClasses?.find(
-        (fare) => fare.id === returnFare
+        (fare) => fare.id === returnFareId
       );
 
       if (!outboundFareData || !returnFareData) {
@@ -644,8 +1212,8 @@ const FlightDetail = () => {
         ...flight,
         selectedOutboundFare: outboundFareData,
         selectedReturnFare: returnFareData,
-        outboundFareId: outboundFare,
-        returnFareId: returnFare,
+        outboundFareId: outboundFareId,
+        returnFareId: returnFareId,
         totalPrice: outboundFareData.customPrice + returnFareData.customPrice,
       };
     } else {
@@ -681,22 +1249,8 @@ const FlightDetail = () => {
       )
     );
 
-    console.log("[FlightDetail] Data stored in localStorage");
-    console.log("[FlightDetail] Navigating to booking-stepper with state:", {
-      flightData: bookingFlightData,
-    });
-
     // Navigate with state as backup
     navigate("/booking-stepper", { state: { flightData: bookingFlightData } });
-  };
-
-  const formatCurrency = (amount) => {
-    return new Intl.NumberFormat("vi-VN", {
-      style: "currency",
-      currency: "VND",
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(amount); // Display as-is since prices are already in VND
   };
 
   return (
@@ -737,7 +1291,7 @@ const FlightDetail = () => {
         <>
           {/* Hero Section */}
           <div
-            className="h-80 bg-cover bg-center relative pt-12"
+            className="h-96 bg-cover bg-center relative pt-12"
             style={{
               backgroundImage:
                 "url('https://images.unsplash.com/photo-1436491865332-7a61a109cc05?ixlib=rb-4.0.3&auto=format&fit=crop&w=2074&q=80')",
@@ -756,8 +1310,23 @@ const FlightDetail = () => {
                     }}
                   />
                   <h1 className="text-4xl font-bold">
-                    {flightData.departure?.city || flightData.from || "N/A"} →{" "}
-                    {flightData.arrival?.city || flightData.to || "N/A"}
+                    {flightData.isRoundTrip ? (
+                      <>
+                        <span>Khứ hồi: </span>
+                        {flightData.outboundFlight?.departure?.city ||
+                          flightData.from ||
+                          "N/A"}{" "}
+                        <ArrowRightLeft className="inline w-6 h-6 mx-2" />{" "}
+                        {flightData.outboundFlight?.arrival?.city ||
+                          flightData.to ||
+                          "N/A"}
+                      </>
+                    ) : (
+                      <>
+                        {flightData.departure?.city || flightData.from || "N/A"}{" "}
+                        → {flightData.arrival?.city || flightData.to || "N/A"}
+                      </>
+                    )}
                   </h1>
                 </div>
                 <p className="text-xl mb-2">
@@ -765,14 +1334,46 @@ const FlightDetail = () => {
                   {flightData.flightNumber || "N/A"}
                 </p>
                 <div className="flex items-center justify-center gap-8 text-lg">
-                  <span>
-                    {flightData.departure?.time || "N/A"} -{" "}
-                    {flightData.arrival?.time || "N/A"}
-                  </span>
-                  <span>•</span>
-                  <span>{flightData.duration || "N/A"}</span>
-                  <span>•</span>
-                  <span>{formatStops(flightData.stops) || "N/A"}</span>
+                  {flightData.isRoundTrip ? (
+                    <>
+                      <div className="text-center">
+                        <div className="font-semibold text-blue-300">
+                          Chuyến đi
+                        </div>
+                        <span>
+                          {flightData.outboundFlight?.departure?.time || "N/A"}{" "}
+                          - {flightData.outboundFlight?.arrival?.time || "N/A"}
+                        </span>
+                        <div className="text-sm text-blue-200">
+                          {flightData.outboundFlight?.departure?.date || "N/A"}
+                        </div>
+                      </div>
+                      <span>•</span>
+                      <div className="text-center">
+                        <div className="font-semibold text-green-300">
+                          Chuyến về
+                        </div>
+                        <span>
+                          {flightData.returnFlight?.departure?.time || "N/A"} -{" "}
+                          {flightData.returnFlight?.arrival?.time || "N/A"}
+                        </span>
+                        <div className="text-sm text-green-200">
+                          {flightData.returnFlight?.departure?.date || "N/A"}
+                        </div>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <span>
+                        {flightData.departure?.time || "N/A"} -{" "}
+                        {flightData.arrival?.time || "N/A"}
+                      </span>
+                      <span>•</span>
+                      <span>{flightData.duration || "N/A"}</span>
+                      <span>•</span>
+                      <span>{formatStops(flightData.stops) || "N/A"}</span>
+                    </>
+                  )}
                 </div>
               </div>
             </div>
@@ -788,48 +1389,420 @@ const FlightDetail = () => {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  <div className="flex flex-col items-center text-center p-4 border rounded-lg">
-                    <MapPin className="w-8 h-8 mb-3 text-blue-600" />
-                    <h3 className="font-semibold text-lg">Khởi hành</h3>
-                    <p className="font-bold">
-                      {flightData.departure?.city || flightData.from || "N/A"} (
-                      {flightData.departure?.code ||
-                        flightData.fromCode ||
-                        "N/A"}
-                      )
-                    </p>
-                    <p className="text-sm text-gray-600">
-                      {flightData.departure?.time || "N/A"},{" "}
-                      {flightData.departure?.date || "N/A"}
-                    </p>
+                {flightData.isRoundTrip ? (
+                  // Round-trip flight summary
+                  <div className="space-y-6">
+                    {/* Outbound Flight */}
+                    <div className="border-l-4 border-blue-500 pl-4">
+                      <div className="flex items-center gap-2 mb-3">
+                        <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
+                        <h3 className="font-semibold text-lg text-blue-800">
+                          Chuyến đi
+                        </h3>
+                        <Badge variant="outline" className="text-xs">
+                          {flightData.outboundFlight?.departure?.code} →{" "}
+                          {flightData.outboundFlight?.arrival?.code}
+                        </Badge>
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div className="flex flex-col items-center text-center p-3 bg-blue-50 rounded-lg">
+                          <MapPin className="w-6 h-6 mb-2 text-blue-600" />
+                          <h4 className="font-semibold text-sm">Khởi hành</h4>
+                          <p className="font-bold text-blue-800">
+                            {flightData.outboundFlight?.departure?.city ||
+                              "N/A"}{" "}
+                            (
+                            {flightData.outboundFlight?.departure?.code ||
+                              "N/A"}
+                            )
+                          </p>
+                          <p className="text-xs text-gray-600">
+                            {flightData.outboundFlight?.departure?.time ||
+                              "N/A"}
+                          </p>
+                        </div>
+                        <div className="flex flex-col items-center text-center p-3 bg-blue-50 rounded-lg">
+                          <Plane className="w-6 h-6 mb-2 text-blue-600" />
+                          <h4 className="font-semibold text-sm">Chi tiết</h4>
+                          <p className="font-bold text-blue-800">
+                            {flightData.outboundFlight?.flightNumber || "N/A"}
+                          </p>
+                          <p className="text-xs text-gray-600">
+                            {flightData.outboundFlight?.duration || "N/A"}
+                          </p>
+                        </div>
+                        <div className="flex flex-col items-center text-center p-3 bg-blue-50 rounded-lg">
+                          <MapPin className="w-6 h-6 mb-2 text-blue-600" />
+                          <h4 className="font-semibold text-sm">Đến</h4>
+                          <p className="font-bold text-blue-800">
+                            {flightData.outboundFlight?.arrival?.city || "N/A"}{" "}
+                            ({flightData.outboundFlight?.arrival?.code || "N/A"}
+                            )
+                          </p>
+                          <p className="text-xs text-gray-600">
+                            {flightData.outboundFlight?.arrival?.time || "N/A"}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Return Flight */}
+                    <div className="border-l-4 border-green-500 pl-4">
+                      <div className="flex items-center gap-2 mb-3">
+                        <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+                        <h3 className="font-semibold text-lg text-green-800">
+                          Chuyến về
+                        </h3>
+                        <Badge variant="outline" className="text-xs">
+                          {flightData.returnFlight?.departure?.code} →{" "}
+                          {flightData.returnFlight?.arrival?.code}
+                        </Badge>
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div className="flex flex-col items-center text-center p-3 bg-green-50 rounded-lg">
+                          <MapPin className="w-6 h-6 mb-2 text-green-600" />
+                          <h4 className="font-semibold text-sm">Khởi hành</h4>
+                          <p className="font-bold text-green-800">
+                            {flightData.returnFlight?.departure?.city || "N/A"}{" "}
+                            ({flightData.returnFlight?.departure?.code || "N/A"}
+                            )
+                          </p>
+                          <p className="text-xs text-gray-600">
+                            {flightData.returnFlight?.departure?.time || "N/A"}
+                          </p>
+                        </div>
+                        <div className="flex flex-col items-center text-center p-3 bg-green-50 rounded-lg">
+                          <Plane className="w-6 h-6 mb-2 text-green-600" />
+                          <h4 className="font-semibold text-sm">Chi tiết</h4>
+                          <p className="font-bold text-green-800">
+                            {flightData.returnFlight?.flightNumber || "N/A"}
+                          </p>
+                          <p className="text-xs text-gray-600">
+                            {flightData.returnFlight?.duration || "N/A"}
+                          </p>
+                        </div>
+                        <div className="flex flex-col items-center text-center p-3 bg-green-50 rounded-lg">
+                          <MapPin className="w-6 h-6 mb-2 text-green-600" />
+                          <h4 className="font-semibold text-sm">Đến</h4>
+                          <p className="font-bold text-green-800">
+                            {flightData.returnFlight?.arrival?.city || "N/A"} (
+                            {flightData.returnFlight?.arrival?.code || "N/A"})
+                          </p>
+                          <p className="text-xs text-gray-600">
+                            {flightData.returnFlight?.arrival?.time || "N/A"}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Total Summary */}
+                    <div className="bg-gray-50 rounded-lg p-4">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <h4 className="font-semibold text-gray-800">
+                            Tổng thời gian
+                          </h4>
+                          <p className="text-sm text-gray-600">Khứ hồi</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="font-bold text-gray-800">
+                            {flightData.duration || "N/A"}
+                          </p>
+                          <p className="text-sm text-gray-600">Bay thẳng</p>
+                        </div>
+                      </div>
+                    </div>
                   </div>
-                  <div className="flex flex-col items-center text-center p-4 border rounded-lg">
-                    <Plane className="w-8 h-8 mb-3 text-blue-600" />
-                    <h3 className="font-semibold text-lg">
-                      Chi tiết chuyến bay
-                    </h3>
-                    <p className="font-bold">
-                      {flightData.duration || "N/A"} •{" "}
-                      {formatStops(flightData.stops) || "N/A"}
-                    </p>
-                    <p className="text-sm text-gray-600">
-                      Máy bay: {flightData.aircraft || "N/A"}
-                    </p>
+                ) : flightData.isMultiCity ? (
+                  // Multi-city flight summary
+                  <div className="space-y-6">
+                    {/* Multi-city Header */}
+                    <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
+                      <div className="flex items-center gap-3 mb-3">
+                        <div className="w-4 h-4 bg-purple-500 rounded-full flex items-center justify-center">
+                          <Plane className="w-3 h-3 text-white" />
+                        </div>
+                        <h3 className="text-lg font-bold text-purple-800">
+                          Chuyến bay đa chặng
+                        </h3>
+                        <Badge
+                          variant="outline"
+                          className="text-purple-600 border-purple-600"
+                        >
+                          {flightData.multiCityLegs?.length || 0} chặng
+                        </Badge>
+                      </div>
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-purple-700">
+                          {flightData.from} → {flightData.to}
+                        </span>
+                        <span className="text-purple-700 font-medium">
+                          Tổng: {flightData.duration || "N/A"}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Multi-city Legs */}
+                    {flightData.multiCityLegs?.map((leg, legIndex) => (
+                      <div
+                        key={legIndex}
+                        className="border-l-4 border-purple-500 pl-6"
+                      >
+                        <div className="flex items-center gap-3 mb-4">
+                          <div className="w-3 h-3 bg-purple-500 rounded-full"></div>
+                          <h4 className="text-lg font-semibold text-purple-800">
+                            Chặng {legIndex + 1}: {leg.departure?.city} →{" "}
+                            {leg.arrival?.city}
+                          </h4>
+                          <Badge variant="outline" className="text-xs">
+                            {leg.departure?.code} → {leg.arrival?.code}
+                          </Badge>
+                        </div>
+
+                        {/* Flight Timeline */}
+                        <div className="relative mb-6">
+                          <div className="absolute left-6 top-0 bottom-0 w-0.5 bg-purple-200"></div>
+
+                          {/* Departure */}
+                          <div className="flex items-start space-x-4 mb-6">
+                            <div className="flex-shrink-0 w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center relative z-10">
+                              <MapPin className="w-6 h-6 text-purple-600" />
+                            </div>
+                            <div className="flex-grow">
+                              <div className="flex items-center justify-between mb-2">
+                                <h5 className="font-semibold text-gray-900">
+                                  Từ {leg.departure?.city || "N/A"}
+                                </h5>
+                                <Badge
+                                  variant="outline"
+                                  className="text-purple-600 border-purple-600"
+                                >
+                                  {leg.departure?.code}
+                                </Badge>
+                              </div>
+                              <p className="text-2xl font-bold text-gray-900">
+                                {leg.departure?.time || "N/A"}
+                              </p>
+                            </div>
+                          </div>
+
+                          {/* Flight Path */}
+                          <div className="flex items-start space-x-4 mb-6">
+                            <div className="flex-shrink-0 w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center relative z-10">
+                              <Plane className="w-6 h-6 text-purple-600" />
+                            </div>
+                            <div className="flex-grow">
+                              <div className="bg-purple-50 rounded-lg p-4">
+                                <div className="flex items-center justify-between mb-2">
+                                  <h5 className="font-semibold text-purple-800">
+                                    Chuyến bay
+                                  </h5>
+                                  <Badge variant="outline" className="text-xs">
+                                    {leg.airline || "N/A"}
+                                  </Badge>
+                                </div>
+                                <div className="grid grid-cols-2 gap-4 text-sm">
+                                  <div>
+                                    <span className="text-gray-600">
+                                      Số hiệu:
+                                    </span>
+                                    <span className="font-medium ml-2">
+                                      {leg.flightNumber || "N/A"}
+                                    </span>
+                                  </div>
+                                  <div>
+                                    <span className="text-gray-600">
+                                      Máy bay:
+                                    </span>
+                                    <span className="font-medium ml-2">
+                                      {leg.aircraft || "N/A"}
+                                    </span>
+                                  </div>
+                                  <div>
+                                    <span className="text-gray-600">
+                                      Thời gian bay:
+                                    </span>
+                                    <span className="font-medium ml-2">
+                                      {leg.duration || "N/A"}
+                                    </span>
+                                  </div>
+                                  <div>
+                                    <span className="text-gray-600">
+                                      Hạng ghế:
+                                    </span>
+                                    <span className="font-medium ml-2">
+                                      {leg.travelClass || "N/A"}
+                                    </span>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Stops */}
+                          {leg.stopsList && leg.stopsList.length > 0 && (
+                            <div className="mb-6">
+                              <h5 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                                <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
+                                Điểm dừng ({leg.stopsList.length})
+                              </h5>
+                              <div className="space-y-3">
+                                {leg.stopsList.map((stop, stopIndex) => (
+                                  <div
+                                    key={stopIndex}
+                                    className="flex items-start space-x-4"
+                                  >
+                                    <div className="flex-shrink-0 w-8 h-8 bg-yellow-100 rounded-full flex items-center justify-center relative z-10">
+                                      <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
+                                    </div>
+                                    <div className="flex-grow">
+                                      <div className="bg-yellow-50 rounded-lg p-3">
+                                        <div className="flex items-center justify-between mb-1">
+                                          <span className="font-medium text-gray-900">
+                                            {stop.airportName} (
+                                            {stop.airportCode})
+                                          </span>
+                                          <Badge
+                                            variant="outline"
+                                            className="text-xs"
+                                          >
+                                            {stopIndex === 0
+                                              ? "Điểm dừng đầu"
+                                              : "Điểm dừng cuối"}
+                                          </Badge>
+                                        </div>
+                                        <p className="text-sm text-gray-600">
+                                          Đến: {stop.arrivalTime || "N/A"}
+                                        </p>
+                                        <p className="text-sm text-gray-600">
+                                          Thời gian dừng:{" "}
+                                          {stop.stopDuration || "N/A"}
+                                        </p>
+                                      </div>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Arrival */}
+                          <div className="flex items-start space-x-4">
+                            <div className="flex-shrink-0 w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center relative z-10">
+                              <MapPin className="w-6 h-6 text-purple-600" />
+                            </div>
+                            <div className="flex-grow">
+                              <div className="flex items-center justify-between mb-2">
+                                <h5 className="font-semibold text-gray-900">
+                                  Đến {leg.arrival?.city || "N/A"}
+                                </h5>
+                                <Badge
+                                  variant="outline"
+                                  className="text-purple-600 border-purple-600"
+                                >
+                                  {leg.arrival?.code}
+                                </Badge>
+                              </div>
+                              <p className="text-2xl font-bold text-gray-900">
+                                {leg.arrival?.time || "N/A"}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+
+                    {/* Multi-city Summary */}
+                    <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
+                      <h4 className="font-bold text-purple-800 mb-3">
+                        Tổng quan chuyến bay đa chặng
+                      </h4>
+                      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                        <div className="text-center">
+                          <h5 className="font-semibold text-purple-800">
+                            Tổng chặng
+                          </h5>
+                          <p className="text-lg font-bold text-purple-600">
+                            {flightData.multiCityLegs?.length || 0}
+                          </p>
+                        </div>
+                        <div className="text-center">
+                          <h5 className="font-semibold text-purple-800">
+                            Tổng thời gian
+                          </h5>
+                          <p className="text-lg font-bold text-purple-600">
+                            {flightData.duration || "N/A"}
+                          </p>
+                        </div>
+                        <div className="text-center">
+                          <h5 className="font-semibold text-purple-800">
+                            Tổng điểm dừng
+                          </h5>
+                          <p className="text-lg font-bold text-purple-600">
+                            {flightData.stops || 0}
+                          </p>
+                        </div>
+                        <div className="text-center">
+                          <h5 className="font-semibold text-purple-800">
+                            Loại chuyến bay
+                          </h5>
+                          <Badge
+                            variant="outline"
+                            className="text-purple-600 border-purple-600"
+                          >
+                            Đa chặng
+                          </Badge>
+                        </div>
+                      </div>
+                    </div>
                   </div>
-                  <div className="flex flex-col items-center text-center p-4 border rounded-lg">
-                    <MapPin className="w-8 h-8 mb-3 text-blue-600" />
-                    <h3 className="font-semibold text-lg">Đến nơi</h3>
-                    <p className="font-bold">
-                      {flightData.arrival?.city || flightData.to || "N/A"} (
-                      {flightData.arrival?.code || flightData.toCode || "N/A"})
-                    </p>
-                    <p className="text-sm text-gray-600">
-                      {flightData.arrival?.time || "N/A"},{" "}
-                      {flightData.arrival?.date || "N/A"}
-                    </p>
+                ) : (
+                  // One-way flight summary
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div className="flex flex-col items-center text-center p-4 border rounded-lg">
+                      <MapPin className="w-8 h-8 mb-3 text-blue-600" />
+                      <h3 className="font-semibold text-lg">Khởi hành</h3>
+                      <p className="font-bold">
+                        {flightData.departure?.city || flightData.from || "N/A"}{" "}
+                        (
+                        {flightData.departure?.code ||
+                          flightData.fromCode ||
+                          "N/A"}
+                        )
+                      </p>
+                      <p className="text-sm text-gray-600">
+                        {flightData.departure?.time || "N/A"},{" "}
+                        {flightData.departure?.date || "N/A"}
+                      </p>
+                    </div>
+                    <div className="flex flex-col items-center text-center p-4 border rounded-lg">
+                      <Plane className="w-8 h-8 mb-3 text-blue-600" />
+                      <h3 className="font-semibold text-lg">
+                        Chi tiết chuyến bay
+                      </h3>
+                      <p className="font-bold">
+                        {flightData.duration || "N/A"} •{" "}
+                        {formatStops(flightData.stops) || "N/A"}
+                      </p>
+                      <p className="text-sm text-gray-600">
+                        Máy bay: {flightData.aircraft || "N/A"}
+                      </p>
+                    </div>
+                    <div className="flex flex-col items-center text-center p-4 border rounded-lg">
+                      <MapPin className="w-8 h-8 mb-3 text-blue-600" />
+                      <h3 className="font-semibold text-lg">Đến nơi</h3>
+                      <p className="font-bold">
+                        {flightData.arrival?.city || flightData.to || "N/A"} (
+                        {flightData.arrival?.code || flightData.toCode || "N/A"}
+                        )
+                      </p>
+                      <p className="text-sm text-gray-600">
+                        {flightData.arrival?.time || "N/A"},{" "}
+                        {flightData.arrival?.date || "N/A"}
+                      </p>
+                    </div>
                   </div>
-                </div>
+                )}
               </CardContent>
             </Card>
 
@@ -843,7 +1816,14 @@ const FlightDetail = () => {
                     ? "Chọn hạng vé cho chuyến bay đa chặng"
                     : "Chọn loại vé phù hợp"}
                 </h3>
-                {(outboundFare || returnFare) && (
+                {(selectedFares[
+                  `${flightData?.itineraryId || flightData?.id}-outbound`
+                ] ||
+                  selectedFares[
+                    `${flightData?.itineraryId || flightData?.id}-return`
+                  ] ||
+                  outboundFare ||
+                  returnFare) && (
                   <Button
                     variant="outline"
                     size="sm"
@@ -917,10 +1897,13 @@ const FlightDetail = () => {
                       : flightData.returnFlight?.flightTravelClasses
                     )?.map((travelClass, index) => {
                       const isRecommended = index === 0;
-                      const currentFare =
+                      const currentKey =
                         fareSelectionStep === "outbound"
-                          ? outboundFare
-                          : returnFare;
+                          ? `${
+                              flightData.itineraryId || flightData.id
+                            }-outbound`
+                          : `${flightData.itineraryId || flightData.id}-return`;
+                      const currentFare = selectedFares[currentKey];
 
                       return (
                         <FareOption
@@ -963,11 +1946,7 @@ const FlightDetail = () => {
                           }}
                           flight={flightData}
                           isSelected={currentFare === travelClass.id}
-                          onSelect={() =>
-                            fareSelectionStep === "outbound"
-                              ? handleSelectOutboundFare(travelClass.id)
-                              : handleSelectReturnFare(travelClass.id)
-                          }
+                          onSelect={() => handleSelectFare(travelClass.id)}
                           showProceedButton={false}
                         />
                       );
@@ -977,44 +1956,89 @@ const FlightDetail = () => {
                   {/* Navigation Buttons */}
                   <div className="flex justify-between items-center">
                     <div className="text-sm text-gray-600">
-                      {fareSelectionStep === "outbound" && outboundFare && (
-                        <span className="text-green-600">
-                          ✓ Đã chọn hạng vé chuyến đi
-                        </span>
-                      )}
-                      {fareSelectionStep === "return" && returnFare && (
-                        <span className="text-green-600">
-                          ✓ Đã chọn hạng vé chuyến về
-                        </span>
-                      )}
+                      {fareSelectionStep === "outbound" &&
+                        selectedFares[
+                          `${flightData.itineraryId || flightData.id}-outbound`
+                        ] && (
+                          <span className="text-green-600">
+                            ✓ Đã chọn hạng vé chuyến đi
+                          </span>
+                        )}
+                      {fareSelectionStep === "return" &&
+                        selectedFares[
+                          `${flightData.itineraryId || flightData.id}-return`
+                        ] && (
+                          <span className="text-green-600">
+                            ✓ Đã chọn hạng vé chuyến về
+                          </span>
+                        )}
                     </div>
 
                     <div className="flex space-x-3">
-                      {fareSelectionStep === "outbound" && outboundFare && (
-                        <Button
-                          onClick={handleNextToReturn}
-                          className="bg-blue-600 hover:bg-blue-700 text-white"
-                        >
-                          Tiếp tục chọn vé về
-                          <ArrowRight className="w-4 h-4 ml-2" />
-                        </Button>
-                      )}
+                      {fareSelectionStep === "outbound" &&
+                        selectedFares[
+                          `${flightData.itineraryId || flightData.id}-outbound`
+                        ] && (
+                          <Button
+                            onClick={handleNext}
+                            className="bg-blue-600 hover:bg-blue-700 text-white"
+                          >
+                            Tiếp tục chọn vé về
+                            <ChevronRight className="w-4 h-4 ml-1" />
+                          </Button>
+                        )}
 
                       {fareSelectionStep === "return" &&
-                        outboundFare &&
-                        returnFare && (
+                        selectedFares[
+                          `${flightData.itineraryId || flightData.id}-outbound`
+                        ] &&
+                        selectedFares[
+                          `${flightData.itineraryId || flightData.id}-return`
+                        ] && (
                           <Button
                             onClick={() =>
-                              handleProceedToBooking(flightData, outboundFare)
+                              handleProceedToBooking(
+                                flightData,
+                                selectedFares[
+                                  `${
+                                    flightData.itineraryId || flightData.id
+                                  }-outbound`
+                                ]
+                              )
                             }
                             className="bg-green-600 hover:bg-green-700 text-white font-semibold"
                           >
                             Đặt vé ngay
-                            <Plane className="w-4 h-4 ml-2" />
+                            <Plane className="w-4 h-4 ml-1" />
                           </Button>
                         )}
                     </div>
                   </div>
+
+                  {/* Notification when both fares are selected */}
+                  {selectedFares[
+                    `${flightData.itineraryId || flightData.id}-outbound`
+                  ] &&
+                    selectedFares[
+                      `${flightData.itineraryId || flightData.id}-return`
+                    ] && (
+                      <div className="bg-green-50 border border-green-200 rounded-lg p-4 mt-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
+                            <CheckCircle className="w-5 h-5 text-green-600" />
+                          </div>
+                          <div>
+                            <h4 className="font-semibold text-green-800">
+                              Hoàn thành chọn vé khứ hồi
+                            </h4>
+                            <p className="text-sm text-green-700">
+                              Bạn đã chọn hạng vé cho cả chuyến đi và chuyến về.
+                              Bấm "Đặt vé ngay" để tiếp tục đặt vé.
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                 </div>
               ) : flightData?.isMultiCity ? (
                 // Multi-city fare selection
@@ -1248,194 +2272,1012 @@ const FlightDetail = () => {
 
                 <div className="p-6">
                   <TabsContent value="details" className="mt-0">
-                    <div className="space-y-6">
-                      <div>
-                        <h3 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white">
-                          Lịch trình chuyến bay
-                        </h3>
-                        <div className="relative">
-                          <div className="absolute left-8 top-8 bottom-8 w-0.5 bg-gray-200"></div>
+                    {flightData.isRoundTrip ? (
+                      // Round-trip flight details
+                      <div className="space-y-8">
+                        {/* Outbound Flight Details */}
+                        <div className="border-l-4 border-blue-500 pl-6">
+                          <div className="flex items-center gap-3 mb-6">
+                            <div className="w-4 h-4 bg-blue-500 rounded-full"></div>
+                            <h3 className="text-xl font-bold text-blue-800">
+                              Chuyến đi
+                            </h3>
+                            <Badge
+                              variant="outline"
+                              className="text-blue-600 border-blue-600"
+                            >
+                              {flightData.outboundFlight?.departure?.code} →{" "}
+                              {flightData.outboundFlight?.arrival?.code}
+                            </Badge>
+                          </div>
 
-                          <div className="flex items-start space-x-4 mb-8">
-                            <div className="flex-shrink-0 w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center relative z-10">
-                              <Plane className="w-8 h-8 text-blue-600" />
-                            </div>
-                            <div className="flex-grow">
-                              <div className="flex items-center justify-between mb-2">
-                                <h4 className="text-lg font-semibold text-gray-900 dark:text-white">
-                                  Khởi hành
-                                </h4>
-                                <Badge
-                                  variant="outline"
-                                  className="text-green-600 border-green-600"
-                                >
-                                  Đúng giờ
-                                </Badge>
+                          <div className="relative mb-6">
+                            <div className="absolute left-8 top-8 bottom-8 w-0.5 bg-blue-200"></div>
+
+                            <div className="flex items-start space-x-4 mb-8">
+                              <div className="flex-shrink-0 w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center relative z-10">
+                                <Plane className="w-8 h-8 text-blue-600" />
                               </div>
-                              <p className="text-2xl font-bold text-gray-900 dark:text-gray-300">
-                                {flightData?.departure?.time || "N/A"}
-                              </p>
-                              <p className="text-gray-600 dark:text-gray-400">
-                                {flightData?.departure?.date || "N/A"}
-                              </p>
-                              <p className="text-lg font-medium text-gray-800 mt-1 dark:text-gray-300">
-                                {flightData?.departure?.city ||
-                                  flightData?.from ||
-                                  "N/A"}
-                              </p>
-                              <p className="text-sm text-gray-500 dark:text-gray-400">
-                                {flightData?.terminal || "TBA"}, Cổng{" "}
-                                {flightData?.gate || "TBA"}
-                              </p>
+                              <div className="flex-grow">
+                                <div className="flex items-center justify-between mb-2">
+                                  <h4 className="text-lg font-semibold text-gray-900 dark:text-white">
+                                    Khởi hành
+                                  </h4>
+                                  <Badge
+                                    variant="outline"
+                                    className="text-green-600 border-green-600"
+                                  >
+                                    Đúng giờ
+                                  </Badge>
+                                </div>
+                                <p className="text-2xl font-bold text-gray-900 dark:text-gray-300">
+                                  {flightData.outboundFlight?.departure?.time ||
+                                    "N/A"}
+                                </p>
+                                <p className="text-gray-600 dark:text-gray-400">
+                                  {flightData.outboundFlight?.departure?.date ||
+                                    "N/A"}
+                                </p>
+                                <p className="text-lg font-medium text-gray-800 mt-1 dark:text-gray-300">
+                                  {flightData.outboundFlight?.departure?.city ||
+                                    "N/A"}
+                                </p>
+                                <p className="text-sm text-gray-500 dark:text-gray-400">
+                                  {flightData.outboundFlight?.terminal || "TBA"}
+                                  , Cổng{" "}
+                                  {flightData.outboundFlight?.gate || "TBA"}
+                                </p>
+                              </div>
+                            </div>
+
+                            <div className="flex items-center space-x-4 mb-8 ml-8">
+                              <div className="flex-grow border-l-2 border-dashed border-blue-300 pl-4">
+                                <div className="bg-blue-50 rounded-lg p-3">
+                                  <div className="flex items-center justify-between">
+                                    <span className="text-sm text-gray-600">
+                                      Thời gian bay
+                                    </span>
+                                    <span className="font-semibold text-gray-900">
+                                      {flightData.outboundFlight?.duration ||
+                                        "N/A"}
+                                    </span>
+                                  </div>
+                                  <div className="flex items-center justify-between mt-1">
+                                    <span className="text-sm text-gray-600">
+                                      Máy bay
+                                    </span>
+                                    <span className="font-semibold text-gray-900">
+                                      {flightData.outboundFlight?.aircraft ||
+                                        "N/A"}
+                                    </span>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="flex items-start space-x-4">
+                              <div className="flex-shrink-0 w-16 h-16 bg-green-100 rounded-full flex items-center justify-center relative z-10">
+                                <MapPin className="w-8 h-8 text-green-600" />
+                              </div>
+                              <div className="flex-grow">
+                                <div className="flex items-center justify-between mb-2">
+                                  <h4 className="text-lg font-semibold text-gray-900 dark:text-white">
+                                    Đến nơi
+                                  </h4>
+                                  <Badge
+                                    variant="outline"
+                                    className="text-green-600 border-green-600"
+                                  >
+                                    Đúng giờ
+                                  </Badge>
+                                </div>
+                                <p className="text-2xl font-bold text-gray-900 dark:text-gray-300">
+                                  {flightData.outboundFlight?.arrival?.time ||
+                                    "N/A"}
+                                </p>
+                                <p className="text-gray-600 dark:text-gray-400">
+                                  {flightData.outboundFlight?.arrival?.date ||
+                                    "N/A"}
+                                </p>
+                                <p className="text-lg font-medium text-gray-800 mt-1 dark:text-gray-300">
+                                  {flightData.outboundFlight?.arrival?.city ||
+                                    "N/A"}
+                                </p>
+                                <p className="text-sm text-gray-500 dark:text-gray-400">
+                                  Terminal{" "}
+                                  {flightData.outboundFlight?.terminal || "TBA"}
+                                  , Cổng{" "}
+                                  {flightData.outboundFlight?.gate || "TBA"}
+                                </p>
+                              </div>
                             </div>
                           </div>
 
-                          <div className="flex items-center space-x-4 mb-8 ml-8">
-                            <div className="flex-grow border-l-2 border-dashed border-gray-300 pl-4">
-                              <div className="bg-gray-50 rounded-lg p-3">
-                                <div className="flex items-center justify-between">
-                                  <span className="text-sm text-gray-600">
-                                    Thời gian bay
+                          {/* Outbound Flight Info */}
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="bg-blue-50 rounded-lg p-4">
+                              <h4 className="font-semibold text-blue-800 mb-3">
+                                Thông tin chuyến bay
+                              </h4>
+                              <div className="space-y-2 text-sm">
+                                <div className="flex justify-between">
+                                  <span className="text-gray-600">
+                                    Số hiệu:
                                   </span>
-                                  <span className="font-semibold text-gray-900">
-                                    {flightData.duration}
+                                  <span className="font-medium">
+                                    {flightData.outboundFlight?.flightNumber ||
+                                      "N/A"}
                                   </span>
                                 </div>
-                                <div className="flex items-center justify-between mt-1">
-                                  <span className="text-sm text-gray-600">
-                                    Máy bay
+                                <div className="flex justify-between">
+                                  <span className="text-gray-600">
+                                    Loại máy bay:
                                   </span>
-                                  <span className="font-semibold text-gray-900">
-                                    {flightData.aircraft}
+                                  <span className="font-medium">
+                                    {flightData.outboundFlight?.aircraft ||
+                                      "N/A"}
+                                  </span>
+                                </div>
+
+                                <div className="flex justify-between">
+                                  <span className="text-gray-600">
+                                    Hãng bay:
+                                  </span>
+                                  <span className="font-medium">
+                                    {flightData.outboundFlight?.airline ||
+                                      "N/A"}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="bg-blue-50 rounded-lg p-4">
+                              <h4 className="font-semibold text-blue-800 mb-3">
+                                Thời gian làm thủ tục
+                              </h4>
+                              <div className="space-y-2 text-sm">
+                                <div className="flex justify-between">
+                                  <span className="text-gray-600">
+                                    Check-in online:
+                                  </span>
+                                  <span className="font-medium">
+                                    24h trước giờ bay
+                                  </span>
+                                </div>
+                                <div className="flex justify-between">
+                                  <span className="text-gray-600">
+                                    Check-in sân bay:
+                                  </span>
+                                  <span className="font-medium">
+                                    2h trước giờ bay
+                                  </span>
+                                </div>
+                                <div className="flex justify-between">
+                                  <span className="text-gray-600">
+                                    Lên máy bay:
+                                  </span>
+                                  <span className="font-medium">
+                                    30p trước giờ bay
+                                  </span>
+                                </div>
+                                <div className="flex justify-between">
+                                  <span className="text-gray-600">
+                                    Đóng cổng:
+                                  </span>
+                                  <span className="font-medium">
+                                    10p trước giờ bay
                                   </span>
                                 </div>
                               </div>
                             </div>
                           </div>
+                        </div>
 
-                          <div className="flex items-start space-x-4">
-                            <div className="flex-shrink-0 w-16 h-16 bg-green-100 rounded-full flex items-center justify-center relative z-10">
-                              <MapPin className="w-8 h-8 text-green-600" />
-                            </div>
-                            <div className="flex-grow">
-                              <div className="flex items-center justify-between mb-2">
-                                <h4 className="text-lg font-semibold text-gray-900 dark:text-white">
-                                  Đến nơi
-                                </h4>
-                                <Badge
-                                  variant="outline"
-                                  className="text-green-600 border-green-600"
-                                >
-                                  Đúng giờ
-                                </Badge>
+                        {/* Return Flight Details */}
+                        <div className="border-l-4 border-green-500 pl-6">
+                          <div className="flex items-center gap-3 mb-6">
+                            <div className="w-4 h-4 bg-green-500 rounded-full"></div>
+                            <h3 className="text-xl font-bold text-green-800">
+                              Chuyến về
+                            </h3>
+                            <Badge
+                              variant="outline"
+                              className="text-green-600 border-green-600"
+                            >
+                              {flightData.returnFlight?.departure?.code} →{" "}
+                              {flightData.returnFlight?.arrival?.code}
+                            </Badge>
+                          </div>
+
+                          <div className="relative mb-6">
+                            <div className="absolute left-8 top-8 bottom-8 w-0.5 bg-green-200"></div>
+
+                            <div className="flex items-start space-x-4 mb-8">
+                              <div className="flex-shrink-0 w-16 h-16 bg-green-100 rounded-full flex items-center justify-center relative z-10">
+                                <Plane className="w-8 h-8 text-green-600" />
                               </div>
-                              <p className="text-2xl font-bold text-gray-900 dark:text-gray-300">
-                                {flightData?.arrival?.time || "N/A"}
+                              <div className="flex-grow">
+                                <div className="flex items-center justify-between mb-2">
+                                  <h4 className="text-lg font-semibold text-gray-900 dark:text-white">
+                                    Khởi hành
+                                  </h4>
+                                  <Badge
+                                    variant="outline"
+                                    className="text-green-600 border-green-600"
+                                  >
+                                    Đúng giờ
+                                  </Badge>
+                                </div>
+                                <p className="text-2xl font-bold text-gray-900 dark:text-gray-300">
+                                  {flightData.returnFlight?.departure?.time ||
+                                    "N/A"}
+                                </p>
+                                <p className="text-gray-600 dark:text-gray-400">
+                                  {flightData.returnFlight?.departure?.date ||
+                                    "N/A"}
+                                </p>
+                                <p className="text-lg font-medium text-gray-800 mt-1 dark:text-gray-300">
+                                  {flightData.returnFlight?.departure?.city ||
+                                    "N/A"}
+                                </p>
+                                <p className="text-sm text-gray-500 dark:text-gray-400">
+                                  {flightData.returnFlight?.terminal || "TBA"},
+                                  Cổng {flightData.returnFlight?.gate || "TBA"}
+                                </p>
+                              </div>
+                            </div>
+
+                            <div className="flex items-center space-x-4 mb-8 ml-8">
+                              <div className="flex-grow border-l-2 border-dashed border-green-300 pl-4">
+                                <div className="bg-green-50 rounded-lg p-3">
+                                  <div className="flex items-center justify-between">
+                                    <span className="text-sm text-gray-600">
+                                      Thời gian bay
+                                    </span>
+                                    <span className="font-semibold text-gray-900">
+                                      {flightData.returnFlight?.duration ||
+                                        "N/A"}
+                                    </span>
+                                  </div>
+                                  <div className="flex items-center justify-between mt-1">
+                                    <span className="text-sm text-gray-600">
+                                      Máy bay
+                                    </span>
+                                    <span className="font-semibold text-gray-900">
+                                      {flightData.returnFlight?.aircraft ||
+                                        "N/A"}
+                                    </span>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="flex items-start space-x-4">
+                              <div className="flex-shrink-0 w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center relative z-10">
+                                <MapPin className="w-8 h-8 text-blue-600" />
+                              </div>
+                              <div className="flex-grow">
+                                <div className="flex items-center justify-between mb-2">
+                                  <h4 className="text-lg font-semibold text-gray-900 dark:text-white">
+                                    Đến nơi
+                                  </h4>
+                                  <Badge
+                                    variant="outline"
+                                    className="text-green-600 border-green-600"
+                                  >
+                                    Đúng giờ
+                                  </Badge>
+                                </div>
+                                <p className="text-2xl font-bold text-gray-900 dark:text-gray-300">
+                                  {flightData.returnFlight?.arrival?.time ||
+                                    "N/A"}
+                                </p>
+                                <p className="text-gray-600 dark:text-gray-400">
+                                  {flightData.returnFlight?.arrival?.date ||
+                                    "N/A"}
+                                </p>
+                                <p className="text-lg font-medium text-gray-800 mt-1 dark:text-gray-300">
+                                  {flightData.returnFlight?.arrival?.city ||
+                                    "N/A"}
+                                </p>
+                                <p className="text-sm text-gray-500 dark:text-gray-400">
+                                  Terminal{" "}
+                                  {flightData.returnFlight?.terminal || "TBA"},
+                                  Cổng {flightData.returnFlight?.gate || "TBA"}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Return Flight Info */}
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="bg-green-50 rounded-lg p-4">
+                              <h4 className="font-semibold text-green-800 mb-3">
+                                Thông tin chuyến bay
+                              </h4>
+                              <div className="space-y-2 text-sm">
+                                <div className="flex justify-between">
+                                  <span className="text-gray-600">
+                                    Số hiệu:
+                                  </span>
+                                  <span className="font-medium">
+                                    {flightData.returnFlight?.flightNumber ||
+                                      "N/A"}
+                                  </span>
+                                </div>
+                                <div className="flex justify-between">
+                                  <span className="text-gray-600">
+                                    Loại máy bay:
+                                  </span>
+                                  <span className="font-medium">
+                                    {flightData.returnFlight?.aircraft || "N/A"}
+                                  </span>
+                                </div>
+
+                                <div className="flex justify-between">
+                                  <span className="text-gray-600">
+                                    Hãng bay:
+                                  </span>
+                                  <span className="font-medium">
+                                    {flightData.returnFlight?.airline || "N/A"}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="bg-green-50 rounded-lg p-4">
+                              <h4 className="font-semibold text-green-800 mb-3">
+                                Thời gian làm thủ tục
+                              </h4>
+                              <div className="space-y-2 text-sm">
+                                <div className="flex justify-between">
+                                  <span className="text-gray-600">
+                                    Check-in online:
+                                  </span>
+                                  <span className="font-medium">
+                                    24h trước giờ bay
+                                  </span>
+                                </div>
+                                <div className="flex justify-between">
+                                  <span className="text-gray-600">
+                                    Check-in sân bay:
+                                  </span>
+                                  <span className="font-medium">
+                                    2h trước giờ bay
+                                  </span>
+                                </div>
+                                <div className="flex justify-between">
+                                  <span className="text-gray-600">
+                                    Lên máy bay:
+                                  </span>
+                                  <span className="font-medium">
+                                    30p trước giờ bay
+                                  </span>
+                                </div>
+                                <div className="flex justify-between">
+                                  <span className="text-gray-600">
+                                    Đóng cổng:
+                                  </span>
+                                  <span className="font-medium">
+                                    10p trước giờ bay
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Round-trip Summary */}
+                        <div className="bg-gray-50 rounded-lg p-6 border-2 border-gray-200">
+                          <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center">
+                            <div className="w-5 h-5 bg-gray-600 rounded-full mr-3"></div>
+                            Tổng quan chuyến bay khứ hồi
+                          </h3>
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div className="text-center">
+                              <p className="text-sm text-gray-600">
+                                Tổng thời gian
                               </p>
-                              <p className="text-gray-600 dark:text-gray-400">
-                                {flightData?.arrival?.date || "N/A"}
+                              <p className="text-xl font-bold text-gray-800">
+                                {flightData.duration || "N/A"}
                               </p>
-                              <p className="text-lg font-medium text-gray-800 mt-1 dark:text-gray-300">
-                                {flightData?.arrival?.city ||
-                                  flightData?.to ||
-                                  "N/A"}
+                            </div>
+                            <div className="text-center">
+                              <p className="text-sm text-gray-600">Hãng bay</p>
+                              <p className="text-xl font-bold text-gray-800">
+                                {flightData.airline || "N/A"}
                               </p>
-                              <p className="text-sm text-gray-500 dark:text-gray-400">
-                                Terminal {flightData?.terminal || "TBA"}, Cổng{" "}
-                                {flightData?.gate || "TBA"}
+                            </div>
+                            <div className="text-center">
+                              <p className="text-sm text-gray-600">
+                                Loại chuyến bay
+                              </p>
+                              <p className="text-xl font-bold text-gray-800">
+                                Khứ hồi
                               </p>
                             </div>
                           </div>
                         </div>
                       </div>
-
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-6 border-t border-gray-200">
-                        <div>
-                          <h4 className="font-semibold text-gray-900 dark:text-white mb-3">
-                            Thông tin chuyến bay
-                          </h4>
-                          <div className="space-y-2 text-sm">
-                            <div className="flex justify-between">
-                              <span className="text-gray-600 dark:text-white">
-                                Số hiệu:
-                              </span>
-                              <span className="font-medium">
-                                {flightData.flightNumber}
-                              </span>
+                    ) : flightData.isMultiCity ? (
+                      // Multi-city flight details
+                      <div className="space-y-8">
+                        {/* Multi-city Header */}
+                        <div className="bg-purple-50 border border-purple-200 rounded-lg p-6">
+                          <div className="flex items-center gap-3 mb-4">
+                            <div className="w-5 h-5 bg-purple-500 rounded-full flex items-center justify-center">
+                              <Plane className="w-4 h-4 text-white" />
                             </div>
-                            <div className="flex justify-between">
-                              <span className="text-gray-600 dark:text-white">
-                                Loại máy bay:
+                            <h3 className="text-xl font-bold text-purple-800">
+                              Chi tiết chuyến bay đa chặng
+                            </h3>
+                            <Badge
+                              variant="outline"
+                              className="text-purple-600 border-purple-600"
+                            >
+                              {flightData.multiCityLegs?.length || 0} chặng
+                            </Badge>
+                          </div>
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                            <div>
+                              <span className="text-purple-700 font-medium">
+                                Tuyến bay:
                               </span>
-                              <span className="font-medium">
-                                {flightData.aircraft}
-                              </span>
+                              <p className="text-purple-600">
+                                {flightData.from} → {flightData.to}
+                              </p>
                             </div>
-                            <div className="flex justify-between">
-                              <span className="text-gray-600 dark:text-white">
-                                Khoảng cách:
+                            <div>
+                              <span className="text-purple-700 font-medium">
+                                Tổng thời gian:
                               </span>
-                              <span className="font-medium">2,475 dặm</span>
+                              <p className="text-purple-600">
+                                {flightData.duration || "N/A"}
+                              </p>
                             </div>
-                            <div className="flex justify-between">
-                              <span className="text-gray-600 dark:text-white">
-                                Vận hành bởi:
+                            <div>
+                              <span className="text-purple-700 font-medium">
+                                Hãng bay:
                               </span>
-                              <span className="font-medium">
-                                {flightData.airline}
-                              </span>
+                              <p className="text-purple-600">
+                                {flightData.airline || "N/A"}
+                              </p>
                             </div>
                           </div>
                         </div>
 
-                        <div>
-                          <h4 className="font-semibold text-gray-900 dark:text-white mb-3">
-                            Thông tin làm thủ tục
-                          </h4>
-                          <div className="space-y-2 text-sm">
-                            <div className="flex justify-between">
-                              <span className="text-gray-600 dark:text-white">
-                                Check-in online:
-                              </span>
-                              <span className="font-medium">
-                                24h trước giờ bay
-                              </span>
+                        {/* Multi-city Legs Details */}
+                        {flightData.multiCityLegs?.map((leg, legIndex) => (
+                          <div
+                            key={legIndex}
+                            className="border-l-4 border-purple-500 pl-6"
+                          >
+                            <div className="flex items-center gap-3 mb-6">
+                              <div className="w-4 h-4 bg-purple-500 rounded-full"></div>
+                              <h3 className="text-xl font-bold text-gray-900 dark:text-white">
+                                Chặng {legIndex + 1}: {leg.departure?.city} →{" "}
+                                {leg.arrival?.city}
+                              </h3>
+                              <Badge
+                                variant="outline"
+                                className="text-purple-600 border-purple-600"
+                              >
+                                {leg.airline}
+                              </Badge>
                             </div>
-                            <div className="flex justify-between">
-                              <span className="text-gray-600 dark:text-white">
-                                Check-in sân bay:
-                              </span>
-                              <span className="font-medium">
-                                2h trước giờ bay
-                              </span>
+
+                            <div className="relative mb-8">
+                              <div className="absolute left-8 top-8 bottom-8 w-0.5 bg-purple-200"></div>
+
+                              {/* Departure Section */}
+                              <div className="flex items-start space-x-6 mb-8">
+                                <div className="flex-shrink-0 w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center relative z-10">
+                                  <MapPin className="w-8 h-8 text-purple-600" />
+                                </div>
+                                <div className="flex-grow">
+                                  <div className="flex items-center justify-between mb-2">
+                                    <h4 className="text-lg font-semibold text-gray-900 dark:text-white">
+                                      Khởi hành
+                                    </h4>
+                                    <Badge
+                                      variant="outline"
+                                      className="text-purple-600 border-purple-600"
+                                    >
+                                      {leg.departure?.code} →{" "}
+                                      {leg.arrival?.code}
+                                    </Badge>
+                                  </div>
+                                  <p className="text-3xl font-bold text-gray-900 dark:text-gray-300">
+                                    {leg.departure?.time}
+                                  </p>
+                                  <p className="text-gray-600 dark:text-gray-400">
+                                    {leg.departure?.date}
+                                  </p>
+                                  <p className="text-lg font-medium text-gray-800 mt-1 dark:text-gray-300">
+                                    {leg.departure?.city}
+                                  </p>
+                                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                                    Terminal {leg.terminal || "TBA"}, Cổng{" "}
+                                    {leg.gate || "TBA"}
+                                  </p>
+                                </div>
+                              </div>
+
+                              {/* Flight Section */}
+                              <div className="flex items-start space-x-6 mb-8">
+                                <div className="flex-shrink-0 w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center relative z-10">
+                                  <Plane className="w-8 h-8 text-purple-600" />
+                                </div>
+                                <div className="flex-grow">
+                                  <div className="bg-purple-50 rounded-lg p-4">
+                                    <h4 className="font-semibold text-purple-800 mb-3">
+                                      Thông tin chuyến bay
+                                    </h4>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                                      <div className="flex justify-between">
+                                        <span className="text-gray-600">
+                                          Số hiệu:
+                                        </span>
+                                        <span className="font-medium">
+                                          {leg.flightNumber || "N/A"}
+                                        </span>
+                                      </div>
+                                      <div className="flex justify-between">
+                                        <span className="text-gray-600">
+                                          Hãng bay:
+                                        </span>
+                                        <span className="font-medium">
+                                          {leg.airline || "N/A"}
+                                        </span>
+                                      </div>
+                                      <div className="flex justify-between">
+                                        <span className="text-gray-600">
+                                          Máy bay:
+                                        </span>
+                                        <span className="font-medium">
+                                          {leg.aircraft || "N/A"}
+                                        </span>
+                                      </div>
+                                      <div className="flex justify-between">
+                                        <span className="text-gray-600">
+                                          Thời gian bay:
+                                        </span>
+                                        <span className="font-medium">
+                                          {leg.duration || "N/A"}
+                                        </span>
+                                      </div>
+                                      <div className="flex justify-between">
+                                        <span className="text-gray-600">
+                                          Hạng ghế:
+                                        </span>
+                                        <span className="font-medium">
+                                          {leg.travelClass || "N/A"}
+                                        </span>
+                                      </div>
+                                      <div className="flex justify-between">
+                                        <span className="text-gray-600">
+                                          Trạng thái:
+                                        </span>
+                                        <Badge
+                                          variant="outline"
+                                          className="text-green-600 border-green-600"
+                                        >
+                                          {leg.status || "ON_TIME"}
+                                        </Badge>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+
+                              {/* Stops Section */}
+                              {leg.stopsList && leg.stopsList.length > 0 && (
+                                <div className="mb-8">
+                                  <h4 className="font-semibold text-gray-900 mb-4 flex items-center gap-2 dark:text-white">
+                                    <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
+                                    Điểm dừng ({leg.stopsList.length})
+                                  </h4>
+                                  <div className="space-y-4">
+                                    {leg.stopsList.map((stop, stopIndex) => (
+                                      <div
+                                        key={stopIndex}
+                                        className="flex items-start space-x-6"
+                                      >
+                                        <div className="flex-shrink-0 w-12 h-12 bg-yellow-100 rounded-full flex items-center justify-center relative z-10">
+                                          <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
+                                        </div>
+                                        <div className="flex-grow">
+                                          <div className="bg-yellow-50 rounded-lg p-4 border border-yellow-200">
+                                            <div className="flex items-center justify-between mb-2">
+                                              <h5 className="font-semibold text-gray-900">
+                                                {stop.airportName} (
+                                                {stop.airportCode})
+                                              </h5>
+                                              <Badge
+                                                variant="outline"
+                                                className="text-xs"
+                                              >
+                                                Điểm dừng {stopIndex + 1}
+                                              </Badge>
+                                            </div>
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                                              <div>
+                                                <span className="text-gray-600">
+                                                  Thời gian đến:
+                                                </span>
+                                                <p className="font-medium">
+                                                  {stop.arrivalTime || "N/A"}
+                                                </p>
+                                              </div>
+                                              <div>
+                                                <span className="text-gray-600">
+                                                  Thời gian dừng:
+                                                </span>
+                                                <p className="font-medium">
+                                                  {stop.stopDuration || "N/A"}
+                                                </p>
+                                              </div>
+                                            </div>
+                                          </div>
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+
+                              {/* Arrival Section */}
+                              <div className="flex items-start space-x-6">
+                                <div className="flex-shrink-0 w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center relative z-10">
+                                  <MapPin className="w-8 h-8 text-purple-600" />
+                                </div>
+                                <div className="flex-grow">
+                                  <div className="flex items-center justify-between mb-2">
+                                    <h4 className="text-lg font-semibold text-gray-900 dark:text-white">
+                                      Đến nơi
+                                    </h4>
+                                    <Badge
+                                      variant="outline"
+                                      className="text-purple-600 border-purple-600"
+                                    >
+                                      {leg.arrival?.code}
+                                    </Badge>
+                                  </div>
+                                  <p className="text-3xl font-bold text-gray-900 dark:text-gray-300">
+                                    {leg.arrival?.time}
+                                  </p>
+                                  <p className="text-gray-600 dark:text-gray-400">
+                                    {leg.arrival?.date}
+                                  </p>
+                                  <p className="text-lg font-medium text-gray-800 mt-1 dark:text-gray-300">
+                                    {leg.arrival?.city}
+                                  </p>
+                                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                                    Terminal {leg.arrival?.terminal || "TBA"},
+                                    Cổng {leg.arrival?.gate || "TBA"}
+                                  </p>
+                                </div>
+                              </div>
                             </div>
-                            <div className="flex justify-between">
-                              <span className="text-gray-600 dark:text-white">
-                                Lên máy bay:
-                              </span>
-                              <span className="font-medium">
-                                30p trước giờ bay
-                              </span>
+
+                            {/* Leg Amenities */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                              <div className="bg-purple-50 rounded-lg p-4">
+                                <h4 className="font-semibold text-purple-800 mb-3">
+                                  Tiện nghi & Dịch vụ
+                                </h4>
+                                <div className="space-y-2 text-sm">
+                                  <div className="flex justify-between">
+                                    <span className="text-gray-600">Wifi:</span>
+                                    <span className="font-medium">
+                                      {leg.wifi ? "Có" : "Không"}
+                                    </span>
+                                  </div>
+                                  <div className="flex justify-between">
+                                    <span className="text-gray-600">
+                                      Bữa ăn:
+                                    </span>
+                                    <span className="font-medium">
+                                      {leg.meal ? "Có" : "Không"}
+                                    </span>
+                                  </div>
+                                  <div className="flex justify-between">
+                                    <span className="text-gray-600">
+                                      Giải trí:
+                                    </span>
+                                    <span className="font-medium">
+                                      {leg.entertainment ? "Có" : "Không"}
+                                    </span>
+                                  </div>
+                                  <div className="flex justify-between">
+                                    <span className="text-gray-600">USB:</span>
+                                    <span className="font-medium">
+                                      {leg.usb ? "Có" : "Không"}
+                                    </span>
+                                  </div>
+                                </div>
+                              </div>
+
+                              <div className="bg-purple-50 rounded-lg p-4">
+                                <h4 className="font-semibold text-purple-800 mb-3">
+                                  Thông tin bổ sung
+                                </h4>
+                                <div className="space-y-2 text-sm">
+                                  <div className="flex justify-between">
+                                    <span className="text-gray-600">
+                                      Ghế trống:
+                                    </span>
+                                    <span className="font-medium text-green-600">
+                                      {leg.availableSeats || "N/A"}
+                                    </span>
+                                  </div>
+                                  <div className="flex justify-between">
+                                    <span className="text-gray-600">
+                                      Giá vé:
+                                    </span>
+                                    <span className="font-medium text-purple-600">
+                                      {leg.price
+                                        ? `${leg.price.toLocaleString()} VND`
+                                        : "N/A"}
+                                    </span>
+                                  </div>
+                                  <div className="flex justify-between">
+                                    <span className="text-gray-600">
+                                      Liên hệ:
+                                    </span>
+                                    <span className="font-medium">
+                                      {leg.contact || "19001100"}
+                                    </span>
+                                  </div>
+                                  <div className="flex justify-between">
+                                    <span className="text-gray-600">
+                                      Website:
+                                    </span>
+                                    <span className="font-medium text-blue-600">
+                                      {leg.website || "N/A"}
+                                    </span>
+                                  </div>
+                                </div>
+                              </div>
                             </div>
-                            <div className="flex justify-between">
-                              <span className="text-gray-600 dark:text-white ">
-                                Đóng cổng:
-                              </span>
-                              <span className="font-medium">
-                                10p trước giờ bay
-                              </span>
+                          </div>
+                        ))}
+
+                        {/* Multi-city Summary */}
+                        <div className="bg-gray-50 rounded-lg p-6 dark:bg-gray-800">
+                          <h3 className="text-xl font-bold text-gray-900 mb-4 dark:text-white">
+                            Tổng quan chuyến bay đa chặng
+                          </h3>
+                          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                            <div className="text-center">
+                              <p className="text-sm text-gray-600 dark:text-gray-400">
+                                Tổng chặng
+                              </p>
+                              <p className="text-xl font-bold text-gray-800 dark:text-gray-300">
+                                {flightData.multiCityLegs?.length || 0}
+                              </p>
+                            </div>
+                            <div className="text-center">
+                              <p className="text-sm text-gray-600 dark:text-gray-400">
+                                Tổng thời gian
+                              </p>
+                              <p className="text-xl font-bold text-gray-800 dark:text-gray-300">
+                                {flightData.duration || "N/A"}
+                              </p>
+                            </div>
+                            <div className="text-center">
+                              <p className="text-sm text-gray-600 dark:text-gray-400">
+                                Tổng điểm dừng
+                              </p>
+                              <p className="text-xl font-bold text-gray-800 dark:text-gray-300">
+                                {flightData.stops || 0}
+                              </p>
+                            </div>
+                            <div className="text-center">
+                              <p className="text-sm text-gray-600 dark:text-gray-400">
+                                Loại chuyến bay
+                              </p>
+                              <Badge
+                                variant="outline"
+                                className="text-purple-600 border-purple-600"
+                              >
+                                Đa chặng
+                              </Badge>
                             </div>
                           </div>
                         </div>
                       </div>
-                    </div>
+                    ) : (
+                      // One-way flight details (existing code)
+                      <div className="space-y-6">
+                        <div>
+                          <h3 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white">
+                            Lịch trình chuyến bay
+                          </h3>
+                          <div className="relative">
+                            <div className="absolute left-8 top-8 bottom-8 w-0.5 bg-gray-200"></div>
+
+                            <div className="flex items-start space-x-4 mb-8">
+                              <div className="flex-shrink-0 w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center relative z-10">
+                                <Plane className="w-8 h-8 text-blue-600" />
+                              </div>
+                              <div className="flex-grow">
+                                <div className="flex items-center justify-between mb-2">
+                                  <h4 className="text-lg font-semibold text-gray-900 dark:text-white">
+                                    Khởi hành
+                                  </h4>
+                                  <Badge
+                                    variant="outline"
+                                    className="text-green-600 border-green-600"
+                                  >
+                                    Đúng giờ
+                                  </Badge>
+                                </div>
+                                <p className="text-2xl font-bold text-gray-900 dark:text-gray-300">
+                                  {flightData?.departure?.time || "N/A"}
+                                </p>
+                                <p className="text-gray-600 dark:text-gray-400">
+                                  {flightData?.departure?.date || "N/A"}
+                                </p>
+                                <p className="text-lg font-medium text-gray-800 mt-1 dark:text-gray-300">
+                                  {flightData?.departure?.city ||
+                                    flightData?.from ||
+                                    "N/A"}
+                                </p>
+                                <p className="text-sm text-gray-500 dark:text-gray-400">
+                                  {flightData?.terminal || "TBA"}, Cổng{" "}
+                                  {flightData?.gate || "TBA"}
+                                </p>
+                              </div>
+                            </div>
+
+                            <div className="flex items-center space-x-4 mb-8 ml-8">
+                              <div className="flex-grow border-l-2 border-dashed border-gray-300 pl-4">
+                                <div className="bg-gray-50 rounded-lg p-3">
+                                  <div className="flex items-center justify-between">
+                                    <span className="text-sm text-gray-600">
+                                      Thời gian bay
+                                    </span>
+                                    <span className="font-semibold text-gray-900">
+                                      {flightData.duration}
+                                    </span>
+                                  </div>
+                                  <div className="flex items-center justify-between mt-1">
+                                    <span className="text-sm text-gray-600">
+                                      Máy bay
+                                    </span>
+                                    <span className="font-semibold text-gray-900">
+                                      {flightData.aircraft}
+                                    </span>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="flex items-start space-x-4">
+                              <div className="flex-shrink-0 w-16 h-16 bg-green-100 rounded-full flex items-center justify-center relative z-10">
+                                <MapPin className="w-8 h-8 text-green-600" />
+                              </div>
+                              <div className="flex-grow">
+                                <div className="flex items-center justify-between mb-2">
+                                  <h4 className="text-lg font-semibold text-gray-900 dark:text-white">
+                                    Đến nơi
+                                  </h4>
+                                  <Badge
+                                    variant="outline"
+                                    className="text-green-600 border-green-600"
+                                  >
+                                    Đúng giờ
+                                  </Badge>
+                                </div>
+                                <p className="text-2xl font-bold text-gray-900 dark:text-gray-300">
+                                  {flightData?.arrival?.time || "N/A"}
+                                </p>
+                                <p className="text-gray-600 dark:text-gray-400">
+                                  {flightData?.arrival?.date || "N/A"}
+                                </p>
+                                <p className="text-lg font-medium text-gray-800 mt-1 dark:text-gray-300">
+                                  {flightData?.arrival?.city ||
+                                    flightData?.to ||
+                                    "N/A"}
+                                </p>
+                                <p className="text-sm text-gray-500 dark:text-gray-400">
+                                  Terminal {flightData?.terminal || "TBA"}, Cổng{" "}
+                                  {flightData?.gate || "TBA"}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-6 border-t border-gray-200">
+                          <div>
+                            <h4 className="font-semibold text-gray-900 dark:text-white mb-3">
+                              Thông tin chuyến bay
+                            </h4>
+                            <div className="space-y-2 text-sm">
+                              <div className="flex justify-between">
+                                <span className="text-gray-600 dark:text-white">
+                                  Số hiệu chuyến bay:
+                                </span>
+                                <span className="font-medium">
+                                  {flightData.flightNumber}
+                                </span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span className="text-gray-600 dark:text-white">
+                                  Loại máy bay:
+                                </span>
+                                <span className="font-medium">
+                                  {flightData.aircraft}
+                                </span>
+                              </div>
+
+                              <div className="flex justify-between">
+                                <span className="text-gray-600 dark:text-white">
+                                  Vận hành bởi:
+                                </span>
+                                <span className="font-medium">
+                                  {flightData.airline}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div>
+                            <h4 className="font-semibold text-gray-900 dark:text-white mb-3">
+                              Thông tin làm thủ tục
+                            </h4>
+                            <div className="space-y-2 text-sm">
+                              <div className="flex justify-between">
+                                <span className="text-gray-600 dark:text-white">
+                                  Check-in online:
+                                </span>
+                                <span className="font-medium">
+                                  24h trước giờ bay
+                                </span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span className="text-gray-600 dark:text-white">
+                                  Check-in sân bay:
+                                </span>
+                                <span className="font-medium">
+                                  2h trước giờ bay
+                                </span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span className="text-gray-600 dark:text-white">
+                                  Lên máy bay:
+                                </span>
+                                <span className="font-medium">
+                                  30p trước giờ bay
+                                </span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span className="text-gray-600 dark:text-white ">
+                                  Đóng cổng:
+                                </span>
+                                <span className="font-medium">
+                                  10p trước giờ bay
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </TabsContent>
 
                   <TabsContent value="route-map" className="mt-0">
                     <div className="space-y-6">
                       <div>
                         <h3 className="text-lg font-semibold mb-4 text-gray-900 flex items-center dark:text-white">
-                          Bản đồ tuyến bay trực quan
+                          Bản đồ tuyến bay trực quan{" "}
+                          <span className="text-gray-400">
+                            {" "}
+                            (mô phỏng đường bay dựa trên các điểm đến cụ thể đã
+                            được xác định trước đó)
+                          </span>
                         </h3>
                         <p className="text-gray-600 mb-6">
                           Xem đường bay từ{" "}
@@ -1451,13 +3293,38 @@ const FlightDetail = () => {
 
                         {/* Flight Route Map */}
                         <div className="rounded-lg overflow-hidden border border-gray-200 shadow-sm">
-                          <FlightRouteMap
-                            flightInfo={flightData}
-                            height="500px"
-                            showFlightPath={true}
-                            showAirportInfo={true}
-                            className="w-full"
-                          />
+                          {getFlightLegs(flightData).length > 0 &&
+                          Object.keys(getAirportCoordsMap(flightData)).length >
+                            0 ? (
+                            <FlightRouteMap
+                              flightInfo={flightData}
+                              legs={getFlightLegs(flightData)}
+                              coordsMap={getAirportCoordsMap(flightData)}
+                              processedSearchData={getProcessedSearchData(
+                                flightData
+                              )}
+                              height="500px"
+                              showFlightPath={true}
+                              showAirportInfo={true}
+                              showFlightInfo={true}
+                              showLegend={true}
+                              showControls={true}
+                              className="w-full"
+                            />
+                          ) : (
+                            <div className="h-[500px] flex items-center justify-center bg-gray-50">
+                              <div className="text-center">
+                                <Map className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                                <h3 className="text-lg font-semibold text-gray-600 mb-2">
+                                  Không thể tải bản đồ
+                                </h3>
+                                <p className="text-sm text-gray-500">
+                                  Thông tin sân bay hoặc tuyến bay không khả
+                                  dụng
+                                </p>
+                              </div>
+                            </div>
+                          )}
                         </div>
 
                         {/* Additional flight route information */}

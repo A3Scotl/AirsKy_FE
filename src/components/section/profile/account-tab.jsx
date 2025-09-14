@@ -14,6 +14,17 @@ import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import {
   AlertCircle,
   Edit,
   Lock,
@@ -27,14 +38,21 @@ import {
   Facebook,
   Twitter,
   Instagram,
+  Trash2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { authApi } from "@/apis/auth-api";
+import { userApi } from "@/apis/user-api";
 import { userProfileUtils } from "@/hooks/use-user-profile";
+import { useAuth } from "@/contexts/auth-context";
+import { useNavigate } from "react-router-dom";
 
 const AccountTab = ({ userProfile, onProfileUpdate }) => {
+  const { logout } = useAuth();
+  const navigate = useNavigate();
   const [editMode, setEditMode] = useState(false);
   const [passwordMode, setPasswordMode] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState(false);
   const [loading, setLoading] = useState(false);
   const [showPasswords, setShowPasswords] = useState({
     current: false,
@@ -96,10 +114,80 @@ const AccountTab = ({ userProfile, onProfileUpdate }) => {
     setLoading(true);
 
     try {
+      // Validate user ID
+      if (!userProfile?.id) {
+        toast.error("Không tìm thấy ID người dùng. Vui lòng thử lại.");
+        setLoading(false);
+        return;
+      }
+
+      // Validate required fields
+      if (!formData.firstName.trim()) {
+        toast.error("Vui lòng nhập họ");
+        setLoading(false);
+        return;
+      }
+      if (!formData.lastName.trim()) {
+        toast.error("Vui lòng nhập tên");
+        setLoading(false);
+        return;
+      }
+
       console.log("Cập nhật hồ sơ:", formData);
-      toast.success("Cập nhật hồ sơ thành công!");
-      setEditMode(false);
-      onProfileUpdate?.();
+
+      // Prepare update data - only send changed fields
+      const updateData = {};
+      if (formData.firstName !== (userProfile?.firstName || "")) {
+        updateData.firstName = formData.firstName.trim();
+      }
+      if (formData.lastName !== (userProfile?.lastName || "")) {
+        updateData.lastName = formData.lastName.trim();
+      }
+      if (formData.phone !== (userProfile?.phone || "")) {
+        updateData.phone = formData.phone.trim();
+      }
+
+      // Only proceed if there are changes
+      if (Object.keys(updateData).length === 0) {
+        toast.info("Không có thay đổi nào để cập nhật");
+        setLoading(false);
+        return;
+      }
+
+      console.log("Dữ liệu cập nhật:", updateData);
+
+      // Call API to update user
+      const response = await userApi.updateUser(userProfile.id, updateData);
+
+      if (response.success) {
+        console.log("Cập nhật thành công:", response.data);
+        toast.success("Cập nhật hồ sơ thành công!");
+
+        // Update local form data with new values
+        setFormData((prev) => ({
+          ...prev,
+          firstName:
+            updateData.firstName !== undefined
+              ? updateData.firstName
+              : prev.firstName,
+          lastName:
+            updateData.lastName !== undefined
+              ? updateData.lastName
+              : prev.lastName,
+          phone: updateData.phone !== undefined ? updateData.phone : prev.phone,
+        }));
+
+        // Exit edit mode
+        setEditMode(false);
+
+        // Notify parent component to refresh profile data
+        onProfileUpdate?.();
+      } else {
+        console.error("Cập nhật thất bại:", response);
+        toast.error(
+          response.message || "Cập nhật hồ sơ thất bại. Vui lòng thử lại."
+        );
+      }
     } catch (error) {
       console.error("Lỗi cập nhật hồ sơ:", error);
       toast.error("Cập nhật hồ sơ thất bại. Vui lòng thử lại.");
@@ -172,6 +260,43 @@ const AccountTab = ({ userProfile, onProfileUpdate }) => {
 
   const handleSocialDisconnect = (socialName) => {
     console.log(`Ngắt kết nối ${socialName}`);
+  };
+
+  const handleDeleteAccount = async () => {
+    if (!userProfile?.id) {
+      toast.error("Không tìm thấy ID người dùng");
+      return;
+    }
+
+    setDeleteLoading(true);
+
+    try {
+      console.log("Đang xóa tài khoản:", userProfile.id);
+
+      // Call API to soft delete user account
+      const response = await userApi.deleteUser(userProfile.id);
+
+      if (response.success) {
+        console.log("Xóa tài khoản thành công:", response.data);
+        toast.success("Tài khoản đã được xóa thành công");
+
+        // Logout user immediately
+        logout();
+
+        // Redirect to home page
+        navigate("/");
+      } else {
+        console.error("Xóa tài khoản thất bại:", response);
+        toast.error(
+          response.message || "Xóa tài khoản thất bại. Vui lòng thử lại."
+        );
+      }
+    } catch (error) {
+      console.error("Lỗi xóa tài khoản:", error);
+      toast.error("Xóa tài khoản thất bại. Vui lòng thử lại.");
+    } finally {
+      setDeleteLoading(false);
+    }
   };
 
   return (
@@ -263,7 +388,7 @@ const AccountTab = ({ userProfile, onProfileUpdate }) => {
                       const avatarUrl =
                         userProfileUtils.getBestAvatarUrl(userProfile);
                       if (avatarUrl?.includes("gravatar.com")) {
-                        return "Gravatar (dựa trên email)";
+                        return "Gravatar";
                       } else if (avatarUrl?.includes("ui-avatars.com")) {
                         return "Tạo từ tên";
                       } else if (
@@ -695,7 +820,7 @@ const AccountTab = ({ userProfile, onProfileUpdate }) => {
       {/* Account Actions Card */}
       <Card className="border-red-200">
         <CardHeader>
-          <CardTitle className="text-red-600">Vùng Nguy Hiểm</CardTitle>
+          <CardTitle className="text-red-600">Cẩn thận khi thao tác</CardTitle>
           <CardDescription>
             Các hành động không thể hoàn tác sẽ ảnh hưởng đến tài khoản của bạn
           </CardDescription>
@@ -705,11 +830,54 @@ const AccountTab = ({ userProfile, onProfileUpdate }) => {
             <div>
               <p className="font-medium text-red-900">Xóa Tài Khoản</p>
               <p className="text-sm text-red-700">
-                Khi bạn xóa tài khoản, không thể khôi phục lại. Vui lòng cân
-                nhắc kỹ.
+                Tài khoản sẽ bị vô hiệu hóa và không thể đăng nhập.
               </p>
             </div>
-            <Button variant="destructive">Xóa Tài Khoản</Button>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="destructive" disabled={deleteLoading}>
+                  {deleteLoading ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Đang xóa...
+                    </>
+                  ) : (
+                    <>
+                      <Trash2 className="w-4 h-4 mr-2" />
+                      Xóa Tài Khoản
+                    </>
+                  )}
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle className="text-red-600">
+                    Bạn có chắc chắn muốn xóa tài khoản?
+                  </AlertDialogTitle>
+                  <AlertDialogDescription className="space-y-2">
+                    <p>Hành động này sẽ:</p>
+                    <ul className="list-disc list-inside space-y-1 text-sm">
+                      <li>Vô hiệu hóa tài khoản của bạn</li>
+                      <li>Bạn sẽ không thể đăng nhập được nữa</li>
+                      <li>Dữ liệu sẽ được bảo toàn trong hệ thống</li>
+                      <li>Admin có thể khôi phục tài khoản nếu cần</li>
+                    </ul>
+                    <p className="font-medium text-red-600 mt-3">
+                      Bạn sẽ được đăng xuất ngay lập tức sau khi xóa.
+                    </p>
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Hủy</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={handleDeleteAccount}
+                    className="bg-red-600 hover:bg-red-700"
+                  >
+                    Xác nhận xóa tài khoản
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           </div>
         </CardContent>
         <CardFooter className="flex flex-col items-start space-y-4">

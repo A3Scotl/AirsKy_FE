@@ -128,11 +128,28 @@ const GoogleLoginButton = ({ className = "", disabled = false }) => {
         try {
           const decoded = jwtDecode(token);
 
+          // Also decode Google credential to get profile picture
+          const googleDecoded = jwtDecode(response.credential);
+          console.log("🔍 Google Profile Data:", {
+            email: googleDecoded.email,
+            name: googleDecoded.name,
+            picture: googleDecoded.picture,
+            hasPicture: !!googleDecoded.picture,
+          });
+
           const userData = {
-            email: decoded.sub,
+            email: decoded.sub || googleDecoded.email,
             role: decoded.role,
             exp: decoded.exp,
+            // Store Google profile information
+            googleAvatar: googleDecoded.picture,
+            firstName: googleDecoded.given_name,
+            lastName: googleDecoded.family_name,
+            fullName: googleDecoded.name,
           };
+
+          console.log("💾 User Data to be saved:", userData);
+          console.log("🖼️ Google Avatar URL:", userData.googleAvatar);
 
           login(userData);
           toast.success("Đăng nhập Google thành công!");
@@ -178,7 +195,6 @@ const GoogleLoginButton = ({ className = "", disabled = false }) => {
           variant="outline"
           className="w-full"
           disabled={true}
-          
         >
           <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24">
             <path

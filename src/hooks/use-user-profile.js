@@ -31,7 +31,26 @@ export const useUserProfile = () => {
       const response = await authApi.me();
 
       if (response.success) {
-        setUserProfile(response.data);
+        console.log("📋 API Profile Response:", response.data);
+        console.log("🔍 Checking for avatar fields in API response:", {
+          avatar: response.data.avatar,
+          profilePicture: response.data.profilePicture,
+          googleAvatar: response.data.googleAvatar,
+          email: response.data.email,
+        });
+
+        // Merge Google avatar from auth context if API doesn't have it
+        let mergedProfile = { ...response.data };
+        if (!mergedProfile.googleAvatar && user?.googleAvatar) {
+          console.log(
+            "🔗 Merging Google avatar from auth context:",
+            user.googleAvatar
+          );
+          mergedProfile.googleAvatar = user.googleAvatar;
+        }
+
+        console.log("✅ Final merged profile:", mergedProfile);
+        setUserProfile(mergedProfile);
       } else {
         // Handle specific API errors
         if (response.message.includes("INVALID_CREDENTIALS")) {
@@ -138,9 +157,29 @@ export const userProfileUtils = {
   getAvatarUrl: (userProfile) => {
     if (!userProfile) return null;
 
+    console.log("🔍 Getting avatar for user:", userProfile.email);
+    console.log("📊 Available avatar sources:", {
+      databaseAvatar: userProfile.avatar,
+      profilePicture: userProfile.profilePicture,
+      googleAvatar: userProfile.googleAvatar,
+      email: userProfile.email,
+    });
+
     // Try database avatar first
-    if (userProfile.avatar) return userProfile.avatar;
-    if (userProfile.profilePicture) return userProfile.profilePicture;
+    if (userProfile.avatar) {
+      console.log("✅ Using database avatar:", userProfile.avatar);
+      return userProfile.avatar;
+    }
+    if (userProfile.profilePicture) {
+      console.log("✅ Using profile picture:", userProfile.profilePicture);
+      return userProfile.profilePicture;
+    }
+
+    // Try Google avatar from auth context (highest priority for Google users)
+    if (userProfile.googleAvatar) {
+      console.log("✅ Using Google avatar:", userProfile.googleAvatar);
+      return userProfile.googleAvatar;
+    }
 
     // Try to get from token (if available)
     const token = localStorage.getItem("token");
@@ -234,12 +273,24 @@ export const userProfileUtils = {
    * Get best available avatar URL with all fallbacks
    */
   getBestAvatarUrl: (userProfile, size = 80) => {
+    console.log(
+      "🎯 getBestAvatarUrl called for user:",
+      userProfile?.email,
+      "size:",
+      size
+    );
+
     // Try main avatar methods
     const avatarUrl = userProfileUtils.getAvatarUrl(userProfile);
-    if (avatarUrl) return avatarUrl;
+    if (avatarUrl) {
+      console.log("✅ getBestAvatarUrl returning main avatar:", avatarUrl);
+      return avatarUrl;
+    }
 
     // Try UI Avatars as final fallback
-    return userProfileUtils.getUIAvatarUrl(userProfile, size);
+    const uiAvatarUrl = userProfileUtils.getUIAvatarUrl(userProfile, size);
+    console.log("🔄 getBestAvatarUrl falling back to UI Avatar:", uiAvatarUrl);
+    return uiAvatarUrl;
   },
 
   /**

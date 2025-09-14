@@ -59,6 +59,10 @@ export function AuthProvider({ children }) {
           email: decoded.sub,
           role: decoded.role,
           exp: decoded.exp,
+          googleAvatar: decoded.picture || decoded.avatar,
+          firstName: decoded.given_name,
+          lastName: decoded.family_name,
+          fullName: decoded.name,
         };
 
         setUser(userData);

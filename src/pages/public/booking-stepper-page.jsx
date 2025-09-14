@@ -133,7 +133,7 @@ const FlightInfo = ({ flightDetails }) => (
           {flightDetails.availableSeats && (
             <div>
               <span className="font-medium text-gray-900 dark:text-white">
-                Ghế trống:
+                Tổng ghế:
               </span>{" "}
               {flightDetails.availableSeats}
             </div>
@@ -570,7 +570,7 @@ export function FlightBookingStepper() {
         })`;
 
     const date = flightData.departure?.date
-      ? `Ngày ${flightData.departure.date}`
+      ? `${flightData.departure.date}`
       : (() => {
           const departureDate = new Date(flightData.departureTime);
           return departureDate.toLocaleDateString("vi-VN", {

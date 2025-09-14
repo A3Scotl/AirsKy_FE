@@ -20,6 +20,7 @@ import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/auth-context";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { useEffect, useRef, useState } from "react";
+import { userProfileUtils } from "@/hooks/use-user-profile";
 
 const MENU_ITEMS = [
   { label: "Chuyến bay", path: "flights" },
@@ -47,6 +48,23 @@ export function Header() {
       return user.email.substring(0, 2).toUpperCase();
     }
     return "U";
+  };
+
+  // Get avatar URL using the same logic as profile page
+  const getAvatarUrl = () => {
+    if (!user) return null;
+
+    // Try Google avatar first (highest priority for Google users)
+    if (user.googleAvatar) {
+      return user.googleAvatar;
+    }
+
+    // Try other avatar fields
+    if (user.avatar) return user.avatar;
+    if (user.picture) return user.picture;
+
+    // Fallback to Gravatar or UI Avatars
+    return userProfileUtils.getGravatarUrl(user.email, 32);
   };
 
   useEffect(() => {
@@ -134,7 +152,7 @@ export function Header() {
                   >
                     <Avatar className="w-8 h-8">
                       <AvatarImage
-                        src={user.avatar || user.picture}
+                        src={getAvatarUrl()}
                         alt={user.fullName || user.email}
                       />
                       <AvatarFallback className="bg-blue-500 text-white text-sm">
@@ -228,7 +246,7 @@ export function Header() {
                       <div className="flex items-center space-x-3 mb-4 p-2 rounded-lg bg-gray-50">
                         <Avatar className="w-10 h-10">
                           <AvatarImage
-                            src={user.avatar || user.picture}
+                            src={getAvatarUrl()}
                             alt={user.fullName || user.email}
                           />
                           <AvatarFallback className="bg-blue-500 text-white">

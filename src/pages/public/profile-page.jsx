@@ -25,7 +25,6 @@ import { useUserProfile, userProfileUtils } from "@/hooks/use-user-profile";
 
 // Import tab components
 import MyBookingsTab from "../../components/section/profile/my-bookings-tab";
-import FavouritesTab from "@/components/section/profile/favourites-tab";
 import AccountTab from "@/components/section/profile/account-tab";
 import SettingsTab from "@/components/section/profile/settings-tab";
 import MyBlogsTab from "@/components/section/profile/my-blogs-tab";
@@ -114,18 +113,7 @@ const UserProfile = () => {
                     <Plane className="mr-2 h-4 w-4" />
                     Chuyến bay của tôi
                   </Button>
-                  <Button
-                    variant="ghost"
-                    className={`w-full justify-start ${
-                      activeTab === "favourite"
-                        ? "bg-blue-100 text-blue-600"
-                        : ""
-                    }`}
-                    onClick={() => setActiveTab("favourite")}
-                  >
-                    <Heart className="mr-2 h-4 w-4" />
-                    Yêu thích
-                  </Button>
+
                   <Button
                     variant="ghost"
                     className={`w-full justify-start ${
@@ -171,12 +159,7 @@ const UserProfile = () => {
                 onProfileUpdate={refetch}
               />
             )}
-            {activeTab === "favourite" && (
-              <FavouritesTab
-                userProfile={userProfile}
-                onProfileUpdate={refetch}
-              />
-            )}
+
             {activeTab === "my-blogs" && (
               <MyBlogsTab userProfile={userProfile} onProfileUpdate={refetch} />
             )}

@@ -43,6 +43,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { airportApi } from "@/apis/airport-api";
 
 const DealFormModal = ({
   open,
@@ -74,14 +75,36 @@ const DealFormModal = ({
   const [formData, setFormData] = useState(initialFormData);
   const [errors, setErrors] = useState({});
 
-  // Mock airports - trong thực tế sẽ fetch từ API
-  const airports = [
-    { id: 1, code: "HAN", name: "Nội Bài", city: "Hà Nội" },
-    { id: 2, code: "SGN", name: "Tân Sơn Nhất", city: "TP.HCM" },
-    { id: 3, code: "DAD", name: "Đà Nẵng", city: "Đà Nẵng" },
-    { id: 4, code: "CXR", name: "Cam Ranh", city: "Nha Trang" },
-    { id: 5, code: "PQC", name: "Phú Quốc", city: "Phú Quốc" },
-  ];
+  // Airports state
+  const [airports, setAirports] = useState([]);
+  const [airportsLoading, setAirportsLoading] = useState(true);
+  const [airportsError, setAirportsError] = useState(null);
+
+  // Fetch airports when component mounts
+  useEffect(() => {
+    const fetchAirports = async () => {
+      try {
+        setAirportsLoading(true);
+        setAirportsError(null);
+        const response = await airportApi.getAllAirports({ size: 1000 });
+        if (response.success && response.data) {
+          const airportsData = response.data.content || response.data;
+          console.log("Fetched airports data:", airportsData);
+          console.log("First airport structure:", airportsData[0]);
+          setAirports(airportsData);
+        } else {
+          setAirportsError("Không thể tải danh sách sân bay");
+        }
+      } catch (error) {
+        console.error("Error fetching airports:", error);
+        setAirportsError("Lỗi khi tải danh sách sân bay");
+      } finally {
+        setAirportsLoading(false);
+      }
+    };
+
+    fetchAirports();
+  }, []);
 
   // Populate form data when in edit mode
   useEffect(() => {
@@ -654,14 +677,29 @@ const DealFormModal = ({
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="all">Tất cả sân bay</SelectItem>
-                          {airports.map((airport) => (
-                            <SelectItem
-                              key={airport.id}
-                              value={airport.id.toString()}
-                            >
-                              {airport.code} - {airport.name}, {airport.city}
+                          {airportsLoading ? (
+                            <SelectItem value="loading" disabled>
+                              Đang tải danh sách sân bay...
                             </SelectItem>
-                          ))}
+                          ) : airportsError ? (
+                            <SelectItem value="error" disabled>
+                              {airportsError}
+                            </SelectItem>
+                          ) : (
+                            airports.map((airport) => (
+                              <SelectItem
+                                key={airport.airportId || airport.id}
+                                value={
+                                  (
+                                    airport.airportId || airport.id
+                                  )?.toString() || ""
+                                }
+                              >
+                                {airport.airportCode} - {airport.airportName},{" "}
+                                {airport.cityNames?.[0] || "N/A"}
+                              </SelectItem>
+                            ))
+                          )}
                         </SelectContent>
                       </Select>
                     </div>
@@ -679,14 +717,29 @@ const DealFormModal = ({
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="all">Tất cả sân bay</SelectItem>
-                          {airports.map((airport) => (
-                            <SelectItem
-                              key={airport.id}
-                              value={airport.id.toString()}
-                            >
-                              {airport.code} - {airport.name}, {airport.city}
+                          {airportsLoading ? (
+                            <SelectItem value="loading" disabled>
+                              Đang tải danh sách sân bay...
                             </SelectItem>
-                          ))}
+                          ) : airportsError ? (
+                            <SelectItem value="error" disabled>
+                              {airportsError}
+                            </SelectItem>
+                          ) : (
+                            airports.map((airport) => (
+                              <SelectItem
+                                key={airport.airportId || airport.id}
+                                value={
+                                  (
+                                    airport.airportId || airport.id
+                                  )?.toString() || ""
+                                }
+                              >
+                                {airport.airportCode} - {airport.airportName},{" "}
+                                {airport.cityNames?.[0] || "N/A"}
+                              </SelectItem>
+                            ))
+                          )}
                         </SelectContent>
                       </Select>
                     </div>
