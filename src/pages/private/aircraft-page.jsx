@@ -20,6 +20,7 @@ import {
   EyeOff,
   Eye,
   MoreHorizontal,
+  X,
 } from "lucide-react";
 import {
   Table,
@@ -66,8 +67,24 @@ const AircraftPage = () => {
     pageSize: 10,
   });
 
+  // Filter states
+  const [minSeats, setMinSeats] = useState("");
+  const [maxSeats, setMaxSeats] = useState("");
+  const [seatLayoutFilter, setSeatLayoutFilter] = useState("all");
+
   // Aircraft data from hook
   const { aircrafts, loading, fetchAircrafts } = useAircraft();
+
+  // Get unique seat layouts from aircraft data
+  const uniqueSeatLayouts = useMemo(() => {
+    const layouts = new Set();
+    aircrafts.forEach((aircraft) => {
+      if (aircraft.seatLayout) {
+        layouts.add(aircraft.seatLayout);
+      }
+    });
+    return Array.from(layouts).sort();
+  }, [aircrafts]);
 
   // Create column helper
   const columnHelper = createColumnHelper();
@@ -157,6 +174,11 @@ const AircraftPage = () => {
         cell: (info) => (
           <div className="text-center font-medium">{info.getValue()}</div>
         ),
+        filterFn: (row, columnId, filterValue) => {
+          const value = row.getValue(columnId);
+          const { min, max } = filterValue;
+          return value >= min && value <= max;
+        },
       }),
 
       // Seat Layout column
@@ -167,6 +189,11 @@ const AircraftPage = () => {
             {info.getValue() || "N/A"}
           </div>
         ),
+        filterFn: (row, columnId, filterValue) => {
+          if (!filterValue) return true;
+          const value = row.getValue(columnId) || "";
+          return value.toLowerCase().includes(filterValue.toLowerCase());
+        },
       }),
 
       // Actions column
@@ -304,6 +331,35 @@ const AircraftPage = () => {
     setPagination((prev) => ({ ...prev, pageIndex: 0 }));
   }, [globalFilter, columnFilters, sorting]);
 
+  // Update column filters when filter states change
+  React.useEffect(() => {
+    const filters = [];
+
+    // Seats range filter
+    if (minSeats || maxSeats) {
+      const min = minSeats ? parseInt(minSeats) : 0;
+      const max = maxSeats ? parseInt(maxSeats) : Infinity;
+
+      // Validate range
+      if (min <= max) {
+        filters.push({
+          id: "totalSeats",
+          value: { min, max },
+        });
+      }
+    }
+
+    // Seat layout filter
+    if (seatLayoutFilter && seatLayoutFilter !== "all") {
+      filters.push({
+        id: "seatLayout",
+        value: seatLayoutFilter,
+      });
+    }
+
+    setColumnFilters(filters);
+  }, [minSeats, maxSeats, seatLayoutFilter]);
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -311,7 +367,13 @@ const AircraftPage = () => {
         <div>
           <h1 className="text-2xl font-bold">Quản lý Máy bay</h1>
           <p className="text-sm text-gray-600 mt-1">
-            Tổng cộng: {aircrafts.length} máy bay
+            Tổng cộng: {" "}
+            {aircrafts.length} máy bay
+            {(minSeats ||
+              maxSeats ||
+              (seatLayoutFilter && seatLayoutFilter !== "all")) && (
+              <span className="ml-2 text-blue-600">(đã lọc)</span>
+            )}
           </p>
         </div>
         <div className="flex gap-2">
@@ -344,6 +406,71 @@ const AircraftPage = () => {
               />
             </div>
           </div>
+
+          {/* Seats Range Filter */}
+          <div className="flex gap-2 items-center">
+            <span className="text-sm font-medium text-gray-700 whitespace-nowrap">
+              Số ghế:
+            </span>
+            <Input
+              type="number"
+              placeholder="Tối thiểu"
+              value={minSeats}
+              onChange={(e) => setMinSeats(e.target.value)}
+              className="w-24"
+              min="0"
+            />
+            <span className="text-sm text-gray-500">-</span>
+            <Input
+              type="number"
+              placeholder="Tối đa"
+              value={maxSeats}
+              onChange={(e) => setMaxSeats(e.target.value)}
+              className="w-24"
+              min="0"
+            />
+          </div>
+
+          {/* Seat Layout Filter */}
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-medium text-gray-700 whitespace-nowrap">
+              Bố trí ghế:
+            </span>
+            <Select
+              value={seatLayoutFilter}
+              onValueChange={setSeatLayoutFilter}
+            >
+              <SelectTrigger className="w-40">
+                <SelectValue placeholder="Tất cả" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tất cả</SelectItem>
+                {uniqueSeatLayouts.map((layout) => (
+                  <SelectItem key={layout} value={layout}>
+                    {layout}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Clear Filters Button */}
+          {(minSeats ||
+            maxSeats ||
+            (seatLayoutFilter && seatLayoutFilter !== "all")) && (
+            <Button
+              variant="outline"
+              onClick={() => {
+                setMinSeats("");
+                setMaxSeats("");
+                setSeatLayoutFilter("all");
+              }}
+              className="whitespace-nowrap flex items-center gap-2"
+            >
+              <X className="w-4 h-4" />
+              Xóa bộ lọc
+            </Button>
+          )}
         </div>
       </Card>
 

@@ -29,6 +29,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import Pagination from "@/components/ui/pagination";
 
 const FlightTable = ({
   flights,
@@ -40,7 +41,7 @@ const FlightTable = ({
   onDeleteFlight,
 }) => {
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 10;
+  const [itemsPerPage, setItemsPerPage] = useState(10);
 
   // Màu sắc cho các nhóm khứ hồi
   const roundTripGroupColors = [
@@ -163,6 +164,17 @@ const FlightTable = ({
     (currentPage - 1) * itemsPerPage,
     currentPage * itemsPerPage
   );
+
+  // Reset to page 1 when filters change
+  useMemo(() => {
+    setCurrentPage(1);
+  }, [searchQuery, statusFilter, aircraftFilter]);
+
+  // Handle page size change
+  const handlePageSizeChange = (newPageSize) => {
+    setItemsPerPage(newPageSize);
+    setCurrentPage(1); // Reset to first page
+  };
 
   const formatTime = (dateTime) =>
     new Date(dateTime).toLocaleTimeString([], {
@@ -420,56 +432,20 @@ const FlightTable = ({
         </Table>
       </div>
 
-      {totalPages > 1 && (
-        <div className="flex items-center justify-between">
-          <div className="text-sm text-gray-700">
-            Showing {(currentPage - 1) * itemsPerPage + 1} to{" "}
-            {Math.min(currentPage * itemsPerPage, filteredFlights.length)} of{" "}
-            {filteredFlights.length} flights
-          </div>
-          <div className="flex items-center space-x-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
-              disabled={currentPage === 1}
-            >
-              Previous
-            </Button>
-            {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-              let pageNum =
-                totalPages <= 5
-                  ? i + 1
-                  : currentPage <= 3
-                  ? i + 1
-                  : currentPage >= totalPages - 2
-                  ? totalPages - 4 + i
-                  : currentPage - 2 + i;
-              return (
-                <Button
-                  key={pageNum}
-                  variant={pageNum === currentPage ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setCurrentPage(pageNum)}
-                  className="w-8 h-8 p-0"
-                >
-                  {pageNum}
-                </Button>
-              );
-            })}
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() =>
-                setCurrentPage((prev) => Math.min(totalPages, prev + 1))
-              }
-              disabled={currentPage === totalPages}
-            >
-              Next
-            </Button>
-          </div>
-        </div>
-      )}
+      {/* Pagination Component */}
+      <Pagination
+        currentPage={currentPage}
+        totalPages={totalPages}
+        itemsPerPage={itemsPerPage}
+        totalItems={filteredFlights.length}
+        onPageChange={setCurrentPage}
+        onPageSizeChange={handlePageSizeChange}
+        showPageSizeSelector={true}
+        showFirstLast={false}
+        showInfo={true}
+        maxVisiblePages={5}
+        className="mt-4"
+      />
 
       {filteredFlights.length === 0 && (
         <div className="text-center py-12">

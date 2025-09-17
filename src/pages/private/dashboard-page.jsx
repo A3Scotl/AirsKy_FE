@@ -107,19 +107,26 @@ const AdminDashboard = () => {
 
   const layBadgeTrangThai = (trangThai) => {
     const styles = {
-      "Đã Xác Nhận": "bg-green-100 text-green-800",
-      "Chờ Xử Lý": "bg-yellow-100 text-yellow-800",
-      "Đã Hủy": "bg-red-100 text-red-800",
+      "Đã Xác Nhận":
+        "bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200",
+      "Chờ Xử Lý":
+        "bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200",
+      "Đã Hủy": "bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200",
     };
-    return styles[trangThai] || "bg-gray-100 text-gray-800";
+    return (
+      styles[trangThai] ||
+      "bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200"
+    );
   };
 
   return (
     <div className="space-y-6">
       {/* Tiêu đề trang */}
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Bảng Điều Khiển</h1>
-        <p className="text-gray-600">
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+          Bảng Điều Khiển
+        </h1>
+        <p className="text-gray-600 dark:text-gray-400">
           Chào mừng trở lại! Đây là tình hình hôm nay của hãng hàng không.
         </p>
       </div>
@@ -131,16 +138,16 @@ const AdminDashboard = () => {
           return (
             <Card key={index}>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium text-gray-600">
+                <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">
                   {stat.tieuDe}
                 </CardTitle>
-                <Icon className="h-4 w-4 text-gray-400" />
+                <Icon className="h-4 w-4 text-gray-400 dark:text-gray-500" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-gray-900">
+                <div className="text-2xl font-bold text-gray-900 dark:text-gray-100">
                   {stat.giaTri}
                 </div>
-                <div className="flex items-center text-xs text-gray-600 mt-1">
+                <div className="flex items-center text-xs text-gray-600 dark:text-gray-400 mt-1">
                   {stat.duong ? (
                     <TrendingUp className="h-3 w-3 text-green-500 mr-1" />
                   ) : (
@@ -179,11 +186,11 @@ const AdminDashboard = () => {
               {datVeGanDay.map((booking) => (
                 <div
                   key={booking.id}
-                  className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
+                  className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg"
                 >
                   <div className="flex-1">
                     <div className="flex items-center space-x-2">
-                      <span className="font-medium text-sm">
+                      <span className="font-medium text-sm text-gray-900 dark:text-gray-100">
                         {booking.khachHang}
                       </span>
                       <Badge
@@ -195,16 +202,16 @@ const AdminDashboard = () => {
                         {booking.trangThai}
                       </Badge>
                     </div>
-                    <div className="flex items-center text-sm text-gray-600 mt-1">
+                    <div className="flex items-center text-sm text-gray-600 dark:text-gray-400 mt-1">
                       <MapPin className="h-3 w-3 mr-1" />
                       {booking.tuyen}
                     </div>
-                    <div className="text-xs text-gray-500 mt-1">
+                    <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                       {booking.ngay} • {booking.id}
                     </div>
                   </div>
                   <div className="text-right">
-                    <div className="font-semibold text-sm">
+                    <div className="font-semibold text-sm text-gray-900 dark:text-gray-100">
                       {booking.soTien}
                     </div>
                   </div>
@@ -227,24 +234,26 @@ const AdminDashboard = () => {
               {tuyenHangDau.map((route, index) => (
                 <div
                   key={index}
-                  className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
+                  className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg"
                 >
                   <div className="flex items-center space-x-3">
-                    <div className="flex items-center justify-center w-8 h-8 bg-blue-100 text-blue-600 rounded-full text-sm font-semibold">
+                    <div className="flex items-center justify-center w-8 h-8 bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-400 rounded-full text-sm font-semibold">
                       {index + 1}
                     </div>
                     <div>
-                      <div className="font-medium text-sm">{route.tuyen}</div>
-                      <div className="text-xs text-gray-500">
+                      <div className="font-medium text-sm text-gray-900 dark:text-gray-100">
+                        {route.tuyen}
+                      </div>
+                      <div className="text-xs text-gray-500 dark:text-gray-400">
                         {route.datVe} đặt vé
                       </div>
                     </div>
                   </div>
                   <div className="text-right">
-                    <div className="font-semibold text-sm">
+                    <div className="font-semibold text-sm text-gray-900 dark:text-gray-100">
                       {route.doanhThu}
                     </div>
-                    <div className="flex items-center text-xs text-green-600">
+                    <div className="flex items-center text-xs text-green-600 dark:text-green-400">
                       <ArrowUpRight className="h-3 w-3 mr-1" />
                       +5.2%
                     </div>

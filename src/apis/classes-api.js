@@ -23,14 +23,54 @@ export const classesApi = {
     if (params.search) queryParams.append("search", params.search);
 
     const queryString = queryParams.toString();
-    const endpoint = queryString ? `/travel-classes?${queryString}` : "/travel-classes";
+    const endpoint = queryString
+      ? `/travel-classes?${queryString}`
+      : "/travel-classes";
 
     return apiHandler("get", endpoint);
   },
 
-  
+  /**
+   * Tạo hạng vé mới (Admin only)
+   * @param {{
+   *   className: string,
+   *   benefits?: string,
+   *   refundable: boolean,
+   *   changeable: boolean,
+   *   cancellationFee?: number
+   * }} travelClassData - Dữ liệu hạng vé
+   * @returns {Promise<{ success: boolean, data?: any, message: string }>}
+   */
+  createTravelClass: async (travelClassData) => {
+    // Ensure we don't send priceMultiplier to backend
+    const { priceMultiplier, ...cleanData } = travelClassData;
+    return apiHandler("post", "/travel-classes", cleanData);
+  },
 
+  /**
+   * Cập nhật hạng vé (Admin only)
+   * @param {number} id - ID của hạng vé
+   * @param {{
+   *   className: string,
+   *   benefits?: string,
+   *   refundable: boolean,
+   *   changeable: boolean,
+   *   cancellationFee?: number
+   * }} travelClassData - Dữ liệu hạng vé
+   * @returns {Promise<{ success: boolean, data?: any, message: string }>}
+   */
+  updateTravelClass: async (id, travelClassData) => {
+    // Ensure we don't send priceMultiplier to backend
+    const { priceMultiplier, ...cleanData } = travelClassData;
+    return apiHandler("put", `/travel-classes/${id}`, cleanData);
+  },
 
-
-
+  /**
+   * Xóa hạng vé (Admin only)
+   * @param {number} id - ID của hạng vé
+   * @returns {Promise<{ success: boolean, data?: any, message: string }>}
+   */
+  deleteTravelClass: async (id) => {
+    return apiHandler("delete", `/travel-classes/${id}`);
+  },
 };

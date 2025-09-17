@@ -185,7 +185,7 @@ function HomePage() {
       />
       <div className="overflow-hidden pt-0">
         {/* Hero Section with Search Form - Fixed Parallax Swiper */}
-        <section className="realative text-white min-h-[100vh] overflow-hidden">
+        <section className="relative text-white min-h-[100vh] overflow-hidden">
           <Swiper
             speed={600}
             parallax={true}

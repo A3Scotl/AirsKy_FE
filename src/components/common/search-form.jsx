@@ -523,7 +523,7 @@ export function SearchForm({ onSearch, initialValues, onTripTypeChange }) {
             </div>
 
             <Button
-              className="bg-blue-500 text-white hover:bg-blue-600 disabled:bg-gray-400 disabled:cursor-not-allowed mt-6"
+              className="bg-blue-500 text-white hover:bg-blue-600 disabled:bg-gray-400 disabled:cursor-not-allowed mt-6 dark:bg-blue-50 dark:text-gray-800 dark:hover:bg-blue-100"
               disabled={!isFormValid()}
               onClick={handleSearch}
             >
@@ -584,7 +584,7 @@ export function SearchForm({ onSearch, initialValues, onTripTypeChange }) {
             </div>
 
             <Button
-              className="bg-blue-500 text-white hover:bg-blue-600 disabled:bg-gray-400 disabled:cursor-not-allowed mt-6"
+              className="bg-blue-500 text-white hover:bg-blue-600 disabled:bg-gray-400 disabled:cursor-not-allowed mt-6 dark:bg-blue-50 dark:text-gray-800 dark:hover:bg-blue-100"
               onClick={handleSearch}
               disabled={!isFormValid()}
             >
@@ -679,7 +679,7 @@ export function SearchForm({ onSearch, initialValues, onTripTypeChange }) {
               </Button>
 
               <Button
-                className="bg-blue-500 text-white hover:bg-blue-600 disabled:bg-gray-400 disabled:cursor-not-allowed w-full sm:w-auto sm:ml-auto"
+                className="bg-blue-500 text-white hover:bg-blue-600 disabled:bg-gray-400 disabled:cursor-not-allowed w-full sm:w-auto sm:ml-auto dark:bg-blue-50 dark:text-gray-800 dark:hover:bg-blue-100"
                 onClick={handleSearch}
                 disabled={!isFormValid()}
               >

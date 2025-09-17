@@ -186,24 +186,36 @@ const getFlightLegs = (flightData) => {
         ...flightData.outboundFlight,
         direction: "Outbound",
         flight: flightData.outboundFlight,
-        dep: flightData.outboundFlight.departure,
-        arr: flightData.outboundFlight.arrival,
+        dep:
+          flightData.outboundFlight.departure ||
+          flightData.outboundFlight.departureAirport,
+        arr:
+          flightData.outboundFlight.arrival ||
+          flightData.outboundFlight.arrivalAirport,
         segments: createSegments(
           flightData.outboundFlight,
-          flightData.outboundFlight.departure,
-          flightData.outboundFlight.arrival
+          flightData.outboundFlight.departure ||
+            flightData.outboundFlight.departureAirport,
+          flightData.outboundFlight.arrival ||
+            flightData.outboundFlight.arrivalAirport
         ),
       },
       {
         ...flightData.returnFlight,
         direction: "Inbound",
         flight: flightData.returnFlight,
-        dep: flightData.returnFlight.departure,
-        arr: flightData.returnFlight.arrival,
+        dep:
+          flightData.returnFlight.departure ||
+          flightData.returnFlight.departureAirport,
+        arr:
+          flightData.returnFlight.arrival ||
+          flightData.returnFlight.arrivalAirport,
         segments: createSegments(
           flightData.returnFlight,
-          flightData.returnFlight.departure,
-          flightData.returnFlight.arrival
+          flightData.returnFlight.departure ||
+            flightData.returnFlight.departureAirport,
+          flightData.returnFlight.arrival ||
+            flightData.returnFlight.arrivalAirport
         ),
       },
     ];
@@ -212,9 +224,13 @@ const getFlightLegs = (flightData) => {
       ...leg,
       direction: `Leg ${index + 1}`,
       flight: leg,
-      dep: leg.departure,
-      arr: leg.arrival,
-      segments: createSegments(leg, leg.departure, leg.arrival),
+      dep: leg.departure || leg.departureAirport,
+      arr: leg.arrival || leg.arrivalAirport,
+      segments: createSegments(
+        leg,
+        leg.departure || leg.departureAirport,
+        leg.arrival || leg.arrivalAirport
+      ),
     }));
   } else {
     // One-way flight
@@ -223,12 +239,12 @@ const getFlightLegs = (flightData) => {
         ...flightData,
         direction: "Outbound",
         flight: flightData,
-        dep: flightData.departure,
-        arr: flightData.arrival,
+        dep: flightData.departure || flightData.departureAirport,
+        arr: flightData.arrival || flightData.arrivalAirport,
         segments: createSegments(
           flightData,
-          flightData.departure,
-          flightData.arrival
+          flightData.departure || flightData.departureAirport,
+          flightData.arrival || flightData.arrivalAirport
         ),
       },
     ];
@@ -243,6 +259,7 @@ const getAirportCoordsMap = (flightData) => {
 
   const addAirport = (airport) => {
     if (airport && airport.code) {
+      // Let FlightRouteMap handle coordinate resolution
       coordsMap[airport.code] = {
         lat: airport.lat || 0,
         lon: airport.lon || 0,
@@ -257,7 +274,7 @@ const getAirportCoordsMap = (flightData) => {
     stops.forEach((stop) => {
       if (stop.airportCode) {
         coordsMap[stop.airportCode] = {
-          lat: 0, // Default coordinates, can be enhanced with real data
+          lat: 0, // FlightRouteMap will resolve actual coordinates
           lon: 0,
           name: stop.airportName || stop.airportCode,
           code: stop.airportCode,
@@ -267,21 +284,33 @@ const getAirportCoordsMap = (flightData) => {
   };
 
   if (flightData.isRoundTrip) {
-    addAirport(flightData.outboundFlight?.departure);
-    addAirport(flightData.outboundFlight?.arrival);
+    addAirport(
+      flightData.outboundFlight?.departure ||
+        flightData.outboundFlight?.departureAirport
+    );
+    addAirport(
+      flightData.outboundFlight?.arrival ||
+        flightData.outboundFlight?.arrivalAirport
+    );
     addStops(flightData.outboundFlight);
-    addAirport(flightData.returnFlight?.departure);
-    addAirport(flightData.returnFlight?.arrival);
+    addAirport(
+      flightData.returnFlight?.departure ||
+        flightData.returnFlight?.departureAirport
+    );
+    addAirport(
+      flightData.returnFlight?.arrival ||
+        flightData.returnFlight?.arrivalAirport
+    );
     addStops(flightData.returnFlight);
   } else if (flightData.isMultiCity) {
     flightData.multiCityLegs.forEach((leg) => {
-      addAirport(leg.departure);
-      addAirport(leg.arrival);
+      addAirport(leg.departure || leg.departureAirport);
+      addAirport(leg.arrival || leg.arrivalAirport);
       addStops(leg);
     });
   } else {
-    addAirport(flightData.departure);
-    addAirport(flightData.arrival);
+    addAirport(flightData.departure || flightData.departureAirport);
+    addAirport(flightData.arrival || flightData.arrivalAirport);
     addStops(flightData);
   }
 
@@ -295,10 +324,22 @@ const getProcessedSearchData = (flightData) => {
   if (flightData.isRoundTrip) {
     return {
       tripType: "round_trip",
-      from: flightData.outboundFlight?.departure?.code || flightData.fromCode,
-      to: flightData.outboundFlight?.arrival?.code || flightData.toCode,
-      returnFrom: flightData.returnFlight?.departure?.code || flightData.toCode,
-      returnTo: flightData.returnFlight?.arrival?.code || flightData.fromCode,
+      from:
+        flightData.outboundFlight?.departure?.code ||
+        flightData.outboundFlight?.departureAirport?.code ||
+        flightData.fromCode,
+      to:
+        flightData.outboundFlight?.arrival?.code ||
+        flightData.outboundFlight?.arrivalAirport?.code ||
+        flightData.toCode,
+      returnFrom:
+        flightData.returnFlight?.departure?.code ||
+        flightData.returnFlight?.departureAirport?.code ||
+        flightData.toCode,
+      returnTo:
+        flightData.returnFlight?.arrival?.code ||
+        flightData.returnFlight?.arrivalAirport?.code ||
+        flightData.fromCode,
       // Add the actual flight objects for the map component
       outboundFlight: flightData.outboundFlight,
       returnFlight: flightData.returnFlight,
@@ -307,16 +348,26 @@ const getProcessedSearchData = (flightData) => {
     return {
       tripType: "multi_city",
       legs: flightData.multiCityLegs.map((leg) => ({
-        from: leg.departure?.code,
-        to: leg.arrival?.code,
+        from: leg.departure?.code || leg.departureAirport?.code,
+        to: leg.arrival?.code || leg.arrivalAirport?.code,
         stops: leg.stopsList?.map((stop) => stop.airportCode) || [],
+      })),
+      // Add multiCityFlights for route map compatibility
+      multiCityFlights: flightData.multiCityLegs.map((leg) => ({
+        content: [leg], // Wrap each leg in content array
       })),
     };
   } else {
     return {
       tripType: "one_way",
-      from: flightData.departure?.code || flightData.fromCode,
-      to: flightData.arrival?.code || flightData.toCode,
+      from:
+        flightData.departure?.code ||
+        flightData.departureAirport?.code ||
+        flightData.fromCode,
+      to:
+        flightData.arrival?.code ||
+        flightData.arrivalAirport?.code ||
+        flightData.toCode,
       stops: flightData.stopsList?.map((stop) => stop.airportCode) || [],
     };
   }
@@ -1514,7 +1565,6 @@ const FlightDetail = () => {
                     </div>
                   </div>
                 ) : flightData.isMultiCity ? (
-                  // Multi-city flight summary
                   <div className="space-y-6">
                     {/* Multi-city Header */}
                     <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
@@ -1543,174 +1593,105 @@ const FlightDetail = () => {
                     </div>
 
                     {/* Multi-city Legs */}
-                    {flightData.multiCityLegs?.map((leg, legIndex) => (
-                      <div
-                        key={legIndex}
-                        className="border-l-4 border-purple-500 pl-6"
-                      >
-                        <div className="flex items-center gap-3 mb-4">
-                          <div className="w-3 h-3 bg-purple-500 rounded-full"></div>
-                          <h4 className="text-lg font-semibold text-purple-800">
-                            Chặng {legIndex + 1}: {leg.departure?.city} →{" "}
-                            {leg.arrival?.city}
-                          </h4>
-                          <Badge variant="outline" className="text-xs">
-                            {leg.departure?.code} → {leg.arrival?.code}
-                          </Badge>
-                        </div>
+                    {flightData.multiCityLegs?.map((leg, legIndex) => {
+                      // Tạo danh sách các điểm (departure -> stops -> arrival) cho tuyến đường
+                      const routePoints = [
+                        leg.departure,
+                        ...(leg.stopsList || []),
+                        leg.arrival,
+                      ].filter((point) => point?.code); // Loại bỏ điểm không hợp lệ
 
-                        {/* Flight Timeline */}
-                        <div className="relative mb-6">
-                          <div className="absolute left-6 top-0 bottom-0 w-0.5 bg-purple-200"></div>
+                      return (
+                        <div
+                          key={legIndex}
+                          className="border-l-4 border-purple-500 pl-6"
+                        >
+                          {/* Route Display */}
+                          <div className="flex items-center gap-2 mb-4 flex-wrap">
+                            {routePoints.map((point, index) => (
+                              <div
+                                key={index}
+                                className="flex items-center gap-2"
+                              >
+                                <span className="font-semibold text-gray-800">
+                                  {point.city || point.code || "N/A"}
+                                </span>
+                                {index < routePoints.length - 1 && (
+                                  <ArrowRight className="w-4 h-4 text-gray-500" />
+                                )}
+                              </div>
+                            ))}
+                          </div>
 
-                          {/* Departure */}
-                          <div className="flex items-start space-x-4 mb-6">
-                            <div className="flex-shrink-0 w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center relative z-10">
-                              <MapPin className="w-6 h-6 text-purple-600" />
-                            </div>
-                            <div className="flex-grow">
-                              <div className="flex items-center justify-between mb-2">
-                                <h5 className="font-semibold text-gray-900">
-                                  Từ {leg.departure?.city || "N/A"}
-                                </h5>
-                                <Badge
-                                  variant="outline"
-                                  className="text-purple-600 border-purple-600"
+                          {/* Leg Details */}
+                          <div className="relative mb-6">
+                            <div className="absolute left-6 top-0 bottom-0 w-0.5 bg-purple-200"></div>
+                            {routePoints.map((point, index) => {
+                              if (index === routePoints.length - 1) return null; // Bỏ qua điểm cuối (sẽ hiển thị riêng)
+
+                              const isStop =
+                                index > 0 && index < routePoints.length - 1;
+                              const nextPoint = routePoints[index + 1];
+                              const departureTime =
+                                index === 0
+                                  ? leg.departure?.time
+                                  : calculateDepartureTime(
+                                      point.arrivalTime,
+                                      point.stopDuration
+                                    );
+                              const arrivalTime = isStop
+                                ? point.arrivalTime
+                                : leg.arrival?.time;
+
+                              return (
+                                <div
+                                  key={index}
+                                  className="flex items-start space-x-4 mb-4 relative z-10"
                                 >
-                                  {leg.departure?.code}
-                                </Badge>
-                              </div>
-                              <p className="text-2xl font-bold text-gray-900">
-                                {leg.departure?.time || "N/A"}
-                              </p>
-                            </div>
-                          </div>
-
-                          {/* Flight Path */}
-                          <div className="flex items-start space-x-4 mb-6">
-                            <div className="flex-shrink-0 w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center relative z-10">
-                              <Plane className="w-6 h-6 text-purple-600" />
-                            </div>
-                            <div className="flex-grow">
-                              <div className="bg-purple-50 rounded-lg p-4">
-                                <div className="flex items-center justify-between mb-2">
-                                  <h5 className="font-semibold text-purple-800">
-                                    Chuyến bay
-                                  </h5>
-                                  <Badge variant="outline" className="text-xs">
-                                    {leg.airline || "N/A"}
-                                  </Badge>
-                                </div>
-                                <div className="grid grid-cols-2 gap-4 text-sm">
-                                  <div>
-                                    <span className="text-gray-600">
-                                      Số hiệu:
-                                    </span>
-                                    <span className="font-medium ml-2">
-                                      {leg.flightNumber || "N/A"}
-                                    </span>
+                                  <div className="flex-shrink-0 w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center">
+                                    {isStop ? (
+                                      <div className="w-2 h-2 bg-yellow-500 rounded-full" />
+                                    ) : (
+                                      <MapPin className="w-5 h-5 text-purple-600" />
+                                    )}
                                   </div>
-                                  <div>
-                                    <span className="text-gray-600">
-                                      Máy bay:
-                                    </span>
-                                    <span className="font-medium ml-2">
-                                      {leg.aircraft || "N/A"}
-                                    </span>
-                                  </div>
-                                  <div>
-                                    <span className="text-gray-600">
-                                      Thời gian bay:
-                                    </span>
-                                    <span className="font-medium ml-2">
-                                      {leg.duration || "N/A"}
-                                    </span>
-                                  </div>
-                                  <div>
-                                    <span className="text-gray-600">
-                                      Hạng ghế:
-                                    </span>
-                                    <span className="font-medium ml-2">
-                                      {leg.travelClass || "N/A"}
-                                    </span>
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* Stops */}
-                          {leg.stopsList && leg.stopsList.length > 0 && (
-                            <div className="mb-6">
-                              <h5 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
-                                <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
-                                Điểm dừng ({leg.stopsList.length})
-                              </h5>
-                              <div className="space-y-3">
-                                {leg.stopsList.map((stop, stopIndex) => (
-                                  <div
-                                    key={stopIndex}
-                                    className="flex items-start space-x-4"
-                                  >
-                                    <div className="flex-shrink-0 w-8 h-8 bg-yellow-100 rounded-full flex items-center justify-center relative z-10">
-                                      <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
+                                  <div className="flex-grow">
+                                    <div className="flex items-center justify-between mb-1">
+                                      <span className="font-medium text-gray-800">
+                                        {point.city || point.code || "N/A"} →{" "}
+                                        {nextPoint.city ||
+                                          nextPoint.code ||
+                                          "N/A"}
+                                      </span>
+                                      <Badge
+                                        variant="outline"
+                                        className="text-xs text-purple-600 border-purple-600"
+                                      >
+                                        {leg.flightNumber || "N/A"}
+                                      </Badge>
                                     </div>
-                                    <div className="flex-grow">
-                                      <div className="bg-yellow-50 rounded-lg p-3">
-                                        <div className="flex items-center justify-between mb-1">
-                                          <span className="font-medium text-gray-900">
-                                            {stop.airportName} (
-                                            {stop.airportCode})
+                                    <div className="text-sm text-gray-600">
+                                      <span>
+                                        Khởi hành: {departureTime || "N/A"}
+                                      </span>{" "}
+                                      | <span>Đến: {arrivalTime || "N/A"}</span>
+                                      {isStop && point.stopDuration && (
+                                        <>
+                                          {" | "}
+                                          <span>
+                                            Thời gian dừng: {point.stopDuration}
                                           </span>
-                                          <Badge
-                                            variant="outline"
-                                            className="text-xs"
-                                          >
-                                            {stopIndex === 0
-                                              ? "Điểm dừng đầu"
-                                              : "Điểm dừng cuối"}
-                                          </Badge>
-                                        </div>
-                                        <p className="text-sm text-gray-600">
-                                          Đến: {stop.arrivalTime || "N/A"}
-                                        </p>
-                                        <p className="text-sm text-gray-600">
-                                          Thời gian dừng:{" "}
-                                          {stop.stopDuration || "N/A"}
-                                        </p>
-                                      </div>
+                                        </>
+                                      )}
                                     </div>
                                   </div>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-
-                          {/* Arrival */}
-                          <div className="flex items-start space-x-4">
-                            <div className="flex-shrink-0 w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center relative z-10">
-                              <MapPin className="w-6 h-6 text-purple-600" />
-                            </div>
-                            <div className="flex-grow">
-                              <div className="flex items-center justify-between mb-2">
-                                <h5 className="font-semibold text-gray-900">
-                                  Đến {leg.arrival?.city || "N/A"}
-                                </h5>
-                                <Badge
-                                  variant="outline"
-                                  className="text-purple-600 border-purple-600"
-                                >
-                                  {leg.arrival?.code}
-                                </Badge>
-                              </div>
-                              <p className="text-2xl font-bold text-gray-900">
-                                {leg.arrival?.time || "N/A"}
-                              </p>
-                            </div>
+                                </div>
+                              );
+                            })}
                           </div>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
 
                     {/* Multi-city Summary */}
                     <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
@@ -3293,38 +3274,49 @@ const FlightDetail = () => {
 
                         {/* Flight Route Map */}
                         <div className="rounded-lg overflow-hidden border border-gray-200 shadow-sm">
-                          {getFlightLegs(flightData).length > 0 &&
-                          Object.keys(getAirportCoordsMap(flightData)).length >
-                            0 ? (
-                            <FlightRouteMap
-                              flightInfo={flightData}
-                              legs={getFlightLegs(flightData)}
-                              coordsMap={getAirportCoordsMap(flightData)}
-                              processedSearchData={getProcessedSearchData(
-                                flightData
-                              )}
-                              height="500px"
-                              showFlightPath={true}
-                              showAirportInfo={true}
-                              showFlightInfo={true}
-                              showLegend={true}
-                              showControls={true}
-                              className="w-full"
-                            />
-                          ) : (
-                            <div className="h-[500px] flex items-center justify-center bg-gray-50">
-                              <div className="text-center">
-                                <Map className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                                <h3 className="text-lg font-semibold text-gray-600 mb-2">
-                                  Không thể tải bản đồ
-                                </h3>
-                                <p className="text-sm text-gray-500">
-                                  Thông tin sân bay hoặc tuyến bay không khả
-                                  dụng
-                                </p>
+                          {(() => {
+                            const legs = getFlightLegs(flightData);
+                            const coords = getAirportCoordsMap(flightData);
+                            const processed =
+                              getProcessedSearchData(flightData);
+                            console.log("FlightRouteMap Debug:", {
+                              flightData: flightData,
+                              legsCount: legs.length,
+                              coordsCount: Object.keys(coords).length,
+                              legs: legs,
+                              coords: coords,
+                              processed: processed,
+                              note: "Coordinates will be resolved by FlightRouteMap using airport codes",
+                            });
+                            return legs.length > 0 &&
+                              Object.keys(coords).length > 0 ? (
+                              <FlightRouteMap
+                                flightInfo={flightData}
+                                legs={legs}
+                                coordsMap={coords}
+                                processedSearchData={processed}
+                                height="500px"
+                                showFlightPath={true}
+                                showAirportInfo={true}
+                                showFlightInfo={true}
+                                showLegend={true}
+                                showControls={true}
+                                className="w-full"
+                              />
+                            ) : (
+                              <div className="h-[500px] flex items-center justify-center bg-gray-50">
+                                <div className="text-center">
+                                  <Map className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                                  <h3 className="text-lg font-semibold text-gray-600 mb-2">
+                                    Không thể tải bản đồ
+                                  </h3>
+                                  <p className="text-sm text-gray-500">
+                                    Không có đủ thông tin để hiển thị đường bay
+                                  </p>
+                                </div>
                               </div>
-                            </div>
-                          )}
+                            );
+                          })()}
                         </div>
 
                         {/* Additional flight route information */}

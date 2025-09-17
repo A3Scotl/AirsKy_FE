@@ -76,7 +76,14 @@ function AppRoutes() {
       <Suspense fallback={<LoadingPage />}>
         <AnimatePresence mode="wait">
           <Routes location={location} key={location.pathname}>
-            <Route path="/" element={<PublicLayout />}>
+            <Route
+              path="/"
+              element={
+                <ThemeProvider>
+                  <PublicLayout />
+                </ThemeProvider>
+              }
+            >
               <Route
                 index
                 element={
@@ -174,7 +181,9 @@ function AppRoutes() {
               path="/admin"
               element={
                 <AdminRoute>
-                  <PrivateLayout />
+                  <ThemeProvider>
+                    <PrivateLayout />
+                  </ThemeProvider>
                 </AdminRoute>
               }
             >
@@ -195,7 +204,7 @@ function AppRoutes() {
               <Route path="blogs" element={<AdminBlog />} />
               <Route path="categories" element={<AdminCategory />} />
               <Route path="deals" element={<AdminDeal />} />
-               <Route path="travel-classes" element={<AdminClasses />} />
+              <Route path="travel-classes" element={<AdminClasses />} />
               <Route path="profile" element={<AdminProfile />} />
             </Route>
 
@@ -239,4 +248,3 @@ function App() {
 }
 
 export default App;
-

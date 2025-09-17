@@ -7,6 +7,7 @@ import {
   UserCheck,
   UserX,
   TrendingUp,
+  RotateCcw,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -105,8 +106,6 @@ const AdminUsers = () => {
         const startIndex = currentPage * pageSize;
         const endIndex = startIndex + pageSize;
         const paginatedUsers = filteredUsers.slice(startIndex, endIndex);
-
-      
 
         // Transform paginated users for display
         const transformedUsers = paginatedUsers.map((user) => ({
@@ -275,6 +274,14 @@ const AdminUsers = () => {
     }
   };
 
+  const handleRefresh = () => {
+    toast.promise(fetchUsers(), {
+      loading: "Đang tải lại danh sách...",
+      success: "Đã cập nhật danh sách người dùng!",
+      error: "Lỗi khi tải lại danh sách",
+    });
+  };
+
   return (
     <div className="space-y-6">
       {/* Page Header */}
@@ -288,6 +295,16 @@ const AdminUsers = () => {
           </p>
         </div>
         <div className="flex space-x-3">
+          <Button
+            variant="outline"
+            onClick={handleRefresh}
+            disabled={loading}
+            className="flex items-center gap-2"
+          >
+            <RotateCcw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
+            Làm mới
+          </Button>
+          {/* button export file */}
           <ExportButton entity="users" />
           <Button onClick={handleAddUser}>
             <Plus className="h-4 w-4 mr-2" />
@@ -297,7 +314,7 @@ const AdminUsers = () => {
       </div>
 
       {/* User Statistics */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <Card>
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
@@ -321,7 +338,7 @@ const AdminUsers = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-600">
-                  Khách hàng hoạt động
+                  Tài khoản đã được kích hoạt
                 </p>
                 <p className="text-2xl font-bold text-gray-900 mt-2">
                   {userStats.activeCustomers}
@@ -329,6 +346,24 @@ const AdminUsers = () => {
               </div>
               <div className="w-12 h-12 bg-green-500 rounded-lg flex items-center justify-center">
                 <UserCheck className="h-6 w-6 text-white" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">
+                  Đang hoạt động
+                </p>
+                <p className="text-2xl font-bold text-gray-900 mt-2">
+                  {userStats.activeCustomers }
+                </p>
+                {/* Change calculation can be added if needed */}
+              </div>
+              <div className="w-12 h-12 bg-blue-500 rounded-lg flex items-center justify-center">
+                <Users className="h-6 w-6 text-white" />
               </div>
             </div>
           </CardContent>

@@ -10,8 +10,18 @@ import {
   Eye,
   EyeOff,
   MoreHorizontal,
+  RefreshCw,
+  Filter,
+  ArrowUpDown,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Table,
   TableBody,
@@ -61,6 +71,12 @@ const CategoryTable = () => {
   const [totalPages, setTotalPages] = useState(0);
   const [totalElements, setTotalElements] = useState(0);
 
+  // Filter and sort states
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [sortBy, setSortBy] = useState("createdAt");
+  const [sortOrder, setSortOrder] = useState("desc");
+  const [refreshing, setRefreshing] = useState(false);
+
   // Modal states
   const [isFormModalOpen, setIsFormModalOpen] = useState(false);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
@@ -109,7 +125,16 @@ const CategoryTable = () => {
 
       // Name column
       columnHelper.accessor("name", {
-        header: "Tên Category",
+        header: ({ column }) => (
+          <Button
+            variant="ghost"
+            onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+            className="h-auto p-0 font-medium"
+          >
+            Tên Category
+            <ArrowUpDown className="ml-2 h-4 w-4" />
+          </Button>
+        ),
         cell: (info) => (
           <div className="font-medium text-gray-900">{info.getValue()}</div>
         ),
@@ -137,7 +162,16 @@ const CategoryTable = () => {
 
       // Blog count column
       columnHelper.accessor("blogCount", {
-        header: "Số bài viết",
+        header: ({ column }) => (
+          <Button
+            variant="ghost"
+            onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+            className="h-auto p-0 font-medium"
+          >
+            Số bài viết
+            <ArrowUpDown className="ml-2 h-4 w-4" />
+          </Button>
+        ),
         cell: (info) => (
           <Button
             variant="link"
@@ -167,7 +201,16 @@ const CategoryTable = () => {
 
       // Created date column
       columnHelper.accessor("createdAt", {
-        header: "Ngày tạo",
+        header: ({ column }) => (
+          <Button
+            variant="ghost"
+            onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+            className="h-auto p-0 font-medium"
+          >
+            Ngày tạo
+            <ArrowUpDown className="ml-2 h-4 w-4" />
+          </Button>
+        ),
         cell: (info) => (
           <div className="text-sm text-gray-500">
             {info.getValue()
@@ -241,6 +284,7 @@ const CategoryTable = () => {
     enableRowSelection: true,
     pageCount: totalPages,
     manualPagination: true,
+    manualSorting: true, // Enable manual sorting since we're handling it on the backend
   });
 
   // Bulk actions
@@ -320,16 +364,51 @@ const CategoryTable = () => {
     }
   };
 
+  // Handle refresh
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    try {
+      await fetchCategories(currentPage, itemsPerPage, searchTerm);
+      toast.success("Đã làm mới danh sách category");
+    } catch (error) {
+      console.error("Error refreshing categories:", error);
+      toast.error("Có lỗi xảy ra khi làm mới");
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
+  // Handle status filter change
+  const handleStatusFilterChange = (value) => {
+    setStatusFilter(value);
+    setCurrentPage(1); // Reset to first page
+  };
+
+  // Handle sort change
+  const handleSortChange = (value) => {
+    setSortBy(value);
+    setCurrentPage(1); // Reset to first page
+  };
+
+  // Handle sort order toggle
+  const handleSortOrderToggle = () => {
+    setSortOrder(sortOrder === "asc" ? "desc" : "asc");
+    setCurrentPage(1); // Reset to first page
+  };
+
   // Fetch categories from API
   const fetchCategories = async (page = 1, size = 10, search = "") => {
     try {
       setLoading(true);
       setError(null);
 
+      // Build sort parameter
+      const sortParam = `${sortBy},${sortOrder}`;
+
       const result = await categoryApi.getAllCategories({
         page: page - 1, // Backend uses 0-based pagination
         size,
-        sort: "createdAt,desc",
+        sort: sortParam,
       });
 
       if (result.success && result.data) {
@@ -344,6 +423,14 @@ const CategoryTable = () => {
                 ?.toLowerCase()
                 .includes(search.toLowerCase()) ||
               category.slug?.toLowerCase().includes(search.toLowerCase())
+          );
+        }
+
+        // Client-side status filter
+        if (statusFilter !== "all") {
+          const isActive = statusFilter === "active";
+          filteredData = filteredData.filter(
+            (category) => category.active === isActive
           );
         }
 
@@ -365,7 +452,7 @@ const CategoryTable = () => {
 
   useEffect(() => {
     fetchCategories(currentPage, itemsPerPage, searchTerm);
-  }, [currentPage, itemsPerPage]);
+  }, [currentPage, itemsPerPage, statusFilter, sortBy, sortOrder]);
 
   // Debounced search effect
   useEffect(() => {
@@ -531,34 +618,6 @@ const CategoryTable = () => {
             Quản lý các thể loại blog ({totalElements} category)
           </p>
         </div>
-
-        <div className="flex flex-col sm:flex-row gap-2">
-          {/* Search */}
-          <div className="flex gap-2">
-            <Input
-              placeholder="Tìm kiếm category..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              onKeyPress={handleSearchKeyPress}
-              className="w-full sm:w-64"
-            />
-            {/* Search button removed - search now works on input change */}
-            {/* <Button onClick={handleSearch} variant="outline">
-              <Search className="h-4 w-4" />
-            </Button> */}
-          </div>
-
-          {/* Create button */}
-          <div className="flex gap-2">
-            <Button
-              onClick={handleCreateCategory}
-              className="whitespace-nowrap"
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              Thêm Category
-            </Button>
-          </div>
-        </div>
       </div>
 
       {/* Error display */}
@@ -567,6 +626,73 @@ const CategoryTable = () => {
           <p className="text-red-800">{error}</p>
         </div>
       )}
+
+      <div className="flex flex-col sm:flex-row gap-2 ">
+        {/* Search */}
+        <div className="flex gap-2 w-full">
+          <Input
+            placeholder="Tìm kiếm category..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            onKeyPress={handleSearchKeyPress}
+            className="w-full"
+          />
+        </div>
+        {/* Filters */}
+        <div className="flex gap-2">
+          <Select value={statusFilter} onValueChange={handleStatusFilterChange}>
+            <SelectTrigger className="w-40">
+              <SelectValue placeholder="Lọc trạng thái" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Tất cả</SelectItem>
+              <SelectItem value="active">Hoạt động</SelectItem>
+              <SelectItem value="inactive">Không hoạt động</SelectItem>
+            </SelectContent>
+          </Select>
+
+          <Select value={sortBy} onValueChange={handleSortChange}>
+            <SelectTrigger className="w-40">
+              <SelectValue placeholder="Sắp xếp theo" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="createdAt">Ngày tạo</SelectItem>
+              <SelectItem value="name">Tên</SelectItem>
+              <SelectItem value="blogCount">Số bài viết</SelectItem>
+            </SelectContent>
+          </Select>
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleSortOrderToggle}
+            className="px-3"
+          >
+            <ArrowUpDown className="h-4 w-4" />
+          </Button>
+        </div>
+
+        {/* Action buttons */}
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleRefresh}
+            disabled={refreshing}
+            className="px-3"
+          >
+            <RefreshCw
+              className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`}
+            />
+            Làm mới
+          </Button>
+
+          <Button onClick={handleCreateCategory} className="whitespace-nowrap">
+            <Plus className="h-4 w-4 mr-2" />
+            Thêm Category
+          </Button>
+        </div>
+      </div>
 
       {/* Bulk Actions Bar */}
       {selectedRows.length > 0 && (

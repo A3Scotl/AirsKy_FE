@@ -23,7 +23,7 @@ import { classesApi } from "@/apis/classes-api";
 import { handleFetch } from "@/utils/fetch-helper.js";
 import { toast } from "sonner";
 import ExportButton from "@/components/common/export-button";
-// import TravelClassModal from "@/components/admin/travel-classes/travel-class-modal"; // Assuming a modal for travel classes
+import TravelClassModal from "@/components/admin/travel-classes/travel-class-modal";
 
 const ClassesPage = () => {
   const [modalOpen, setModalOpen] = useState(false);
@@ -44,8 +44,8 @@ const ClassesPage = () => {
   // Fetch travel classes on mount
   useEffect(() => {
     handleFetch({
-      apiCall: classesApi.getAllClasses, // Adjust to your actual API method
-      setData: (data) => setTravelClasses(data?.content),
+      apiCall: classesApi.getAllClasses,
+      setData: (data) => setTravelClasses(data?.content || data),
       setLoading,
       errorMessage: "Failed to fetch travel classes",
     });
@@ -90,22 +90,14 @@ const ClassesPage = () => {
           aValue = a.className || "";
           bValue = b.className || "";
           break;
-        case "priceMultiplier":
-          aValue = a.priceMultiplier || 0;
-          bValue = b.priceMultiplier || 0;
-          break;
         default:
           aValue = a.className || "";
           bValue = b.className || "";
       }
 
-      if (sortBy === "priceMultiplier") {
-        return sortOrder === "asc" ? aValue - bValue : bValue - aValue;
-      } else {
-        return sortOrder === "asc"
-          ? aValue.localeCompare(bValue)
-          : bValue.localeCompare(aValue);
-      }
+      return sortOrder === "asc"
+        ? aValue.localeCompare(bValue)
+        : bValue.localeCompare(aValue);
     });
 
     return filtered;
@@ -157,67 +149,67 @@ const ClassesPage = () => {
   const handleDelete = async (travelClass) => {
     if (
       window.confirm(
-        `Are you sure you want to delete travel class ${travelClass.className}?`
+        `Bạn có chắc muốn xóa hẳn hạng vé ${travelClass.className}?`
       )
     ) {
-      try {
-        const response = await classesApi.deleteTravelClass(
-          travelClass.classId
-        );
-        if (response.success) {
-          toast.success(
-            `Travel class ${travelClass.className} deleted successfully`
-          );
-          // Refresh the list
-          handleFetch({
-            apiCall: classesApi.getAllTravelClasses,
-            setData: setTravelClasses,
-            setLoading,
-            errorMessage: "Failed to fetch travel classes",
-          });
-        } else {
-          toast.error(`Error deleting travel class: ${response.message}`);
-        }
-      } catch (error) {
-        console.error("Error deleting travel class:", error);
-        toast.error("Error deleting travel class");
-      }
+      toast.promise(classesApi.deleteTravelClass(travelClass.classId), {
+        loading: "Đang xóa hạng vé...",
+        success: (response) => {
+          if (response.success) {
+            // Refresh the list
+            handleFetch({
+              apiCall: classesApi.getAllClasses,
+              setData: (data) => setTravelClasses(data?.content || data),
+              setLoading,
+              errorMessage: "Failed to fetch travel classes",
+            });
+            return `Đã xóa hẳn hạng vé ${travelClass.className} thành công!`;
+          } else {
+            throw new Error(response.message);
+          }
+        },
+        error: (error) => {
+          console.error("Lỗi xóa hạng vé:", error);
+          return "Lỗi khi xóa hạng vé. Vui lòng thử lại!";
+        },
+      });
     }
   };
 
   const handleSubmit = async (formData) => {
-    try {
-      let response;
-      if (editData) {
-        // Update
-        response = await classesApi.updateTravelClass(
-          editData.classId,
-          formData
-        );
-      } else {
-        // Create
-        response = await classesApi.createTravelClass(formData);
-      }
+    const isUpdate = !!editData;
+    const className = formData.className;
 
-      if (response.success) {
-        toast.success(
-          `Travel class ${editData ? "updated" : "created"} successfully`
-        );
-        setModalOpen(false);
-        // Refresh the list
-        handleFetch({
-          apiCall: classesApi.getAllTravelClasses,
-          setData: setTravelClasses,
-          setLoading,
-          errorMessage: "Failed to fetch travel classes",
-        });
-      } else {
-        toast.error(`Error: ${response.message}`);
+    toast.promise(
+      isUpdate
+        ? classesApi.updateTravelClass(editData.classId, formData)
+        : classesApi.createTravelClass(formData),
+      {
+        loading: isUpdate ? "Đang cập nhật hạng vé..." : "Đang tạo hạng vé...",
+        success: (response) => {
+          if (response.success) {
+            setModalOpen(false);
+            setEditData(null);
+            // Refresh the list
+            handleFetch({
+              apiCall: classesApi.getAllClasses,
+              setData: (data) => setTravelClasses(data?.content || data),
+              setLoading,
+              errorMessage: "Failed to fetch travel classes",
+            });
+            return isUpdate
+              ? `Đã cập nhật hạng vé ${className} thành công!`
+              : `Đã tạo hạng vé ${className} thành công!`;
+          } else {
+            throw new Error(response.message);
+          }
+        },
+        error: (error) => {
+          console.error("Lỗi submit:", error);
+          return "Lỗi khi lưu hạng vé. Vui lòng thử lại!";
+        },
       }
-    } catch (error) {
-      console.error("Error submitting travel class:", error);
-      toast.error("Error saving travel class");
-    }
+    );
   };
 
   return (
@@ -281,17 +273,11 @@ const ClassesPage = () => {
               }}
             >
               <SelectTrigger>
-                <SelectValue placeholder="Sort by" />
+                <SelectValue placeholder="Sắp xếp theo" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="className-asc">Tên A-Z</SelectItem>
                 <SelectItem value="className-desc">Tên Z-A</SelectItem>
-                <SelectItem value="priceMultiplier-asc">
-                  Nhân giá Low-High
-                </SelectItem>
-                <SelectItem value="priceMultiplier-desc">
-                  Nhân giá High-Low
-                </SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -322,22 +308,9 @@ const ClassesPage = () => {
                   </div>
                 </TableHead>
                 <TableHead>Quyền lợi</TableHead>
-                <TableHead
-                  className="cursor-pointer hover:bg-gray-50 select-none"
-                  onClick={() => handleSort("priceMultiplier")}
-                >
-                  <div className="flex items-center gap-2">
-                    Nhân giá
-                    {sortBy === "priceMultiplier" && (
-                      <span className="text-xs">
-                        {sortOrder === "asc" ? "↑" : "↓"}
-                      </span>
-                    )}
-                  </div>
-                </TableHead>
                 <TableHead>Hoàn trả</TableHead>
                 <TableHead>Đổi vé</TableHead>
-                <TableHead>Phí hủy</TableHead>
+                <TableHead>Phí hủy (VND)</TableHead>
                 <TableHead>Hành động</TableHead>
               </TableRow>
             </TableHeader>
@@ -347,15 +320,12 @@ const ClassesPage = () => {
                   <TableCell>{tc.className}</TableCell>
                   <TableCell>{tc.benefits || "N/A"}</TableCell>
                   <TableCell>
-                    {tc.priceMultiplier?.toFixed(2) || "N/A"}
-                  </TableCell>
-                  <TableCell>
                     <span
                       className={
                         tc.refundable ? "text-green-600" : "text-gray-400"
                       }
                     >
-                      {tc.refundable ? "Co" : "Không"}
+                      {tc.refundable ? "Có" : "Không"}
                     </span>
                   </TableCell>
                   <TableCell>
@@ -369,7 +339,7 @@ const ClassesPage = () => {
                   </TableCell>
                   <TableCell>
                     {tc.cancellationFee
-                      ? `$${tc.cancellationFee.toFixed(2)}`
+                      ? `${tc.cancellationFee.toLocaleString("vi-VN")} VND`
                       : "N/A"}
                   </TableCell>
                   <TableCell>
@@ -411,12 +381,16 @@ const ClassesPage = () => {
         />
       )}
 
-      {/* <TravelClassModal
+      <TravelClassModal
         open={modalOpen}
-        onClose={() => setModalOpen(false)}
+        onClose={() => {
+          setModalOpen(false);
+          setEditData(null);
+          toast.info("Đã đóng form hạng vé");
+        }}
         onSubmit={handleSubmit}
         initialData={editData}
-      /> */}
+      />
     </div>
   );
 };

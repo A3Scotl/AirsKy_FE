@@ -14,6 +14,7 @@ import {
   X,
   DollarSign,
   Users,
+  RotateCcw,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -444,6 +445,32 @@ const AdminFlights = () => {
     }
   };
 
+  const handleRefresh = async () => {
+    try {
+      setLoading(true);
+
+      // Lưu dữ liệu hiện tại để tính % thay đổi
+      setPreviousFlights(flights);
+
+      // Fetch dữ liệu mới
+      const result = await flightApi.getAllFlights({ size: 1000 });
+
+      if (result && result.success) {
+        const newFlights = result.data?.content || result.data || [];
+        setFlights(newFlights);
+
+        toast.success("Đã cập nhật danh sách chuyến bay và thống kê!");
+      } else {
+        throw new Error(result?.message || "Không thể tải dữ liệu");
+      }
+    } catch (error) {
+      console.error("Refresh error:", error);
+      toast.error("Lỗi khi tải lại danh sách: " + error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Page Header */}
@@ -457,6 +484,16 @@ const AdminFlights = () => {
           </p>
         </div>
         <div className="flex space-x-3">
+          <Button
+            variant="outline"
+            onClick={handleRefresh}
+            disabled={loading}
+            className="flex items-center gap-2"
+          >
+            <RotateCcw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
+            Làm mới
+          </Button>
+          {/* button export file */}
           <ExportButton entity="flights" />
           <Button onClick={handleAddFlight}>
             <Plus className="h-4 w-4 mr-2" />
@@ -474,10 +511,10 @@ const AdminFlights = () => {
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-gray-600">
+                    <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
                       {stat.title}
                     </p>
-                    <p className="text-2xl font-bold text-gray-900 mt-2">
+                    <p className="text-2xl font-bold text-gray-900 dark:text-gray-100 mt-2">
                       {stat.value}
                     </p>
                     <div className="flex items-center mt-2 text-xs">
@@ -533,10 +570,10 @@ const AdminFlights = () => {
                 <div className="relative flex-1">
                   <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
                   <Input
-                    placeholder="Search by flight number, route (HAN-SGN), airport code, or aircraft..."
+                    placeholder="Tìm kiếm với mã chuyến bay, tuyến (HAN-SGN), mã sân bay, hoặc loại máy bay.."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-10"
+                    className="pl-10 text-gray-900"
                   />
                 </div>
 
