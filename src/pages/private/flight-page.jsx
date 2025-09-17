@@ -105,14 +105,7 @@ const AdminFlights = () => {
           icon: Clock,
           color: "bg-indigo-500",
         },
-        {
-          title: "Tổng doanh thu",
-          value: "0 VND",
-          change: "0%",
-          isPositive: true,
-          icon: DollarSign,
-          color: "bg-green-600",
-        },
+
         {
           title: "Tỷ lệ lấp đầy",
           value: "0%",
@@ -146,12 +139,6 @@ const AdminFlights = () => {
     ).length;
     const onTimeRate =
       totalFlights > 0 ? ((onTimeFlights / totalFlights) * 100).toFixed(1) : 0;
-
-    // Tính tổng doanh thu ước tính
-    const totalRevenue = currentFlights.reduce((sum, flight) => {
-      const bookedSeats = flight.totalSeats - (flight.availableSeats || 0);
-      return sum + bookedSeats * (flight.basePrice || 0);
-    }, 0);
 
     // Tính tỷ lệ lấp đầy trung bình
     const totalSeats = currentFlights.reduce(
@@ -277,14 +264,7 @@ const AdminFlights = () => {
         icon: Clock,
         color: "bg-indigo-500",
       },
-      {
-        title: "Tổng doanh thu",
-        value: `${(totalRevenue / 1000000).toFixed(1)}M VND`,
-        change: `${revenueChange > 0 ? "+" : ""}${revenueChange}%`,
-        isPositive: revenueChange >= 0,
-        icon: DollarSign,
-        color: "bg-green-600",
-      },
+
       {
         title: "Tỷ lệ lấp đầy",
         value: `${occupancyRate}%`,
@@ -358,15 +338,22 @@ const AdminFlights = () => {
 
   const handleSaveFlight = async (flightData, isEdit) => {
     try {
+      let result;
       if (isEdit) {
-        const result = await flightApi.updateFlight(
-          flightData.flightId,
-          flightData
-        );
+        result = await flightApi.updateFlight(flightData.flightId, flightData);
+      } else {
+        result = await flightApi.createFlight(flightData);
+      }
 
-        if (result.success) {
-          toast.success("Cập nhật chuyến bay thành công!");
-          // Cập nhật lại danh sách flights
+      // Xử lý kết quả từ API
+      if (result && result.success === true) {
+        toast.success(
+          isEdit
+            ? "Cập nhật chuyến bay thành công!"
+            : "Tạo chuyến bay thành công!"
+        );
+        // Cập nhật lại danh sách flights
+        if (isEdit) {
           const updatedFlights = flights.map((flight) =>
             flight.flightId === flightData.flightId
               ? { ...flight, ...flightData }
@@ -374,26 +361,86 @@ const AdminFlights = () => {
           );
           setFlights(updatedFlights);
         } else {
-          toast.error(`Lỗi cập nhật chuyến bay: ${result.message}`);
-        }
-      } else {
-        const result = await flightApi.createFlight(flightData);
-
-        if (result.success) {
-          toast.success("Tạo chuyến bay thành công!");
-          // Thêm chuyến bay mới vào danh sách
           setFlights((prevFlights) => [result.data, ...prevFlights]);
-        } else {
-          toast.error(`Lỗi tạo chuyến bay: ${result.message}`);
         }
+        setShowFlightModal(false);
+        return result;
+      } else if (result && result.success === false) {
+        // API trả về lỗi business logic với message cụ thể
+        throw new Error(result.error || result.message || "Có lỗi xảy ra");
+      } else {
+        // API không trả về response hợp lệ
+        throw new Error("API không trả về dữ liệu hợp lệ");
       }
-      setShowFlightModal(false);
     } catch (error) {
       console.error("Save flight error:", error);
       console.error("Error details:", error.response?.data || error.message);
-      toast.error(
-        `Có lỗi xảy ra khi lưu chuyến bay: ${error.message || "Unknown error"}`
-      );
+
+      // Handle field-level validation errors from backend
+      if (error.response?.errors) {
+        // Backend returns field-specific errors - re-throw để modal xử lý
+        throw error;
+      } else {
+        // Handle general API errors
+        const errorMessage =
+          error.response?.error || // Specific validation error
+          error.response?.message || // General error message
+          error.message || // JavaScript error message
+          "Lỗi xảy ra"; // Fallback message
+
+        // Show specific error for aircraft scheduling conflict
+        if (
+          errorMessage.includes("Aircraft is already scheduled") ||
+          errorMessage.includes("Máy bay đã được lên lịch")
+        ) {
+          toast.error(
+            `Lỗi lịch trình: ${errorMessage}. Vui lòng chọn thời gian hoặc máy bay khác.`
+          );
+        } else if (
+          errorMessage.includes("Gate is already assigned") ||
+          errorMessage.includes("Cổng đã được gán")
+        ) {
+          toast.error(`Lỗi cổng: ${errorMessage}. Vui lòng chọn cổng khác.`);
+        } else if (
+          errorMessage.includes("Departure time must be before arrival time") ||
+          errorMessage.includes("Thời gian khởi hành phải trước thời gian đến")
+        ) {
+          toast.error("Thời gian khởi hành phải trước thời gian đến");
+        } else if (
+          errorMessage.includes(
+            "Round-trip flight must have a roundTripGroupId"
+          )
+        ) {
+          toast.error("Chuyến bay khứ hồi phải có mã nhóm khứ hồi");
+        } else if (
+          errorMessage.includes(
+            "Departure and arrival airports must be different"
+          )
+        ) {
+          toast.error("Sân bay khởi hành và đến phải khác nhau");
+        } else if (
+          errorMessage.includes("Multi-city flight must have at least one stop")
+        ) {
+          toast.error("Chuyến bay đa thành phố phải có ít nhất một điểm dừng");
+        } else if (
+          errorMessage.includes("Stop duration must be at least 20 minutes")
+        ) {
+          toast.error("Thời gian dừng phải ít nhất 20 phút");
+        } else if (errorMessage.includes("Stop order must be consecutive")) {
+          toast.error("Thứ tự điểm dừng phải liên tiếp");
+        } else if (
+          errorMessage.includes(
+            "Consecutive stops cannot be at the same airport"
+          )
+        ) {
+          toast.error("Các điểm dừng liên tiếp không được ở cùng sân bay");
+        } else {
+          toast.error(errorMessage);
+        }
+      }
+
+      // Re-throw error để modal có thể xử lý field-level errors
+      throw error;
     }
   };
 
@@ -419,7 +466,7 @@ const AdminFlights = () => {
       </div>
 
       {/* Flight Statistics */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
         {flightStats.map((stat, index) => {
           const Icon = stat.icon;
           return (

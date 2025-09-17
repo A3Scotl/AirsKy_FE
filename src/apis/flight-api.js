@@ -81,6 +81,37 @@ export const flightApi = {
   },
 
   /**
+   * Kiểm tra xung đột lịch trình
+   * @param {object} params - { departureDate, departureTime, arrivalDate, arrivalTime, departureAirportId, arrivalAirportId, aircraftId, gateId, excludeFlightId }
+   * @returns {Promise<{ success: boolean, data?: { aircraft: [], departureAirport: [], arrivalAirport: [], gate: [] }, message: string }>}
+   */
+  checkScheduleConflicts: async (params = {}) => {
+    const queryParams = new URLSearchParams();
+    if (params.departureDate)
+      queryParams.append("departureDate", params.departureDate);
+    if (params.departureTime)
+      queryParams.append("departureTime", params.departureTime);
+    if (params.arrivalDate)
+      queryParams.append("arrivalDate", params.arrivalDate);
+    if (params.arrivalTime)
+      queryParams.append("arrivalTime", params.arrivalTime);
+    if (params.departureAirportId)
+      queryParams.append("departureAirportId", params.departureAirportId);
+    if (params.arrivalAirportId)
+      queryParams.append("arrivalAirportId", params.arrivalAirportId);
+    if (params.aircraftId) queryParams.append("aircraftId", params.aircraftId);
+    if (params.gateId) queryParams.append("gateId", params.gateId);
+    if (params.excludeFlightId)
+      queryParams.append("excludeFlightId", params.excludeFlightId);
+
+    const queryString = queryParams.toString();
+    const endpoint = queryString
+      ? `/flights/check-conflicts?${queryString}`
+      : "/flights/check-conflicts";
+    return apiHandler("get", endpoint);
+  },
+
+  /**
    * Lấy danh sách ghế theo chuyến bay
    * @param {number} flightId - ID chuyến bay
    * @returns {Promise<{ success: boolean, data?: any, message: string }>}

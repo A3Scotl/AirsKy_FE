@@ -11,10 +11,12 @@ import {
   Plus,
   Edit,
   Minus,
+  AlertTriangle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { DateTimePicker, TimePicker } from "@/components/ui/date-time-picker";
 import {
   Select,
   SelectContent,
@@ -32,12 +34,22 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Separator } from "@/components/ui/separator";
 import { airportApi } from "@/apis/airport-api";
 import { airlineApi } from "@/apis/airline-api";
 import { aircraftApi } from "@/apis/aircraft-api";
 import { classesApi } from "@/apis/classes-api";
 import { flightApi } from "@/apis/flight-api";
 import { toast } from "sonner";
+import { format } from "date-fns";
+import ConflictModal from "./conflict-modal";
 
 const TEXT = {
   addFlight: "Thêm Chuyến Bay Mới",
@@ -72,7 +84,6 @@ const TEXT = {
   checkInCounter: "Quầy Check-in",
   pricingInfo: "Thông Tin Giá Vé",
   fareClasses: "Giá vé theo hạng",
-  basePrice: "Giá Cơ Bản",
   flightType: "Loại Chuyến Bay",
   additionalServices: "Dịch Vụ Bổ Sung",
   servicesAmenities: "Dịch vụ và tiện ích trên chuyến bay",
@@ -87,7 +98,6 @@ const TEXT = {
   arrivalAfterDeparture: "Thời gian đến phải sau thời gian khởi hành",
   capacityGreaterZero: "Sức chứa phải lớn hơn 0",
   bookedExceedCapacity: "Ghế đã đặt không thể vượt quá sức chứa",
-  priceGreaterZero: "Giá phải lớn hơn 0",
   selectGate: "Chọn cổng",
   selectDepartureAirportFirst: "Chọn sân bay khởi hành trước",
   save: "Lưu",
@@ -105,7 +115,7 @@ const TEXT = {
   stopAirport: "Sân Bay Dừng",
   stopDuration: "Thời Gian Dừng (phút)",
   travelClasses: "Hạng vé",
-  addClass: "Thêm hang vé",
+  addClass: "Thêm hạng vé",
   removeClass: "Xóa hạng vé",
   selectClass: "Chọn hạng vé",
   customPrice: "Giá Tùy Chỉnh",
@@ -202,6 +212,7 @@ const FlightFormModal = ({
   const [isReturnFlight, setIsReturnFlight] = useState(false);
   const [outboundFlight, setOutboundFlight] = useState(null);
   const [existingFlights, setExistingFlights] = useState([]);
+  const [showConflictModal, setShowConflictModal] = useState(false);
 
   const generateRoundTripGroupId = () => {
     const now = new Date();
@@ -220,7 +231,6 @@ const FlightFormModal = ({
       const flights = response?.data?.content || [];
       return flights.some((flight) => flight.roundTripGroupId === groupId);
     } catch (error) {
-      console.error("Error checking group ID existence:", error);
       return false; // Nếu có lỗi, giả định không tồn tại để tránh block
     }
   };
@@ -277,7 +287,6 @@ const FlightFormModal = ({
 
       setExistingFlights(validRoundTrips);
     } catch (error) {
-      console.error("Failed to load existing flights:", error);
       setExistingFlights([]);
     }
   };
@@ -315,19 +324,11 @@ const FlightFormModal = ({
             ensureArray(classesRes?.data?.content || classesRes?.data)
           );
         } catch (error) {
-          console.error("Failed to load data:", error);
+          // Handle error silently
         }
       };
       loadData();
       if (!isEditMode) loadExistingFlights();
-
-      console.log("=== FORM INITIALIZATION DEBUG ===");
-      console.log("isEditMode:", isEditMode);
-      console.log("isRoundTrip:", isRoundTrip);
-      console.log("isReturnFlight:", isReturnFlight);
-      console.log("isMultiCity:", isMultiCity);
-      console.log("flight prop:", flight);
-      console.log("==================================");
     } else {
       setFormData(initialFormData);
       setErrors({});
@@ -338,24 +339,41 @@ const FlightFormModal = ({
   }, [open, isEditMode]);
 
   useEffect(() => {
+    console.log("=== LOAD GATES DEBUG ===");
+    console.log("formData.departureAirportId:", formData.departureAirportId);
+    console.log("open:", open);
+
     if (formData.departureAirportId && open) {
+      console.log(
+        "Loading gates for departure airport:",
+        formData.departureAirportId
+      );
+
       const loadGates = async () => {
         try {
+          console.log(
+            "Calling airportApi.getAirportById with:",
+            formData.departureAirportId
+          );
           const airportRes = await airportApi.getAirportById(
             formData.departureAirportId
           );
-          setGates(
-            Array.isArray(airportRes?.data?.gates)
-              ? airportRes?.data?.gates
-              : []
-          );
+          console.log("Airport API response:", airportRes);
+
+          const gatesData = Array.isArray(airportRes?.data?.gates)
+            ? airportRes?.data?.gates
+            : [];
+
+          console.log("All gates:", gatesData);
+          setGates(gatesData);
         } catch (error) {
-          console.error("Failed to load gates:", error);
+          console.error("Error loading gates:", error);
           setGates([]);
         }
       };
       loadGates();
     } else {
+      console.log("Not loading gates - conditions not met");
       setGates([]);
     }
   }, [formData.departureAirportId, open]);
@@ -379,14 +397,10 @@ const FlightFormModal = ({
         arrivalAirportId: String(
           flight.arrivalAirport?.airportId || flight.arrivalAirportId || ""
         ),
-        departureDate: departureTime
-          ? departureTime.toISOString().split("T")[0]
-          : "",
-        departureTime: departureTime
-          ? departureTime.toISOString().slice(11, 16)
-          : "",
-        arrivalDate: arrivalTime ? arrivalTime.toISOString().split("T")[0] : "",
-        arrivalTime: arrivalTime ? arrivalTime.toISOString().slice(11, 16) : "",
+        departureDate: departureTime ? format(departureTime, "yyyy-MM-dd") : "",
+        departureTime: departureTime ? format(departureTime, "HH:mm") : "",
+        arrivalDate: arrivalTime ? format(arrivalTime, "yyyy-MM-dd") : "",
+        arrivalTime: arrivalTime ? format(arrivalTime, "HH:mm") : "",
         totalSeats: flight.totalSeats || "",
         gateId: String(flight.gateId || ""),
         basePrice: flight.basePrice || "",
@@ -431,13 +445,6 @@ const FlightFormModal = ({
           const groupId =
             formData.roundTripGroupId ||
             (await generateUniqueRoundTripGroupId());
-          console.log("=== ROUND TRIP GROUP ID CREATION ===");
-          console.log(
-            "Existing formData.roundTripGroupId:",
-            formData.roundTripGroupId
-          );
-          console.log("Generated/Using groupId:", groupId);
-          console.log("=====================================");
           setFormData((prev) => ({
             ...prev,
             tripType: "ROUND_TRIP",
@@ -448,13 +455,6 @@ const FlightFormModal = ({
       } else if (isReturnFlight) {
         setIsRoundTrip(false);
         setIsMultiCity(false);
-        console.log("=== RETURN FLIGHT MODE ACTIVATED ===");
-        console.log("isReturnFlight:", isReturnFlight);
-        console.log(
-          "Current formData.roundTripGroupId:",
-          formData.roundTripGroupId
-        );
-        console.log("====================================");
         setFormData((prev) => ({
           ...prev,
           tripType: "ROUND_TRIP",
@@ -479,18 +479,224 @@ const FlightFormModal = ({
     }
   }, [isRoundTrip, isMultiCity, isReturnFlight, isEditMode]);
 
-  const handleInputChange = (field, value) => {
-    console.log(`=== FIELD CHANGE DEBUG ===`);
-    console.log(`Field: ${field}`);
-    console.log(`Old value:`, formData[field]);
-    console.log(`New value:`, value);
-    console.log(`isRoundTrip:`, isRoundTrip);
-    console.log(`isReturnFlight:`, isReturnFlight);
-    console.log(`isMultiCity:`, isMultiCity);
-    console.log(`==========================`);
+  const validateField = (field, value, currentFormData = formData) => {
+    // Skip validation if field is empty (except for required fields)
+    if (
+      !value &&
+      ![
+        "airlineId",
+        "aircraftId",
+        "departureAirportId",
+        "arrivalAirportId",
+        "businessId",
+      ].includes(field)
+    ) {
+      return "";
+    }
 
-    setFormData((prev) => ({ ...prev, [field]: value }));
+    switch (field) {
+      case "airlineId":
+        if (!value) return TEXT.requiredField;
+        const selectedAirline = airlines.find(
+          (a) => String(a.airlineId) === value
+        );
+        if (!selectedAirline) return "Hãng hàng không không tồn tại";
+        if (!selectedAirline.active) return "Hãng hàng không không hoạt động";
+        return "";
+
+      case "aircraftId":
+        if (!value) return TEXT.requiredField;
+        if (!aircrafts.find((a) => String(a.aircraftId) === value)) {
+          return "Máy bay không tồn tại";
+        }
+        return "";
+
+      case "departureAirportId":
+        if (!value) return TEXT.requiredField;
+        const selectedDepartureAirport = airports.find(
+          (a) => String(a.airportId) === value
+        );
+        if (!selectedDepartureAirport) return "Sân bay khởi hành không tồn tại";
+        if (!selectedDepartureAirport.active)
+          return "Sân bay khởi hành không hoạt động";
+        return "";
+
+      case "arrivalAirportId":
+        if (!value) return TEXT.requiredField;
+        const selectedArrivalAirport = airports.find(
+          (a) => String(a.airportId) === value
+        );
+        if (!selectedArrivalAirport) return "Sân bay đến không tồn tại";
+        if (!selectedArrivalAirport.active)
+          return "Sân bay đến không hoạt động";
+        // Use the current formData value for comparison
+        const currentDepartureId = currentFormData.departureAirportId;
+        if (value === currentDepartureId) return "Phải khác sân bay khởi hành";
+        return "";
+
+      case "businessId":
+        if (!value) return TEXT.requiredField;
+        return "";
+
+        // case "gateId":
+        if (!isEditMode && !value) return TEXT.requiredField;
+        if (!isEditMode && !gates.find((g) => String(g.gateId) === value)) {
+          return "Cổng không tồn tại";
+        }
+        const selectedGate = gates.find((g) => String(g.gateId) === value);
+        if (value && currentFormData.departureAirportId && !isEditMode) {
+          // Only validate gate-airport relationship if gates are loaded
+          if (gates.length > 0) {
+            if (
+              selectedGate &&
+              String(selectedGate.airportId) !==
+                String(currentFormData.departureAirportId)
+            ) {
+              return "Cổng phải thuộc về sân bay khởi hành";
+            }
+          }
+        }
+        return "";
+
+      case "departureDate":
+      case "departureTime":
+      case "arrivalDate":
+      case "arrivalTime":
+        // Validate time logic when all time fields are filled
+        if (
+          currentFormData.departureDate &&
+          currentFormData.arrivalDate &&
+          currentFormData.departureTime &&
+          currentFormData.arrivalTime
+        ) {
+          const dep = new Date(
+            `${currentFormData.departureDate}T${currentFormData.departureTime}`
+          );
+          const arr = new Date(
+            `${currentFormData.arrivalDate}T${currentFormData.arrivalTime}`
+          );
+          if (dep >= arr) return TEXT.arrivalAfterDeparture;
+        }
+        return "";
+
+      case "totalSeats":
+        if (value && value <= 0) return TEXT.capacityGreaterZero;
+        return "";
+
+      default:
+        return "";
+    }
+  };
+
+  const validateClassAvailableSeats = (value, index, currentFormData) => {
+    if (!value || value < 0) {
+      return "Không âm";
+    }
+
+    // Check if individual class seats exceed aircraft capacity
+    if (currentFormData.aircraftId) {
+      const selectedAircraft = aircrafts.find(
+        (a) => String(a.aircraftId) === currentFormData.aircraftId
+      );
+
+      if (selectedAircraft && selectedAircraft.totalSeats) {
+        const seatsValue = parseInt(value) || 0;
+        if (seatsValue > selectedAircraft.totalSeats) {
+          return `Số ghế không được vượt quá sức chứa máy bay (${selectedAircraft.totalSeats})`;
+        }
+      }
+    }
+
+    return "";
+  };
+
+  const validateTotalSeats = (currentFormData) => {
+    if (
+      currentFormData.flightTravelClasses.length > 0 &&
+      currentFormData.aircraftId
+    ) {
+      const selectedAircraft = aircrafts.find(
+        (a) => String(a.aircraftId) === currentFormData.aircraftId
+      );
+
+      if (selectedAircraft && selectedAircraft.totalSeats) {
+        const totalAvailableSeats = currentFormData.flightTravelClasses.reduce(
+          (total, cls) => total + (parseInt(cls.availableSeats) || 0),
+          0
+        );
+
+        if (totalAvailableSeats > selectedAircraft.totalSeats) {
+          return `Tổng số ghế khả dụng (${totalAvailableSeats}) không được vượt quá sức chứa máy bay (${selectedAircraft.totalSeats})`;
+        }
+      }
+    }
+    return "";
+  };
+
+  const validateClassPrice = (value) => {
+    if (!value || value <= 0) {
+      return TEXT.priceGreaterZero;
+    }
+    return "";
+  };
+
+  const handleInputChange = (field, value) => {
+    const newFormData = { ...formData, [field]: value };
+    setFormData(newFormData);
+
+    // Clear previous error for this field
     setErrors((prev) => ({ ...prev, [field]: "" }));
+
+    // Perform real-time validation for specific fields
+    const fieldError = validateField(field, value, newFormData);
+    if (fieldError) {
+      setErrors((prev) => ({ ...prev, [field]: fieldError }));
+    }
+
+    // If changing departure airport, also validate arrival airport
+    if (field === "departureAirportId" && newFormData.arrivalAirportId) {
+      const arrivalError = validateField(
+        "arrivalAirportId",
+        newFormData.arrivalAirportId,
+        newFormData
+      );
+      setErrors((prev) => ({ ...prev, arrivalAirportId: arrivalError }));
+    }
+
+    // If changing aircraft, also validate all travel classes
+    if (field === "aircraftId" && newFormData.flightTravelClasses.length > 0) {
+      newFormData.flightTravelClasses.forEach((cls, index) => {
+        if (cls.availableSeats) {
+          const seatsError = validateClassAvailableSeats(
+            cls.availableSeats,
+            index,
+            newFormData
+          );
+          if (seatsError) {
+            setErrors((prev) => ({
+              ...prev,
+              [`availableSeats_${index}`]: seatsError,
+            }));
+          } else {
+            setErrors((prev) => ({ ...prev, [`availableSeats_${index}`]: "" }));
+          }
+        }
+      });
+
+      // Also validate total seats
+      const totalSeatsError = validateTotalSeats(newFormData);
+      setErrors((prev) => ({
+        ...prev,
+        totalSeats: totalSeatsError || "", // Clear if no error
+      }));
+    }
+
+    // If changing departure airport, clear gate selection and reload gates
+    if (field === "departureAirportId") {
+      console.log("Departure airport changed, clearing gate selection");
+      setFormData((prev) => ({ ...prev, gateId: "" }));
+      setErrors((prev) => ({ ...prev, gateId: "" }));
+    }
   };
 
   const handleOutboundSelect = async (value) => {
@@ -504,11 +710,6 @@ const FlightFormModal = ({
       // Nếu chuyến bay đi chưa có roundTripGroupId, tạo mới
       if (!roundTripGroupId) {
         roundTripGroupId = await generateUniqueRoundTripGroupId();
-        console.log("=== CREATING NEW ROUND TRIP GROUP ID ===");
-        console.log("Generated new roundTripGroupId:", roundTripGroupId);
-      } else {
-        console.log("=== USING EXISTING ROUND TRIP GROUP ID ===");
-        console.log("Using existing roundTripGroupId:", roundTripGroupId);
       }
 
       setFormData((prev) => ({
@@ -525,11 +726,6 @@ const FlightFormModal = ({
         businessId: String(selected.businessId),
         roundTripGroupId: roundTripGroupId,
       }));
-
-      console.log("=== OUTBOUND FLIGHT SELECTED ===");
-      console.log("Selected flight:", selected);
-      console.log("Final roundTripGroupId set:", roundTripGroupId);
-      console.log("=================================");
     }
   };
 
@@ -589,34 +785,114 @@ const FlightFormModal = ({
   };
 
   const handleAddClass = () => {
-    setFormData((prev) => ({
-      ...prev,
+    const newFormData = {
+      ...formData,
       flightTravelClasses: [
-        ...prev.flightTravelClasses,
+        ...formData.flightTravelClasses,
         { classId: "", customPrice: "", availableSeats: "" },
       ],
+    };
+    setFormData(newFormData);
+
+    // Validate total seats after adding new class
+    const totalSeatsError = validateTotalSeats(newFormData);
+    setErrors((prev) => ({
+      ...prev,
+      totalSeats: totalSeatsError || "", // Clear if no error
     }));
   };
 
   const handleRemoveClass = (index) => {
-    setFormData((prev) => ({
-      ...prev,
-      flightTravelClasses: prev.flightTravelClasses.filter(
+    const newFormData = {
+      ...formData,
+      flightTravelClasses: formData.flightTravelClasses.filter(
         (_, i) => i !== index
       ),
+    };
+    setFormData(newFormData);
+
+    // Clear errors for the removed class
+    const errorKey = `availableSeats_${index}`;
+    setErrors((prev) => {
+      const newErrors = { ...prev };
+      delete newErrors[errorKey];
+      delete newErrors[`customPrice_${index}`];
+      delete newErrors[`classId_${index}`];
+      return newErrors;
+    });
+
+    // Validate total seats after removing class
+    const totalSeatsError = validateTotalSeats(newFormData);
+    setErrors((prev) => ({
+      ...prev,
+      totalSeats: totalSeatsError || "", // Clear if no error
     }));
   };
 
   const handleClassChange = (index, field, value) => {
-    setFormData((prev) => ({
-      ...prev,
-      flightTravelClasses: prev.flightTravelClasses.map((cls, i) =>
+    const newFormData = {
+      ...formData,
+      flightTravelClasses: formData.flightTravelClasses.map((cls, i) =>
         i === index ? { ...cls, [field]: value } : cls
       ),
+    };
+    setFormData(newFormData);
+
+    // Clear previous error for this field
+    setErrors((prev) => ({
+      ...prev,
+      [field === "availableSeats"
+        ? `availableSeats_${index}`
+        : `customPrice_${index}`]: "",
     }));
+
+    // Perform real-time validation for availableSeats
+    if (field === "availableSeats") {
+      // Clear totalSeats error when availableSeats is changed
+      setErrors((prev) => ({ ...prev, totalSeats: "" }));
+
+      // Validate individual class availableSeats
+      const availableSeatsError = validateClassAvailableSeats(
+        value,
+        index,
+        newFormData
+      );
+      if (availableSeatsError) {
+        setErrors((prev) => ({
+          ...prev,
+          [`availableSeats_${index}`]: availableSeatsError,
+        }));
+      }
+
+      // Validate total seats across all classes
+      const totalSeatsError = validateTotalSeats(newFormData);
+      if (totalSeatsError) {
+        setErrors((prev) => ({ ...prev, totalSeats: totalSeatsError }));
+      } else {
+        setErrors((prev) => ({ ...prev, totalSeats: "" })); // Clear error
+      }
+    }
+
+    // Validate customPrice
+    if (field === "customPrice") {
+      const priceError = validateClassPrice(value);
+      if (priceError) {
+        setErrors((prev) => ({
+          ...prev,
+          [`customPrice_${index}`]: priceError,
+        }));
+      }
+    }
   };
 
   const validateForm = () => {
+    console.log("=== VALIDATE FORM DEBUG ===");
+    console.log("Form data:", formData);
+    console.log("isEditMode:", isEditMode);
+    console.log("isReturnFlight:", isReturnFlight);
+    console.log("isMultiCity:", isMultiCity);
+    console.log("outboundFlight:", outboundFlight);
+
     const newErrors = {};
 
     if (isReturnFlight && !isEditMode && !outboundFlight) {
@@ -630,6 +906,19 @@ const FlightFormModal = ({
         "Phải có ít nhất một điểm dừng cho đa thành phố";
     }
 
+    // Validate round-trip flights
+    if ((isRoundTrip || isReturnFlight) && !formData.roundTripGroupId) {
+      newErrors.roundTripGroupId = "Chuyến bay khứ hồi phải có mã nhóm khứ hồi";
+    }
+
+    if (
+      (isRoundTrip || isReturnFlight) &&
+      formData.departureAirportId === formData.arrivalAirportId
+    ) {
+      newErrors.arrivalAirportId =
+        "Sân bay khởi hành và đến phải khác nhau cho chuyến bay khứ hồi";
+    }
+
     const requiredFields = [
       "airlineId",
       "aircraftId",
@@ -639,7 +928,6 @@ const FlightFormModal = ({
       "departureTime",
       "arrivalDate",
       "arrivalTime",
-      "basePrice",
       "businessId",
     ];
     if (!isEditMode) requiredFields.push("gateId");
@@ -661,21 +949,57 @@ const FlightFormModal = ({
       if (dep >= arr) newErrors.arrivalTime = TEXT.arrivalAfterDeparture;
     }
 
-    if (formData.basePrice <= 0) newErrors.basePrice = TEXT.priceGreaterZero;
-
     if (formData.stopsList.length > 0) {
       formData.stopsList.forEach((stop, index) => {
         if (isMultiCity) {
+          // Validate stop order is consecutive starting from 1
+          const expectedStopOrder = index + 1;
+          if (stop.stopOrder && stop.stopOrder !== expectedStopOrder) {
+            newErrors[
+              `stopOrder_${index}`
+            ] = `Thứ tự điểm dừng phải là ${expectedStopOrder}`;
+          }
+
           if (!stop.arrivalTime)
             newErrors[`stopArrivalTime_${index}`] = "Bắt buộc";
           if (!stop.departureTime)
             newErrors[`stopDepartureTime_${index}`] = "Bắt buộc";
-          if (
-            stop.arrivalTime &&
-            stop.departureTime &&
-            new Date(stop.arrivalTime) >= new Date(stop.departureTime)
-          ) {
-            newErrors[`stopTimes_${index}`] = "Khởi hành phải sau đến";
+
+          // Validate stop duration >= 20 minutes
+          if (stop.arrivalTime && stop.departureTime) {
+            const arrivalTime = new Date(stop.arrivalTime);
+            const departureTime = new Date(stop.departureTime);
+            const stopDurationMinutes =
+              (departureTime - arrivalTime) / (1000 * 60);
+
+            if (stopDurationMinutes < 20) {
+              newErrors[`stopDuration_${index}`] =
+                "Thời gian dừng phải ít nhất 20 phút";
+            }
+
+            if (arrivalTime >= departureTime) {
+              newErrors[`stopTimes_${index}`] =
+                "Thời gian khởi hành phải sau thời gian đến";
+            }
+          }
+
+          // Validate consecutive stops are not at the same airport
+          if (index > 0) {
+            const prevStop = formData.stopsList[index - 1];
+            if (prevStop.airportId === stop.airportId) {
+              newErrors[`consecutiveStops_${index}`] =
+                "Các điểm dừng liên tiếp không được ở cùng sân bay";
+            }
+
+            // Validate stop times are sequential
+            if (prevStop.departureTime && stop.arrivalTime) {
+              const prevDeparture = new Date(prevStop.departureTime);
+              const currentArrival = new Date(stop.arrivalTime);
+              if (currentArrival <= prevDeparture) {
+                newErrors[`sequentialStops_${index}`] =
+                  "Thời gian đến của điểm dừng phải sau thời gian khởi hành của điểm dừng trước";
+              }
+            }
           }
         } else {
           if (stop.duration < 20 || stop.duration > 1440) {
@@ -690,65 +1014,130 @@ const FlightFormModal = ({
     }
 
     if (!airlines.find((a) => String(a.airlineId) === formData.airlineId))
-      newErrors.airlineId = "Không tồn tại";
+      newErrors.airlineId = "Hãng hàng không không tồn tại";
     if (!aircrafts.find((a) => String(a.aircraftId) === formData.aircraftId))
-      newErrors.aircraftId = "Không tồn tại";
+      newErrors.aircraftId = "Máy bay không tồn tại";
+
+    // Validate airline is active
+    const selectedAirline = airlines.find(
+      (a) => String(a.airlineId) === formData.airlineId
+    );
+    if (selectedAirline && !selectedAirline.active) {
+      newErrors.airlineId = "Hãng hàng không không hoạt động";
+    }
+
+    // Validate travel classes exist
+    formData.flightTravelClasses.forEach((cls, index) => {
+      if (
+        cls.classId &&
+        !travelClasses.find((tc) => String(tc.classId) === cls.classId)
+      ) {
+        newErrors[`classId_${index}`] = "Hạng vé không tồn tại";
+      }
+    });
+
     if (
       !airports.find((a) => String(a.airportId) === formData.departureAirportId)
     )
-      newErrors.departureAirportId = "Không tồn tại";
+      newErrors.departureAirportId = "Sân bay khởi hành không tồn tại";
     if (
       !airports.find((a) => String(a.airportId) === formData.arrivalAirportId)
     )
-      newErrors.arrivalAirportId = "Không tồn tại";
+      newErrors.arrivalAirportId = "Sân bay đến không tồn tại";
+
+    // Validate airports are active
+    const selectedDepartureAirport = airports.find(
+      (a) => String(a.airportId) === formData.departureAirportId
+    );
+    const selectedArrivalAirport = airports.find(
+      (a) => String(a.airportId) === formData.arrivalAirportId
+    );
+    if (selectedDepartureAirport && !selectedDepartureAirport.active) {
+      newErrors.departureAirportId = "Sân bay khởi hành không hoạt động";
+    }
+    if (selectedArrivalAirport && !selectedArrivalAirport.active) {
+      newErrors.arrivalAirportId = "Sân bay đến không hoạt động";
+    }
+
     if (formData.departureAirportId === formData.arrivalAirportId)
       newErrors.arrivalAirportId = "Phải khác sân bay khởi hành";
 
     if (!isEditMode && !gates.find((g) => String(g.gateId) === formData.gateId))
-      newErrors.gateId = "Không tồn tại";
+      newErrors.gateId = "Cổng không tồn tại";
 
     formData.flightTravelClasses.forEach((cls, index) => {
       if (!cls.classId) newErrors[`classId_${index}`] = "Bắt buộc";
       if (cls.customPrice <= 0)
         newErrors[`customPrice_${index}`] = TEXT.priceGreaterZero;
-      if (cls.availableSeats < 0)
+
+      // Validate availableSeats
+      if (cls.availableSeats < 0) {
         newErrors[`availableSeats_${index}`] = "Không âm";
+      } else if (formData.aircraftId) {
+        const selectedAircraft = aircrafts.find(
+          (a) => String(a.aircraftId) === formData.aircraftId
+        );
+        if (selectedAircraft && selectedAircraft.totalSeats) {
+          const seatsValue = parseInt(cls.availableSeats) || 0;
+          if (seatsValue > selectedAircraft.totalSeats) {
+            newErrors[
+              `availableSeats_${index}`
+            ] = `Số ghế không được vượt quá sức chứa máy bay (${selectedAircraft.totalSeats})`;
+          }
+        }
+      }
     });
 
-    setErrors(newErrors);
+    // Validate total available seats don't exceed aircraft capacity
+    if (formData.flightTravelClasses.length > 0 && formData.aircraftId) {
+      const selectedAircraft = aircrafts.find(
+        (a) => String(a.aircraftId) === formData.aircraftId
+      );
 
-    console.log("=== VALIDATION DEBUG ===");
-    console.log("Validation errors:", newErrors);
-    console.log("Number of errors:", Object.keys(newErrors).length);
-    console.log("isRoundTrip:", isRoundTrip);
-    console.log("isReturnFlight:", isReturnFlight);
-    console.log("isMultiCity:", isMultiCity);
-    console.log("outboundFlight:", outboundFlight);
-    console.log("formData.stopsList.length:", formData.stopsList.length);
-    console.log("=========================");
+      if (selectedAircraft && selectedAircraft.totalSeats) {
+        const totalAvailableSeats = formData.flightTravelClasses.reduce(
+          (total, cls) => total + (parseInt(cls.availableSeats) || 0),
+          0
+        );
 
-    return Object.keys(newErrors).length === 0;
+        if (totalAvailableSeats > selectedAircraft.totalSeats) {
+          newErrors.totalSeats = `Tổng số ghế khả dụng (${totalAvailableSeats}) không được vượt quá sức chứa máy bay (${selectedAircraft.totalSeats})`;
+        } else {
+          // Clear totalSeats error if validation passes
+          delete newErrors.totalSeats;
+        }
+      } else {
+        // Clear totalSeats error if no aircraft selected
+        delete newErrors.totalSeats;
+      }
+    } else {
+      // Clear totalSeats error if no travel classes
+      delete newErrors.totalSeats;
+    }
+
+    // Filter out empty string errors
+    const filteredErrors = {};
+    Object.entries(newErrors).forEach(([key, value]) => {
+      if (value && value.trim() !== "") {
+        filteredErrors[key] = value;
+      }
+    });
+
+    setErrors(filteredErrors);
+
+    const isValid = Object.keys(filteredErrors).length === 0;
+
+    return isValid;
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!validateForm()) {
-      console.log("=== VALIDATION FAILED ===");
-      console.log("Current errors:", errors);
-      console.log("Form data:", formData);
-      console.log("==========================");
+
+    // Validate form
+    const isValid = validateForm();
+    if (!isValid) {
       return toast.error("Vui lòng kiểm tra lỗi");
     }
-
-    console.log("=== SUBMIT DEBUG INFO ===");
-    console.log("isEditMode:", isEditMode);
-    console.log("isRoundTrip:", isRoundTrip);
-    console.log("isReturnFlight:", isReturnFlight);
-    console.log("isMultiCity:", isMultiCity);
-    console.log("outboundFlight:", outboundFlight);
-    console.log("formData.tripType:", formData.tripType);
-    console.log("formData.roundTripGroupId:", formData.roundTripGroupId);
-    console.log("==========================");
 
     const loadingToast = toast.loading(isEditMode ? "Cập nhật..." : "Tạo...");
     try {
@@ -773,24 +1162,24 @@ const FlightFormModal = ({
         departureAirportId: parseInt(formData.departureAirportId),
         arrivalAirportId: parseInt(formData.arrivalAirportId),
         departureTime: new Date(
-          `${formData.departureDate}T${formData.departureTime}:00Z`
+          `${formData.departureDate}T${formData.departureTime}:00`
         ).toISOString(),
         arrivalTime: new Date(
-          `${formData.arrivalDate}T${formData.arrivalTime}:00Z`
+          `${formData.arrivalDate}T${formData.arrivalTime}:00`
         ).toISOString(),
         gateId: parseInt(formData.gateId),
-        basePrice: parseFloat(formData.basePrice),
         type: formData.type,
         status: formData.status,
-        businessId: parseInt(formData.businessId),
+        businessId:
+          parseInt(formData.businessId) > 0 ? parseInt(formData.businessId) : 1, // Fallback to 1 if invalid
         tripType: formData.tripType,
         flightTravelClasses: processedClasses,
-        totalSeats:
-          selectedAircraft?.totalSeats || parseInt(formData.totalSeats) || 0,
-        // Include roundTripGroupId for both round trip and return flight
-        ...((isRoundTrip || isReturnFlight) && {
-          roundTripGroupId: formData.roundTripGroupId,
-        }),
+        stops: formData.stops,
+        // Only include roundTripGroupId if it's not empty
+        ...(formData.roundTripGroupId &&
+          formData.roundTripGroupId.trim() !== "" && {
+            roundTripGroupId: formData.roundTripGroupId,
+          }),
         ...(formData.stops !== "NON_STOP" && {
           stopsList: formData.stopsList.map((stop, i) =>
             isMultiCity
@@ -807,46 +1196,40 @@ const FlightFormModal = ({
           ),
           stops: formData.stops,
         }),
+        // Only include flightId for edit mode
         ...(isEditMode && { flightId: flight.flightId }),
-        // Các trường bổ sung
-        terminal: formData.terminal,
-        checkInCounter: formData.checkInCounter,
-        baggage: formData.baggage,
-        mealService: formData.mealService,
-        entertainment: formData.entertainment,
-        wifiAvailable: formData.wifiAvailable,
-        delayReason: formData.delayReason,
-        remarks: formData.remarks,
       };
 
-      console.log("=== FORM DATA DEBUG ===");
-      console.log("Raw formData:", formData);
-      console.log("isRoundTrip:", isRoundTrip);
-      console.log("isMultiCity:", isMultiCity);
-      console.log("isReturnFlight:", isReturnFlight);
-      console.log("Processed data to send:", processedData);
-      console.log(
-        "Round trip group ID in processedData:",
-        processedData.roundTripGroupId
-      );
-      console.log("Trip type in processedData:", processedData.tripType);
-      console.log("=========================");
+      const result = await onSave(processedData, isEditMode);
 
-      await onSave(processedData, isEditMode);
-      toast.dismiss(loadingToast);
-      toast.success(isEditMode ? "Cập nhật thành công" : "Tạo thành công");
-      onClose();
+      // Trả về result để parent component xử lý
+      if (result && result.success === true) {
+        toast.dismiss(loadingToast);
+        onClose();
+        return result;
+      } else {
+        toast.dismiss(loadingToast);
+        return result;
+      }
     } catch (error) {
-      console.error("=== SUBMIT ERROR ===");
-      console.error("Error details:", error);
-      console.error("Error response:", error.response);
-      console.error("Error message:", error.message);
-      console.error("===================");
-
       toast.dismiss(loadingToast);
-      toast.error(
-        error.response?.data?.message || error.message || "Lỗi xảy ra"
-      );
+
+      // Handle field-level validation errors from backend
+      if (error.response?.errors) {
+        // Backend returns field-specific errors
+        const fieldErrors = {};
+        Object.entries(error.response.errors).forEach(([field, message]) => {
+          fieldErrors[field] = message;
+        });
+        setErrors(fieldErrors);
+        toast.error("Vui lòng kiểm tra và sửa các lỗi trong form");
+      } else {
+        // Re-throw error để parent component xử lý
+        throw error;
+      }
+
+      // Form stays open for user to fix the error
+      // Don't close the form on API errors
     }
   };
 
@@ -1368,12 +1751,19 @@ const FlightFormModal = ({
                 <CardContent className="grid grid-cols-1 md:grid-cols-4 gap-4">
                   <div>
                     <Label>{TEXT.departureDate} *</Label>
-                    <Input
-                      type="date"
-                      value={formData.departureDate}
-                      onChange={(e) =>
-                        handleInputChange("departureDate", e.target.value)
+                    <DateTimePicker
+                      date={
+                        formData.departureDate
+                          ? new Date(formData.departureDate)
+                          : undefined
                       }
+                      onDateChange={(date) =>
+                        handleInputChange(
+                          "departureDate",
+                          date ? format(date, "yyyy-MM-dd") : ""
+                        )
+                      }
+                      placeholder="Chọn ngày khởi hành"
                       className={errors.departureDate ? "border-red-500" : ""}
                     />
                     {errors.departureDate && (
@@ -1384,12 +1774,12 @@ const FlightFormModal = ({
                   </div>
                   <div>
                     <Label>{TEXT.departureTime} *</Label>
-                    <Input
-                      type="time"
+                    <TimePicker
                       value={formData.departureTime}
-                      onChange={(e) =>
-                        handleInputChange("departureTime", e.target.value)
+                      onChange={(value) =>
+                        handleInputChange("departureTime", value)
                       }
+                      placeholder="Chọn giờ khởi hành"
                       className={errors.departureTime ? "border-red-500" : ""}
                     />
                     {errors.departureTime && (
@@ -1400,12 +1790,19 @@ const FlightFormModal = ({
                   </div>
                   <div>
                     <Label>{TEXT.arrivalDate} *</Label>
-                    <Input
-                      type="date"
-                      value={formData.arrivalDate}
-                      onChange={(e) =>
-                        handleInputChange("arrivalDate", e.target.value)
+                    <DateTimePicker
+                      date={
+                        formData.arrivalDate
+                          ? new Date(formData.arrivalDate)
+                          : undefined
                       }
+                      onDateChange={(date) =>
+                        handleInputChange(
+                          "arrivalDate",
+                          date ? format(date, "yyyy-MM-dd") : ""
+                        )
+                      }
+                      placeholder="Chọn ngày đến"
                       className={errors.arrivalDate ? "border-red-500" : ""}
                     />
                     {errors.arrivalDate && (
@@ -1416,12 +1813,12 @@ const FlightFormModal = ({
                   </div>
                   <div>
                     <Label>{TEXT.arrivalTime} *</Label>
-                    <Input
-                      type="time"
+                    <TimePicker
                       value={formData.arrivalTime}
-                      onChange={(e) =>
-                        handleInputChange("arrivalTime", e.target.value)
+                      onChange={(value) =>
+                        handleInputChange("arrivalTime", value)
                       }
+                      placeholder="Chọn giờ đến"
                       className={errors.arrivalTime ? "border-red-500" : ""}
                     />
                     {errors.arrivalTime && (
@@ -1432,6 +1829,25 @@ const FlightFormModal = ({
                   </div>
                 </CardContent>
               </Card>
+
+              {/* Button kiểm tra conflict */}
+              <div className="mt-4 flex justify-center">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setShowConflictModal(true)}
+                  disabled={
+                    !formData.departureDate ||
+                    !formData.departureTime ||
+                    !formData.arrivalDate ||
+                    !formData.arrivalTime
+                  }
+                  className="flex items-center gap-2"
+                >
+                  <AlertTriangle className="h-4 w-4" />
+                  Kiểm tra xung đột lịch trình
+                </Button>
+              </div>
 
               <Card className="mt-4">
                 <CardHeader>
@@ -1755,33 +2171,6 @@ const FlightFormModal = ({
             </TabsContent>
 
             <TabsContent value="classes">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-base flex items-center">
-                    <DollarSign className="h-4 w-4 mr-2" />
-                    {TEXT.pricingInfo}
-                  </CardTitle>
-                  <CardDescription className="text-xs">
-                    {TEXT.fareClasses}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div>
-                    <Label>{TEXT.basePrice} *</Label>
-                    <Input
-                      type="number"
-                      value={formData.basePrice}
-                      onChange={(e) =>
-                        handleInputChange("basePrice", e.target.value)
-                      }
-                      className={errors.basePrice ? "border-red-500" : ""}
-                    />
-                    {errors.basePrice && (
-                      <p className="text-red-500 text-xs">{errors.basePrice}</p>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
               <Card className="mt-4">
                 <CardHeader>
                   <CardTitle className="text-base flex items-center">
@@ -1793,6 +2182,39 @@ const FlightFormModal = ({
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
+                  {/* Hiển thị thông tin tổng quan về ghế */}
+                  {formData.aircraftId && (
+                    <div className="p-3 bg-blue-50 border border-blue-200 rounded-md">
+                      <div className="text-sm text-blue-800">
+                        <strong>Thông tin sức chứa:</strong>
+                        {(() => {
+                          const selectedAircraft = aircrafts.find(
+                            (a) => String(a.aircraftId) === formData.aircraftId
+                          );
+                          if (selectedAircraft) {
+                            const totalAvailableSeats =
+                              formData.flightTravelClasses.reduce(
+                                (total, cls) =>
+                                  total + (parseInt(cls.availableSeats) || 0),
+                                0
+                              );
+                            return (
+                              <>
+                                <br />
+                                Máy bay: {selectedAircraft.aircraftName}
+                                <br />
+                                Sức chứa: {selectedAircraft.totalSeats} ghế
+                                <br />
+                                Tổng ghế khả dụng: {totalAvailableSeats} ghế
+                              </>
+                            );
+                          }
+                          return null;
+                        })()}
+                      </div>
+                    </div>
+                  )}
+
                   {formData.flightTravelClasses.map((cls, index) => (
                     <Card key={index} className="p-4 space-y-2">
                       <div className="flex justify-between">
@@ -1898,6 +2320,15 @@ const FlightFormModal = ({
                   >
                     <Plus className="h-4 w-4 mr-2" /> {TEXT.addClass}
                   </Button>
+
+                  {/* Hiển thị lỗi tổng số ghế */}
+                  {errors.totalSeats && errors.totalSeats.trim() !== "" && (
+                    <div className="p-3 bg-red-50 border border-red-200 rounded-md">
+                      <p className="text-red-600 text-sm font-medium">
+                        ⚠️ {errors.totalSeats}
+                      </p>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </TabsContent>
@@ -1968,6 +2399,22 @@ const FlightFormModal = ({
           </div>
         </form>
       </div>
+
+      {/* Conflict Modal */}
+      <ConflictModal
+        open={showConflictModal}
+        onClose={() => setShowConflictModal(false)}
+        departureDate={formData.departureDate}
+        departureTime={formData.departureTime}
+        arrivalDate={formData.arrivalDate}
+        arrivalTime={formData.arrivalTime}
+        departureAirportId={formData.departureAirportId}
+        arrivalAirportId={formData.arrivalAirportId}
+        aircraftId={formData.aircraftId}
+        gateId={formData.gateId}
+        airports={airports}
+        aircrafts={aircrafts}
+      />
     </div>
   );
 };

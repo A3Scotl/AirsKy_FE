@@ -76,6 +76,7 @@ class ChatbotService {
 
         // Set up response handler
         this.messageHandlers.set("chat_response", (response) => {
+          console.log("📥 Raw socket response:", response);
           clearTimeout(timeout);
           this.messageHandlers.delete("chat_response");
           resolve({

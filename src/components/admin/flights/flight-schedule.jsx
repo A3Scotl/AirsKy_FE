@@ -26,6 +26,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { format } from "date-fns";
 
 // Text constants for Vietnamese interface
 const TEXT = {
@@ -108,11 +109,11 @@ const FlightSchedule = ({ flights }) => {
   const dailyFlights = useMemo(() => {
     const selectedDateObj = new Date(selectedDate);
     if (isNaN(selectedDateObj.getTime())) return [];
-    const dateStr = selectedDateObj.toISOString().split("T")[0];
+    const dateStr = format(selectedDateObj, "yyyy-MM-dd");
     return flights.filter((flight) => {
       const flightDateObj = new Date(flight.departureTime);
       if (isNaN(flightDateObj.getTime())) return false;
-      const flightDate = flightDateObj.toISOString().split("T")[0];
+      const flightDate = format(flightDateObj, "yyyy-MM-dd");
       return flightDate === dateStr;
     });
   }, [flights, selectedDate]);

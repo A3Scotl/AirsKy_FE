@@ -19,6 +19,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import ImageUpload from "@/components/ui/image-upload";
+import { format } from "date-fns";
 import {
   Select,
   SelectContent,
@@ -112,7 +113,7 @@ const DealFormModal = ({
     const toDateInput = (iso) => {
       if (!iso) return "";
       const d = new Date(iso);
-      return d.toISOString().slice(0, 10);
+      return format(d, "yyyy-MM-dd");
     };
     if (isEditMode && deal) {
       setFormData({

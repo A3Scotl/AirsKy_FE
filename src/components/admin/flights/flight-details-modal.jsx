@@ -12,6 +12,10 @@ import {
   Armchair,
   ChevronDown,
   ChevronUp,
+  ArrowRight,
+  ArrowRightLeft,
+  Check,
+  X as XIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -50,7 +54,7 @@ const TEXT = {
   delayed: "Hoãn",
   cancelled: "Đã Hủy",
   completed: "Hoàn Thành",
-  travelClasses: "Lớp Hành Trình",
+  travelClasses: "Hạng vé (giá tùy chỉnh)",
   className: "Tên Lớp",
   customPrice: "Giá Tùy Chỉnh",
   benefits: "Lợi Ích",
@@ -145,6 +149,268 @@ const FlightDetailsModal = ({ flight, open, onClose, onEdit, onDelete }) => {
       style: "currency",
       currency: "VND",
     }).format(amount);
+  };
+
+  const getTripTypeBadge = (tripType) => {
+    switch (tripType) {
+      case "one_way":
+        return {
+          text: "Một Chiều",
+          className:
+            "bg-blue-100 text-blue-800 border-blue-200 hover:bg-blue-200",
+        };
+      case "round_trip":
+        return {
+          text: "Khứ Hồi",
+          className:
+            "bg-green-100 text-green-800 border-green-200 hover:bg-green-200",
+        };
+      case "multi_city":
+        return {
+          text: "Đa Chặng",
+          className:
+            "bg-purple-100 text-purple-800 border-purple-200 hover:bg-purple-200",
+        };
+      default:
+        return {
+          text: "Không xác định",
+          className:
+            "bg-gray-100 text-gray-800 border-gray-200 hover:bg-gray-200",
+        };
+    }
+  };
+
+  const renderRouteInfo = (flight) => {
+    switch (flight.tripType) {
+      case "one_way":
+        return (
+          <div className="flex items-center justify-center space-x-8 py-4">
+            <div className="text-center flex flex-col items-center justify-center">
+              <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mb-2">
+                <Plane className="h-6 w-6 text-blue-600 transform -rotate-45" />
+              </div>
+              <p className="font-semibold text-lg">
+                {flight.departureAirport.airportCode}
+              </p>
+              <p className="text-sm text-gray-600">
+                {flight.departureAirport.airportName}
+              </p>
+            </div>
+            <div className="flex-1 relative">
+              <div className="h-px bg-gray-300" />
+              <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white px-2">
+                <Badge variant="outline">
+                  {formatDuration(flight.duration)}
+                </Badge>
+              </div>
+            </div>
+            <div className="text-center flex flex-col items-center justify-center">
+              <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mb-2">
+                <MapPin className="h-6 w-6 text-green-600" />
+              </div>
+              <p className="font-semibold text-lg">
+                {flight.arrivalAirport.airportCode}
+              </p>
+              <p className="text-sm text-gray-600">
+                {flight.arrivalAirport.airportName}
+              </p>
+            </div>
+          </div>
+        );
+
+      case "round_trip":
+        return (
+          <div className="space-y-6">
+            {/* Outbound Flight */}
+            <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
+              <div className="flex items-center justify-center space-x-6">
+                <div className="text-center flex flex-col items-center justify-center">
+                  <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center mb-2">
+                    <Plane className="h-5 w-5 text-blue-600 transform -rotate-45" />
+                  </div>
+                  <p className="font-semibold text-base">
+                    {flight.departureAirport.airportCode}
+                  </p>
+                  <p className="text-xs text-gray-600">
+                    {flight.departureAirport.airportName}
+                  </p>
+                </div>
+                <div className="flex-1 relative">
+                  <div className="h-px bg-blue-300" />
+                  <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-blue-50 px-2">
+                    <Badge
+                      variant="outline"
+                      className="text-blue-600 border-blue-300"
+                    >
+                      {formatDuration(flight.duration)}
+                    </Badge>
+                  </div>
+                </div>
+                <div className="text-center flex flex-col items-center justify-center">
+                  <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center mb-2">
+                    <MapPin className="h-5 w-5 text-green-600" />
+                  </div>
+                  <p className="font-semibold text-base">
+                    {flight.arrivalAirport.airportCode}
+                  </p>
+                  <p className="text-xs text-gray-600">
+                    {flight.arrivalAirport.airportName}
+                  </p>
+                </div>
+              </div>
+              <div className="text-center mt-3">
+                <Badge
+                  variant="outline"
+                  className="bg-blue-50 text-blue-700 border-blue-300"
+                >
+                  Chuyến đi
+                </Badge>
+              </div>
+            </div>
+
+            {/* Return Flight */}
+            <div className="bg-green-50 rounded-lg p-4 border border-green-200">
+              <div className="flex items-center justify-center space-x-6">
+                <div className="text-center flex flex-col items-center justify-center">
+                  <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center mb-2">
+                    <MapPin className="h-5 w-5 text-green-600" />
+                  </div>
+                  <p className="font-semibold text-base">
+                    {flight.arrivalAirport.airportCode}
+                  </p>
+                  <p className="text-xs text-gray-600">
+                    {flight.arrivalAirport.airportName}
+                  </p>
+                </div>
+                <div className="flex-1 relative">
+                  <div className="h-px bg-green-300" />
+                  <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-green-50 px-2">
+                    <Badge
+                      variant="outline"
+                      className="text-green-600 border-green-300"
+                    >
+                      {formatDuration(flight.duration)}
+                    </Badge>
+                  </div>
+                </div>
+                <div className="text-center flex flex-col items-center justify-center">
+                  <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center mb-2">
+                    <Plane className="h-5 w-5 text-blue-600 transform rotate-45" />
+                  </div>
+                  <p className="font-semibold text-base">
+                    {flight.departureAirport.airportCode}
+                  </p>
+                  <p className="text-xs text-gray-600">
+                    {flight.departureAirport.airportName}
+                  </p>
+                </div>
+              </div>
+              <div className="text-center mt-3">
+                <Badge
+                  variant="outline"
+                  className="bg-green-50 text-green-700 border-green-300"
+                >
+                  Chuyến về
+                </Badge>
+              </div>
+            </div>
+          </div>
+        );
+
+      case "multi_city":
+        return (
+          <div className="space-y-4">
+            <div className="bg-purple-50 rounded-lg p-4 border border-purple-200">
+              <div className="flex items-center justify-center space-x-4">
+                <div className="text-center flex flex-col items-center justify-center">
+                  <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center mb-2">
+                    <Plane className="h-5 w-5 text-purple-600 transform -rotate-45" />
+                  </div>
+                  <p className="font-semibold text-base">
+                    {flight.departureAirport.airportCode}
+                  </p>
+                  <p className="text-xs text-gray-600">
+                    {flight.departureAirport.airportName}
+                  </p>
+                </div>
+
+                <div className="flex items-center space-x-2">
+                  <div className="w-2 h-2 bg-purple-400 rounded-full"></div>
+                  <div className="w-2 h-2 bg-purple-400 rounded-full"></div>
+                  <div className="w-2 h-2 bg-purple-400 rounded-full"></div>
+                </div>
+
+                <div className="text-center flex flex-col items-center justify-center">
+                  <div className="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center mb-2">
+                    <MapPin className="h-5 w-5 text-orange-600" />
+                  </div>
+                  <p className="font-semibold text-base">
+                    {flight.arrivalAirport.airportCode}
+                  </p>
+                  <p className="text-xs text-gray-600">
+                    {flight.arrivalAirport.airportName}
+                  </p>
+                </div>
+              </div>
+              <div className="text-center mt-3">
+                <Badge
+                  variant="outline"
+                  className="bg-purple-50 text-purple-700 border-purple-300"
+                >
+                  Đa chặng
+                </Badge>
+              </div>
+            </div>
+
+            <div className="text-center">
+              <p className="text-sm text-gray-600">
+                Chuyến bay đa chặng với nhiều điểm dừng
+              </p>
+            </div>
+          </div>
+        );
+
+      default:
+        return (
+          <div className="flex items-center justify-center space-x-8 py-4">
+            <div className="text-center flex flex-col items-center justify-center">
+              <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mb-2">
+                <Plane className="h-6 w-6 text-gray-600 transform -rotate-45" />
+              </div>
+              <p className="font-semibold text-lg">
+                {flight.departureAirport.airportCode}
+              </p>
+              <p className="text-sm text-gray-600">
+                {flight.departureAirport.airportName}
+              </p>
+            </div>
+            <div className="flex-1 relative">
+              <div className="h-px bg-gray-300" />
+              <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white px-2">
+                <Badge variant="outline">
+                  {formatDuration(flight.duration)}
+                </Badge>
+              </div>
+            </div>
+            <div className="text-center flex flex-col items-center justify-center">
+              <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mb-2">
+                <MapPin className="h-6 w-6 text-gray-600" />
+              </div>
+              <p className="font-semibold text-lg">
+                {flight.arrivalAirport.airportCode}
+              </p>
+              <p className="text-sm text-gray-600">
+                {flight.arrivalAirport.airportName}
+              </p>
+            </div>
+          </div>
+        );
+    }
+  };
+
+  const parseBenefits = (benefitsString) => {
+    if (!benefitsString) return [];
+    return benefitsString.split(",").map((benefit) => benefit.trim());
   };
 
   const generateSeats = (aircraft, bookedSeats = []) => {
@@ -254,9 +520,26 @@ const FlightDetailsModal = ({ flight, open, onClose, onEdit, onDelete }) => {
               <h2 className="text-xl font-bold text-gray-900">
                 {TEXT.flightDetails} {flight.flightNumber}
               </h2>
-              <p className="text-sm text-gray-600">
+              {/* show tripType */}
+              {(() => {
+                const badgeConfig = getTripTypeBadge(flight.tripType);
+                return (
+                  <Badge
+                    variant="outline"
+                    className={`text-sm font-medium border ${badgeConfig.className}`}
+                  >
+                    {badgeConfig.text}
+                  </Badge>
+                );
+              })()}
+              <p className="text-xl text-gray-600">
                 {flight.departureAirport.airportName} (
-                {flight.departureAirport.airportCode}) →{" "}
+                {flight.departureAirport.airportCode})
+                {flight.tripType === "round_trip" ? (
+                  <ArrowRightLeft className="inline mx-1 text-gray-500" />
+                ) : (
+                  <ArrowRight className="inline mx-1 text-gray-500" />
+                )}
                 {flight.arrivalAirport.airportName} (
                 {flight.arrivalAirport.airportCode})
               </p>
@@ -333,7 +616,9 @@ const FlightDetailsModal = ({ flight, open, onClose, onEdit, onDelete }) => {
                   <span className="text-sm text-gray-600">
                     {TEXT.totalCapacity}
                   </span>
-                  <span className="font-semibold">{flight.aircraft.totalSeats}</span>
+                  <span className="font-semibold">
+                    {flight.aircraft.totalSeats}
+                  </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-sm text-gray-600">
@@ -359,7 +644,7 @@ const FlightDetailsModal = ({ flight, open, onClose, onEdit, onDelete }) => {
             </Card>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="grid gap-6">
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center space-x-2">
@@ -400,38 +685,14 @@ const FlightDetailsModal = ({ flight, open, onClose, onEdit, onDelete }) => {
                   <span className="text-sm text-gray-600">
                     {TEXT.flightType}
                   </span>
-                  <span className="font-medium">{flight.type}</span>
+                  <span className="font-medium">
+                    {flight.type == "INTERNATIONAL" ? "Quốc tế" : "Nội địa"}
+                  </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-sm text-gray-600">{TEXT.terminal}</span>
-                  <span className="font-medium">{flight.terminal}</span>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center space-x-2">
-                  <DollarSign className="h-4 w-4" />
-                  <span>{TEXT.pricingRevenue}</span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="flex justify-between">
-                  <span className="text-sm text-gray-600">
-                    {TEXT.economyClass}
-                  </span>
                   <span className="font-medium">
-                    {formatCurrency(flight.basePrice)}
-                  </span>
-                </div>
-                <Separator />
-                <div className="flex justify-between">
-                  <span className="text-sm text-gray-600">
-                    {TEXT.estimatedRevenue}
-                  </span>
-                  <span className="font-semibold text-green-600">
-                    {formatCurrency(estimatedRevenue)}
+                    {flight.terminal || "N/A"}
                   </span>
                 </div>
               </CardContent>
@@ -446,60 +707,96 @@ const FlightDetailsModal = ({ flight, open, onClose, onEdit, onDelete }) => {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                {flight.flightTravelClasses?.map((travelClass, index) => (
-                  <div key={index} className="border rounded-lg p-4 bg-gray-50">
-                    <div className="flex justify-between items-start mb-3">
-                      <h4 className="font-semibold text-lg text-gray-900">
-                        {travelClass.travelClass.className}
-                      </h4>
-                      <Badge
-                        variant="outline"
-                        className="text-green-600 font-bold"
-                      >
-                        {formatCurrency(travelClass.customPrice)}
-                      </Badge>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {flight.flightTravelClasses?.map((travelClass, index) => {
+                  const benefits = parseBenefits(
+                    travelClass.travelClass.benefits
+                  );
+                  return (
+                    <div
+                      key={index}
+                      className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow duration-200"
+                    >
+                      {/* Header with class name and price */}
+                      <div className="flex justify-between items-start mb-4">
+                        <h4 className="font-bold text-lg text-gray-900">
+                          {travelClass.travelClass.className}
+                        </h4>
+                        <div className="text-right">
+                          <div className="text-xl font-bold text-green-600">
+                            {formatCurrency(travelClass.customPrice)}
+                          </div>
+                          <div className="text-xs text-gray-500">/khách</div>
+                        </div>
+                      </div>
+
+                      {/* Benefits section */}
+                      <div className="mb-4">
+                        <h5 className="text-sm font-semibold text-gray-700 mb-2">
+                          {TEXT.benefits}:
+                        </h5>
+                        <div className="space-y-1">
+                          {benefits.map((benefit, benefitIndex) => (
+                            <div
+                              key={benefitIndex}
+                              className="flex items-center text-sm text-gray-600"
+                            >
+                              <Check className="h-3 w-3 text-green-500 mr-2 flex-shrink-0" />
+                              <span>{benefit}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Features section */}
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-gray-600">
+                            {TEXT.refundable}:
+                          </span>
+                          {travelClass.travelClass.refundable ? (
+                            <Check className="h-4 w-4 text-green-500" />
+                          ) : (
+                            <XIcon className="h-4 w-4 text-red-500" />
+                          )}
+                        </div>
+
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-gray-600">
+                            {TEXT.changeable}:
+                          </span>
+                          {travelClass.travelClass.changeable ? (
+                            <Check className="h-4 w-4 text-green-500" />
+                          ) : (
+                            <XIcon className="h-4 w-4 text-red-500" />
+                          )}
+                        </div>
+
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-gray-600">
+                            {TEXT.availableSeats}:
+                          </span>
+                          <span className="font-semibold text-blue-600">
+                            {travelClass.availableSeats}
+                          </span>
+                        </div>
+
+                        {travelClass.travelClass.cancellationFee && (
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="text-gray-600">
+                              {TEXT.cancellationFee}:
+                            </span>
+                            <span className="font-semibold text-red-600">
+                              {formatCurrency(
+                                travelClass.travelClass.cancellationFee
+                              )}
+                            </span>
+                          </div>
+                        )}
+                      </div>
                     </div>
-                    <p className="text-sm text-gray-600 mb-3">
-                      <strong>{TEXT.benefits}:</strong>{" "}
-                      {travelClass.travelClass.benefits}
-                    </p>
-                    <div className="grid grid-cols-2 gap-4 text-sm">
-                      <div>
-                        <span className="font-medium">
-                          {TEXT.availableSeats}:
-                        </span>{" "}
-                        {travelClass.availableSeats}
-                      </div>
-                      <div>
-                        <span className="font-medium">Price Multiplier:</span>{" "}
-                        {travelClass.travelClass.priceMultiplier}x
-                      </div>
-                      <div>
-                        <span className="font-medium">{TEXT.refundable}:</span>{" "}
-                        {travelClass.travelClass.refundable
-                          ? TEXT.yes
-                          : TEXT.no}
-                      </div>
-                      <div>
-                        <span className="font-medium">{TEXT.changeable}:</span>{" "}
-                        {travelClass.travelClass.changeable
-                          ? TEXT.yes
-                          : TEXT.no}
-                      </div>
-                      <div className="col-span-2">
-                        <span className="font-medium">
-                          {TEXT.cancellationFee}:
-                        </span>{" "}
-                        {travelClass.travelClass.cancellationFee
-                          ? formatCurrency(
-                              travelClass.travelClass.cancellationFee
-                            )
-                          : TEXT.no}
-                      </div>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </CardContent>
           </Card>
@@ -597,7 +894,7 @@ const FlightDetailsModal = ({ flight, open, onClose, onEdit, onDelete }) => {
                                     : `Ghế ${seat.id} - Còn trống`
                                 }
                               >
-                                {seat.id}
+                                {seat.type === "aisle" ? "" : seat.id}
                               </div>
                             ))}
                           </div>
@@ -641,41 +938,17 @@ const FlightDetailsModal = ({ flight, open, onClose, onEdit, onDelete }) => {
               <CardTitle className="flex items-center space-x-2">
                 <MapPin className="h-4 w-4" />
                 <span>{TEXT.routeInfo}</span>
+                <div>
+                  <img
+                    src={flight.airline.thumbnail}
+                    alt="Airline Logo"
+                    className="w-full h-8 rounded object-cover"
+                  />
+                </div>
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="flex items-center justify-center space-x-8 py-4">
-                <div className="text-center flex flex-col items-center justify-center">
-                  <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mb-2">
-                    <Plane className="h-6 w-6 text-blue-600 transform -rotate-45" />
-                  </div>
-                  <p className="font-semibold text-lg">
-                    {flight.departureAirport.airportCode}
-                  </p>
-                  <p className="text-sm text-gray-600">
-                    {flight.departureAirport.airportName}
-                  </p>
-                </div>
-                <div className="flex-1 relative">
-                  <div className="h-px bg-gray-300" />
-                  <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white px-2">
-                    <Badge variant="outline">
-                      {formatDuration(flight.duration)}
-                    </Badge>
-                  </div>
-                </div>
-                <div className="text-center flex flex-col items-center justify-center">
-                  <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mb-2">
-                    <MapPin className="h-6 w-6 text-green-600" />
-                  </div>
-                  <p className="font-semibold text-lg">
-                    {flight.arrivalAirport.airportCode}
-                  </p>
-                  <p className="text-sm text-gray-600">
-                    {flight.arrivalAirport.airportName}
-                  </p>
-                </div>
-              </div>
+              {renderRouteInfo(flight)}
               {flight.stopsList?.length > 0 && (
                 <div className="mt-4">
                   <p className="text-sm font-medium text-gray-600">
@@ -684,8 +957,8 @@ const FlightDetailsModal = ({ flight, open, onClose, onEdit, onDelete }) => {
                   <ul className="list-disc pl-5 text-sm text-gray-600">
                     {flight.stopsList.map((stop, index) => (
                       <li key={index}>
-                        {stop.airportCode} - {stop.airportName} ({stop.duration}{" "}
-                        phút)
+                        {stop.airportCode} - {stop.airportName} (
+                        {stop.stopDuration} phút)
                       </li>
                     ))}
                   </ul>
@@ -697,7 +970,6 @@ const FlightDetailsModal = ({ flight, open, onClose, onEdit, onDelete }) => {
 
         <div className="flex items-center justify-between p-6 border-t border-gray-200 bg-gray-50">
           <div className="text-sm text-gray-600">
-            {TEXT.tripType}: {flight.tripType}{" "}
             {flight.roundTripGroupId &&
               ` • ${TEXT.roundTripGroupId}: ${flight.roundTripGroupId}`}{" "}
             • {TEXT.createdAt}: {formatDateTime(flight.createdAt).date}{" "}
