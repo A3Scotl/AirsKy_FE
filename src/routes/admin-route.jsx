@@ -10,10 +10,16 @@ const AdminRoute = ({ children }) => {
 
   useEffect(() => {
     if (!loading && !user && !hasShownToast) {
-      toast.error("You need to login to access this page");
+      toast.error("Bạn cần đăng nhập để truy cập trang này");
       setHasShownToast(true);
-    } else if (!loading && user && user.role !== "ADMIN" && !hasShownToast) {
-      toast.error("Access denied. Admin privileges required.");
+    } else if (
+      !loading &&
+      user &&
+      user.role !== "ADMIN" &&
+      user.role !== "BUSINESS" &&
+      !hasShownToast
+    ) {
+      toast.error("Truy cập bị từ chối. Cần quyền Admin hoặc Business.");
       setHasShownToast(true);
     }
   }, [user, loading, hasShownToast]);
@@ -28,12 +34,12 @@ const AdminRoute = ({ children }) => {
     return <Navigate to="/auth" replace />;
   }
 
-  // Đã đăng nhập nhưng không phải admin
-  if (user.role !== "ADMIN") {
+  // Người dùng thường
+  if (user.role === "USER") {
     return <Navigate to="/auth" replace />;
   }
 
-  // Là admin - cho phép truy cập
+  // Admin hoặc Business → cho phép vào
   return children;
 };
 

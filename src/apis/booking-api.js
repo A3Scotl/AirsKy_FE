@@ -1,0 +1,58 @@
+import { apiHandler } from "@/utils/api-handler";
+
+/**
+ * API liên quan đến đặt vé (Booking)
+ */
+export const bookingApi = {
+  /**
+   * Tạo mới một booking
+   * @param {Object} bookingData - Dữ liệu đặt vé, khớp với BookingRequest DTO
+   * @returns {Promise<{ success: boolean, data?: any, message: string }>}
+   */
+  createBooking: async (bookingData) => {
+    return apiHandler("post", "/bookings", bookingData);
+  },
+
+  /**
+   * Cập nhật một booking theo ID
+   * @param {number} id - ID của booking
+   * @param {Object} bookingData - Dữ liệu cập nhật
+   * @returns {Promise<{ success: boolean, data?: any, message: string }>}
+   */
+  updateBooking: async (id, bookingData) => {
+    return apiHandler("put", `/bookings/${id}`, bookingData);
+  },
+
+  /**
+   * Lấy thông tin booking theo ID
+   * @param {number} id - ID của booking
+   * @returns {Promise<{ success: boolean, data?: any, message: string }>}
+   */
+  getBooking: async (id) => {
+    return apiHandler("get", `/bookings/${id}`);
+  },
+
+  /**
+   * Lấy tất cả booking (có phân trang)
+   * @param {{ page?: number, size?: number, sort?: string }} params - Tham số phân trang
+   * @returns {Promise<{ success: boolean, data?: any, message: string }>}
+   */
+  getAllBookings: async (params = {}) => {
+    const queryParams = new URLSearchParams();
+    if (params.page !== undefined) queryParams.append("page", params.page);
+    if (params.size !== undefined) queryParams.append("size", params.size);
+    if (params.sort) queryParams.append("sort", params.sort);
+    const queryString = queryParams.toString();
+    const endpoint = queryString ? `/bookings?${queryString}` : "/bookings";
+    return apiHandler("get", endpoint);
+  },
+
+  /**
+   * Xóa một booking theo ID
+   * @param {number} id - ID của booking
+   * @returns {Promise<{ success: boolean, data?: any, message: string }>}
+   */
+  deleteBooking: async (id) => {
+    return apiHandler("delete", `/bookings/${id}`);
+  },
+};

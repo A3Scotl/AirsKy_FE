@@ -63,9 +63,6 @@ const DealsPage = () => {
         size: 100,
         sort: "createdAt,desc",
       });
-
-      console.log("res deal data", res);
-
       if (res.success && res.data && res.data.content) {
         const deals = res.data.content;
         setFlightDeals(deals);

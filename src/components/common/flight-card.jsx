@@ -255,7 +255,7 @@ export function FlightCard({
 
       flightData = {
         flightNumber: `${itinerary.legs.length} chặng`,
-        flightId: itinerary.itineraryId,
+        flightId: itinerary.id,
 
         // Airline info - use first leg
         airline: firstLeg.airline?.airlineName || "Multiple Airlines",
