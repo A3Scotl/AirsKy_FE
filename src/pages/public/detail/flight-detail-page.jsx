@@ -510,6 +510,8 @@ const normalizeFlightData = (flight) => {
 
     processedFlight = {
       // Basic flight info
+      id: flight.itineraryId,
+      flightId: flight.itineraryId || flight.flightId || Date.now().toString(),
       id:
         outbound.flightId ||
         flight.itineraryId ||
@@ -581,7 +583,7 @@ const normalizeFlightData = (flight) => {
 
     processedFlight = {
       // Basic flight info
-      id: flight.itineraryId || flight.flightId || Date.now().toString(),
+      id: flight.itineraryId,
       flightId: flight.itineraryId || flight.flightId || Date.now().toString(),
       flightNumber:
         flight.flightNumber ||
@@ -666,7 +668,7 @@ const normalizeFlightData = (flight) => {
 
     processedFlight = {
       // Basic flight info
-      id: flight.flightId || flight.id || Date.now().toString(),
+      id: flight.itineraryId,
       flightId: flight.flightId || flight.id || Date.now().toString(),
       flightNumber: `${totalStops + 1} chặng`, // departure + stops + arrival
 
@@ -837,16 +839,8 @@ const normalizeFlightData = (flight) => {
 
     processedFlight = {
       // Basic flight info
-      id:
-        firstLeg.flightId ||
-        flight.itineraryId ||
-        flight.flightId ||
-        Date.now().toString(),
-      flightId:
-        firstLeg.flightId ||
-        flight.itineraryId ||
-        flight.flightId ||
-        Date.now().toString(),
+      id: flight.itineraryId,
+      flightId: flight.itineraryId || flight.flightId || Date.now().toString(),
       flightNumber: `${flight.legs.length} chặng`,
 
       // Airline info
@@ -901,7 +895,7 @@ const normalizeFlightData = (flight) => {
     // Handle single flight (one-way or direct flight)
     processedFlight = {
       // Basic flight info
-      id: flight.flightId || flight.id || Date.now().toString(),
+      id: flight.itineraryId,
       flightId: flight.flightId || flight.id || Date.now().toString(),
       flightNumber: flight.flightNumber || "N/A",
 
@@ -965,7 +959,7 @@ const normalizeFlightData = (flight) => {
   // Build common flight properties
   processedFlight = buildCommonFlightProperties(processedFlight);
 
-  console.log("[normalizeFlightData] Processed flight data:", processedFlight);
+  // console.log("[normalizeFlightData] Processed flight data:", processedFlight);
   return processedFlight;
 };
 
@@ -1028,22 +1022,21 @@ const FlightDetail = () => {
         // First try to get data from location state
         if (location.state && location.state.flight) {
           const flight = location.state.flight;
-
           // Handle different flight data structures
           let flightToProcess = flight;
 
           // If flight has originalFlight (from suggestion section), use that
           if (flight.originalFlight) {
-            console.log("[FlightDetail] Using originalFlight from suggestion");
+            // console.log("[FlightDetail] Using originalFlight from suggestion");
             flightToProcess = flight.originalFlight;
           }
 
           // Transform flight data to match expected structure
           const transformedFlight = normalizeFlightData(flightToProcess);
-          console.log(
-            "[FlightDetail] Transformed flight data:",
-            transformedFlight
-          );
+          // console.log(
+          //   "[FlightDetail] Transformed flight data:",
+          //   transformedFlight
+          // );
 
           setFlightData(transformedFlight);
           setLoading(false);
@@ -1059,15 +1052,15 @@ const FlightDetail = () => {
 
           try {
             const response = await flightApi.getFlightById(id);
-            console.log("[FlightDetail] API response:", response);
+           
 
             if (response.success && response.data) {
               // Transform flight data to match expected structure
               const transformedFlight = normalizeFlightData(response.data);
-              console.log(
-                "[FlightDetail] API transformed flight data:",
-                transformedFlight
-              );
+              // console.log(
+              //   "[FlightDetail] API transformed flight data:",
+              //   transformedFlight
+              // );
 
               setFlightData(transformedFlight);
               setLoading(false);
@@ -1100,15 +1093,16 @@ const FlightDetail = () => {
     };
 
     getFlightData();
+
   }, [location.state, id]);
 
   // Load fare options from flight data
   const loadFareOptions = (flight) => {
     try {
-      console.log(
-        "[FlightDetail] Loading fare options from flight data:",
-        flight
-      );
+      // console.log(
+      //   "[FlightDetail] Loading fare options from flight data:",
+      //   flight
+      // );
 
       if (!flight || !flight.flightTravelClasses) {
         console.warn(
@@ -1136,10 +1130,10 @@ const FlightDetail = () => {
 
       // Set flightTravelClasses directly - no transformation needed
       setFareOptions(flight.flightTravelClasses);
-      console.log(
-        "[FlightDetail] Set fare options from flightTravelClasses:",
-        flight.flightTravelClasses
-      );
+      // console.log(
+      //   "[FlightDetail] Set fare options from flightTravelClasses:",
+      //   flight.flightTravelClasses
+      // );
     } catch (error) {
       console.error("[FlightDetail] Error loading fare options:", error);
       // Use fallback fare options
@@ -1236,14 +1230,14 @@ const FlightDetail = () => {
   };
 
   const handleProceedToBooking = (flight, fareId) => {
-    console.log(
-      "[FlightDetail] handleProceedToBooking called with flight and fareId:",
-      flight,
-      fareId
-    );
+    // console.log(
+    //   "[FlightDetail] handleProceedToBooking called with flight and fareId:",
+    //   flight,
+    //   fareId
+    // );
 
     if (!flight) {
-      console.error("[FlightDetail] No flight data available");
+      // console.error("[FlightDetail] No flight data available");
       alert("Không có dữ liệu chuyến bay. Vui lòng tải lại trang.");
       return;
     }
@@ -1302,10 +1296,10 @@ const FlightDetail = () => {
       };
     }
 
-    console.log(
-      "[FlightDetail] Prepared bookingFlightData:",
-      bookingFlightData
-    );
+    // console.log(
+    //   "[FlightDetail] Prepared bookingFlightData:",
+    //   bookingFlightData
+    // );
 
     // Store in localStorage and navigate
     localStorage.setItem("selectedFlight", JSON.stringify(bookingFlightData));

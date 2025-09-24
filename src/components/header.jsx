@@ -24,9 +24,9 @@ import { userProfileUtils } from "@/hooks/use-user-profile";
 import { authApi } from "@/apis/auth-api";
 
 const MENU_ITEMS = [
-  { label: "Chuyến bay", path: "flights" },
-  { label: "Ưu đãi", path: "deals" },
-  { label: "Blog", path: "blog" },
+  { label: "Chuyến Bay", path: "flights" },
+  { label: "Ưu Đãi", path: "deals" },
+  { label: "Tin Tức", path: "blog" },
 ];
 
 export function Header() {
@@ -251,7 +251,7 @@ export function Header() {
 
   return (
     <header
-      className={`fixed top-0 w-full z-[1000] bg-white/20 backdrop-blur-sm border-b border-white/20 shadow-sm transition-transform duration-500 ease-in-out dark:bg-gray-900/20 dark:border-gray-800/20 ${
+      className={`fixed top-0 w-full z-[1000] bg-white border-b border-white/20 shadow-sm transition-transform duration-500 ease-in-out dark:bg-gray-900/20 dark:border-gray-800/20 ${
         showHeader ? "translate-y-0" : "-translate-y-full"
       }`}
       style={{ willChange: "transform" }}
@@ -259,7 +259,7 @@ export function Header() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           {/* Logo */}
-          <Link to="/" className="flex items-center">
+          <Link to="/" className="flex items-center min-w-[200px]">
             <div className="flex-shrink-0">
               <img
                 className="h-12 w-12 object-cover"
@@ -273,7 +273,7 @@ export function Header() {
           </Link>
 
           {/* Menu desktop */}
-          <nav className="hidden md:flex space-x-8">
+          <nav className="hidden md:flex space-x-8 min-w-[200px]">
             {MENU_ITEMS.map((item) => (
               <Link
                 key={item.path}
@@ -281,7 +281,7 @@ export function Header() {
                 className={`font-medium transition-colors duration-200 ${
                   isActive(item)
                     ? "text-[#2563eb] font-bold"
-                    : "text-gray-700 dark:text-gray-300 hover:text-[#2563eb]"
+                    : "text-black dark:text-white hover:text-[#2563eb]"
                 }`}
               >
                 {item.label}
@@ -290,7 +290,7 @@ export function Header() {
           </nav>
 
           {/* Actions desktop */}
-          <div className="hidden md:flex items-center space-x-4">
+          <div className="hidden md:flex items-center space-x-4 min-w-[200px]">
             {/* Theme Toggle - Always visible */}
             <ThemeToggle variant="ghost" size="sm" />
 

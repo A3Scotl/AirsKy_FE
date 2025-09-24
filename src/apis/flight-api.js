@@ -40,6 +40,16 @@ export const flightApi = {
   getFlightById: async (id) => {
     return apiHandler("get", `/flights/${id}`);
   },
+    /**
+   * Lấy thông tin ghế của chuyến bay theo hạng vé
+   * @param {number} flightId - ID chuyến bay
+   * @param {number} travelClassId - ID hạng vé
+   * @returns {Promise<{ success: boolean, data?: any, message: string }>}
+   */
+  getSeatsFlightByFlightIdAndTravelClassId: async (flightId,travelClassId) => {
+    return apiHandler("get", `/flights/${flightId}/seats/${travelClassId}`);
+  },
+
 
   /**
    * Lấy danh sách chuyến bay (phân trang)

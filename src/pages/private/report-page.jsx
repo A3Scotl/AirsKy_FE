@@ -121,7 +121,7 @@ const AdminReportPage = () => {
 
   const handleExportReport = (format) => {
     // Handle export functionality
-    console.log(`Exporting report in ${format} format`);
+    // console.log(`Exporting report in ${format} format`);
   };
 
   const formatCurrency = (amount) => {

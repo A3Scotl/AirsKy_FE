@@ -56,6 +56,8 @@ const AdminFlights = () => {
   const [flights, setFlights] = useState([]);
   const [aircrafts, setAircrafts] = useState([]);
   const [previousFlights, setPreviousFlights] = useState([]); // Để tính % thay đổi
+  const storedUser = localStorage.getItem("user");
+  const user = storedUser ? JSON.parse(storedUser) : null;
 
   useEffect(() => {
     handleFetch({
@@ -495,10 +497,14 @@ const AdminFlights = () => {
           </Button>
           {/* button export file */}
           <ExportButton entity="flights" />
-          <Button onClick={handleAddFlight}>
-            <Plus className="h-4 w-4 mr-2" />
-            Thêm chuyến bay
-          </Button>
+
+          {/* Chỉ hiển thị khi role là BUSINESS */}
+          {user?.role !== "ADMIN" && (
+            <Button onClick={handleAddFlight}>
+              <Plus className="h-4 w-4 mr-2" />
+              Thêm chuyến bay
+            </Button>
+          )}
         </div>
       </div>
 

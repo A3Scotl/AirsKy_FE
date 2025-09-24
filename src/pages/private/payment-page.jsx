@@ -60,7 +60,7 @@ const AdminPaymentPage = () => {
 
   const handleExportData = () => {
     // In real implementation, this would export payment data
-    console.log("Exporting payment data...");
+    // console.log("Exporting payment data...");
     alert("Payment data exported successfully!");
   };
 

@@ -66,7 +66,6 @@ function HomePage() {
   // Handle search from homepage (optimized with memoized date formatting)
   const handleHomeSearch = useCallback(
     (criteria) => {
-      console.log("🏠 Home search criteria:", criteria);
 
       // Update context with search criteria
       updateSearchCriteria(criteria);
@@ -122,9 +121,6 @@ function HomePage() {
           criteria.passengers || { adults: 1, children: 0, infants: 0 }
         )
       );
-
-      console.log("🏠 Home search URL params:", params.toString());
-
       // Navigate with query params
       navigate(`/flights?${params.toString()}`);
     },

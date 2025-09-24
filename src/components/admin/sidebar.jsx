@@ -1,4 +1,4 @@
-import { useState } from "react";
+﻿import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import {
   LayoutDashboard,
@@ -7,7 +7,6 @@ import {
   Users,
   CreditCard,
   BarChart3,
-  Settings,
   User,
   X,
   BookOpen,
@@ -16,144 +15,106 @@ import {
   ChevronRight,
   FolderOpen,
   MapPin,
+  Moon,
+  Sun,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/contexts/auth-context";
+import { useTheme } from "@/contexts/theme-context";
 
 const AdminSidebar = ({ sidebarOpen, setSidebarOpen }) => {
   const location = useLocation();
-  const [blogMenuOpen, setBlogMenuOpen] = useState(
-    location.pathname.includes("/admin/blogs") ||
-      location.pathname.includes("/admin/categories")
-  );
-  const [flightMenuOpen, setFlightMenuOpen] = useState(
-    location.pathname.startsWith("/admin/flights") ||
-      location.pathname.startsWith("/admin/seats") ||
+  const { user } = useAuth();
+  const { isDark, toggle } = useTheme();
+
+  // State cho menu expandable
+  const [openMenus, setOpenMenus] = useState({
+    blog:
+      location.pathname.includes("/admin/blogs") ||
+      location.pathname.includes("/admin/categories"),
+    flight:
+      location.pathname.startsWith("/admin/flights") ||
       location.pathname.startsWith("/admin/airports") ||
       location.pathname.startsWith("/admin/aircrafts") ||
       location.pathname.startsWith("/admin/travel-classes") ||
       location.pathname.startsWith("/admin/airlines") ||
-      location.pathname.startsWith("/admin/countries")
-  );
+      location.pathname.startsWith("/admin/countries"),
+  });
 
-  const navigation = [
-    {
-      name: "Trang chính",
-      href: "/admin/dashboard",
-      icon: LayoutDashboard,
-      current: location.pathname === "/admin/dashboard",
-    },
-    {
-      name: "Quản lý đặt vé",
-      href: "/admin/bookings",
-      icon: Calendar,
-      current: location.pathname === "/admin/bookings",
-    },
+  const toggleMenu = (key) => {
+    setOpenMenus((prev) => ({ ...prev, [key]: !prev[key] }));
+  };
+
+  // Helper: check path active
+  const isActive = (path) => location.pathname.startsWith(path);
+
+  // Danh sách menu gốc
+  let baseNavigation = [
+    { name: "Trang chính", href: "/admin/dashboard", icon: LayoutDashboard },
+    { name: "Quản lý đặt vé", href: "/admin/bookings", icon: Calendar },
     {
       name: "Quản lý chuyến bay",
       href: "/admin/flights",
       icon: Plane,
-      current:
-        location.pathname.startsWith("/admin/flights") ||
-        location.pathname.startsWith("/admin/airports") ||
-        location.pathname.startsWith("/admin/aircrafts") ||
-        location.pathname.startsWith("/admin/travel-classes") ||
-        location.pathname.startsWith("/admin/airlines") ||
-        location.pathname.startsWith("/admin/countries"),
-
       isExpandable: true,
+      key: "flight",
       submenu: [
-        {
-          name: "Chuyến bay",
-          href: "/admin/flights",
-          icon: Plane,
-          current: location.pathname === "/admin/flights",
-        },
-        {
-          name: "Sân bay",
-          href: "/admin/airports",
-          icon: MapPin,
-          current: location.pathname === "/admin/airports",
-        },
-        {
-          name: "Máy bay",
-          href: "/admin/aircrafts",
-          icon: Plane,
-          current: location.pathname === "/admin/aircrafts",
-        },
-        {
-          name: "Hạng vé",
-          href: "/admin/travel-classes",
-          icon: Tag,
-          current: location.pathname === "/admin/travel-classes",
-        },
-        {
-          name: "Hãng bay",
-          href: "/admin/airlines",
-          icon: User,
-          current: location.pathname === "/admin/airlines",
-        },
-        {
-          name: "Quốc gia",
-          href: "/admin/countries",
-          icon: MapPin,
-          current: location.pathname === "/admin/countries",
-        },
+        { name: "Chuyến bay", href: "/admin/flights", icon: Plane },
+        { name: "Sân bay", href: "/admin/airports", icon: MapPin },
+        { name: "Máy bay", href: "/admin/aircrafts", icon: Plane },
+        { name: "Hạng vé", href: "/admin/travel-classes", icon: Tag },
+        { name: "Hãng bay", href: "/admin/airlines", icon: User },
+        { name: "Quốc gia", href: "/admin/countries", icon: MapPin },
       ],
     },
-    {
-      name: "Quản lý người dùng",
-      href: "/admin/users",
-      icon: Users,
-      current: location.pathname === "/admin/users",
-    },
-    {
-      name: "Quản lý thanh toán",
-      href: "/admin/payments",
-      icon: CreditCard,
-      current: location.pathname === "/admin/payments",
-    },
+    { name: "Quản lý người dùng", href: "/admin/users", icon: Users },
+    { name: "Quản lý thanh toán", href: "/admin/payments", icon: CreditCard },
     {
       name: "Quản lý bài đăng",
       icon: BookOpen,
-      current:
-        location.pathname.includes("/admin/blogs") ||
-        location.pathname.includes("/admin/categories"),
+      key: "blog",
       isExpandable: true,
       submenu: [
-        {
-          name: "Bài đăng",
-          href: "/admin/blogs",
-          icon: BookOpen,
-          current: location.pathname === "/admin/blogs",
-        },
-        {
-          name: "Thể loại",
-          href: "/admin/categories",
-          icon: FolderOpen,
-          current: location.pathname === "/admin/categories",
-        },
+        { name: "Bài đăng", href: "/admin/blogs", icon: BookOpen },
+        { name: "Thể loại", href: "/admin/categories", icon: FolderOpen },
       ],
     },
-    {
-      name: "Quản lý Deal",
-      href: "/admin/deals",
-      icon: Tag,
-      current: location.pathname === "/admin/deals",
-    },
-    {
-      name: "Báo cáo & Phân tích",
-      href: "/admin/reports",
-      icon: BarChart3,
-      current: location.pathname === "/admin/reports",
-    },
-
-    // {
-    //   name: "Settings",
-    //   href: "/admin/settings",
-    //   icon: Settings,
-    //   current: location.pathname === "/admin/settings",
-    // },
+    { name: "Quản lý Deal", href: "/admin/deals", icon: Tag },
+    // { name: "Quốc gia", href: "/admin/countries", icon: MapPin },
+    { name: "Báo cáo & Phân tích", href: "/admin/reports", icon: BarChart3 },
   ];
+
+  // Filter menu cho BUSINESS role
+  if (user?.role === "BUSINESS") {
+    baseNavigation = baseNavigation.filter((item) =>
+      [
+        "Trang chính",
+        "Quản lý chuyến bay",
+        "Báo cáo & Phân tích",
+        "Quản lý Deal",
+        "Quản lý đặt vé",
+        "Quản lý bài đăng",
+        "Quốc gia",
+      ].includes(item.name)
+    );
+
+    baseNavigation = baseNavigation.map((item) => {
+      if (item.submenu) {
+        return {
+          ...item,
+          submenu: item.submenu.filter(
+            (sub) =>
+              sub.name !== "Sân bay" &&
+              sub.name !== "Máy bay" &&
+              sub.name !== "Hạng vé" &&
+              sub.name !== "Hãng bay" &&
+              sub.name !== "Quốc gia"
+          ),
+        };
+      }
+      return item;
+    });
+  }
 
   return (
     <>
@@ -170,51 +131,56 @@ const AdminSidebar = ({ sidebarOpen, setSidebarOpen }) => {
       {/* Sidebar */}
       <div
         className={`
-        fixed inset-y-0 left-0 z-50 w-64 bg-white dark:bg-gray-800 shadow-lg transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0
-        ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}
-      `}
+          fixed inset-y-0 left-0 z-50 w-64 h-[100vh] shadow-lg transform transition-transform duration-300 ease-in-out
+          lg:translate-x-0 lg:static lg:inset-0
+          ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}
+          ${isDark ? "bg-gray-800" : "bg-white"}
+        `}
       >
-        <div className="flex items-center justify-between h-16 px-4 bg-blue-600 dark:bg-blue-700">
+        {/* Logo */}
+        <div className="flex items-center justify-between h-16 px-4 bg-blue-600">
           <div className="flex items-center">
             <img
               className="h-8 w-8"
-              src="https://res.cloudinary.com/dzwjgfd7t/image/upload/v1755141382/flight%20booking/main_logo-removebg_xyofym.png"
+              src="https://res.cloudinary.com/dzwjgfd7t/image_upload/v1755141382/flight%20booking/main_logo-removebg_xyofym.png"
               alt="AirsSky"
             />
-            <span className="ml-2 text-xl font-bold text-white">AirsSky</span>
+            <span className="ml-2 text-xl font-bold text-white">AirSky</span>
           </div>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="lg:hidden text-white hover:bg-blue-700 dark:hover:bg-blue-800"
-            onClick={() => setSidebarOpen(false)}
-          >
-            <X className="h-5 w-5" />
-          </Button>
+          <div className="flex items-center space-x-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="lg:hidden text-white hover:bg-blue-700"
+              onClick={() => setSidebarOpen(false)}
+            >
+              <X className="h-5 w-5" />
+            </Button>
+          </div>
         </div>
 
+        {/* Navigation */}
         <nav className="mt-5 px-2 space-y-1">
-          {navigation.map((item) => {
+          {baseNavigation.map((item) => {
             const Icon = item.icon;
 
-            // Render expandable menu item
+            // Expandable menu
             if (item.isExpandable && item.submenu) {
+              const open = openMenus[item.key];
               return (
                 <div key={item.name}>
                   <button
-                    onClick={() => {
-                      if (item.name === "Quản lý bài đăng") {
-                        setBlogMenuOpen(!blogMenuOpen);
-                      } else if (item.name === "Quản lý chuyến bay") {
-                        setFlightMenuOpen(!flightMenuOpen);
-                      }
-                    }}
+                    onClick={() => toggleMenu(item.key)}
                     className={`
                       group flex items-center w-full px-2 py-2 text-sm font-medium rounded-md transition-colors duration-200
                       ${
-                        item.current
-                          ? "bg-blue-100 admin-dark:bg-blue-900 text-blue-900 admin-dark:text-blue-100 border-r-2 border-blue-600 admin-dark:border-blue-400"
-                          : "text-gray-600 admin-dark:text-gray-300 hover:bg-gray-50 admin-dark:hover:bg-gray-700 hover:text-gray-900 admin-dark:hover:text-gray-100"
+                        isActive(item.href || "")
+                          ? isDark
+                            ? "bg-blue-900 text-blue-100 border-r-2 border-blue-400"
+                            : "bg-blue-100 text-blue-900 border-r-2 border-blue-600"
+                          : isDark
+                          ? "text-gray-300 hover:bg-gray-700 hover:text-gray-100"
+                          : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
                       }
                     `}
                   >
@@ -222,38 +188,40 @@ const AdminSidebar = ({ sidebarOpen, setSidebarOpen }) => {
                       className={`
                         mr-3 flex-shrink-0 h-5 w-5 transition-colors duration-200
                         ${
-                          item.current
-                            ? "text-blue-600 admin-dark:text-blue-400"
-                            : "text-gray-400 admin-dark:text-gray-500 group-hover:text-gray-500 admin-dark:group-hover:text-gray-300"
+                          isActive(item.href || "")
+                            ? "text-blue-600"
+                            : isDark
+                            ? "text-gray-400 group-hover:text-gray-200"
+                            : "text-gray-400 group-hover:text-gray-500"
                         }
                       `}
                     />
                     {item.name}
-                    {item.name === "Quản lý bài đăng" && blogMenuOpen ? (
-                      <ChevronDown className="ml-auto h-4 w-4" />
-                    ) : item.name === "Quản lý bài đăng" ? (
-                      <ChevronRight className="ml-auto h-4 w-4" />
-                    ) : item.name === "Quản lý chuyến bay" && flightMenuOpen ? (
+                    {open ? (
                       <ChevronDown className="ml-auto h-4 w-4" />
                     ) : (
                       <ChevronRight className="ml-auto h-4 w-4" />
                     )}
                   </button>
 
-                  {(item.name === "Quản lý bài đăng" && blogMenuOpen && (
+                  {open && (
                     <div className="ml-6 mt-1 space-y-1">
-                      {item.submenu.map((subItem) => {
-                        const SubIcon = subItem.icon;
+                      {item.submenu.map((sub) => {
+                        const SubIcon = sub.icon;
                         return (
                           <Link
-                            key={subItem.name}
-                            to={subItem.href}
+                            key={sub.name}
+                            to={sub.href}
                             className={`
                               group flex items-center px-2 py-2 text-sm font-medium rounded-md transition-colors duration-200
                               ${
-                                subItem.current
-                                  ? "bg-blue-50 admin-dark:bg-blue-900/50 text-blue-700 admin-dark:text-blue-300 border-r-2 border-blue-500 admin-dark:border-blue-400"
-                                  : "text-gray-500 admin-dark:text-gray-400 hover:bg-gray-50 admin-dark:hover:bg-gray-700 hover:text-gray-700 admin-dark:hover:text-gray-200"
+                                isActive(sub.href)
+                                  ? isDark
+                                    ? "bg-blue-800 text-blue-200 border-r-2 border-blue-300"
+                                    : "bg-blue-50 text-blue-700 border-r-2 border-blue-500"
+                                  : isDark
+                                  ? "text-gray-400 hover:bg-gray-700 hover:text-gray-200"
+                                  : "text-gray-500 hover:bg-gray-50 hover:text-gray-700"
                               }
                             `}
                             onClick={() => setSidebarOpen(false)}
@@ -262,57 +230,25 @@ const AdminSidebar = ({ sidebarOpen, setSidebarOpen }) => {
                               className={`
                                 mr-3 flex-shrink-0 h-4 w-4 transition-colors duration-200
                                 ${
-                                  subItem.current
-                                    ? "text-blue-500 admin-dark:text-blue-400"
-                                    : "text-gray-300 admin-dark:text-gray-500 group-hover:text-gray-400 admin-dark:group-hover:text-gray-300"
+                                  isActive(sub.href)
+                                    ? "text-blue-500"
+                                    : isDark
+                                    ? "text-gray-500 group-hover:text-gray-300"
+                                    : "text-gray-300 group-hover:text-gray-400"
                                 }
                               `}
                             />
-                            {subItem.name}
+                            {sub.name}
                           </Link>
                         );
                       })}
                     </div>
-                  )) ||
-                    (item.name === "Quản lý chuyến bay" && flightMenuOpen && (
-                      <div className="ml-6 mt-1 space-y-1">
-                        {item.submenu.map((subItem) => {
-                          const SubIcon = subItem.icon;
-                          return (
-                            <Link
-                              key={subItem.name}
-                              to={subItem.href}
-                              className={`
-                                  group flex items-center px-2 py-2 text-sm font-medium rounded-md transition-colors duration-200
-                                  ${
-                                    subItem.current
-                                      ? "bg-blue-50 admin-dark:bg-blue-900/50 text-blue-700 admin-dark:text-blue-300 border-r-2 border-blue-500 admin-dark:border-blue-400"
-                                      : "text-gray-500 admin-dark:text-gray-400 hover:bg-gray-50 admin-dark:hover:bg-gray-700 hover:text-gray-700 admin-dark:hover:text-gray-200"
-                                  }
-                                `}
-                              onClick={() => setSidebarOpen(false)}
-                            >
-                              <SubIcon
-                                className={`
-                                    mr-3 flex-shrink-0 h-4 w-4 transition-colors duration-200
-                                    ${
-                                      subItem.current
-                                        ? "text-blue-500 admin-dark:text-blue-400"
-                                        : "text-gray-300 admin-dark:text-gray-500 group-hover:text-gray-400 admin-dark:group-hover:text-gray-300"
-                                    }
-                                  `}
-                              />
-                              {subItem.name}
-                            </Link>
-                          );
-                        })}
-                      </div>
-                    ))}
+                  )}
                 </div>
               );
             }
 
-            // Render normal menu item
+            // Normal menu
             return (
               <Link
                 key={item.name}
@@ -320,9 +256,13 @@ const AdminSidebar = ({ sidebarOpen, setSidebarOpen }) => {
                 className={`
                   group flex items-center px-2 py-2 text-sm font-medium rounded-md transition-colors duration-200
                   ${
-                    item.current
-                      ? "bg-blue-100 admin-dark:bg-blue-900 text-blue-900 admin-dark:text-blue-100 border-r-2 border-blue-600 admin-dark:border-blue-400"
-                      : "text-gray-600 admin-dark:text-gray-300 hover:bg-gray-50 admin-dark:hover:bg-gray-700 hover:text-gray-900 admin-dark:hover:text-gray-100"
+                    isActive(item.href)
+                      ? isDark
+                        ? "bg-blue-900 text-blue-100 border-r-2 border-blue-400"
+                        : "bg-blue-100 text-blue-900 border-r-2 border-blue-600"
+                      : isDark
+                      ? "text-gray-300 hover:bg-gray-700 hover:text-gray-100"
+                      : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
                   }
                 `}
                 onClick={() => setSidebarOpen(false)}
@@ -331,9 +271,11 @@ const AdminSidebar = ({ sidebarOpen, setSidebarOpen }) => {
                   className={`
                     mr-3 flex-shrink-0 h-5 w-5 transition-colors duration-200
                     ${
-                      item.current
-                        ? "text-blue-600 admin-dark:text-blue-400"
-                        : "text-gray-400 admin-dark:text-gray-500 group-hover:text-gray-500 admin-dark:group-hover:text-gray-300"
+                      isActive(item.href)
+                        ? "text-blue-600"
+                        : isDark
+                        ? "text-gray-400 group-hover:text-gray-200"
+                        : "text-gray-400 group-hover:text-gray-500"
                     }
                   `}
                 />

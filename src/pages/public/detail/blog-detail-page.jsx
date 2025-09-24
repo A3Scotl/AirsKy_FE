@@ -49,7 +49,6 @@ const BlogDetailPage = () => {
       alert("Vui lòng đăng nhập để thích bài viết");
       return;
     }
-    console.log("post.blogId:", post?.blogId);
     if (!post?.blogId || isLiking) {
       console.warn(
         "Cannot toggle like: blogId is missing or request in progress",
@@ -60,7 +59,6 @@ const BlogDetailPage = () => {
     setIsLiking(true);
     try {
       const result = await blogLikeApi.toggleLike(post.blogId);
-      console.log("toggleLike API result:", result);
       if (result.success) {
         setIsLiked(result.isLiked);
         setLikeCount((prev) =>
