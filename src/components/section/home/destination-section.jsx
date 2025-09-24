@@ -28,18 +28,18 @@ export function DestinationSection() {
 
     const searchCriteria = {
       from: {
-        airportId: destination.departureAirport.airportId,
-        airportName: destination.departureAirport.airportName,
+        // airportId: destination.departureAirport.airportId,
+        // airportName: destination.departureAirport.airportName,
         country: "Việt Nam",
       },
       to: {
-        airportId: destination.arrivalAirport.airportId,
-        airportName: destination.arrivalAirport.airportName,
+        // airportId: destination.arrivalAirport.airportId,
+        // airportName: destination.arrivalAirport.airportName,
         country: destination.country,
       },
       tripType: "ONE_WAY",
-      departDate: tomorrow, // Thêm ngày mặc định
-      passengers: { adults: 1, children: 0, infants: 0 },
+      // departDate: tomorrow, // Thêm ngày mặc định
+      // passengers: { adults: 1, children: 0, infants: 0 },
       searchCombinations: [], // Không cần combinations cho single search
     };
 
@@ -85,10 +85,27 @@ export function DestinationSection() {
             response.data &&
             response.data?.content.length > 0
           ) {
-            // Lọc ra basePrice thấp nhất
-            const minPrice = Math.min(
-              ...response.data?.content.map((flight) => flight.basePrice)
-            );
+            // ✅ CẬP NHẬT: Lấy giá thấp nhất từ flightTravelClasses
+            const flightPrices = response.data?.content
+              .map((flight) => {
+                // Lấy tất cả customPrice từ flightTravelClasses
+                const prices =
+                  flight.flightTravelClasses?.map((ftc) => ftc.customPrice) ||
+                  [];
+
+                // Trả về giá thấp nhất của chuyến bay này
+                return prices.length > 0 ? Math.min(...prices) : Infinity;
+              })
+              .filter((price) => price !== Infinity); // Loại bỏ các chuyến bay không có giá
+
+            // Nếu không có chuyến bay nào có giá, bỏ qua quốc gia này
+            if (flightPrices.length === 0) {
+              continue;
+            }
+
+            // Lấy giá thấp nhất trong tất cả chuyến bay của quốc gia này
+            const minPrice = Math.min(...flightPrices);
+
             // Format giá thành chuỗi VNĐ
             const formattedPrice = new Intl.NumberFormat("vi-VN", {
               style: "currency",

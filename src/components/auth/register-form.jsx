@@ -8,6 +8,120 @@ import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import { authApi } from "@/apis/auth-api";
 
+// Validation utilities
+const validationRules = {
+  email: {
+    required: true,
+    pattern: /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{3,}$/,
+    message:
+      "Email không đúng định dạng. Vui lòng nhập email có dạng example@gmail.com",
+  },
+  password: {
+    required: true,
+    pattern:
+      /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/,
+    message:
+      "Mật khẩu phải có ít nhất 8 ký tự, bao gồm chữ hoa, chữ thường, số và ký tự đặc biệt",
+  },
+  phone: {
+    required: true,
+    pattern: /^0[0-9]{9}$/,
+    message: "Số điện thoại phải bắt đầu bằng 0 và đủ 10 số",
+  },
+  firstName: {
+    required: true,
+    minLength: 1,
+    message: "Họ không được để trống",
+  },
+  lastName: {
+    required: true,
+    minLength: 1,
+    message: "Tên không được để trống",
+  },
+  confirmPassword: {
+    required: true,
+    custom: (value, formData) => value === formData.password,
+    message: "Mật khẩu xác nhận không khớp",
+  },
+  otpCode: {
+    required: true,
+    pattern: /^\d{6}$/,
+    message: "Mã OTP phải gồm 6 chữ số",
+  },
+};
+
+const validateField = (field, value, formData = {}) => {
+  const rule = validationRules[field];
+  if (!rule) return { isValid: true, message: "" };
+
+  if (rule.required && (!value || value.trim() === "")) {
+    return {
+      isValid: false,
+      message: `${
+        field === "firstName"
+          ? "Họ"
+          : field === "lastName"
+          ? "Tên"
+          : field === "phone"
+          ? "Số điện thoại"
+          : field === "email"
+          ? "Email"
+          : field === "password"
+          ? "Mật khẩu"
+          : field === "confirmPassword"
+          ? "Xác nhận mật khẩu"
+          : "Mã OTP"
+      } không được để trống`,
+    };
+  }
+
+  if (rule.minLength && value && value.length < rule.minLength) {
+    return { isValid: false, message: rule.message };
+  }
+
+  if (rule.pattern && value && !rule.pattern.test(value)) {
+    return { isValid: false, message: rule.message };
+  }
+
+  if (rule.custom && !rule.custom(value, formData)) {
+    return { isValid: false, message: rule.message };
+  }
+
+  return { isValid: true, message: "" };
+};
+
+const validateForm = (formData, step = 1) => {
+  const errors = {};
+  let isValid = true;
+
+  if (step === 1) {
+    // Validate registration fields
+    [
+      "firstName",
+      "lastName",
+      "phone",
+      "email",
+      "password",
+      "confirmPassword",
+    ].forEach((field) => {
+      const result = validateField(field, formData[field], formData);
+      if (!result.isValid) {
+        errors[field] = result.message;
+        isValid = false;
+      }
+    });
+  } else {
+    // Validate OTP field
+    const result = validateField("otpCode", formData.otpCode, formData);
+    if (!result.isValid) {
+      errors.otpCode = result.message;
+      isValid = false;
+    }
+  }
+
+  return { isValid, errors };
+};
+
 const formLabels = {
   firstName: "Họ",
   lastName: "Tên",
@@ -39,6 +153,8 @@ export default function RegisterForm({ setCurrentView }) {
     confirmPassword: "",
     otpCode: "",
   });
+  const [validationErrors, setValidationErrors] = useState({});
+  const [touchedFields, setTouchedFields] = useState({});
   const [showPassword, setShowPassword] = useState({
     password: false,
     confirmPassword: false,
@@ -67,7 +183,43 @@ export default function RegisterForm({ setCurrentView }) {
   }, [countdown]);
 
   const handleInputChange = (field) => (e) => {
-    setFormData((prev) => ({ ...prev, [field]: e.target.value }));
+    const value = e.target.value;
+    setFormData((prev) => ({ ...prev, [field]: value }));
+
+    // Mark field as touched
+    setTouchedFields((prev) => ({ ...prev, [field]: true }));
+
+    // Validate field in real-time
+    const result = validateField(field, value, { ...formData, [field]: value });
+    setValidationErrors((prev) => ({
+      ...prev,
+      [field]: result.isValid ? "" : result.message,
+    }));
+
+    // For confirm password, also validate when password changes
+    if (field === "password" && touchedFields.confirmPassword) {
+      const confirmResult = validateField(
+        "confirmPassword",
+        formData.confirmPassword,
+        { ...formData, password: value }
+      );
+      setValidationErrors((prev) => ({
+        ...prev,
+        confirmPassword: confirmResult.isValid ? "" : confirmResult.message,
+      }));
+    }
+
+    // For password, also validate confirm password when confirm password changes
+    if (field === "confirmPassword" && touchedFields.password) {
+      const confirmResult = validateField("confirmPassword", value, {
+        ...formData,
+        confirmPassword: value,
+      });
+      setValidationErrors((prev) => ({
+        ...prev,
+        confirmPassword: confirmResult.isValid ? "" : confirmResult.message,
+      }));
+    }
   };
 
   const togglePasswordVisibility = (field) => {
@@ -76,44 +228,151 @@ export default function RegisterForm({ setCurrentView }) {
 
   const handleRegister = async (e) => {
     e.preventDefault();
-    if (formData.password !== formData.confirmPassword) {
-      toast.error("Mật khẩu không khớp");
+
+    // Validate all fields
+    const { isValid, errors } = validateForm(formData, 1);
+    setValidationErrors(errors);
+
+    if (!isValid) {
+      toast.error("Vui lòng kiểm tra lại thông tin đã nhập");
       return;
     }
+
     if (!agreeTerms) {
       toast.error("Bạn phải đồng ý với các điều khoản và điều kiện");
       return;
     }
 
     setLoading(true);
-    const response = await authApi.register(formData);
-    if (response.success) {
-      toast.success(
-        "Đăng ký thành công. Vui lòng nhập mã OTP được gửi đến email của bạn."
-      );
-      setStep(2);
-      setCountdown(60);
-      setIsResendDisabled(true);
-    } else {
-      toast.error(response.message);
+    try {
+      const response = await authApi.register(formData);
+      console.log("Registration API response:", response);
+      console.log("Response success:", response.success);
+      console.log("Response data:", response.data);
+      console.log("Response message:", response.message);
+      console.log("Response error:", response.error);
+
+      if (response.success) {
+        console.log("Registration successful - tokens received:", {
+          accessToken: response.data?.accessToken ? "***" : "missing",
+          refreshToken: response.data?.refreshToken ? "***" : "missing",
+        });
+        toast.success(
+          "Đăng ký thành công. Vui lòng nhập mã OTP được gửi đến email của bạn."
+        );
+        setStep(2);
+        setCountdown(60);
+        setIsResendDisabled(true);
+        // Clear validation errors on success
+        setValidationErrors({});
+      } else {
+        // Handle backend validation errors
+        handleBackendErrors(response);
+      }
+    } catch (error) {
+      console.error("Registration error:", error);
+      toast.error("Có lỗi xảy ra. Vui lòng thử lại sau.");
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
+  };
+
+  const handleBackendErrors = (response) => {
+    console.log("Full backend response:", response);
+    console.log("Response data:", response.data);
+    console.log("Response error:", response.error);
+    console.log("Response message:", response.message);
+
+    const errorMessage = response.error || response.message || "";
+    const exceptionMessage =
+      response.data?.message || response.data?.error || "";
+
+    console.log("Backend error message:", errorMessage);
+    console.log("Exception message:", exceptionMessage);
+
+    // Now response.data contains the full error response from backend
+    const fullErrorData = response.data;
+    const backendError =
+      response.error || // Try response.error first (from interceptor)
+      fullErrorData?.error ||
+      fullErrorData?.message ||
+      exceptionMessage ||
+      errorMessage;
+
+    console.log("Full error data:", fullErrorData);
+    console.log("Backend error field:", backendError);
+
+    // Map backend errors to field-specific errors
+    const fieldErrors = {};
+
+    if (backendError.includes("Email đã tồn tại")) {
+      fieldErrors.email = "Email này đã được sử dụng";
+      toast.error(
+        "Email đã tồn tại trong hệ thống. Vui lòng sử dụng email khác."
+      );
+      setValidationErrors(fieldErrors);
+      return;
+    } else if (backendError.includes("Email không đúng định dạng")) {
+      fieldErrors.email =
+        "Email không đúng định dạng. Vui lòng nhập email có dạng example@gmail.com";
+    } else if (backendError.includes("Email không tồn tại")) {
+      fieldErrors.email = "Email không tồn tại hoặc không thể nhận thư";
+    } else if (backendError.includes("Mật khẩu phải có ít nhất 8 ký tự")) {
+      fieldErrors.password =
+        "Mật khẩu phải có ít nhất 8 ký tự, bao gồm chữ hoa, chữ thường, số và ký tự đặc biệt";
+    } else if (backendError.includes("Số điện thoại phải bắt đầu bằng 0")) {
+      fieldErrors.phone = "Số điện thoại phải bắt đầu bằng 0 và đủ 10 số";
+    } else {
+      // Generic error - show the actual error message if available
+      const displayMessage = backendError || "Có lỗi xảy ra khi đăng ký";
+      toast.error(displayMessage);
+      return;
+    }
+
+    setValidationErrors(fieldErrors);
+    toast.error("Vui lòng kiểm tra lại thông tin đã nhập");
   };
 
   const handleVerify = async (e) => {
     e.preventDefault();
-    setLoading(true);
-    const response = await authApi.verifyOtpRegistration({
-      email: formData.email,
-      otpCode: formData.otpCode,
-    });
-    if (response.success) {
-      toast.success("Tài khoản đã được xác minh thành công.");
-      setCurrentView("login");
-    } else {
-      toast.error(response.message);
+
+    // Validate OTP field
+    const { isValid, errors } = validateForm(formData, 2);
+    setValidationErrors(errors);
+
+    if (!isValid) {
+      toast.error("Vui lòng kiểm tra lại mã OTP");
+      return;
     }
-    setLoading(false);
+
+    setLoading(true);
+    try {
+      const response = await authApi.verifyOtpRegistration({
+        email: formData.email,
+        otpCode: formData.otpCode,
+      });
+      if (response.success) {
+        toast.success("Tài khoản đã được xác minh thành công.");
+        setCurrentView("login");
+        // Clear validation errors on success
+        setValidationErrors({});
+      } else {
+        // Handle OTP verification errors
+        if (
+          response.message?.includes("OTP") ||
+          response.message?.includes("mã")
+        ) {
+          setValidationErrors({ otpCode: response.message });
+        } else {
+          toast.error(response.message);
+        }
+      }
+    } catch (error) {
+      console.error("OTP verification error:", error);
+      toast.error("Có lỗi xảy ra. Vui lòng thử lại sau.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleResend = async () => {
@@ -129,45 +388,62 @@ export default function RegisterForm({ setCurrentView }) {
     setLoading(false);
   };
 
-  const renderFormField = (field, type = "text") => (
-    <div key={field}>
-      <label className="block text-sm font-medium text-gray-700 mb-2 dark:text-gray-300">
-        {formLabels[field]}
-      </label>
-      {field === "password" || field === "confirmPassword" ? (
-        <div className="relative">
+  const renderFormField = (field, type = "text") => {
+    const hasError = validationErrors[field] && touchedFields[field];
+    const isRequired = validationRules[field]?.required;
+
+    return (
+      <div key={field}>
+        <label className="block text-sm font-medium text-gray-700 mb-2 dark:text-gray-300">
+          {formLabels[field]}
+          {isRequired && <span className="text-red-500 ml-1">*</span>}
+        </label>
+        {field === "password" || field === "confirmPassword" ? (
+          <div className="relative">
+            <Input
+              type={showPassword[field] ? "text" : "password"}
+              placeholder={formPlaceholders[field]}
+              className={`w-full pr-10 dark:text-gray-900 ${
+                hasError
+                  ? "border-red-500 focus:border-red-500 focus:ring-red-500"
+                  : ""
+              }`}
+              value={formData[field]}
+              onChange={handleInputChange(field)}
+              required={isRequired}
+            />
+            <button
+              type="button"
+              onClick={() => togglePasswordVisibility(field)}
+              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400"
+            >
+              {showPassword[field] ? (
+                <EyeOff className="w-5 h-5" />
+              ) : (
+                <Eye className="w-5 h-5" />
+              )}
+            </button>
+          </div>
+        ) : (
           <Input
-            type={showPassword[field] ? "text" : "password"}
+            type={type}
             placeholder={formPlaceholders[field]}
-            className="w-full pr-10 dark:text-gray-900"
+            className={`w-full dark:text-gray-900 ${
+              hasError
+                ? "border-red-500 focus:border-red-500 focus:ring-red-500"
+                : ""
+            }`}
             value={formData[field]}
             onChange={handleInputChange(field)}
-            required
+            required={isRequired}
           />
-          <button
-            type="button"
-            onClick={() => togglePasswordVisibility(field)}
-            className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400"
-          >
-            {showPassword[field] ? (
-              <EyeOff className="w-5 h-5" />
-            ) : (
-              <Eye className="w-5 h-5" />
-            )}
-          </button>
-        </div>
-      ) : (
-        <Input
-          type={type}
-          placeholder={formPlaceholders[field]}
-          className="w-full dark:text-gray-900"
-          value={formData[field]}
-          onChange={handleInputChange(field)}
-          required
-        />
-      )}
-    </div>
-  );
+        )}
+        {hasError && (
+          <p className="mt-1 text-sm text-red-600">{validationErrors[field]}</p>
+        )}
+      </div>
+    );
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-700">
@@ -241,7 +517,12 @@ export default function RegisterForm({ setCurrentView }) {
                   <Button
                     type="submit"
                     className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3"
-                    disabled={loading}
+                    disabled={
+                      loading ||
+                      Object.values(validationErrors).some(
+                        (error) => error !== ""
+                      )
+                    }
                   >
                     {loading ? "Đang tạo..." : "Tạo tài khoản"}
                   </Button>
@@ -264,7 +545,12 @@ export default function RegisterForm({ setCurrentView }) {
                   <Button
                     type="submit"
                     className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3"
-                    disabled={loading}
+                    disabled={
+                      loading ||
+                      Object.values(validationErrors).some(
+                        (error) => error !== ""
+                      )
+                    }
                   >
                     {loading ? "Đang xác minh..." : "Xác minh"}
                   </Button>

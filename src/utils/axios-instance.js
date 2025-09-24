@@ -30,6 +30,12 @@ axiosInstance.interceptors.request.use(
       config.headers = config.headers || {};
       config.headers.Authorization = `Bearer ${token}`;
     }
+
+    // Don't set Content-Type for FormData - let browser set it automatically
+    if (config.data instanceof FormData) {
+      delete config.headers["Content-Type"];
+    }
+
     return config;
   },
   (error) => Promise.reject(error)
@@ -48,8 +54,15 @@ axiosInstance.interceptors.response.use(
       error?.response?.data?.message ||
       error?.response?.data?.error ||
       "Đã xảy ra lỗi không mong muốn";
+    const errorDetail = error?.response?.data?.error || message;
+
     console.error(`Lỗi API tại ${error.config?.url}:`, message);
-    return Promise.reject({ success: false, message });
+    return Promise.reject({
+      success: false,
+      message,
+      error: errorDetail,
+      data: error?.response?.data, // Include full error data
+    });
   }
 );
 

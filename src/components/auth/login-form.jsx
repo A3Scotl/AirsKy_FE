@@ -13,6 +13,98 @@ import { authApi } from "@/apis/auth-api";
 // Import GoogleLoginButton lazily to avoid initialization issues
 const GoogleLoginButton = lazy(() => import("./google-login-button"));
 
+// Validation utilities for login
+const loginValidationRules = {
+  email: {
+    required: true,
+    pattern: /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{3,}$/,
+    message:
+      "Email không đúng định dạng. Vui lòng nhập email có dạng example@gmail.com",
+  },
+  password: {
+    required: true,
+    minLength: 1,
+    message: "Mật khẩu không được để trống",
+  },
+};
+
+const validateLoginField = (field, value) => {
+  const rule = loginValidationRules[field];
+  if (!rule) return { isValid: true, message: "" };
+
+  if (rule.required && (!value || value.trim() === "")) {
+    return { isValid: false, message: rule.message };
+  }
+
+  if (rule.minLength && value && value.length < rule.minLength) {
+    return { isValid: false, message: rule.message };
+  }
+
+  if (rule.pattern && value && !rule.pattern.test(value)) {
+    return { isValid: false, message: rule.message };
+  }
+
+  return { isValid: true, message: "" };
+};
+
+const validateLoginForm = (formData) => {
+  const errors = {};
+  let isValid = true;
+
+  ["email", "password"].forEach((field) => {
+    const result = validateLoginField(field, formData[field]);
+    if (!result.isValid) {
+      errors[field] = result.message;
+      isValid = false;
+    }
+  });
+
+  return { isValid, errors };
+};
+
+const handleLoginBackendErrors = (response, setValidationErrors) => {
+  console.log("Full login backend response:", response);
+  console.log("Login response data:", response.data);
+  console.log("Login response error:", response.error);
+  console.log("Login response message:", response.message);
+
+  // Now response.data contains the full error response from backend
+  const fullErrorData = response.data;
+  const errorMessage = response.error || response.message || "";
+  const backendError =
+    response.error || // Try response.error first (from interceptor)
+    fullErrorData?.error ||
+    fullErrorData?.message ||
+    errorMessage;
+
+  console.log("Login backend error message:", errorMessage);
+  console.log("Login full error data:", fullErrorData);
+  console.log("Login backend error field:", backendError);
+
+  // Map backend errors to field-specific errors
+  const fieldErrors = {};
+
+  if (backendError.includes("Tài khoản hoặc mật khẩu không đúng")) {
+    fieldErrors.email = "Email hoặc mật khẩu không đúng";
+    fieldErrors.password = "Email hoặc mật khẩu không đúng";
+  } else if (backendError.includes("Email chưa được xác thực")) {
+    fieldErrors.email =
+      "Email chưa được xác thực. Vui lòng kiểm tra email để xác minh tài khoản.";
+  } else if (backendError.includes("Tài khoản đã bị khóa")) {
+    fieldErrors.email = "Tài khoản đã bị khóa. Vui lòng liên hệ hỗ trợ.";
+  } else if (backendError.includes("Email không tồn tại")) {
+    fieldErrors.email = "Email không tồn tại trong hệ thống";
+  } else {
+    // Generic error - show the actual error message if available
+    const displayMessage = backendError || "Có lỗi xảy ra khi đăng nhập";
+    toast.error(displayMessage);
+    return;
+  }
+
+  setValidationErrors(fieldErrors);
+  toast.error("Đăng nhập thất bại. Vui lòng kiểm tra lại thông tin.");
+};
+
 const errorMessages = {
   EMAIL_NOT_VERIFIED: "Vui lòng xác minh email trước khi đăng nhập.",
   INVALID_CREDENTIALS: "Email hoặc mật khẩu không đúng. Vui lòng thử lại.",
@@ -20,6 +112,8 @@ const errorMessages = {
 
 export default function LoginForm({ setCurrentView }) {
   const [formData, setFormData] = useState({ email: "", password: "" });
+  const [validationErrors, setValidationErrors] = useState({});
+  const [touchedFields, setTouchedFields] = useState({});
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [showGoogleLogin, setShowGoogleLogin] = useState(false);
@@ -40,11 +134,32 @@ export default function LoginForm({ setCurrentView }) {
   }, []);
 
   const handleInputChange = (field) => (e) => {
-    setFormData((prev) => ({ ...prev, [field]: e.target.value }));
+    const value = e.target.value;
+    setFormData((prev) => ({ ...prev, [field]: value }));
+
+    // Mark field as touched
+    setTouchedFields((prev) => ({ ...prev, [field]: true }));
+
+    // Validate field in real-time
+    const result = validateLoginField(field, value);
+    setValidationErrors((prev) => ({
+      ...prev,
+      [field]: result.isValid ? "" : result.message,
+    }));
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    // Validate all fields
+    const { isValid, errors } = validateLoginForm(formData);
+    setValidationErrors(errors);
+
+    if (!isValid) {
+      toast.error("Vui lòng kiểm tra lại thông tin đã nhập");
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -55,8 +170,12 @@ export default function LoginForm({ setCurrentView }) {
 
       const response = await authApi.login(formData);
       console.log("📡 Login API response:", response);
+      console.log("📡 Login response success:", response.success);
+      console.log("📡 Login response message:", response.message);
+      console.log("📡 Login response data:", response.data);
 
       if (response.success) {
+        console.log("✅ Login successful, processing token...");
         // Try multiple token field names
         const token =
           response.data?.accessToken ||
@@ -97,17 +216,17 @@ export default function LoginForm({ setCurrentView }) {
         navigate("/");
       } else {
         console.error("❌ Login failed:", response);
-        const errorKey = Object.keys(errorMessages).find((key) =>
-          response.message?.includes(key)
-        );
-        toast.error(
-          errorKey
-            ? errorMessages[errorKey]
-            : response.message || "Đăng nhập thất bại"
-        );
+        console.error("❌ Login failed - response.success:", response.success);
+        console.error("❌ Login failed - response.message:", response.message);
+        console.error("❌ Login failed - response.error:", response.error);
+        console.error("❌ Login failed - response.data:", response.data);
+        // Handle backend validation errors
+        handleLoginBackendErrors(response, setValidationErrors);
       }
     } catch (error) {
       console.error("💥 Login error:", error);
+      console.error("💥 Login error response:", error.response?.data);
+      console.error("💥 Login error status:", error.response?.status);
       toast.error("Có lỗi xảy ra khi đăng nhập. Vui lòng thử lại.");
     } finally {
       setLoading(false);
@@ -150,27 +269,40 @@ export default function LoginForm({ setCurrentView }) {
               <form className="space-y-6" onSubmit={handleSubmit}>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Địa chỉ Email
+                    Địa chỉ Email <span className="text-red-500">*</span>
                   </label>
                   <Input
                     type="email"
                     placeholder="Nhập địa chỉ email của bạn"
-                    className="w-full dark:text-gray-900"
+                    className={`w-full dark:text-gray-900 ${
+                      validationErrors.email && touchedFields.email
+                        ? "border-red-500 focus:border-red-500 focus:ring-red-500"
+                        : ""
+                    }`}
                     value={formData.email}
                     onChange={handleInputChange("email")}
                     required
                   />
+                  {validationErrors.email && touchedFields.email && (
+                    <p className="mt-1 text-sm text-red-600">
+                      {validationErrors.email}
+                    </p>
+                  )}
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Mật khẩu
+                    Mật khẩu <span className="text-red-500">*</span>
                   </label>
                   <div className="relative">
                     <Input
                       type={showPassword ? "text" : "password"}
                       placeholder="Nhập mật khẩu của bạn"
-                      className="w-full pr-10 dark:text-gray-900"
+                      className={`w-full pr-10 dark:text-gray-900 ${
+                        validationErrors.password && touchedFields.password
+                          ? "border-red-500 focus:border-red-500 focus:ring-red-500"
+                          : ""
+                      }`}
                       value={formData.password}
                       onChange={handleInputChange("password")}
                       required
@@ -187,6 +319,11 @@ export default function LoginForm({ setCurrentView }) {
                       )}
                     </button>
                   </div>
+                  {validationErrors.password && touchedFields.password && (
+                    <p className="mt-1 text-sm text-red-600">
+                      {validationErrors.password}
+                    </p>
+                  )}
                 </div>
 
                 <div className="text-right">
@@ -202,7 +339,12 @@ export default function LoginForm({ setCurrentView }) {
                 <Button
                   type="submit"
                   className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3"
-                  disabled={loading}
+                  disabled={
+                    loading ||
+                    Object.values(validationErrors).some(
+                      (error) => error !== ""
+                    )
+                  }
                 >
                   {loading ? "Đang đăng nhập..." : "Đăng nhập"}
                 </Button>

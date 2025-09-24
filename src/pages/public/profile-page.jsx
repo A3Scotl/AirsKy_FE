@@ -64,10 +64,18 @@ const UserProfile = () => {
                     src={userProfileUtils.getBestAvatarUrl(userProfile, 96)}
                     alt={userProfileUtils.getDisplayName(userProfile)}
                     onError={(e) => {
+                      console.error("❌ Avatar load failed:", e.target.src);
+                      console.log("🔄 Falling back to UI Avatar");
                       // Fallback if main avatar fails
                       e.target.src = userProfileUtils.getUIAvatarUrl(
                         userProfile,
                         96
+                      );
+                    }}
+                    onLoad={() => {
+                      console.log(
+                        "✅ Avatar loaded successfully:",
+                        userProfileUtils.getBestAvatarUrl(userProfile, 96)
                       );
                     }}
                   />

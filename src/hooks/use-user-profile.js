@@ -177,8 +177,18 @@ export const userProfileUtils = {
 
     // Try Google avatar from auth context (highest priority for Google users)
     if (userProfile.googleAvatar) {
-      console.log("✅ Using Google avatar:", userProfile.googleAvatar);
-      return userProfile.googleAvatar;
+      // Add CORS-friendly parameters to Google avatar URL
+      let googleAvatarUrl = userProfile.googleAvatar;
+      if (googleAvatarUrl.includes("googleusercontent.com")) {
+        // Add size parameter if not present
+        if (!googleAvatarUrl.includes("=s")) {
+          googleAvatarUrl += "=s96-c";
+        }
+        console.log("✅ Using Google avatar with CORS fix:", googleAvatarUrl);
+      } else {
+        console.log("✅ Using Google avatar:", googleAvatarUrl);
+      }
+      return googleAvatarUrl;
     }
 
     // Try to get from token (if available)

@@ -78,19 +78,36 @@ export default function ResetForm({ setCurrentView }) {
   };
 
   const handleError = (response, defaultMessage) => {
-    const message = response.message?.toLowerCase() || "";
+    console.log("Reset form error response:", response);
+    console.log("Reset form response data:", response.data);
+    console.log("Reset form response error:", response.error);
+    console.log("Reset form response message:", response.message);
+
+    // Handle new backend response format
+    const fullErrorData = response.data;
+    const errorMessage = response.error || response.message || "";
+    const backendError =
+      response.error || // Try response.error first (from interceptor)
+      fullErrorData?.error ||
+      fullErrorData?.message ||
+      errorMessage;
+
+    console.log("Reset form backend error:", backendError);
+
+    const message = backendError?.toLowerCase() || "";
 
     if (
       message.includes("user not found") ||
-      message.includes("email not found")
+      message.includes("email not found") ||
+      message.includes("email không tồn tại")
     ) {
       toast.error(errorMessages.email.notFound);
     } else if (message.includes("invalid") && message.includes("otp")) {
       toast.error(errorMessages.otp.invalid);
-    } else if (message.includes("expired")) {
+    } else if (message.includes("expired") || message.includes("hết hạn")) {
       toast.error(errorMessages.otp.expired);
     } else {
-      toast.error(response.message || defaultMessage);
+      toast.error(backendError || defaultMessage);
     }
   };
 
@@ -127,6 +144,10 @@ export default function ResetForm({ setCurrentView }) {
       const response = await authApi.forgotPasswordRequest({
         email: formData.email,
       });
+      console.log("Reset password request response:", response);
+      console.log("Reset password request success:", response.success);
+      console.log("Reset password request message:", response.message);
+
       if (response.success) {
         toast.success(successMessages.otpSent);
         setStep(2);
@@ -137,6 +158,8 @@ export default function ResetForm({ setCurrentView }) {
       }
     } catch (error) {
       console.error("Forgot password error:", error);
+      console.error("Forgot password error response:", error.response?.data);
+      console.error("Forgot password error status:", error.response?.status);
       toast.error("Đã xảy ra lỗi khi gửi mã xác minh. Vui lòng thử lại.");
     } finally {
       setLoading(false);
@@ -155,6 +178,10 @@ export default function ResetForm({ setCurrentView }) {
         newPassword: formData.newPassword,
       });
 
+      console.log("Reset password response:", response);
+      console.log("Reset password success:", response.success);
+      console.log("Reset password message:", response.message);
+
       if (response.success) {
         toast.success(successMessages.passwordReset);
         setCurrentView("login");
@@ -163,6 +190,8 @@ export default function ResetForm({ setCurrentView }) {
       }
     } catch (error) {
       console.error("Reset password error:", error);
+      console.error("Reset password error response:", error.response?.data);
+      console.error("Reset password error status:", error.response?.status);
       toast.error("Đã xảy ra lỗi khi đặt lại mật khẩu. Vui lòng thử lại.");
     } finally {
       setLoading(false);
@@ -173,6 +202,10 @@ export default function ResetForm({ setCurrentView }) {
     setLoading(true);
     try {
       const response = await authApi.resendOtpCode({ email: formData.email });
+      console.log("Resend OTP response:", response);
+      console.log("Resend OTP success:", response.success);
+      console.log("Resend OTP message:", response.message);
+
       if (response.success) {
         toast.success(successMessages.otpResent);
         setCountdown(60);
@@ -182,6 +215,8 @@ export default function ResetForm({ setCurrentView }) {
       }
     } catch (error) {
       console.error("Resend OTP error:", error);
+      console.error("Resend OTP error response:", error.response?.data);
+      console.error("Resend OTP error status:", error.response?.status);
       toast.error("Đã xảy ra lỗi khi gửi lại mã xác minh. Vui lòng thử lại.");
     } finally {
       setLoading(false);

@@ -38,20 +38,13 @@ export const userApi = {
   },
 
   /**
-   * Cập nhật thông tin người dùng (Admin only)
+   * Cập nhật thông tin người dùng (Form-data)
    * @param {number} id - ID của người dùng
-   * @param {{
-   *   username?: string,
-   *   email?: string,
-   *   fullName?: string,
-   *   phoneNumber?: string,
-   *   role?: string,
-   *   active?: boolean
-   * }} userData - Thông tin cập nhật
+   * @param {FormData} formData - FormData chứa thông tin cập nhật
    * @returns {Promise<{ success: boolean, data?: any, message: string }>}
    */
-  updateUser: async (id, userData) => {
-    return apiHandler("put", `/users/${id}`, userData);
+  updateUser: async (id, formData) => {
+    return apiHandler("put", `/users/${id}`, formData);
   },
 
   /**

@@ -10,10 +10,10 @@ const AdminRoute = ({ children }) => {
 
   useEffect(() => {
     if (!loading && !user && !hasShownToast) {
-      toast.error("You need to login to access this page");
+      toast.error("Bạn cần đăng nhập để truy cập trang này");
       setHasShownToast(true);
     } else if (!loading && user && user.role !== "ADMIN" && !hasShownToast) {
-      toast.error("Access denied. Admin privileges required.");
+      toast.error("Vui lớng đăng nhập với vai trò Admin nếu muốn truy cập");
       setHasShownToast(true);
     }
   }, [user, loading, hasShownToast]);

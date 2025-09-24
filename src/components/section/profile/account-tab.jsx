@@ -13,6 +13,7 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import ImageUpload from "@/components/ui/image-upload";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -48,17 +49,21 @@ import { useAuth } from "@/contexts/auth-context";
 import { useNavigate } from "react-router-dom";
 
 const AccountTab = ({ userProfile, onProfileUpdate }) => {
-  const { logout } = useAuth();
+  const { logout, user, updateUser } = useAuth();
   const navigate = useNavigate();
   const [editMode, setEditMode] = useState(false);
   const [passwordMode, setPasswordMode] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [avatarFile, setAvatarFile] = useState(null);
   const [showPasswords, setShowPasswords] = useState({
     current: false,
     new: false,
     confirm: false,
   });
+
+  // Check if user is admin
+  const isAdmin = user?.role === "ADMIN";
 
   // Optimized form state
   const [formData, setFormData] = useState({
@@ -67,9 +72,9 @@ const AccountTab = ({ userProfile, onProfileUpdate }) => {
     email: userProfile?.email || "",
     phone: userProfile?.phone || "",
     dateOfBirth: userProfile?.dateOfBirth || "",
-    address: userProfile?.address || "",
-    nationality: userProfile?.nationality || "",
     passportNumber: userProfile?.passportNumber || "",
+    passportExpiry: userProfile?.passportExpiry || "",
+    avatar: userProfile?.avatar || "",
   });
 
   const [passwordData, setPasswordData] = useState({
@@ -105,6 +110,16 @@ const AccountTab = ({ userProfile, onProfileUpdate }) => {
     setPasswordData({ ...passwordData, [e.target.name]: e.target.value });
   };
 
+  const handleAvatarUpload = (previewUrl, file) => {
+    // Store the file object for FormData submission
+    setAvatarFile(file);
+    // You can also store previewUrl if needed for UI display
+    console.log(
+      "Avatar selected:",
+      file ? `File: ${file.name}` : `URL: ${previewUrl}`
+    );
+  };
+
   const togglePasswordVisibility = (field) => {
     setShowPasswords((prev) => ({ ...prev, [field]: !prev[field] }));
   };
@@ -112,7 +127,6 @@ const AccountTab = ({ userProfile, onProfileUpdate }) => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
-
     try {
       // Validate user ID
       if (!userProfile?.id) {
@@ -135,62 +149,104 @@ const AccountTab = ({ userProfile, onProfileUpdate }) => {
 
       console.log("Cập nhật hồ sơ:", formData);
 
-      // Prepare update data - only send changed fields
-      const updateData = {};
-      if (formData.firstName !== (userProfile?.firstName || "")) {
-        updateData.firstName = formData.firstName.trim();
-      }
-      if (formData.lastName !== (userProfile?.lastName || "")) {
-        updateData.lastName = formData.lastName.trim();
-      }
-      if (formData.phone !== (userProfile?.phone || "")) {
-        updateData.phone = formData.phone.trim();
+      // Prepare FormData for multipart upload
+      const formDataToSend = new FormData();
+
+      // Add text fields (always include them, even if empty)
+      formDataToSend.append("firstName", formData.firstName.trim());
+      formDataToSend.append("lastName", formData.lastName.trim());
+      formDataToSend.append("phone", formData.phone.trim());
+      formDataToSend.append("dateOfBirth", formData.dateOfBirth || "");
+      formDataToSend.append("passportNumber", formData.passportNumber || "");
+      formDataToSend.append("passportExpiry", formData.passportExpiry || "");
+
+      // Add avatar file if selected and valid
+      if (avatarFile && avatarFile instanceof File) {
+        formDataToSend.append("avatar", avatarFile);
+        console.log(
+          "✅ Avatar file added:",
+          avatarFile.name,
+          "Size:",
+          avatarFile.size,
+          "Type:",
+          avatarFile.type
+        );
+      } else if (userProfile?.avatar) {
+        // Send existing avatar URL to keep current avatar
+        formDataToSend.append("existingAvatar", userProfile.avatar);
+        console.log("✅ Existing avatar kept:", userProfile.avatar);
+      } else {
+        console.log("❌ No avatar file to add:", avatarFile);
       }
 
-      // Only proceed if there are changes
-      if (Object.keys(updateData).length === 0) {
-        toast.info("Không có thay đổi nào để cập nhật");
-        setLoading(false);
-        return;
+      console.log("Dữ liệu FormData:");
+      for (let [key, value] of formDataToSend.entries()) {
+        console.log(`${key}:`, value);
       }
 
-      console.log("Dữ liệu cập nhật:", updateData);
+      // Call API to update user with FormData
+      console.log("🚀 Gửi request cập nhật user ID:", userProfile.id);
+      console.log("📊 Request headers sẽ được set tự động cho FormData");
 
-      // Call API to update user
-      const response = await userApi.updateUser(userProfile.id, updateData);
+      const response = await userApi.updateUser(userProfile.id, formDataToSend);
+      console.log("📥 Response từ API:", response);
+      console.log("📋 Response data:", response.data);
+      console.log("📋 Response success:", response.success);
 
       if (response.success) {
         console.log("Cập nhật thành công:", response.data);
+        console.log("🔍 Response data avatar:", response.data.avatar);
+        console.log("🔍 Response data firstName:", response.data.firstName);
+        console.log("🔍 Response data lastName:", response.data.lastName);
         toast.success("Cập nhật hồ sơ thành công!");
 
         // Update local form data with new values
         setFormData((prev) => ({
           ...prev,
-          firstName:
-            updateData.firstName !== undefined
-              ? updateData.firstName
-              : prev.firstName,
-          lastName:
-            updateData.lastName !== undefined
-              ? updateData.lastName
-              : prev.lastName,
-          phone: updateData.phone !== undefined ? updateData.phone : prev.phone,
+          firstName: response.data.firstName || prev.firstName,
+          lastName: response.data.lastName || prev.lastName,
+          phone: response.data.phone || prev.phone,
+          dateOfBirth: response.data.dateOfBirth || prev.dateOfBirth,
+          passportNumber: response.data.passportNumber || prev.passportNumber,
+          passportExpiry: response.data.passportExpiry || prev.passportExpiry,
+          avatar: response.data.avatar || prev.avatar,
         }));
+
+        // Clear avatar file after successful upload
+        setAvatarFile(null);
+
+        // Notify parent component
+        if (onProfileUpdate) {
+          onProfileUpdate(response.data);
+        }
+
+        // Update auth context to reflect changes in header
+        const updatedData = {
+          id: userProfile.id, // Keep user ID
+          firstName: response.data.firstName,
+          lastName: response.data.lastName,
+          fullName:
+            `${response.data.firstName} ${response.data.lastName}`.trim(),
+          avatar: response.data.avatar,
+          phone: response.data.phone,
+          dateOfBirth: response.data.dateOfBirth,
+          passportNumber: response.data.passportNumber,
+          passportExpiry: response.data.passportExpiry,
+        };
+        console.log("🔄 Updating auth context with:", updatedData);
+        updateUser(updatedData);
 
         // Exit edit mode
         setEditMode(false);
-
-        // Notify parent component to refresh profile data
-        onProfileUpdate?.();
       } else {
-        console.error("Cập nhật thất bại:", response);
+        console.error("Cập nhật thất bại:", response.message, response.error);
         toast.error(
           response.message || "Cập nhật hồ sơ thất bại. Vui lòng thử lại."
         );
       }
     } catch (error) {
       console.error("Lỗi cập nhật hồ sơ:", error);
-      toast.error("Cập nhật hồ sơ thất bại. Vui lòng thử lại.");
+      toast.error("Có lỗi xảy ra khi cập nhật hồ sơ. Vui lòng thử lại.");
     } finally {
       setLoading(false);
     }
@@ -198,410 +254,426 @@ const AccountTab = ({ userProfile, onProfileUpdate }) => {
 
   const handlePasswordSubmit = async (e) => {
     e.preventDefault();
-
-    // Vietnamese validation messages
-    if (!passwordData.oldPassword) {
-      toast.error("Vui lòng nhập mật khẩu hiện tại");
-      return;
-    }
-    if (!passwordData.newPassword) {
-      toast.error("Vui lòng nhập mật khẩu mới");
-      return;
-    }
-    if (passwordData.newPassword.length < 6) {
-      toast.error("Mật khẩu mới phải có ít nhất 6 ký tự");
-      return;
-    }
-    if (passwordData.newPassword !== passwordData.confirmPassword) {
-      toast.error("Mật khẩu mới không khớp");
-      return;
-    }
-    if (passwordData.oldPassword === passwordData.newPassword) {
-      toast.error("Mật khẩu mới phải khác mật khẩu hiện tại");
-      return;
-    }
-
     setLoading(true);
 
     try {
-      const response = await authApi.changePassword({
-        email: passwordData.email,
-        oldPassword: passwordData.oldPassword,
-        newPassword: passwordData.newPassword,
-      });
+      // Validate password fields
+      if (!passwordData.oldPassword) {
+        toast.error("Vui lòng nhập mật khẩu hiện tại");
+        setLoading(false);
+        return;
+      }
+      if (!passwordData.newPassword) {
+        toast.error("Vui lòng nhập mật khẩu mới");
+        setLoading(false);
+        return;
+      }
+      if (passwordData.newPassword !== passwordData.confirmPassword) {
+        toast.error("Mật khẩu xác nhận không khớp");
+        setLoading(false);
+        return;
+      }
+      if (passwordData.newPassword.length < 6) {
+        toast.error("Mật khẩu mới phải có ít nhất 6 ký tự");
+        setLoading(false);
+        return;
+      }
+
+      console.log("Đổi mật khẩu:", passwordData);
+
+      // Call API to change password
+      const response = await authApi.changePassword(passwordData);
 
       if (response.success) {
+        console.log("Đổi mật khẩu thành công");
         toast.success("Đổi mật khẩu thành công!");
+
+        // Reset password form
         setPasswordData({
           email: userProfile?.email || "",
           oldPassword: "",
           newPassword: "",
           confirmPassword: "",
         });
+
+        // Exit password mode
         setPasswordMode(false);
       } else {
-        if (response.message.includes("INVALID_CREDENTIALS")) {
-          toast.error("Mật khẩu hiện tại không đúng");
-        } else {
-          toast.error(response.message || "Đổi mật khẩu thất bại");
-        }
+        toast.error(
+          response.message || "Đổi mật khẩu thất bại. Vui lòng thử lại."
+        );
       }
     } catch (error) {
       console.error("Lỗi đổi mật khẩu:", error);
-      toast.error("Đổi mật khẩu thất bại. Vui lòng thử lại.");
+      toast.error("Có lỗi xảy ra khi đổi mật khẩu. Vui lòng thử lại.");
     } finally {
       setLoading(false);
     }
   };
 
-  const handleSocialConnect = (socialName) => {
-    console.log(`Kết nối ${socialName}`);
-  };
-
-  const handleSocialDisconnect = (socialName) => {
-    console.log(`Ngắt kết nối ${socialName}`);
-  };
-
   const handleDeleteAccount = async () => {
-    if (!userProfile?.id) {
-      toast.error("Không tìm thấy ID người dùng");
-      return;
-    }
-
     setDeleteLoading(true);
 
     try {
-      console.log("Đang xóa tài khoản:", userProfile.id);
-
-      // Call API to soft delete user account
-      const response = await userApi.deleteUser(userProfile.id);
+      // Call API to delete account
+      const response = await userApi.deleteUser(userProfile?.id);
 
       if (response.success) {
-        console.log("Xóa tài khoản thành công:", response.data);
-        toast.success("Tài khoản đã được xóa thành công");
+        console.log("Xóa tài khoản thành công");
+        toast.success("Tài khoản đã được xóa thành công!");
 
-        // Logout user immediately
-        logout();
+        // Logout user
+        await logout();
 
-        // Redirect to home page
+        // Navigate to home page
         navigate("/");
       } else {
-        console.error("Xóa tài khoản thất bại:", response);
         toast.error(
           response.message || "Xóa tài khoản thất bại. Vui lòng thử lại."
         );
       }
     } catch (error) {
       console.error("Lỗi xóa tài khoản:", error);
-      toast.error("Xóa tài khoản thất bại. Vui lòng thử lại.");
+      toast.error("Có lỗi xảy ra khi xóa tài khoản. Vui lòng thử lại.");
     } finally {
       setDeleteLoading(false);
     }
   };
 
+  const handleCancelEdit = () => {
+    // Reset form data to original values
+    setFormData({
+      firstName: userProfile?.firstName || "",
+      lastName: userProfile?.lastName || "",
+      email: userProfile?.email || "",
+      phone: userProfile?.phone || "",
+      dateOfBirth: userProfile?.dateOfBirth || "",
+      passportNumber: userProfile?.passportNumber || "",
+      passportExpiry: userProfile?.passportExpiry || "",
+    });
+    setAvatarFile(null);
+    setEditMode(false);
+  };
+
+  const handleCancelPassword = () => {
+    // Reset password form
+    setPasswordData({
+      email: userProfile?.email || "",
+      oldPassword: "",
+      newPassword: "",
+      confirmPassword: "",
+    });
+    setPasswordMode(false);
+  };
+
   return (
     <div className="space-y-6">
-      {/* Personal Information Card */}
+      {/* Profile Information Card */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <User className="h-5 w-5" />
-            Thông Tin Cá Nhân
-          </CardTitle>
-          <CardDescription>
-            Quản lý thông tin cá nhân và hồ sơ của bạn
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {!editMode ? (
-            <div className="space-y-6">
-              {/* Profile Avatar and Basic Info */}
-              <div className="flex items-center gap-6">
-                <div className="relative">
-                  <Avatar className="w-20 h-20">
-                    <AvatarImage
-                      src={userProfileUtils.getBestAvatarUrl(userProfile, 80)}
-                      alt={userProfileUtils.getDisplayName(userProfile)}
-                      onError={(e) => {
-                        e.target.src = userProfileUtils.getUIAvatarUrl(
-                          userProfile,
-                          80
-                        );
-                      }}
-                    />
-                    <AvatarFallback className="text-lg bg-blue-100 text-blue-600">
-                      {userProfileUtils.getUserInitials(userProfile)}
-                    </AvatarFallback>
-                  </Avatar>
-
-                  {/* Avatar Source Indicator */}
-                  <div className="absolute -bottom-2 -right-2 bg-white rounded-full p-1 shadow-lg border">
-                    {(() => {
-                      const avatarUrl =
-                        userProfileUtils.getBestAvatarUrl(userProfile);
-                      if (avatarUrl?.includes("gravatar.com")) {
-                        return (
-                          <div
-                            className="w-4 h-4 bg-blue-500 rounded-full"
-                            title="Gravatar"
-                          />
-                        );
-                      } else if (avatarUrl?.includes("ui-avatars.com")) {
-                        return (
-                          <div
-                            className="w-4 h-4 bg-purple-500 rounded-full"
-                            title="Ảnh đại diện tự tạo"
-                          />
-                        );
-                      } else if (
-                        avatarUrl?.includes("googleapis.com") ||
-                        avatarUrl?.includes("googleusercontent.com")
-                      ) {
-                        return (
-                          <div
-                            className="w-4 h-4 bg-red-500 rounded-full"
-                            title="Ảnh Google"
-                          />
-                        );
-                      } else {
-                        return (
-                          <div
-                            className="w-4 h-4 bg-gray-500 rounded-full"
-                            title="Ảnh mặc định"
-                          />
-                        );
-                      }
-                    })()}
-                  </div>
-                </div>
-
-                <div className="flex-1">
-                  <h3 className="text-xl font-semibold">
-                    {userProfileUtils.getDisplayName(userProfile)}
-                  </h3>
-                  <p className="text-gray-600">{userProfile.email}</p>
-
-                  {/* Avatar Info */}
-                  <div className="mt-2 text-sm text-gray-500">
-                    Ảnh đại diện:{" "}
-                    {(() => {
-                      const avatarUrl =
-                        userProfileUtils.getBestAvatarUrl(userProfile);
-                      if (avatarUrl?.includes("gravatar.com")) {
-                        return "Gravatar";
-                      } else if (avatarUrl?.includes("ui-avatars.com")) {
-                        return "Tạo từ tên";
-                      } else if (
-                        avatarUrl?.includes("googleapis.com") ||
-                        avatarUrl?.includes("googleusercontent.com")
-                      ) {
-                        return "Ảnh tài khoản Google";
-                      } else {
-                        return "Ảnh mặc định";
-                      }
-                    })()}
-                  </div>
-
-                  <div className="flex gap-2 mt-2 flex-wrap">
-                    <Badge
-                      variant="secondary"
-                      className="bg-green-100 text-green-800"
-                    >
-                      <Verified className="w-3 h-3 mr-1" />
-                      Tài khoản đã xác thực
-                    </Badge>
-                    {userProfile.role && (
-                      <Badge
-                        variant="outline"
-                        className="bg-blue-50 text-blue-700"
-                      >
-                        {userProfileUtils.getRoleDisplay(userProfile)}
-                      </Badge>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              <Separator />
-
-              {/* Detailed Information Grid */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-4">
-                  <div>
-                    <Label className="text-sm font-medium text-gray-500">
-                      Họ
-                    </Label>
-                    <p className="mt-1">
-                      {userProfile.firstName || "Chưa cung cấp"}
-                    </p>
-                  </div>
-                  <div>
-                    <Label className="text-sm font-medium text-gray-500">
-                      Tên
-                    </Label>
-                    <p className="mt-1">
-                      {userProfile.lastName || "Chưa cung cấp"}
-                    </p>
-                  </div>
-                  <div>
-                    <Label className="text-sm font-medium text-gray-500">
-                      Địa chỉ Email
-                    </Label>
-                    <p className="mt-1">{userProfile.email}</p>
-                  </div>
-                  <div>
-                    <Label className="text-sm font-medium text-gray-500">
-                      Số điện thoại
-                    </Label>
-                    <p className="mt-1">
-                      {userProfileUtils.getFormattedPhone(userProfile) ||
-                        userProfile.phone ||
-                        "Chưa cung cấp"}
-                    </p>
-                  </div>
-                </div>
-                <div className="space-y-4">
-                  <div>
-                    <Label className="text-sm font-medium text-gray-500">
-                      ID Người dùng
-                    </Label>
-                    <p className="mt-1 font-mono text-sm">
-                      {userProfile.id || "N/A"}
-                    </p>
-                  </div>
-                  <div>
-                    <Label className="text-sm font-medium text-gray-500">
-                      Vai trò tài khoản
-                    </Label>
-                    <p className="mt-1">
-                      {userProfileUtils.getRoleDisplay(userProfile)}
-                    </p>
-                  </div>
-                  <div>
-                    <Label className="text-sm font-medium text-gray-500">
-                      Thành viên từ
-                    </Label>
-                    <p className="mt-1">
-                      {userProfileUtils.getJoinDate(userProfile)}
-                    </p>
-                  </div>
-                  <div>
-                    <Label className="text-sm font-medium text-gray-500">
-                      Trạng thái tài khoản
-                    </Label>
-                    <p className="mt-1">
-                      {userProfile.isVerified !== false ? (
-                        <span className="text-green-600 font-medium">
-                          ✓ Đã xác thực
-                        </span>
-                      ) : (
-                        <span className="text-orange-600 font-medium">
-                          ⚠ Chờ xác thực
-                        </span>
-                      )}
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex gap-3">
-                <Button onClick={() => setEditMode(true)}>
-                  <Edit className="w-4 h-4 mr-2" />
-                  Chỉnh sửa hồ sơ
-                </Button>
-                <Button variant="outline" onClick={() => setPasswordMode(true)}>
-                  <Lock className="w-4 h-4 mr-2" />
-                  Cập nhật mật khẩu
-                </Button>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-4">
+              <Avatar className="h-16 w-16">
+                <AvatarImage
+                  src={
+                    avatarFile && avatarFile instanceof File
+                      ? URL.createObjectURL(avatarFile)
+                      : userProfile?.avatar || undefined
+                  }
+                  alt={`${userProfile?.firstName} ${userProfile?.lastName}`}
+                />
+                <AvatarFallback>
+                  <User className="h-8 w-8" />
+                </AvatarFallback>
+              </Avatar>
+              <div>
+                <CardTitle className="text-xl">
+                  {userProfile?.firstName} {userProfile?.lastName}
+                </CardTitle>
+                <CardDescription>{userProfile?.email}</CardDescription>
+                <Badge variant="secondary" className="mt-1">
+                  {user?.role === "ADMIN" ? "Quản trị viên" : "Người dùng"}
+                </Badge>
               </div>
             </div>
-          ) : (
+            <Button
+              variant={editMode ? "outline" : "default"}
+              onClick={() => setEditMode(!editMode)}
+              disabled={loading}
+            >
+              {editMode ? (
+                <>
+                  <Edit className="mr-2 h-4 w-4" />
+                  Hủy
+                </>
+              ) : (
+                <>
+                  <Edit className="mr-2 h-4 w-4" />
+                  Chỉnh sửa
+                </>
+              )}
+            </Button>
+          </div>
+        </CardHeader>
+
+        <CardContent className="space-y-6">
+          {editMode ? (
             <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="firstName">Họ</Label>
+              {/* Avatar Upload */}
+              <div className="space-y-2">
+                <Label htmlFor="avatar">Ảnh đại diện</Label>
+                <ImageUpload
+                  onChange={handleAvatarUpload}
+                  value={userProfile?.avatar}
+                  placeholder="Chọn ảnh đại diện"
+                />
+              </div>
+
+              {/* First Name */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="firstName">Họ *</Label>
                   <Input
                     id="firstName"
                     name="firstName"
+                    type="text"
                     value={formData.firstName}
                     onChange={handleInputChange}
-                    placeholder="Nhập họ của bạn"
+                    placeholder="Nhập họ"
                     required
                   />
                 </div>
-                <div>
-                  <Label htmlFor="lastName">Tên</Label>
+
+                {/* Last Name */}
+                <div className="space-y-2">
+                  <Label htmlFor="lastName">Tên *</Label>
                   <Input
                     id="lastName"
                     name="lastName"
+                    type="text"
                     value={formData.lastName}
                     onChange={handleInputChange}
-                    placeholder="Nhập tên của bạn"
+                    placeholder="Nhập tên"
                     required
                   />
                 </div>
-                <div>
-                  <Label htmlFor="email">Địa chỉ Email</Label>
-                  <Input
-                    id="email"
-                    name="email"
-                    type="email"
-                    value={formData.email}
-                    onChange={handleInputChange}
-                    disabled
-                    className="bg-gray-50"
-                    title="Không thể thay đổi email"
-                  />
-                  <p className="text-xs text-gray-500 mt-1">
-                    Email không thể thay đổi vì lý do bảo mật
-                  </p>
-                </div>
-                <div>
-                  <Label htmlFor="phone">Số điện thoại</Label>
-                  <Input
-                    id="phone"
-                    name="phone"
-                    value={formData.phone}
-                    onChange={handleInputChange}
-                    placeholder="0123456789"
-                  />
-                </div>
               </div>
-              <div className="flex gap-4">
-                <Button type="submit" disabled={loading}>
-                  {loading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                  Lưu thay đổi
-                </Button>
+
+              {/* Email - Read Only */}
+              <div className="space-y-2">
+                <Label htmlFor="email">Email</Label>
+                <Input
+                  id="email"
+                  name="email"
+                  type="email"
+                  value={formData.email}
+                  readOnly
+                  className="bg-gray-50"
+                />
+                <p className="text-sm text-gray-500">
+                  Email không thể thay đổi
+                </p>
+              </div>
+
+              {/* Phone */}
+              <div className="space-y-2">
+                <Label htmlFor="phone">Số điện thoại</Label>
+                <Input
+                  id="phone"
+                  name="phone"
+                  type="tel"
+                  value={formData.phone}
+                  onChange={handleInputChange}
+                  placeholder="Nhập số điện thoại"
+                />
+              </div>
+
+              {/* Date of Birth */}
+              <div className="space-y-2">
+                <Label htmlFor="dateOfBirth">Ngày sinh</Label>
+                <Input
+                  id="dateOfBirth"
+                  name="dateOfBirth"
+                  type="date"
+                  value={formData.dateOfBirth}
+                  onChange={handleInputChange}
+                />
+              </div>
+
+              {/* Passport Number */}
+              <div className="space-y-2">
+                <Label htmlFor="passportNumber">Số hộ chiếu</Label>
+                <Input
+                  id="passportNumber"
+                  name="passportNumber"
+                  type="text"
+                  value={formData.passportNumber}
+                  onChange={handleInputChange}
+                  placeholder="Nhập số hộ chiếu"
+                />
+              </div>
+
+              {/* Passport Expiry */}
+              <div className="space-y-2">
+                <Label htmlFor="passportExpiry">Ngày hết hạn hộ chiếu</Label>
+                <Input
+                  id="passportExpiry"
+                  name="passportExpiry"
+                  type="date"
+                  value={formData.passportExpiry}
+                  onChange={handleInputChange}
+                />
+              </div>
+
+              {/* Loyalty Points - Read Only */}
+              <div className="space-y-2">
+                <Label htmlFor="loyaltyPoints">Điểm tích lũy</Label>
+                <Input
+                  id="loyaltyPoints"
+                  name="loyaltyPoints"
+                  type="text"
+                  value={userProfile?.loyaltyPoints || 0}
+                  readOnly
+                  className="bg-gray-50"
+                />
+              </div>
+
+              {/* Form Actions */}
+              <div className="flex justify-end space-x-2 pt-4">
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={() => setEditMode(false)}
+                  onClick={handleCancelEdit}
                   disabled={loading}
                 >
                   Hủy
                 </Button>
+                <Button type="submit" disabled={loading}>
+                  {loading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Đang cập nhật...
+                    </>
+                  ) : (
+                    "Lưu thay đổi"
+                  )}
+                </Button>
               </div>
             </form>
+          ) : (
+            <div className="space-y-4">
+              {/* Display Profile Information */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label className="text-sm font-medium text-gray-500">
+                    Họ
+                  </Label>
+                  <p className="text-sm mt-1">
+                    {userProfile?.firstName || "Chưa cập nhật"}
+                  </p>
+                </div>
+                <div>
+                  <Label className="text-sm font-medium text-gray-500">
+                    Tên
+                  </Label>
+                  <p className="text-sm mt-1">
+                    {userProfile?.lastName || "Chưa cập nhật"}
+                  </p>
+                </div>
+              </div>
+
+              <div>
+                <Label className="text-sm font-medium text-gray-500">
+                  Email
+                </Label>
+                <p className="text-sm mt-1">{userProfile?.email}</p>
+              </div>
+
+              <div>
+                <Label className="text-sm font-medium text-gray-500">
+                  Số điện thoại
+                </Label>
+                <p className="text-sm mt-1">
+                  {userProfile?.phone || "Chưa cập nhật"}
+                </p>
+              </div>
+
+              <div>
+                <Label className="text-sm font-medium text-gray-500">
+                  Ngày sinh
+                </Label>
+                <p className="text-sm mt-1">
+                  {userProfile?.dateOfBirth || "Chưa cập nhật"}
+                </p>
+              </div>
+
+              <div>
+                <Label className="text-sm font-medium text-gray-500">
+                  Số hộ chiếu
+                </Label>
+                <p className="text-sm mt-1">
+                  {userProfile?.passportNumber || "Chưa cập nhật"}
+                </p>
+              </div>
+
+              <div>
+                <Label className="text-sm font-medium text-gray-500">
+                  Ngày hết hạn hộ chiếu
+                </Label>
+                <p className="text-sm mt-1">
+                  {userProfile?.passportExpiry || "Chưa cập nhật"}
+                </p>
+              </div>
+
+              <div>
+                <Label className="text-sm font-medium text-gray-500">
+                  Điểm tích lũy
+                </Label>
+                <p className="text-sm mt-1">
+                  {userProfile?.loyaltyPoints || 0} điểm
+                </p>
+              </div>
+            </div>
           )}
         </CardContent>
       </Card>
 
-      {/* Password Update Card */}
-      {passwordMode && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Lock className="h-5 w-5" />
-              Cập Nhật Mật Khẩu
-            </CardTitle>
-            <CardDescription>
-              Thay đổi mật khẩu tài khoản của bạn
-            </CardDescription>
-          </CardHeader>
+      {/* Password Change Card */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="text-lg">Đổi mật khẩu</CardTitle>
+              <CardDescription>
+                Thay đổi mật khẩu để bảo mật tài khoản của bạn
+              </CardDescription>
+            </div>
+            <Button
+              variant={passwordMode ? "outline" : "default"}
+              onClick={() => setPasswordMode(!passwordMode)}
+              disabled={loading}
+            >
+              {passwordMode ? (
+                <>
+                  <Lock className="mr-2 h-4 w-4" />
+                  Hủy
+                </>
+              ) : (
+                <>
+                  <Lock className="mr-2 h-4 w-4" />
+                  Đổi mật khẩu
+                </>
+              )}
+            </Button>
+          </div>
+        </CardHeader>
+
+        {passwordMode && (
           <CardContent>
             <form onSubmit={handlePasswordSubmit} className="space-y-4">
-              <div>
-                <Label htmlFor="oldPassword">Mật khẩu hiện tại</Label>
+              {/* Current Password */}
+              <div className="space-y-2">
+                <Label htmlFor="oldPassword">Mật khẩu hiện tại *</Label>
                 <div className="relative">
                   <Input
                     id="oldPassword"
@@ -612,21 +684,25 @@ const AccountTab = ({ userProfile, onProfileUpdate }) => {
                     placeholder="Nhập mật khẩu hiện tại"
                     required
                   />
-                  <button
+                  <Button
                     type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
                     onClick={() => togglePasswordVisibility("current")}
-                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
                   >
                     {showPasswords.current ? (
-                      <EyeOff className="w-4 h-4" />
+                      <EyeOff className="h-4 w-4" />
                     ) : (
-                      <Eye className="w-4 h-4" />
+                      <Eye className="h-4 w-4" />
                     )}
-                  </button>
+                  </Button>
                 </div>
               </div>
-              <div>
-                <Label htmlFor="newPassword">Mật khẩu mới</Label>
+
+              {/* New Password */}
+              <div className="space-y-2">
+                <Label htmlFor="newPassword">Mật khẩu mới *</Label>
                 <div className="relative">
                   <Input
                     id="newPassword"
@@ -634,31 +710,28 @@ const AccountTab = ({ userProfile, onProfileUpdate }) => {
                     type={showPasswords.new ? "text" : "password"}
                     value={passwordData.newPassword}
                     onChange={handlePasswordChange}
-                    placeholder="Nhập mật khẩu mới (tối thiểu 6 ký tự)"
-                    minLength={6}
+                    placeholder="Nhập mật khẩu mới"
                     required
                   />
-                  <button
+                  <Button
                     type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
                     onClick={() => togglePasswordVisibility("new")}
-                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
                   >
                     {showPasswords.new ? (
-                      <EyeOff className="w-4 h-4" />
+                      <EyeOff className="h-4 w-4" />
                     ) : (
-                      <Eye className="w-4 h-4" />
+                      <Eye className="h-4 w-4" />
                     )}
-                  </button>
+                  </Button>
                 </div>
-                {passwordData.newPassword &&
-                  passwordData.newPassword.length < 6 && (
-                    <p className="text-red-500 text-xs mt-1">
-                      Mật khẩu phải có ít nhất 6 ký tự
-                    </p>
-                  )}
               </div>
-              <div>
-                <Label htmlFor="confirmPassword">Xác nhận mật khẩu mới</Label>
+
+              {/* Confirm Password */}
+              <div className="space-y-2">
+                <Label htmlFor="confirmPassword">Xác nhận mật khẩu mới *</Label>
                 <div className="relative">
                   <Input
                     id="confirmPassword"
@@ -666,228 +739,147 @@ const AccountTab = ({ userProfile, onProfileUpdate }) => {
                     type={showPasswords.confirm ? "text" : "password"}
                     value={passwordData.confirmPassword}
                     onChange={handlePasswordChange}
-                    placeholder="Xác nhận mật khẩu mới"
+                    placeholder="Nhập lại mật khẩu mới"
                     required
                   />
-                  <button
+                  <Button
                     type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
                     onClick={() => togglePasswordVisibility("confirm")}
-                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
                   >
                     {showPasswords.confirm ? (
-                      <EyeOff className="w-4 h-4" />
+                      <EyeOff className="h-4 w-4" />
                     ) : (
-                      <Eye className="w-4 h-4" />
+                      <Eye className="h-4 w-4" />
                     )}
-                  </button>
+                  </Button>
                 </div>
-                {passwordData.confirmPassword &&
-                  passwordData.newPassword !== passwordData.confirmPassword && (
-                    <p className="text-red-500 text-xs mt-1">
-                      Mật khẩu không khớp
-                    </p>
-                  )}
-                {passwordData.confirmPassword &&
-                  passwordData.newPassword === passwordData.confirmPassword &&
-                  passwordData.confirmPassword.length >= 6 && (
-                    <p className="text-green-500 text-xs mt-1">Mật khẩu khớp</p>
-                  )}
               </div>
-              <div className="flex gap-4">
-                <Button type="submit" disabled={loading}>
-                  {loading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                  Cập nhật mật khẩu
-                </Button>
+
+              {/* Password Actions */}
+              <div className="flex justify-end space-x-2 pt-4">
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={() => {
-                    setPasswordMode(false);
-                    setPasswordData({
-                      email: userProfile?.email || "",
-                      oldPassword: "",
-                      newPassword: "",
-                      confirmPassword: "",
-                    });
-                  }}
+                  onClick={handleCancelPassword}
                   disabled={loading}
                 >
                   Hủy
                 </Button>
+                <Button type="submit" disabled={loading}>
+                  {loading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Đang đổi...
+                    </>
+                  ) : (
+                    "Đổi mật khẩu"
+                  )}
+                </Button>
               </div>
             </form>
           </CardContent>
-        </Card>
-      )}
+        )}
+      </Card>
 
-      {/* Account Security Info Card */}
+      {/* Social Accounts Card */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Lock className="h-5 w-5" />
-            Bảo Mật Tài Khoản
-          </CardTitle>
+          <CardTitle className="text-lg">Tài khoản mạng xã hội</CardTitle>
           <CardDescription>
-            Thông tin bảo mật và chi tiết tài khoản
+            Kết nối tài khoản mạng xã hội để đăng nhập dễ dàng hơn
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="space-y-4">
-              <div>
-                <Label className="text-sm font-medium text-gray-500">
-                  Cập nhật lần cuối
-                </Label>
-                <p className="mt-1">
-                  {userProfile.updatedAt
-                    ? new Date(userProfile.updatedAt).toLocaleDateString(
-                        "vi-VN",
-                        {
-                          year: "numeric",
-                          month: "long",
-                          day: "numeric",
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        }
-                      )
-                    : "Chưa từng cập nhật"}
-                </p>
-              </div>
-              <div>
-                <Label className="text-sm font-medium text-gray-500">
-                  Độ hoàn thiện hồ sơ
-                </Label>
-                <div className="mt-1">
-                  {userProfileUtils.isProfileComplete(userProfile) ? (
-                    <span className="text-green-600 font-medium">
-                      ✓ Hoàn thiện
-                    </span>
-                  ) : (
-                    <div>
-                      <span className="text-orange-600 font-medium">
-                        ⚠ Chưa hoàn thiện
-                      </span>
-                      <p className="text-xs text-gray-500 mt-1">
-                        Thiếu:{" "}
-                        {userProfileUtils
-                          .getMissingFields(userProfile)
-                          .join(", ")}
+          <div className="space-y-4">
+            {socialAccounts.map((account) => (
+              <div
+                key={account.name}
+                className="flex items-center justify-between p-4 border rounded-lg"
+              >
+                <div className="flex items-center space-x-3">
+                  <account.icon className="h-5 w-5" />
+                  <div>
+                    <p className="font-medium">{account.name}</p>
+                    {account.connected && (
+                      <p className="text-sm text-gray-500">
+                        @{account.username}
                       </p>
-                    </div>
+                    )}
+                  </div>
+                </div>
+                <div className="flex items-center space-x-2">
+                  {account.connected ? (
+                    <>
+                      <Badge variant="secondary" className="text-green-600">
+                        <Verified className="mr-1 h-3 w-3" />
+                        Đã kết nối
+                      </Badge>
+                      <Button variant="outline" size="sm">
+                        <Unlink className="mr-2 h-4 w-4" />
+                        Ngắt kết nối
+                      </Button>
+                    </>
+                  ) : (
+                    <Button variant="outline" size="sm">
+                      <Plus className="mr-2 h-4 w-4" />
+                      Kết nối
+                    </Button>
                   )}
                 </div>
               </div>
-            </div>
-            <div className="space-y-4">
-              <div>
-                <Label className="text-sm font-medium text-gray-500">
-                  Tài khoản được tạo
-                </Label>
-                <p className="mt-1">
-                  {userProfile.createdAt
-                    ? new Date(userProfile.createdAt).toLocaleDateString(
-                        "vi-VN",
-                        {
-                          year: "numeric",
-                          month: "long",
-                          day: "numeric",
-                        }
-                      )
-                    : "Không rõ"}
-                </p>
-              </div>
-              <div>
-                <Label className="text-sm font-medium text-gray-500">
-                  Bảo mật mật khẩu
-                </Label>
-                <div className="mt-1">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setPasswordMode(true)}
-                    className="text-blue-600 hover:text-blue-700"
-                  >
-                    <Lock className="w-3 h-3 mr-1" />
-                    Đổi mật khẩu
-                  </Button>
-                </div>
-              </div>
-            </div>
+            ))}
           </div>
         </CardContent>
       </Card>
 
-      {/* Account Actions Card */}
+      {/* Delete Account Card */}
       <Card className="border-red-200">
         <CardHeader>
-          <CardTitle className="text-red-600">Cẩn thận khi thao tác</CardTitle>
-          <CardDescription>
-            Các hành động không thể hoàn tác sẽ ảnh hưởng đến tài khoản của bạn
+          <CardTitle className="text-lg text-red-600">Xóa tài khoản</CardTitle>
+          <CardDescription className="text-red-600">
+            Hành động này không thể hoàn tác. Tất cả dữ liệu của bạn sẽ bị xóa
+            vĩnh viễn.
           </CardDescription>
         </CardHeader>
-        <CardContent>
-          <div className="flex items-center flex-wrap gap-2 justify-between p-4 bg-red-50 rounded-lg">
-            <div>
-              <p className="font-medium text-red-900">Xóa Tài Khoản</p>
-              <p className="text-sm text-red-700">
-                Tài khoản sẽ bị vô hiệu hóa và không thể đăng nhập.
-              </p>
-            </div>
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button variant="destructive" disabled={deleteLoading}>
-                  {deleteLoading ? (
-                    <>
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      Đang xóa...
-                    </>
-                  ) : (
-                    <>
-                      <Trash2 className="w-4 h-4 mr-2" />
-                      Xóa Tài Khoản
-                    </>
-                  )}
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle className="text-red-600">
-                    Bạn có chắc chắn muốn xóa tài khoản?
-                  </AlertDialogTitle>
-                  <AlertDialogDescription className="space-y-2">
-                    <p>Hành động này sẽ:</p>
-                    <ul className="list-disc list-inside space-y-1 text-sm">
-                      <li>Vô hiệu hóa tài khoản của bạn</li>
-                      <li>Bạn sẽ không thể đăng nhập được nữa</li>
-                      <li>Dữ liệu sẽ được bảo toàn trong hệ thống</li>
-                      <li>Admin có thể khôi phục tài khoản nếu cần</li>
-                    </ul>
-                    <p className="font-medium text-red-600 mt-3">
-                      Bạn sẽ được đăng xuất ngay lập tức sau khi xóa.
-                    </p>
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Hủy</AlertDialogCancel>
-                  <AlertDialogAction
-                    onClick={handleDeleteAccount}
-                    className="bg-red-600 hover:bg-red-700"
-                  >
-                    Xác nhận xóa tài khoản
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-          </div>
-        </CardContent>
-        <CardFooter className="flex flex-col items-start space-y-4">
-          <Separator />
-          <div className="flex items-center">
-            <AlertCircle className="w-5 h-5 mr-2 text-amber-600" />
-            <p className="text-sm text-gray-600">
-              Cần hỗ trợ? Liên hệ với đội ngũ hỗ trợ để được trợ giúp.
-            </p>
-          </div>
+        <CardFooter>
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant="destructive" disabled={deleteLoading}>
+                {deleteLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Đang xóa...
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    Xóa tài khoản
+                  </>
+                )}
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Bạn có chắc chắn?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Hành động này không thể hoàn tác. Tất cả dữ liệu của bạn sẽ bị
+                  xóa vĩnh viễn và bạn sẽ không thể truy cập lại tài khoản này.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Hủy</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={handleDeleteAccount}
+                  className="bg-red-600 hover:bg-red-700"
+                >
+                  Xóa tài khoản
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </CardFooter>
       </Card>
     </div>

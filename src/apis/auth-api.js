@@ -83,7 +83,7 @@ export const authApi = {
 
   /**
    * Đăng nhập bằng Google
-   * @param {{ idToken: string }} credentials - Thông tin đăng nhập Google
+   * @param {{ idToken: string, avatarUrl?: string, firstName?: string, lastName?: string }} credentials - Thông tin đăng nhập Google
    * @returns {Promise<{ success: boolean, data?: any, message: string }>}
    */
   googleLogin: async (credentials) => {

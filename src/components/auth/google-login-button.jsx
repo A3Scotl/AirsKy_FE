@@ -108,9 +108,17 @@ const GoogleLoginButton = ({ className = "", disabled = false }) => {
 
       const decoded = jwtDecode(response.credential);
 
-      const result = await authApi.googleLogin({
+      // Prepare data to send to backend including avatar URL
+      const googleLoginData = {
         idToken: response.credential,
-      });
+        avatarUrl: decoded.picture, // Send Google avatar URL to backend
+        firstName: decoded.given_name,
+        lastName: decoded.family_name,
+      };
+
+      console.log("🚀 Sending Google login data to backend:", googleLoginData);
+
+      const result = await authApi.googleLogin(googleLoginData);
 
       if (result.success && result.data) {
         let token =
@@ -138,21 +146,90 @@ const GoogleLoginButton = ({ className = "", disabled = false }) => {
           });
 
           const userData = {
+            id: decoded.id || decoded.sub,
             email: decoded.sub || googleDecoded.email,
             role: decoded.role,
             exp: decoded.exp,
-            // Store Google profile information
+            // Store Google profile information as fallback
             googleAvatar: googleDecoded.picture,
-            firstName: googleDecoded.given_name,
-            lastName: googleDecoded.family_name,
-            fullName: googleDecoded.name,
+            // Use database data if available, otherwise Google data
+            firstName: result.data.firstName || googleDecoded.given_name,
+            lastName: result.data.lastName || googleDecoded.family_name,
+            fullName:
+              result.data.firstName && result.data.lastName
+                ? `${result.data.firstName} ${result.data.lastName}`.trim()
+                : googleDecoded.name,
+            // Avatar: prioritize database, fallback to Google
+            avatar: result.data.avatar || googleDecoded.picture,
           };
 
           console.log("💾 User Data to be saved:", userData);
           console.log("🖼️ Google Avatar URL:", userData.googleAvatar);
+          console.log("🔍 Google decoded picture:", googleDecoded.picture);
+          console.log("📥 Backend avatar response:", result.data.avatar);
+
+          // Ensure googleAvatar is properly set
+          if (!userData.googleAvatar && googleDecoded.picture) {
+            userData.googleAvatar = googleDecoded.picture;
+            console.log("🔧 Fixed Google avatar:", userData.googleAvatar);
+          }
 
           login(userData);
           toast.success("Đăng nhập Google thành công!");
+
+          // After successful login, fetch complete user profile from database
+          // This ensures we get updated firstName, lastName, and avatar from database
+          try {
+            console.log(
+              "🔄 Fetching complete user profile from database after Google login..."
+            );
+            const profileResult = await authApi.me();
+
+            if (profileResult.success && profileResult.data) {
+              console.log("✅ Database profile fetched:", profileResult.data);
+              console.log("🔍 Database avatar:", profileResult.data.avatar);
+              console.log(
+                "🔍 Database firstName:",
+                profileResult.data.firstName
+              );
+              console.log("🔍 Database lastName:", profileResult.data.lastName);
+
+              // Update user data with database information, keeping Google avatar as fallback
+              const completeUserData = {
+                ...userData, // Keep existing data including googleAvatar
+                ...profileResult.data, // Override with database data
+                // Ensure database avatar takes priority, but keep googleAvatar for fallback
+                googleAvatar: googleDecoded.picture, // Keep Google avatar as fallback
+              };
+
+              console.log("� Data merge details:");
+              console.log("  - Google userData:", {
+                firstName: userData.firstName,
+                lastName: userData.lastName,
+                avatar: userData.avatar,
+                googleAvatar: userData.googleAvatar,
+              });
+              console.log("  - Database profileResult.data:", {
+                firstName: profileResult.data.firstName,
+                lastName: profileResult.data.lastName,
+                avatar: profileResult.data.avatar,
+              });
+              console.log("  - Final completeUserData:", {
+                firstName: completeUserData.firstName,
+                lastName: completeUserData.lastName,
+                avatar: completeUserData.avatar,
+                googleAvatar: completeUserData.googleAvatar,
+              });
+              login(completeUserData); // Update with complete data
+            } else {
+              console.warn(
+                "⚠️ Could not fetch database profile, using Google data only"
+              );
+            }
+          } catch (profileError) {
+            console.error("❌ Error fetching database profile:", profileError);
+            // Continue with Google data only
+          }
 
           setTimeout(() => {
             window.location.href = "/";

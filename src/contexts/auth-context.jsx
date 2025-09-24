@@ -8,6 +8,7 @@ const AuthContext = createContext({
   loading: false,
   login: () => {},
   logout: () => {},
+  updateUser: () => {},
   checkTokenExpiry: () => {},
   handleTokenExpired: () => {},
   refreshToken: () => {},
@@ -18,16 +19,81 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
+  // Function to filter only essential user data for localStorage
+  const getEssentialUserData = (userData) => {
+    if (!userData) return null;
+
+    return {
+      id: userData.id,
+      email: userData.email,
+      role: userData.role,
+      exp: userData.exp,
+      firstName: userData.firstName,
+      lastName: userData.lastName,
+      fullName: userData.fullName,
+      avatar: userData.avatar,
+      googleAvatar: userData.googleAvatar,
+      authProvider: userData.authProvider,
+    };
+  };
+
   useEffect(() => {
-    const initializeAuth = () => {
+    const initializeAuth = async () => {
       const token = localStorage.getItem("token");
       const savedUser = localStorage.getItem("user");
 
       // Try to load from localStorage first
       if (savedUser) {
         try {
-          const userData = JSON.parse(savedUser);
-          setUser(userData);
+          const essentialUserData = JSON.parse(savedUser);
+          console.log(
+            "🔄 Loaded essential user data from localStorage:",
+            essentialUserData
+          );
+
+          // Set essential data first, then fetch complete profile
+          setUser(essentialUserData);
+
+          // Fetch complete profile from database
+          try {
+            console.log("🔄 Fetching complete user profile from database...");
+            const { authApi } = await import("@/apis/auth-api");
+            const profileResult = await authApi.me();
+
+            if (profileResult.success && profileResult.data) {
+              console.log("✅ Database profile fetched:", profileResult.data);
+
+              // Merge database data with essential localStorage data
+              const completeUserData = {
+                ...essentialUserData, // Keep essential data
+                ...profileResult.data, // Override with database data
+                // Preserve Google avatar as fallback
+                googleAvatar: essentialUserData.googleAvatar,
+              };
+
+              console.log(
+                "🔄 Complete user data after merging with database:",
+                completeUserData
+              );
+              setUser(completeUserData);
+
+              // Update localStorage with latest essential data
+              const updatedEssentialData =
+                getEssentialUserData(completeUserData);
+              localStorage.setItem(
+                "user",
+                JSON.stringify(updatedEssentialData)
+              );
+            } else {
+              console.warn(
+                "⚠️ Could not fetch database profile, using localStorage data only"
+              );
+            }
+          } catch (profileError) {
+            console.error("❌ Error fetching database profile:", profileError);
+            // Continue with localStorage data only
+          }
+
           setLoading(false);
           return;
         } catch (error) {
@@ -55,20 +121,57 @@ export function AuthProvider({ children }) {
         }
 
         const userData = {
-          id: decoded.id || decoded.sub, // Add id field
+          id: decoded.id || decoded.sub,
           email: decoded.sub,
           role: decoded.role,
           exp: decoded.exp,
+          // Preserve Google avatar from localStorage if available
           googleAvatar: decoded.picture || decoded.avatar,
           firstName: decoded.given_name,
           lastName: decoded.family_name,
           fullName: decoded.name,
         };
 
-        setUser(userData);
-        localStorage.setItem("user", JSON.stringify(userData));
+        console.log("✅ Initial user data from token:", userData);
+
+        // Now fetch complete profile from database to get latest firstName, lastName, avatar
+        try {
+          console.log("� Fetching complete user profile from database...");
+          const { authApi } = await import("@/apis/auth-api");
+          const profileResult = await authApi.me();
+
+          if (profileResult.success && profileResult.data) {
+            console.log("✅ Database profile fetched:", profileResult.data);
+
+            // Merge database data with existing user data
+            // Database data takes priority for firstName, lastName, avatar
+            const completeUserData = {
+              ...userData, // Keep token data
+              ...profileResult.data, // Override with database data
+              // Preserve Google avatar as fallback
+              googleAvatar: userData.googleAvatar,
+            };
+
+            console.log(
+              "🔄 Complete user data after merging with database:",
+              completeUserData
+            );
+            setUser(completeUserData);
+
+            // Save essential data only to localStorage
+            const essentialData = getEssentialUserData(completeUserData);
+            localStorage.setItem("user", JSON.stringify(essentialData));
+          } else {
+            console.warn(
+              "⚠️ Could not fetch database profile, using token data only"
+            );
+          }
+        } catch (profileError) {
+          console.error("❌ Error fetching database profile:", profileError);
+          // Continue with token data only
+        }
       } catch (error) {
-        // console.error("Token decoding error:", error);
+        console.error("Token decoding error:", error);
         toast.error("Token không hợp lệ");
         localStorage.removeItem("token");
         localStorage.removeItem("user");
@@ -78,7 +181,9 @@ export function AuthProvider({ children }) {
       }
     };
 
-    initializeAuth();
+    (async () => {
+      await initializeAuth();
+    })();
   }, [navigate]);
 
   // Check token expiry every 5 minutes
@@ -150,7 +255,9 @@ export function AuthProvider({ children }) {
 
   const login = (userData, token) => {
     setUser(userData);
-    localStorage.setItem("user", JSON.stringify(userData));
+    // Only save essential user data to localStorage
+    const essentialData = getEssentialUserData(userData);
+    localStorage.setItem("user", JSON.stringify(essentialData));
     if (token) {
       localStorage.setItem("token", token);
     }
@@ -164,9 +271,20 @@ export function AuthProvider({ children }) {
     navigate("/");
   };
 
+  const updateUser = (updates) => {
+    setUser((prevUser) => {
+      const updatedUser = { ...prevUser, ...updates };
+      // Only save essential user data to localStorage
+      const essentialData = getEssentialUserData(updatedUser);
+      localStorage.setItem("user", JSON.stringify(essentialData));
+      return updatedUser;
+    });
+  };
+
   // Function để refresh token (có thể implement sau)
   const refreshToken = async () => {
     // TODO: Implement token refresh logic
+    console.log("🔄 refreshToken called - not implemented yet");
     return false;
   };
 
@@ -177,6 +295,7 @@ export function AuthProvider({ children }) {
         loading,
         login,
         logout,
+        updateUser,
         checkTokenExpiry,
         handleTokenExpired,
         refreshToken,

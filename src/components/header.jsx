@@ -21,6 +21,7 @@ import { useAuth } from "@/contexts/auth-context";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { useEffect, useRef, useState } from "react";
 import { userProfileUtils } from "@/hooks/use-user-profile";
+import { authApi } from "@/apis/auth-api";
 
 const MENU_ITEMS = [
   { label: "Chuyến bay", path: "flights" },
@@ -31,19 +32,141 @@ const MENU_ITEMS = [
 export function Header() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, logout } = useAuth();
+  const { user, logout, updateUser } = useAuth();
+  console.log("🔄 Header render - current user state:", {
+    id: user?.id,
+    email: user?.email,
+    firstName: user?.firstName,
+    lastName: user?.lastName,
+    fullName: user?.fullName,
+    avatar: user?.avatar,
+    googleAvatar: user?.googleAvatar,
+    picture: user?.picture,
+    hasAvatar: !!user?.avatar,
+    hasGoogleAvatar: !!user?.googleAvatar,
+    hasPicture: !!user?.picture,
+  });
+  console.log("🔄 Header render - user state:", user);
   const [showHeader, setShowHeader] = useState(true);
   const lastScrollY = useRef(window.scrollY);
 
+  // Fetch latest user profile from database when component mounts or user changes
+  useEffect(() => {
+    const fetchLatestUserProfile = async () => {
+      if (user && user.id) {
+        try {
+          console.log(
+            "🔄 Header: Fetching latest user profile from database for user ID:",
+            user.id
+          );
+          const response = await authApi.me();
+
+          if (response.success && response.data) {
+            console.log(
+              "✅ Header: Latest database profile fetched successfully:",
+              response.data
+            );
+            console.log("🔍 Header: Database avatar:", response.data.avatar);
+            console.log(
+              "🔍 Header: Database firstName:",
+              response.data.firstName
+            );
+            console.log(
+              "🔍 Header: Database lastName:",
+              response.data.lastName
+            );
+            console.log("🔍 Header: Current user avatar:", user.avatar);
+            console.log("🔍 Header: Current user firstName:", user.firstName);
+            console.log("🔍 Header: Current user lastName:", user.lastName);
+
+            // Only update if database data is different from current data
+            const hasChanges =
+              response.data.avatar !== user.avatar ||
+              response.data.firstName !== user.firstName ||
+              response.data.lastName !== user.lastName;
+
+            if (hasChanges) {
+              console.log(
+                "🔄 Header: Database data differs from current user data, updating..."
+              );
+
+              // Update auth context with latest database data
+              updateUser({
+                ...response.data,
+                // Keep Google avatar as fallback
+                googleAvatar: user.googleAvatar,
+              });
+
+              console.log(
+                "✅ Header: User profile updated with latest database data"
+              );
+            } else {
+              console.log(
+                "✅ Header: Database data matches current user data, no update needed"
+              );
+            }
+          } else {
+            console.warn(
+              "⚠️ Header: Could not fetch latest user profile, response:",
+              response
+            );
+          }
+        } catch (error) {
+          console.error(
+            "❌ Header: Error fetching latest user profile:",
+            error
+          );
+        }
+      } else {
+        console.log(
+          "⚠️ Header: No user or user ID available for fetching profile, user:",
+          user
+        );
+      }
+    };
+
+    fetchLatestUserProfile();
+  }, [user?.id, updateUser]); // Re-run when user ID changes
+
   // Get user initials for avatar fallback
+  const getUserDisplayName = () => {
+    if (!user) return "Người dùng";
+
+    // Always prioritize database firstName + lastName for display
+    if (user.firstName && user.lastName) {
+      const displayName = `${user.firstName} ${user.lastName}`.trim();
+      console.log("✅ Header using database name:", displayName);
+      return displayName;
+    }
+
+    // Fallback to fullName if available
+    if (user.fullName) {
+      console.log("⚠️ Header using fullName fallback:", user.fullName);
+      return user.fullName;
+    }
+
+    // Final fallback to email
+    console.log("⚠️ Header using email fallback:", user.email);
+    return user.email || "Người dùng";
+  };
+
   const getUserInitials = () => {
+    // Prioritize firstName + lastName for initials
+    if (user?.firstName && user?.lastName) {
+      return `${user.firstName[0]}${user.lastName[0]}`.toUpperCase();
+    }
+
+    // Fallback to fullName
     if (user?.fullName) {
       return user.fullName
         .split(" ")
         .map((name) => name[0])
         .join("")
-        .toUpperCase();
+        .toUpperCase()
+        .substring(0, 2);
     }
+
+    // Final fallback to email
     if (user?.email) {
       return user.email.substring(0, 2).toUpperCase();
     }
@@ -54,17 +177,45 @@ export function Header() {
   const getAvatarUrl = () => {
     if (!user) return null;
 
-    // Try Google avatar first (highest priority for Google users)
+    console.log("🔍 Header getAvatarUrl - user object:", {
+      avatar: user.avatar,
+      googleAvatar: user.googleAvatar,
+      picture: user.picture,
+      fullName: user.fullName,
+      firstName: user.firstName,
+      lastName: user.lastName,
+    });
+
+    // Try database avatar first (highest priority - user uploaded or updated avatar)
+    if (user.avatar) {
+      console.log("✅ Header using database avatar:", user.avatar);
+      return user.avatar;
+    }
+
+    // Try Google avatar second (for Google login users)
     if (user.googleAvatar) {
-      return user.googleAvatar;
+      // Add CORS-friendly parameters to Google avatar URL
+      let googleAvatarUrl = user.googleAvatar;
+      if (googleAvatarUrl.includes("googleusercontent.com")) {
+        // Add size parameter if not present
+        if (!googleAvatarUrl.includes("=s")) {
+          googleAvatarUrl += "=s96-c";
+        }
+      }
+      console.log("✅ Header using Google avatar:", googleAvatarUrl);
+      return googleAvatarUrl;
     }
 
     // Try other avatar fields
-    if (user.avatar) return user.avatar;
-    if (user.picture) return user.picture;
+    if (user.picture) {
+      console.log("✅ Header using picture:", user.picture);
+      return user.picture;
+    }
 
     // Fallback to Gravatar or UI Avatars
-    return userProfileUtils.getGravatarUrl(user.email, 32);
+    const gravatarUrl = userProfileUtils.getGravatarUrl(user.email, 32);
+    console.log("🔄 Header falling back to Gravatar:", gravatarUrl);
+    return gravatarUrl;
   };
 
   useEffect(() => {
@@ -153,7 +304,23 @@ export function Header() {
                     <Avatar className="w-8 h-8">
                       <AvatarImage
                         src={getAvatarUrl()}
-                        alt={user.fullName || user.email}
+                        alt={getUserDisplayName() || user.email}
+                        onError={(e) => {
+                          console.error(
+                            "❌ Header avatar load failed:",
+                            e.target.src
+                          );
+                          console.log(
+                            "🔄 Avatar URL that failed:",
+                            getAvatarUrl()
+                          );
+                        }}
+                        onLoad={() => {
+                          console.log(
+                            "✅ Header avatar loaded successfully:",
+                            getAvatarUrl()
+                          );
+                        }}
                       />
                       <AvatarFallback className="bg-blue-500 text-white text-sm">
                         {getUserInitials()}
@@ -161,7 +328,7 @@ export function Header() {
                     </Avatar>
                     <div className="text-left">
                       <div className="text-sm font-medium">
-                        {user.fullName || user.email || "Người dùng"}
+                        {getUserDisplayName()}
                       </div>
                       {user.fullName && user.email && (
                         <div className="text-xs text-gray-500">
@@ -247,7 +414,7 @@ export function Header() {
                         <Avatar className="w-10 h-10">
                           <AvatarImage
                             src={getAvatarUrl()}
-                            alt={user.fullName || user.email}
+                            alt={getUserDisplayName() || user.email}
                           />
                           <AvatarFallback className="bg-blue-500 text-white">
                             {getUserInitials()}
@@ -255,7 +422,7 @@ export function Header() {
                         </Avatar>
                         <div>
                           <div className="font-medium text-sm">
-                            {user.fullName || user.email}
+                            {getUserDisplayName()}
                           </div>
                           {user.fullName && user.email && (
                             <div className="text-xs text-gray-500">

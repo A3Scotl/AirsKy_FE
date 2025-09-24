@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate, useLocation, useParams } from "react-router-dom";
 import { flightApi } from "@/apis/flight-api";
 import { Button } from "@/components/ui/button";
@@ -510,8 +510,16 @@ const normalizeFlightData = (flight) => {
 
     processedFlight = {
       // Basic flight info
-      id: flight.itineraryId || flight.flightId || Date.now().toString(),
-      flightId: flight.itineraryId || flight.flightId || Date.now().toString(),
+      id:
+        outbound.flightId ||
+        flight.itineraryId ||
+        flight.flightId ||
+        Date.now().toString(),
+      flightId:
+        outbound.flightId ||
+        flight.itineraryId ||
+        flight.flightId ||
+        Date.now().toString(),
       flightNumber: `${outbound.flightNumber || "N/A"} / ${
         returnFlight.flightNumber || "N/A"
       }`,
@@ -829,8 +837,16 @@ const normalizeFlightData = (flight) => {
 
     processedFlight = {
       // Basic flight info
-      id: flight.itineraryId || flight.flightId || Date.now().toString(),
-      flightId: flight.itineraryId || flight.flightId || Date.now().toString(),
+      id:
+        firstLeg.flightId ||
+        flight.itineraryId ||
+        flight.flightId ||
+        Date.now().toString(),
+      flightId:
+        firstLeg.flightId ||
+        flight.itineraryId ||
+        flight.flightId ||
+        Date.now().toString(),
       flightNumber: `${flight.legs.length} chặng`,
 
       // Airline info

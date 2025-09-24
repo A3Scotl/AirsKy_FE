@@ -98,6 +98,7 @@ export function FlightCard({
   onSelect,
   selected = false,
   showSelectButton = true,
+  compact = false, // New prop for compact mode (for chatbot)
   // Fare selection props
   expandedFlights,
   selectedFares,
@@ -175,7 +176,7 @@ export function FlightCard({
 
       flightData = {
         flightNumber: `${outbound.flightNumber} / ${inbound.flightNumber}`,
-        flightId: itinerary.itineraryId,
+        flightId: outbound.flightId || itinerary.itineraryId,
 
         // Airline info
         airline: outbound.airline?.airlineName || "Unknown Airline",
@@ -255,7 +256,7 @@ export function FlightCard({
 
       flightData = {
         flightNumber: `${itinerary.legs.length} chặng`,
-        flightId: itinerary.itineraryId,
+        flightId: firstLeg.flightId || itinerary.itineraryId,
 
         // Airline info - use first leg
         airline: firstLeg.airline?.airlineName || "Multiple Airlines",
@@ -491,8 +492,6 @@ export function FlightCard({
     };
   }
 
-
-
   // Format thời gian
   const formatTime = (dateString) => {
     if (!dateString) return "--:--";
@@ -642,9 +641,12 @@ export function FlightCard({
               <span className="text-sm font-medium">
                 {flightData.airlineName}
               </span>
-              <span className="text-xs text-gray-500">
-                ({flightData.airlineCode})
-              </span>
+              {!compact && (
+                <span className="text-xs text-gray-500">
+                  ({flightData.airlineCode})
+                </span>
+              )}
+
               {/* Trip type badge */}
               <div className="ml-2">{getTripTypeBadge()}</div>
               {/* Hiển thị thông tin combination nếu có */}
@@ -661,12 +663,15 @@ export function FlightCard({
               )}
             </div>
             <div className="flex items-center gap-2">
-              <Plane className="w-5 h-5 text-blue-600" />
+              {!compact && <Plane className="w-5 h-5 text-blue-600" />}
               <span className="font-semibold text-lg">
                 {flightData.flightNumber}
               </span>
             </div>
-            <div className="flex gap-2">{getTypeBadge(flightData.type)}</div>
+
+            {!compact && (
+              <div className="flex gap-2">{getTypeBadge(flightData.type)}</div>
+            )}
           </div>
 
           <div className="text-right">
@@ -690,8 +695,8 @@ export function FlightCard({
             <div className="flex items-center justify-center mb-2">
               <PlaneTakeoff className="w-5 h-5 text-green-600 mr-2" />
               <span className="font-semibold text-lg">
-                {formatTime(flightData.departureTime)} ({" "}
-                {formatDate(flightData.departureTime)})
+                {formatTime(flightData.departureTime)}
+                {!compact && <> ({formatDate(flightData.departureTime)})</>}
               </span>
             </div>
 
@@ -699,8 +704,10 @@ export function FlightCard({
               {flightData.departureAirport?.airportCode}
             </div>
             <div className="text-sm text-gray-600">
-              {flightData.departureAirport?.airportName} (
-              {flightData.departureAirport?.cityNames?.[0] || ""})
+              {flightData.departureAirport?.airportName}
+              {!compact && (
+                <> ({flightData.departureAirport?.cityNames?.[0] || ""})</>
+              )}
             </div>
           </div>
 
@@ -745,8 +752,8 @@ export function FlightCard({
             <div className="flex items-center justify-center mb-2">
               <PlaneLanding className="w-5 h-5 text-red-600 mr-2" />
               <span className="font-semibold text-lg">
-                {formatTime(flightData.arrivalTime)} (
-                {formatDate(flightData.arrivalTime)})
+                {formatTime(flightData.arrivalTime)}
+                {!compact && <> ({formatDate(flightData.arrivalTime)})</>}
               </span>
             </div>
 
@@ -754,46 +761,77 @@ export function FlightCard({
               {flightData.arrivalAirport?.airportCode}
             </div>
             <div className="text-sm text-gray-600">
-              {flightData.arrivalAirport?.airportName} ({" "}
-              {flightData.arrivalAirport?.cityNames?.[0] || ""})
+              {flightData.arrivalAirport?.airportName}
+              {!compact && (
+                <> ({flightData.arrivalAirport?.cityNames?.[0] || ""})</>
+              )}
             </div>
           </div>
         </div>
 
-        {/* Thông tin hãng hàng không và chỗ ngồi */}
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2">
-              <Users className="w-4 h-4 text-gray-500" />
-              <span className="text-sm">
-                {flightData.availableSeats}/{flightData.totalSeats} chỗ trống
-              </span>
-            </div>
-          </div>
-
-          <>
-            {/* Action buttons */}
-            {showSelectButton && (
-              <div className="flex gap-2">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() =>
-                    navigate(`/detail/${flightData.flightId}`, {
-                      state: { flight: flightData },
-                    })
-                  }
-                  className="text-white hover:text-gray-900 bg-blue-500 rounded-sm px-8"
-                >
-                  Chi tiết
-                </Button>
+        {/* Thông tin hãng hàng không và chỗ ngồi - Ẩn trong chế độ compact */}
+        {!compact && (
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2">
+                <Users className="w-4 h-4 text-gray-500" />
+                <span className="text-sm">
+                  {flightData.availableSeats}/{flightData.totalSeats} chỗ trống
+                </span>
               </div>
-            )}
-          </>
-        </div>
+            </div>
 
-        {/* Round-trip flight details */}
-        {flightData.isRoundTripDisplay &&
+            <>
+              {/* Action buttons */}
+              {showSelectButton && (
+                <div className="flex gap-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      if (onSelect) {
+                        onSelect();
+                      } else {
+                        navigate(`/detail/${flightData.flightId}`, {
+                          state: { flight: flightData },
+                        });
+                      }
+                    }}
+                    className="text-white hover:text-gray-900 bg-blue-500 rounded-sm px-8"
+                  >
+                    Chi tiết
+                  </Button>
+                </div>
+              )}
+            </>
+          </div>
+        )}
+
+        {/* Hiển thị nút Chi tiết ở cuối trong chế độ compact */}
+        {compact && showSelectButton && (
+          <div className="flex justify-end mt-4">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                if (onSelect) {
+                  onSelect();
+                } else {
+                  navigate(`/detail/${flightData.flightId}`, {
+                    state: { flight: flightData },
+                  });
+                }
+              }}
+              className="text-blue-600 hover:text-blue-800 hover:bg-blue-50"
+            >
+              Chi tiết
+            </Button>
+          </div>
+        )}
+
+        {/* Round-trip flight details - Ẩn trong chế độ compact */}
+        {!compact &&
+          flightData.isRoundTripDisplay &&
           flightData.outboundFlight &&
           flightData.returnFlight && (
             <div className="border-t pt-4 mb-4">
@@ -896,8 +934,8 @@ export function FlightCard({
             </div>
           )}
 
-        {/* Multi-city flight details */}
-        {flightData.isMultiCityDisplay && (
+        {/* Multi-city flight details - Ẩn trong chế độ compact */}
+        {!compact && flightData.isMultiCityDisplay && (
           <div className="border-t pt-4 mb-4">
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
@@ -1115,8 +1153,8 @@ export function FlightCard({
           </div>
         )}
 
-        {/* Fare Selection Section */}
-        {onToggleDetails && (
+        {/* Fare Selection Section - Ẩn trong chế độ compact */}
+        {!compact && onToggleDetails && (
           <div className="mt-4">
             <Button
               variant="link"
