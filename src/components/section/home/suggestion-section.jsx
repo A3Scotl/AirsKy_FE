@@ -365,7 +365,9 @@ const SuggestionSection = () => {
             </p>
           </div>
         )}
-        <div className="text-center">
+
+        {flights.length > 0 ? (
+          <div className="text-center">
           <Button
             size="lg"
             variant="outline"
@@ -377,6 +379,8 @@ const SuggestionSection = () => {
             <ArrowRight className="w-5 h-5 ml-2" />
           </Button>
         </div>
+        ) : null}
+        
       </div>
     </section>
   );

@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import {
   Download,
   Eye,
@@ -7,6 +7,10 @@ import {
   User,
   FileText,
   BarChart3,
+  MoreHorizontal,
+  CheckCircle,
+  XCircle,
+  Clock,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -46,6 +50,9 @@ import BookingDetailsModal from "@/components/admin/bookings/booking-details-mod
 import BookingMetrics from "@/components/admin/bookings/booking-metrics";
 import AdvancedSearch from "@/components/common/advanced-search";
 
+// Import API
+import { bookingApi } from "@/apis/booking-api";
+
 // Vietnamese text constants
 const TEXT = {
   pageTitle: "Quản Lý Đặt Vé",
@@ -78,6 +85,13 @@ const TEXT = {
   classEconomy: "Phổ Thông",
   classBusiness: "Thương Gia",
   classFirst: "Hạng Nhất",
+  updateStatus: "Cập Nhật Trạng Thái",
+  confirmBooking: "Xác Nhận Đặt Vé",
+  cancelBooking: "Hủy Đặt Vé",
+  statusUpdateSuccess: "Cập nhật trạng thái thành công",
+  statusUpdateError: "Lỗi khi cập nhật trạng thái",
+  confirmStatusChange: "Bạn có chắc chắn muốn",
+  statusChangeTo: "trạng thái này?",
 };
 
 const AdminBookings = () => {
@@ -92,79 +106,53 @@ const AdminBookings = () => {
     selectedBooking: null,
   });
 
-  // Mock booking data with Vietnamese content
-  const [bookings, setBookings] = useState([
-    {
-      id: "BK001",
-      bookingRef: "AS24001",
-      customer: "Nguyễn Văn Minh",
-      email: "nguyen.van.minh@email.com",
-      route: "Hà Nội (HAN) → Hồ Chí Minh (SGN)",
-      departure: "2024-01-20 08:30",
-      arrival: "2024-01-20 11:45",
-      passengers: 2,
-      class: "Economy",
-      status: "Confirmed",
-      amount: "2.500.000 VNĐ",
-      bookingDate: "2024-01-15 14:30",
-    },
-    {
-      id: "BK002",
-      bookingRef: "AS24002",
-      customer: "Trần Thị Lan",
-      email: "tran.thi.lan@email.com",
-      route: "Đà Nẵng (DAD) → Hà Nội (HAN)",
-      departure: "2024-01-22 15:20",
-      arrival: "2024-01-22 19:35",
-      passengers: 1,
-      class: "Business",
-      status: "Pending",
-      amount: "4.200.000 VNĐ",
-      bookingDate: "2024-01-16 09:15",
-    },
-    {
-      id: "BK003",
-      bookingRef: "AS24003",
-      customer: "Phạm Minh Tuấn",
-      email: "pham.minh.tuan@email.com",
-      route: "Cần Thơ (VCA) → Hà Nội (HAN)",
-      departure: "2024-01-25 12:00",
-      arrival: "2024-01-25 20:15",
-      passengers: 3,
-      class: "Economy",
-      status: "Cancelled",
-      amount: "3.600.000 VNĐ",
-      bookingDate: "2024-01-14 16:45",
-    },
-    {
-      id: "BK004",
-      bookingRef: "AS24004",
-      customer: "Lê Thị Hương",
-      email: "le.thi.huong@email.com",
-      route: "Hồ Chí Minh (SGN) → Hà Nội (HAN)",
-      departure: "2024-01-28 10:15",
-      arrival: "2024-01-28 18:30",
-      passengers: 1,
-      class: "First",
-      status: "Confirmed",
-      amount: "6.800.000 VNĐ",
-      bookingDate: "2024-01-17 11:20",
-    },
-    {
-      id: "BK005",
-      bookingRef: "AS24005",
-      customer: "Hoàng Văn Đức",
-      email: "hoang.van.duc@email.com",
-      route: "Nha Trang (CXR) → Hồ Chí Minh (SGN)",
-      departure: "2024-01-30 07:45",
-      arrival: "2024-01-30 12:50",
-      passengers: 2,
-      class: "Economy",
-      status: "Confirmed",
-      amount: "1.800.000 VNĐ",
-      bookingDate: "2024-01-18 13:10",
-    },
-  ]);
+  // Booking data and loading state
+  const [bookings, setBookings] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  // Fetch bookings on component mount
+  useEffect(() => {
+    const fetchBookings = async () => {
+      try {
+        const response = await bookingApi.getAllBookings();
+        if (response.success) {
+          // Map API data to component format
+          const mappedBookings = response.data.content.map((booking) => ({
+            id: booking.bookingId,
+            bookingRef: `BK${booking.bookingId.toString().padStart(4, "0")}`, // Generate booking ref
+            customer: booking.userEmail.split("@")[0], // Use email prefix as customer name
+            email: booking.userEmail,
+            route: booking.flightNumber, // Use flight number as route for now
+            departure: booking.bookingDate,
+            passengers: booking.passengers.length,
+            class: booking.travelClass,
+            status:
+              booking.status === "CONFIRMED"
+                ? "Confirmed"
+                : booking.status === "PENDING"
+                ? "Pending"
+                : "Cancelled",
+            amount: `${booking.totalAmount.toLocaleString()} VNĐ`,
+            bookingDate: booking.createdAt,
+            // Additional fields for modal
+            passengersDetails: booking.passengers,
+            payment: booking.payment,
+            updatedAt: booking.updatedAt,
+          }));
+          setBookings(mappedBookings);
+        } else {
+          toast.error("Không thể tải danh sách đặt vé");
+        }
+      } catch (error) {
+        console.error("Error fetching bookings:", error);
+        toast.error("Lỗi khi tải danh sách đặt vé");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchBookings();
+  }, []);
 
   // Status and class mapping
   const statusMap = {
@@ -197,6 +185,37 @@ const AdminBookings = () => {
     return variants[flightClass] || "bg-gray-100 text-gray-800";
   };
 
+  const getAvailableStatusActions = (currentStatus) => {
+    const actions = [];
+
+    if (currentStatus === "Pending") {
+      actions.push(
+        {
+          status: "Confirmed",
+          label: TEXT.confirmBooking,
+          icon: CheckCircle,
+          color: "text-green-600",
+        },
+        {
+          status: "Cancelled",
+          label: TEXT.cancelBooking,
+          icon: XCircle,
+          color: "text-red-600",
+        }
+      );
+    } else if (currentStatus === "Confirmed") {
+      actions.push({
+        status: "Cancelled",
+        label: TEXT.cancelBooking,
+        icon: XCircle,
+        color: "text-red-600",
+      });
+    }
+    // If Cancelled, no actions available
+
+    return actions;
+  };
+
   // Event handlers
   const handleViewBooking = (booking) => {
     setState((prev) => ({
@@ -210,6 +229,44 @@ const AdminBookings = () => {
     if (window.confirm(`${TEXT.confirmDelete} ${booking.bookingRef}?`)) {
       setBookings((prev) => prev.filter((b) => b.id !== booking.id));
       toast.success(TEXT.deleteSuccess);
+    }
+  };
+
+  const handleUpdateStatus = async (booking, newStatus) => {
+    const statusText =
+      newStatus === "Confirmed" ? TEXT.statusConfirmed : TEXT.statusCancelled;
+    const actionText =
+      newStatus === "Confirmed" ? TEXT.confirmBooking : TEXT.cancelBooking;
+
+    if (
+      window.confirm(
+        `${TEXT.confirmStatusChange} ${actionText.toLowerCase()} ${
+          TEXT.statusChangeTo
+        }`
+      )
+    ) {
+      try {
+        const updateData = {
+          status: newStatus.toUpperCase(), // API expects uppercase: CONFIRMED, CANCELLED
+        };
+
+        const response = await bookingApi.updateBooking(booking.id, updateData);
+
+        if (response.success) {
+          // Update local state
+          setBookings((prev) =>
+            prev.map((b) =>
+              b.id === booking.id ? { ...b, status: newStatus } : b
+            )
+          );
+          toast.success(TEXT.statusUpdateSuccess);
+        } else {
+          toast.error(TEXT.statusUpdateError);
+        }
+      } catch (error) {
+        console.error("Error updating booking status:", error);
+        toast.error(TEXT.statusUpdateError);
+      }
     }
   };
 
@@ -345,108 +402,153 @@ const AdminBookings = () => {
 
           {/* Bookings Table */}
           <div className="border rounded-lg overflow-hidden">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>{TEXT.bookingRef}</TableHead>
-                  <TableHead>{TEXT.customer}</TableHead>
-                  <TableHead>{TEXT.route}</TableHead>
-                  <TableHead>{TEXT.departure}</TableHead>
-                  <TableHead>{TEXT.passengers}</TableHead>
-                  <TableHead>{TEXT.class}</TableHead>
-                  <TableHead>{TEXT.status}</TableHead>
-                  <TableHead>{TEXT.amount}</TableHead>
-                  <TableHead className="text-right">{TEXT.actions}</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {paginatedBookings.map((booking) => (
-                  <TableRow key={booking.id}>
-                    <TableCell className="font-medium">
-                      {booking.bookingRef}
-                    </TableCell>
-                    <TableCell>
-                      <div>
-                        <div className="font-medium">{booking.customer}</div>
-                        <div className="text-sm text-gray-500">
-                          {booking.email}
-                        </div>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center text-sm">
-                        <MapPin className="h-3 w-3 mr-1 text-gray-400" />
-                        {booking.route}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="text-sm">
-                        <div>
-                          {new Date(booking.departure).toLocaleDateString(
-                            "vi-VN"
-                          )}
-                        </div>
-                        <div className="text-gray-500">
-                          {new Date(booking.departure).toLocaleTimeString(
-                            "vi-VN",
-                            {
-                              hour: "2-digit",
-                              minute: "2-digit",
-                            }
-                          )}
-                        </div>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center text-sm">
-                        <User className="h-3 w-3 mr-1 text-gray-400" />
-                        {booking.passengers}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <Badge
-                        variant="outline"
-                        className={getClassBadge(booking.class)}
-                      >
-                        {classMap[booking.class] || booking.class}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <Badge
-                        variant="outline"
-                        className={getStatusBadge(booking.status)}
-                      >
-                        {statusMap[booking.status] || booking.status}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="font-medium">
-                      {booking.amount}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex items-center justify-end space-x-2">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleViewBooking(booking)}
-                          title={TEXT.viewDetails}
-                        >
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="text-red-600 hover:text-red-700"
-                          onClick={() => handleDeleteBooking(booking)}
-                          title={TEXT.deleteBooking}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </TableCell>
+            {loading ? (
+              <div className="p-8 text-center">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+                <p className="mt-2 text-gray-600">
+                  Đang tải danh sách đặt vé...
+                </p>
+              </div>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>{TEXT.bookingRef}</TableHead>
+                    <TableHead>{TEXT.customer}</TableHead>
+                    <TableHead>{TEXT.route}</TableHead>
+                    <TableHead>{TEXT.departure}</TableHead>
+                    <TableHead>{TEXT.passengers}</TableHead>
+                    <TableHead>{TEXT.class}</TableHead>
+                    <TableHead>{TEXT.status}</TableHead>
+                    <TableHead>{TEXT.amount}</TableHead>
+                    <TableHead className="text-right">{TEXT.actions}</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {paginatedBookings.map((booking) => (
+                    <TableRow key={booking.id}>
+                      <TableCell className="font-medium">
+                        {booking.bookingRef}
+                      </TableCell>
+                      <TableCell>
+                        <div>
+                          <div className="font-medium">{booking.customer}</div>
+                          <div className="text-sm text-gray-500">
+                            {booking.email}
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center text-sm">
+                          <MapPin className="h-3 w-3 mr-1 text-gray-400" />
+                          {booking.route}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="text-sm">
+                          <div>
+                            {new Date(booking.departure).toLocaleDateString(
+                              "vi-VN"
+                            )}
+                          </div>
+                          <div className="text-gray-500">
+                            {new Date(booking.departure).toLocaleTimeString(
+                              "vi-VN",
+                              {
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              }
+                            )}
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center text-sm">
+                          <User className="h-3 w-3 mr-1 text-gray-400" />
+                          {booking.passengers}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge
+                          variant="outline"
+                          className={getClassBadge(booking.class)}
+                        >
+                          {classMap[booking.class] || booking.class}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Badge
+                          variant="outline"
+                          className={getStatusBadge(booking.status)}
+                        >
+                          {statusMap[booking.status] || booking.status}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="font-medium">
+                        {booking.amount}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex items-center justify-end space-x-2">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleViewBooking(booking)}
+                            title={TEXT.viewDetails}
+                          >
+                            <Eye className="h-4 w-4" />
+                          </Button>
+
+                          {/* Status Update Dropdown */}
+                          {getAvailableStatusActions(booking.status).length >
+                            0 && (
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  title={TEXT.updateStatus}
+                                >
+                                  <MoreHorizontal className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                {getAvailableStatusActions(booking.status).map(
+                                  (action) => (
+                                    <DropdownMenuItem
+                                      key={action.status}
+                                      onClick={() =>
+                                        handleUpdateStatus(
+                                          booking,
+                                          action.status
+                                        )
+                                      }
+                                      className={`cursor-pointer ${action.color}`}
+                                    >
+                                      <action.icon className="h-4 w-4 mr-2" />
+                                      {action.label}
+                                    </DropdownMenuItem>
+                                  )
+                                )}
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          )}
+
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-red-600 hover:text-red-700"
+                            onClick={() => handleDeleteBooking(booking)}
+                            title={TEXT.deleteBooking}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
           </div>
 
           {/* Enhanced Pagination */}

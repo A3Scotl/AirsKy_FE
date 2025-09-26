@@ -46,7 +46,18 @@ const AdminSidebar = ({ sidebarOpen, setSidebarOpen }) => {
   };
 
   // Helper: check path active
-  const isActive = (path) => location.pathname.startsWith(path);
+  const isActive = (path) => path && location.pathname.startsWith(path);
+
+  // Helper: check if menu item is active (for expandable menus)
+  const isMenuActive = (item) => {
+    if (item.href) {
+      return isActive(item.href);
+    }
+    if (item.submenu) {
+      return item.submenu.some((sub) => isActive(sub.href));
+    }
+    return false;
+  };
 
   // Danh sách menu gốc
   let baseNavigation = [
@@ -71,6 +82,7 @@ const AdminSidebar = ({ sidebarOpen, setSidebarOpen }) => {
     { name: "Quản lý thanh toán", href: "/admin/payments", icon: CreditCard },
     {
       name: "Quản lý bài đăng",
+      href: "/admin/blogs",
       icon: BookOpen,
       key: "blog",
       isExpandable: true,
@@ -174,7 +186,7 @@ const AdminSidebar = ({ sidebarOpen, setSidebarOpen }) => {
                     className={`
                       group flex items-center w-full px-2 py-2 text-sm font-medium rounded-md transition-colors duration-200
                       ${
-                        isActive(item.href || "")
+                        isMenuActive(item)
                           ? isDark
                             ? "bg-blue-900 text-blue-100 border-r-2 border-blue-400"
                             : "bg-blue-100 text-blue-900 border-r-2 border-blue-600"

@@ -3,6 +3,13 @@ import { useParams, Link } from "react-router-dom";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
 import { blogApi } from "@/apis/blog-api";
 import BlogCard from "@/components/section/blog/blog-card";
 import { blogLikeApi } from "@/apis/blog-like-api";
@@ -21,11 +28,25 @@ import {
   MessageCircle,
   Tag,
   Loader2,
+  Linkedin,
+  Send,
+  MessageSquare,
+  Copy,
+  MoreHorizontal,
 } from "lucide-react";
 import { Swiper, SwiperSlide } from "swiper/react";
 import { Autoplay, Navigation } from "swiper/modules";
 import "swiper/css";
 import "swiper/css/navigation";
+import {
+  FacebookShareButton,
+  TwitterShareButton,
+  LinkedinShareButton,
+  WhatsappShareButton,
+  TelegramShareButton,
+  RedditShareButton,
+  EmailShareButton,
+} from "react-share";
 
 const BlogDetailPage = () => {
   const { slug } = useParams();
@@ -33,11 +54,13 @@ const BlogDetailPage = () => {
   const [isLiked, setIsLiked] = useState(false);
   const [likeCount, setLikeCount] = useState(0);
   const [isLiking, setIsLiking] = useState(false);
+  const [likeStatusLoading, setLikeStatusLoading] = useState(false);
   // Save/Unsave state
   const [isSaved, setIsSaved] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const user = useAuth();
-  const isAuthenticated = !!user;
+  const { user, loading: authLoading } = useAuth();
+  const isAuthenticated = !!(user && user.id);
+  console.log("Auth status:", { user, isAuthenticated, authLoading });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   // Related blogs
@@ -49,16 +72,12 @@ const BlogDetailPage = () => {
       alert("Vui lòng đăng nhập để thích bài viết");
       return;
     }
-    if (!post?.blogId || isLiking) {
-      console.warn(
-        "Cannot toggle like: blogId is missing or request in progress",
-        { blogId: post?.blogId, isLiking }
-      );
-      return;
-    }
+    if (!post?.blogId || isLiking) return;
+
     setIsLiking(true);
     try {
       const result = await blogLikeApi.toggleLike(post.blogId);
+      console.log("toggleLike result:", result);
       if (result.success) {
         setIsLiked(result.isLiked);
         setLikeCount((prev) =>
@@ -72,7 +91,6 @@ const BlogDetailPage = () => {
         }
       }
     } catch (error) {
-      console.error("handleLike error:", error);
       alert("Có lỗi xảy ra khi thực hiện thao tác");
     } finally {
       setIsLiking(false);
@@ -81,6 +99,9 @@ const BlogDetailPage = () => {
 
   // In useEffect
   useEffect(() => {
+    // Chỉ fetch khi auth đã initialize xong
+    if (authLoading) return;
+
     const fetchBlog = async () => {
       setLoading(true);
       setError(null);
@@ -93,11 +114,17 @@ const BlogDetailPage = () => {
               ? res.data.likeCount
               : (res.data.likeCount && res.data.likeCount.count) || 0
           );
-          if (isAuthenticated && res.data.blogId) {
-            // Check like status
-            const likeRes = await blogLikeApi.checkIfLiked(res.data.blogId);
-            setIsLiked(likeRes.success ? !!likeRes.data : false);
-            // Check save status
+
+          // Set default like status to false - will be updated on first user interaction
+          setIsLiked(false);
+          setLikeStatusLoading(false);
+
+          // Check save status if user is authenticated
+          if (
+            isAuthenticated &&
+            res.data.blogId &&
+            localStorage.getItem("token")
+          ) {
             try {
               const savedRes = await blogApi.getSavedBlogs({
                 page: 0,
@@ -109,16 +136,15 @@ const BlogDetailPage = () => {
                     (b) => b.blogId === res.data.blogId
                   )
                 );
-              } else {
-                setIsSaved(false);
               }
-            } catch (e) {
+            } catch (saveError) {
+              console.warn("Failed to check save status:", saveError);
               setIsSaved(false);
             }
           } else {
-            setIsLiked(false);
             setIsSaved(false);
           }
+
           // Fetch related blogs by category slug (first category)
           if (
             Array.isArray(res.data.categories) &&
@@ -141,28 +167,29 @@ const BlogDetailPage = () => {
                     (b) => b.blogId !== res.data.blogId
                   )
                 );
-              } else {
-                setRelatedBlogs([]);
               }
-            } catch (e) {
+            } catch (relatedError) {
+              console.warn("Failed to fetch related blogs:", relatedError);
               setRelatedBlogs([]);
             } finally {
               setRelatedLoading(false);
             }
-          } else {
-            setRelatedBlogs([]);
           }
         } else {
           setError(res.message || "Không tìm thấy bài viết");
         }
       } catch (err) {
+        console.error("Error fetching blog:", err);
         setError("Có lỗi xảy ra khi tải bài viết");
       } finally {
         setLoading(false);
       }
     };
-    fetchBlog();
-  }, [slug, isAuthenticated]);
+
+    if (slug) {
+      fetchBlog();
+    }
+  }, [slug, isAuthenticated, authLoading]);
   // Toggle save/unsave
   const handleToggleSave = async () => {
     if (!isAuthenticated) {
@@ -206,19 +233,68 @@ const BlogDetailPage = () => {
   const handleShare = (platform) => {
     const url = window.location.href;
     const title = post?.title;
+    const description = post?.excerpt || post?.content?.substring(0, 200) || "";
 
     switch (platform) {
       case "facebook":
         window.open(
-          `https://www.facebook.com/sharer/sharer.php?u=${url}`,
+          `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(
+            url
+          )}&quote=${encodeURIComponent(title)}`,
           "_blank"
         );
         break;
       case "twitter":
         window.open(
-          `https://twitter.com/intent/tweet?url=${url}&text=${title}`,
+          `https://twitter.com/intent/tweet?url=${encodeURIComponent(
+            url
+          )}&text=${encodeURIComponent(title)}`,
           "_blank"
         );
+        break;
+      case "linkedin":
+        window.open(
+          `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(
+            url
+          )}`,
+          "_blank"
+        );
+        break;
+      case "whatsapp":
+        window.open(
+          `https://wa.me/?text=${encodeURIComponent(`${title} ${url}`)}`,
+          "_blank"
+        );
+        break;
+      case "telegram":
+        window.open(
+          `https://t.me/share/url?url=${encodeURIComponent(
+            url
+          )}&text=${encodeURIComponent(title)}`,
+          "_blank"
+        );
+        break;
+      case "reddit":
+        window.open(
+          `https://reddit.com/submit?url=${encodeURIComponent(
+            url
+          )}&title=${encodeURIComponent(title)}`,
+          "_blank"
+        );
+        break;
+      case "email":
+        window.open(
+          `mailto:?subject=${encodeURIComponent(
+            title
+          )}&body=${encodeURIComponent(`${description}\n\n${url}`)}`,
+          "_blank"
+        );
+        break;
+      case "copy":
+        navigator.clipboard.writeText(url).then(() => {
+          // Có thể thêm toast notification ở đây
+          alert("Đã sao chép liên kết!");
+        });
         break;
       default:
         navigator.clipboard.writeText(url);
@@ -262,19 +338,6 @@ const BlogDetailPage = () => {
           className="w-full h-full object-cover"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
-
-        {/* Back Button */}
-        <div className="absolute top-8 left-8 mt-16">
-          <Link to="/blog">
-            <Button
-              variant="outline"
-              className="bg-white/10 backdrop-blur-sm border-white/20 text-white hover:bg-white/20"
-            >
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              Quay lại
-            </Button>
-          </Link>
-        </div>
 
         {/* Hero Content */}
         <div className="absolute bottom-8 left-8 right-8">
@@ -324,18 +387,20 @@ const BlogDetailPage = () => {
                   variant={isLiked ? "default" : "outline"}
                   size="sm"
                   onClick={handleLike}
-                  disabled={isLiking}
+                  disabled={isLiking || likeStatusLoading}
                   className="flex items-center space-x-2"
                 >
                   <Heart
-                    className={`w-4 h-4 dark:text-gray-600 ${
-                      isLiked ? "text-red-500" : ""
+                    className={`w-4 h-4 ${
+                      isLiked
+                        ? "text-red-500 fill-red-500"
+                        : "dark:text-gray-600"
                     }`}
                   />
                   <span className="dark:text-gray-600">
                     {typeof likeCount === "number" ? likeCount : 0}
                   </span>
-                  {isLiking && (
+                  {(isLiking || likeStatusLoading) && (
                     <div className="w-3 h-3 border border-current border-t-transparent rounded-full animate-spin ml-1" />
                   )}
                 </Button>
@@ -372,13 +437,42 @@ const BlogDetailPage = () => {
               >
                 <Twitter className="w-4 h-4 dark:text-gray-600" />
               </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => handleShare("copy")}
-              >
-                <Share2 className="w-4 h-4 dark:text-gray-600" />
-              </Button>
+
+              {/* Dropdown Menu for More Sharing Options */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm">
+                    <MoreHorizontal className="w-4 h-4 dark:text-gray-600" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-48">
+                  <DropdownMenuItem onClick={() => handleShare("linkedin")}>
+                    <Linkedin className="w-4 h-4 mr-2" />
+                    LinkedIn
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => handleShare("whatsapp")}>
+                    <MessageSquare className="w-4 h-4 mr-2" />
+                    WhatsApp
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => handleShare("telegram")}>
+                    <Send className="w-4 h-4 mr-2" />
+                    Telegram
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => handleShare("reddit")}>
+                    <MessageCircle className="w-4 h-4 mr-2" />
+                    Reddit
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => handleShare("email")}>
+                    <MessageCircle className="w-4 h-4 mr-2" />
+                    Email
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => handleShare("copy")}>
+                    <Copy className="w-4 h-4 mr-2" />
+                    Sao chép liên kết
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           </div>
         </div>

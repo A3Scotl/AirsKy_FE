@@ -17,28 +17,16 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
-import { Badge } from "@/components/ui/badge";
 import {
-  Settings,
-  Bell,
-  Moon,
-  Mail,
   Globe,
-  MapPin,
   DollarSign,
-  Plane,
-  Calendar,
+  Bell,
+  Mail,
   Smartphone,
-  Shield,
-  Download,
-  Trash2,
+  Plane,
+  Moon,
   RefreshCw,
-  Eye,
-  CreditCard,
-  Users,
-  Info,
 } from "lucide-react";
 
 const SettingsTab = () => {
@@ -51,7 +39,7 @@ const SettingsTab = () => {
     pushNotifications: true,
     flightReminders: true,
     priceAlerts: true,
-    promotionalEmails: true,
+    promotionalEmails: false,
     darkMode: false,
   });
 
@@ -87,7 +75,7 @@ const SettingsTab = () => {
 
   const saveSettings = () => {
     console.log("Cài đặt đã lưu:", settings);
-    // Gọi API để lưu cài đặt
+    // Gọi API để lưu cài đặt (ví dụ: POST /api/settings)
   };
 
   const handleResetSettings = () => {
@@ -106,127 +94,159 @@ const SettingsTab = () => {
   };
 
   return (
-    <div className="space-y-6">
-      {/* Cài đặt thông báo */}
-      <Card>
+    <div className=" space-y-6">
+      {/* Cài đặt chung */}
+      <Card className="shadow-lg">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
+          <CardTitle className="flex items-center gap-2 text-lg">
+            <Globe className="h-5 w-5" />
+            Cài đặt chung
+          </CardTitle>
+          <CardDescription>Chọn ngôn ngữ, tiền tệ và múi giờ</CardDescription>
+        </CardHeader>
+        <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div>
+            <Label>Ngôn ngữ</Label>
+            <Select
+              value={settings.language}
+              onValueChange={(value) => handleSelectChange("language", value)}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Chọn ngôn ngữ" />
+              </SelectTrigger>
+              <SelectContent>
+                {settingsConfig.languages.map((lang) => (
+                  <SelectItem key={lang.value} value={lang.value}>
+                    {lang.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label>Tiền tệ</Label>
+            <Select
+              value={settings.currency}
+              onValueChange={(value) => handleSelectChange("currency", value)}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Chọn tiền tệ" />
+              </SelectTrigger>
+              <SelectContent>
+                {settingsConfig.currencies.map((curr) => (
+                  <SelectItem key={curr.value} value={curr.value}>
+                    {curr.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label>Múi giờ</Label>
+            <Select
+              value={settings.timezone}
+              onValueChange={(value) => handleSelectChange("timezone", value)}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Chọn múi giờ" />
+              </SelectTrigger>
+              <SelectContent>
+                {settingsConfig.timezones.map((tz) => (
+                  <SelectItem key={tz.value} value={tz.value}>
+                    {tz.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Thông báo */}
+      <Card className="shadow-lg">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-lg">
             <Bell className="h-5 w-5" />
             Tùy chọn thông báo
           </CardTitle>
-          <CardDescription>
-            Quản lý cách bạn nhận thông báo về chuyến bay và đặt vé
-          </CardDescription>
+          <CardDescription>Quản lý thông báo chuyến bay và vé</CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-4">
-              <div className="flex items-center justify-between p-3 border rounded-lg">
-                <div className="flex items-center gap-3">
-                  <Mail className="h-4 w-4 text-blue-600" />
-                  <div>
-                    <p className="font-medium">Thông báo qua Email</p>
-                    <p className="text-sm text-gray-500">
-                      Nhận thông báo qua email
-                    </p>
-                  </div>
-                </div>
-                <Switch
-                  checked={settings.emailNotifications}
-                  onCheckedChange={() =>
-                    handleSwitchChange("emailNotifications")
-                  }
-                />
+        <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="space-y-4">
+            <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+              <div className="flex items-center gap-3">
+                <Mail className="h-4 w-4 text-blue-600" />
+                <span>Thông báo Email</span>
               </div>
-
-              <div className="flex items-center justify-between p-3 border rounded-lg">
-                <div className="flex items-center gap-3">
-                  <Smartphone className="h-4 w-4 text-green-600" />
-                  <div>
-                    <p className="font-medium">Thông báo SMS</p>
-                    <p className="text-sm text-gray-500">
-                      Nhận thông báo qua tin nhắn
-                    </p>
-                  </div>
-                </div>
-                <Switch
-                  checked={settings.smsNotifications}
-                  onCheckedChange={() => handleSwitchChange("smsNotifications")}
-                />
+              <Switch
+                checked={settings.emailNotifications}
+                onCheckedChange={() => handleSwitchChange("emailNotifications")}
+              />
+            </div>
+            <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+              <div className="flex items-center gap-3">
+                <Smartphone className="h-4 w-4 text-green-600" />
+                <span>Thông báo SMS</span>
               </div>
-
-              <div className="flex items-center justify-between p-3 border rounded-lg">
-                <div className="flex items-center gap-3">
-                  <Bell className="h-4 w-4 text-purple-600" />
-                  <div>
-                    <p className="font-medium">Thông báo đẩy</p>
-                    <p className="text-sm text-gray-500">
-                      Nhận thông báo trên trình duyệt
-                    </p>
-                  </div>
-                </div>
-                <Switch
-                  checked={settings.pushNotifications}
-                  onCheckedChange={() =>
-                    handleSwitchChange("pushNotifications")
-                  }
-                />
+              <Switch
+                checked={settings.smsNotifications}
+                onCheckedChange={() => handleSwitchChange("smsNotifications")}
+              />
+            </div>
+          </div>
+          <div className="space-y-4">
+            <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+              <div className="flex items-center gap-3">
+                <Plane className="h-4 w-4 text-blue-600" />
+                <span>Nhắc nhở chuyến bay</span>
               </div>
+              <Switch
+                checked={settings.flightReminders}
+                onCheckedChange={() => handleSwitchChange("flightReminders")}
+              />
             </div>
 
-            <div className="space-y-4">
-              <div className="flex items-center justify-between p-3 border rounded-lg">
-                <div className="flex items-center gap-3">
-                  <Plane className="h-4 w-4 text-blue-600" />
-                  <div>
-                    <p className="font-medium">Nhắc nhở chuyến bay</p>
-                    <p className="text-sm text-gray-500">
-                      Nhắc nhở check-in và khởi hành
-                    </p>
-                  </div>
-                </div>
-                <Switch
-                  checked={settings.flightReminders}
-                  onCheckedChange={() => handleSwitchChange("flightReminders")}
-                />
+            <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+              <div className="flex items-center gap-3">
+                <Mail className="h-4 w-4 text-orange-600" />
+                <span>Email khuyến mãi</span>
               </div>
-
-              <div className="flex items-center justify-between p-3 border rounded-lg">
-                <div className="flex items-center gap-3">
-                  <DollarSign className="h-4 w-4 text-green-600" />
-                  <div>
-                    <p className="font-medium">Cảnh báo giá</p>
-                    <p className="text-sm text-gray-500">
-                      Thông báo khi giá vé giảm
-                    </p>
-                  </div>
-                </div>
-                <Switch
-                  checked={settings.priceAlerts}
-                  onCheckedChange={() => handleSwitchChange("priceAlerts")}
-                />
-              </div>
-
-              <div className="flex items-center justify-between p-3 border rounded-lg">
-                <div className="flex items-center gap-3">
-                  <Mail className="h-4 w-4 text-orange-600" />
-                  <div>
-                    <p className="font-medium">Email khuyến mãi</p>
-                    <p className="text-sm text-gray-500">
-                      Ưu đãi và khuyến mãi đặc biệt
-                    </p>
-                  </div>
-                </div>
-                <Switch
-                  checked={settings.promotionalEmails}
-                  onCheckedChange={() =>
-                    handleSwitchChange("promotionalEmails")
-                  }
-                />
-              </div>
+              <Switch
+                checked={settings.promotionalEmails}
+                onCheckedChange={() => handleSwitchChange("promotionalEmails")}
+              />
             </div>
           </div>
         </CardContent>
+      </Card>
+
+      {/* Chế độ giao diện */}
+      <Card className="shadow-lg">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-lg">
+            <Moon className="h-5 w-5" />
+            Chế độ giao diện
+          </CardTitle>
+          <CardDescription>Chọn giao diện sáng hoặc tối</CardDescription>
+        </CardHeader>
+        <CardContent className="p-6">
+          <div className="flex items-center justify-between bg-gray-50 p-3 rounded-lg">
+            <div className="flex items-center gap-3">
+              <Moon className="h-4 w-4 text-gray-600" />
+              <span>Chế độ tối</span>
+            </div>
+            <Switch
+              checked={settings.darkMode}
+              onCheckedChange={() => handleSwitchChange("darkMode")}
+            />
+          </div>
+        </CardContent>
+        <CardFooter className="flex justify-between">
+          <Button variant="outline" onClick={handleResetSettings}>
+            <RefreshCw className="mr-2 h-4 w-4" /> Đặt lại
+          </Button>
+          <Button onClick={saveSettings}>Lưu thay đổi</Button>
+        </CardFooter>
       </Card>
     </div>
   );

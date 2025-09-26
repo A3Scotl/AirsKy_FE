@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { blogApi } from "@/apis/blog-api";
-import { Loader2 } from "lucide-react";
+import { Loader2, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import Pagination from "@/components/ui/pagination";
@@ -14,8 +14,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-const CARD_TITLE_HEIGHT = 48; // px, tương đương h-12
-const CARD_IMAGE_HEIGHT = 160; // px, tương đương h-40
+const CARD_TITLE_HEIGHT = 48;
+const CARD_IMAGE_HEIGHT = 160;
 const PAGE_SIZE = 6;
 
 const MyBlogsTab = () => {
@@ -29,6 +29,7 @@ const MyBlogsTab = () => {
   const [likedTotal, setLikedTotal] = useState(0);
   const [savedTotal, setSavedTotal] = useState(0);
   const [sort, setSort] = useState("createdAt,desc");
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   useEffect(() => {
     setLoadingLiked(true);
@@ -59,6 +60,34 @@ const MyBlogsTab = () => {
   // Tính tổng số trang
   const likedTotalPages = Math.ceil(likedTotal / PAGE_SIZE);
   const savedTotalPages = Math.ceil(savedTotal / PAGE_SIZE);
+
+  // Refresh blogs data
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    try {
+      // Refresh both liked and saved blogs
+      const [likedRes, savedRes] = await Promise.all([
+        blogApi.getLikedBlogs?.({ page: likedPage - 1, size: PAGE_SIZE, sort }),
+        blogApi.getSavedBlogs?.({ page: savedPage - 1, size: PAGE_SIZE, sort }),
+      ]);
+
+      if (likedRes?.success) {
+        setLikedBlogs(likedRes.data?.content || []);
+        setLikedTotal(likedRes.data?.totalElements || 0);
+      }
+
+      if (savedRes?.success) {
+        setSavedBlogs(savedRes.data?.content || []);
+        setSavedTotal(savedRes.data?.totalElements || 0);
+      }
+
+      console.log("Blogs data refreshed");
+    } catch (error) {
+      console.error("Error refreshing blogs data:", error);
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
 
   // Card layout helper
   const BlogCard = ({ blog }) => (
@@ -114,7 +143,21 @@ const MyBlogsTab = () => {
   return (
     <Card className="mt-4">
       <CardHeader>
-        <CardTitle>Bài viết của tôi</CardTitle>
+        <div className="flex items-center justify-between">
+          <CardTitle>Bài viết của tôi</CardTitle>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleRefresh}
+            disabled={isRefreshing}
+            className="flex items-center gap-2"
+          >
+            <RefreshCw
+              className={`h-4 w-4 ${isRefreshing ? "animate-spin" : ""}`}
+            />
+            Làm mới
+          </Button>
+        </div>
         <div className="flex gap-2 mt-2 items-center">
           <span className="text-sm text-gray-500">Sắp xếp:</span>
           <Select

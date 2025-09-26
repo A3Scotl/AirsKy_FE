@@ -17,6 +17,7 @@ import {
   XCircle,
   Clock,
   Users,
+  Plane,
 } from "lucide-react";
 import UserDetailsModal from "./user-details-modal";
 import { Button } from "@/components/ui/button";
@@ -79,9 +80,14 @@ const UserTable = ({
   const getRoleBadge = (role) => {
     const variants = {
       CUSTOMER: "bg-blue-100 text-blue-800",
+      BUSINESS: "bg-purple-100 text-purple-800",
+      FLIGHT_MANAGER: "bg-green-100 text-green-800",
+      ADMIN: "bg-red-100 text-red-800",
+      STAFF: "bg-yellow-100 text-yellow-800",
+      // Legacy support
       Customer: "bg-blue-100 text-blue-800",
       Premium: "bg-purple-100 text-purple-800",
-      Admin: "bg-orange-100 text-orange-800",
+      Admin: "bg-red-100 text-red-800",
     };
     return variants[role] || "bg-gray-100 text-gray-800";
   };
@@ -89,6 +95,11 @@ const UserTable = ({
   const getRoleIcon = (role) => {
     const icons = {
       CUSTOMER: User,
+      BUSINESS: Crown,
+      FLIGHT_MANAGER: Plane,
+      ADMIN: Shield,
+      STAFF: Users,
+      // Legacy support
       Customer: User,
       Premium: Crown,
       Admin: Shield,
@@ -112,7 +123,7 @@ const UserTable = ({
 
   const formatDate = (dateString) => {
     const date = new Date(dateString);
-    return date.toLocaleDateString("en-US", {
+    return date.toLocaleDateString("vi-VN", {
       year: "numeric",
       month: "short",
       day: "numeric",
@@ -139,6 +150,7 @@ const UserTable = ({
   };
 
   const getInitials = (name) => {
+    if (!name || typeof name !== "string") return "N/A";
     return name
       .split(" ")
       .map((n) => n[0])
@@ -157,6 +169,7 @@ const UserTable = ({
               <TableHead>Liên hệ</TableHead>
               <TableHead>Vai trò</TableHead>
               <TableHead>Trạng thái</TableHead>
+              <TableHead>Hạng thành viên</TableHead>
               <TableHead>Hoạt động</TableHead>
               <TableHead>Đặt vé</TableHead>
               <TableHead>Chi tiêu</TableHead>
@@ -173,14 +186,20 @@ const UserTable = ({
                   <TableCell>
                     <div className="flex items-center space-x-3">
                       <Avatar className="h-10 w-10">
-                        <AvatarImage src={user.avatar} alt={user.name} />
+                        <AvatarImage
+                          src={user.avatar}
+                          alt={user.name || "User"}
+                          onError={(e) => {
+                            e.target.style.display = "none";
+                          }}
+                        />
                         <AvatarFallback>
                           {getInitials(user.name)}
                         </AvatarFallback>
                       </Avatar>
                       <div>
                         <div className="font-semibold text-gray-900 flex items-center space-x-2">
-                          <span>{user.name}</span>
+                          <span>{user.name || "N/A"}</span>
                           {user.email === currentUser?.email && (
                             <Badge
                               variant="outline"
@@ -240,8 +259,14 @@ const UserTable = ({
                   </TableCell>
 
                   <TableCell>
+                    <Badge variant="outline" className="text-xs">
+                      {user.loyaltyTier || "-"}
+                    </Badge>
+                  </TableCell>
+
+                  <TableCell>
                     <div className="text-sm">
-                      <div>Tham gia {formatDate(user.joinDate)}</div>
+                      <div>Tham gia {user.joinDate}</div>
                       <div className="text-gray-500">
                         Lần cuối: {formatLastLogin(user.lastLogin)}
                       </div>
@@ -258,7 +283,7 @@ const UserTable = ({
                   <TableCell>
                     <div className="text-right">
                       <div className="font-semibold">
-                        ${user.totalSpent.toLocaleString()}
+                        {user.totalSpent.toLocaleString("vi-VN")} VNĐ
                       </div>
                       <div className="text-xs text-gray-500">tổng</div>
                     </div>
@@ -329,15 +354,6 @@ const UserTable = ({
                             Mở khóa tài khoản
                           </DropdownMenuItem>
                         )}
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem
-                          onClick={() => onDeleteUser && onDeleteUser(user)}
-                          className="text-red-600"
-                          disabled={user.email === currentUser?.email}
-                        >
-                          <Trash2 className="mr-2 h-4 w-4" />
-                          Xóa khách hàng
-                        </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </TableCell>

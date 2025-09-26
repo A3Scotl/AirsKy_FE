@@ -10,7 +10,6 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import ImageUpload from "@/components/ui/image-upload";
@@ -39,7 +38,9 @@ import {
   Facebook,
   Twitter,
   Instagram,
-  Trash2,
+  Star,
+  Shield,
+  Award,
 } from "lucide-react";
 import { toast } from "sonner";
 import { authApi } from "@/apis/auth-api";
@@ -61,9 +62,6 @@ const AccountTab = ({ userProfile, onProfileUpdate }) => {
     new: false,
     confirm: false,
   });
-
-  // Check if user is admin
-  const isAdmin = user?.role === "ADMIN";
 
   // Optimized form state
   const [formData, setFormData] = useState({
@@ -101,6 +99,41 @@ const AccountTab = ({ userProfile, onProfileUpdate }) => {
     { name: "Instagram", icon: Instagram, connected: false, username: "" },
   ]);
 
+  // Get loyalty tier display info based on enum value
+  const getLoyaltyTierDisplay = (tier) => {
+    switch (tier) {
+      case "PLATINUM":
+        return {
+          name: "Platinum",
+          icon: Shield,
+          color: "text-blue-600",
+          bgColor: "bg-blue-100",
+        };
+      case "GOLD":
+        return {
+          name: "Gold",
+          icon: Award,
+          color: "text-yellow-600",
+          bgColor: "bg-yellow-100",
+        };
+      case "SILVER":
+        return {
+          name: "Silver",
+          icon: Star,
+          color: "text-gray-600",
+          bgColor: "bg-gray-100",
+        };
+      case "STANDARD":
+      default:
+        return {
+          name: "Standard",
+          icon: User,
+          color: "text-orange-600",
+          bgColor: "bg-orange-100",
+        };
+    }
+  };
+
   // Optimized handlers
   const handleInputChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -111,13 +144,7 @@ const AccountTab = ({ userProfile, onProfileUpdate }) => {
   };
 
   const handleAvatarUpload = (previewUrl, file) => {
-    // Store the file object for FormData submission
     setAvatarFile(file);
-    // You can also store previewUrl if needed for UI display
-    console.log(
-      "Avatar selected:",
-      file ? `File: ${file.name}` : `URL: ${previewUrl}`
-    );
   };
 
   const togglePasswordVisibility = (field) => {
@@ -147,8 +174,6 @@ const AccountTab = ({ userProfile, onProfileUpdate }) => {
         return;
       }
 
-      console.log("Cập nhật hồ sơ:", formData);
-
       // Prepare FormData for multipart upload
       const formDataToSend = new FormData();
 
@@ -163,41 +188,15 @@ const AccountTab = ({ userProfile, onProfileUpdate }) => {
       // Add avatar file if selected and valid
       if (avatarFile && avatarFile instanceof File) {
         formDataToSend.append("avatar", avatarFile);
-        console.log(
-          "✅ Avatar file added:",
-          avatarFile.name,
-          "Size:",
-          avatarFile.size,
-          "Type:",
-          avatarFile.type
-        );
       } else if (userProfile?.avatar) {
         // Send existing avatar URL to keep current avatar
         formDataToSend.append("existingAvatar", userProfile.avatar);
-        console.log("✅ Existing avatar kept:", userProfile.avatar);
-      } else {
-        console.log("❌ No avatar file to add:", avatarFile);
-      }
-
-      console.log("Dữ liệu FormData:");
-      for (let [key, value] of formDataToSend.entries()) {
-        console.log(`${key}:`, value);
       }
 
       // Call API to update user with FormData
-      console.log("🚀 Gửi request cập nhật user ID:", userProfile.id);
-      console.log("📊 Request headers sẽ được set tự động cho FormData");
-
       const response = await userApi.updateUser(userProfile.id, formDataToSend);
-      console.log("📥 Response từ API:", response);
-      console.log("📋 Response data:", response.data);
-      console.log("📋 Response success:", response.success);
 
       if (response.success) {
-        console.log("Cập nhật thành công:", response.data);
-        console.log("🔍 Response data avatar:", response.data.avatar);
-        console.log("🔍 Response data firstName:", response.data.firstName);
-        console.log("🔍 Response data lastName:", response.data.lastName);
         toast.success("Cập nhật hồ sơ thành công!");
 
         // Update local form data with new values
@@ -233,19 +232,16 @@ const AccountTab = ({ userProfile, onProfileUpdate }) => {
           passportNumber: response.data.passportNumber,
           passportExpiry: response.data.passportExpiry,
         };
-        console.log("🔄 Updating auth context with:", updatedData);
         updateUser(updatedData);
 
         // Exit edit mode
         setEditMode(false);
       } else {
-        console.error("Cập nhật thất bại:", response.message, response.error);
         toast.error(
           response.message || "Cập nhật hồ sơ thất bại. Vui lòng thử lại."
         );
       }
     } catch (error) {
-      console.error("Lỗi cập nhật hồ sơ:", error);
       toast.error("Có lỗi xảy ra khi cập nhật hồ sơ. Vui lòng thử lại.");
     } finally {
       setLoading(false);
@@ -279,13 +275,10 @@ const AccountTab = ({ userProfile, onProfileUpdate }) => {
         return;
       }
 
-      console.log("Đổi mật khẩu:", passwordData);
-
       // Call API to change password
       const response = await authApi.changePassword(passwordData);
 
       if (response.success) {
-        console.log("Đổi mật khẩu thành công");
         toast.success("Đổi mật khẩu thành công!");
 
         // Reset password form
@@ -304,7 +297,6 @@ const AccountTab = ({ userProfile, onProfileUpdate }) => {
         );
       }
     } catch (error) {
-      console.error("Lỗi đổi mật khẩu:", error);
       toast.error("Có lỗi xảy ra khi đổi mật khẩu. Vui lòng thử lại.");
     } finally {
       setLoading(false);
@@ -313,19 +305,13 @@ const AccountTab = ({ userProfile, onProfileUpdate }) => {
 
   const handleDeleteAccount = async () => {
     setDeleteLoading(true);
-
     try {
       // Call API to delete account
-      const response = await userApi.deleteUser(userProfile?.id);
+      const response = await userApi.deleteUser(userProfile.id);
 
       if (response.success) {
-        console.log("Xóa tài khoản thành công");
         toast.success("Tài khoản đã được xóa thành công!");
-
-        // Logout user
-        await logout();
-
-        // Navigate to home page
+        logout();
         navigate("/");
       } else {
         toast.error(
@@ -333,73 +319,62 @@ const AccountTab = ({ userProfile, onProfileUpdate }) => {
         );
       }
     } catch (error) {
-      console.error("Lỗi xóa tài khoản:", error);
       toast.error("Có lỗi xảy ra khi xóa tài khoản. Vui lòng thử lại.");
     } finally {
       setDeleteLoading(false);
     }
   };
 
-  const handleCancelEdit = () => {
-    // Reset form data to original values
-    setFormData({
-      firstName: userProfile?.firstName || "",
-      lastName: userProfile?.lastName || "",
-      email: userProfile?.email || "",
-      phone: userProfile?.phone || "",
-      dateOfBirth: userProfile?.dateOfBirth || "",
-      passportNumber: userProfile?.passportNumber || "",
-      passportExpiry: userProfile?.passportExpiry || "",
-    });
-    setAvatarFile(null);
-    setEditMode(false);
-  };
+  const loyaltyTier = getLoyaltyTierDisplay(userProfile?.loyaltyTier);
 
-  const handleCancelPassword = () => {
-    // Reset password form
-    setPasswordData({
-      email: userProfile?.email || "",
-      oldPassword: "",
-      newPassword: "",
-      confirmPassword: "",
+  const formatDate = (dateString) => {
+    if (!dateString) return "";
+    const date = new Date(dateString);
+    return date.toLocaleDateString("vi-VN", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
     });
-    setPasswordMode(false);
   };
 
   return (
     <div className="space-y-6">
-      {/* Profile Information Card */}
-      <Card>
-        <CardHeader>
+      {/* Profile Overview Card */}
+      <Card className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/20 dark:to-indigo-950/20 border-blue-200 dark:border-blue-800">
+        <CardHeader className="pb-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
-              <Avatar className="h-16 w-16">
+              <Avatar className="w-20 h-20 border-4 border-white shadow-lg">
                 <AvatarImage
-                  src={
-                    avatarFile && avatarFile instanceof File
-                      ? URL.createObjectURL(avatarFile)
-                      : userProfile?.avatar || undefined
-                  }
-                  alt={`${userProfile?.firstName} ${userProfile?.lastName}`}
+                  src={userProfileUtils.getBestAvatarUrl(userProfile, 80)}
+                  alt={userProfileUtils.getDisplayName(userProfile)}
                 />
-                <AvatarFallback>
-                  <User className="h-8 w-8" />
+                <AvatarFallback className="bg-blue-500 text-white text-xl font-semibold">
+                  {userProfileUtils.getUserInitials(userProfile)}
                 </AvatarFallback>
               </Avatar>
               <div>
-                <CardTitle className="text-xl">
-                  {userProfile?.firstName} {userProfile?.lastName}
+                <CardTitle className="text-2xl text-gray-900 dark:text-white">
+                  {userProfileUtils.getDisplayName(userProfile)}
                 </CardTitle>
-                <CardDescription>{userProfile?.email}</CardDescription>
-                <Badge variant="secondary" className="mt-1">
-                  {user?.role === "ADMIN" ? "Quản trị viên" : "Người dùng"}
-                </Badge>
+                <CardDescription className="text-base">
+                  {userProfile?.email}
+                </CardDescription>
+                <div className="flex items-center space-x-2 mt-2">
+                  <Badge
+                    className={`${loyaltyTier.bgColor} ${loyaltyTier.color} border-0`}
+                  >
+                    <loyaltyTier.icon className="w-3 h-3 mr-1" />
+                    {loyaltyTier.name}
+                  </Badge>
+                </div>
               </div>
             </div>
             <Button
               variant={editMode ? "outline" : "default"}
               onClick={() => setEditMode(!editMode)}
               disabled={loading}
+              className="bg-blue-600 hover:bg-blue-700 text-white"
             >
               {editMode ? (
                 <>
@@ -415,6 +390,19 @@ const AccountTab = ({ userProfile, onProfileUpdate }) => {
             </Button>
           </div>
         </CardHeader>
+      </Card>
+
+      {/* Personal Information Card */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg flex items-center">
+            <User className="mr-2 h-5 w-5" />
+            Thông tin cá nhân
+          </CardTitle>
+          <CardDescription>
+            Quản lý thông tin cá nhân và tài khoản của bạn
+          </CardDescription>
+        </CardHeader>
 
         <CardContent className="space-y-6">
           {editMode ? (
@@ -429,8 +417,8 @@ const AccountTab = ({ userProfile, onProfileUpdate }) => {
                 />
               </div>
 
-              {/* First Name */}
-              <div className="grid grid-cols-2 gap-4">
+              {/* Name Fields */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="firstName">Họ *</Label>
                   <Input
@@ -443,8 +431,6 @@ const AccountTab = ({ userProfile, onProfileUpdate }) => {
                     required
                   />
                 </div>
-
-                {/* Last Name */}
                 <div className="space-y-2">
                   <Label htmlFor="lastName">Tên *</Label>
                   <Input
@@ -468,82 +454,69 @@ const AccountTab = ({ userProfile, onProfileUpdate }) => {
                   type="email"
                   value={formData.email}
                   readOnly
-                  className="bg-gray-50"
+                  className="bg-gray-50 dark:bg-gray-800"
                 />
                 <p className="text-sm text-gray-500">
                   Email không thể thay đổi
                 </p>
               </div>
 
-              {/* Phone */}
-              <div className="space-y-2">
-                <Label htmlFor="phone">Số điện thoại</Label>
-                <Input
-                  id="phone"
-                  name="phone"
-                  type="tel"
-                  value={formData.phone}
-                  onChange={handleInputChange}
-                  placeholder="Nhập số điện thoại"
-                />
+              {/* Contact Info */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="phone">Số điện thoại</Label>
+                  <Input
+                    id="phone"
+                    name="phone"
+                    type="tel"
+                    value={formData.phone}
+                    onChange={handleInputChange}
+                    placeholder="Nhập số điện thoại"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="dateOfBirth">Ngày sinh</Label>
+                  <Input
+                    id="dateOfBirth"
+                    name="dateOfBirth"
+                    type="date"
+                    value={formData.dateOfBirth}
+                    onChange={handleInputChange}
+                  />
+                </div>
               </div>
 
-              {/* Date of Birth */}
-              <div className="space-y-2">
-                <Label htmlFor="dateOfBirth">Ngày sinh</Label>
-                <Input
-                  id="dateOfBirth"
-                  name="dateOfBirth"
-                  type="date"
-                  value={formData.dateOfBirth}
-                  onChange={handleInputChange}
-                />
+              {/* Passport Info */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="passportNumber">Số hộ chiếu</Label>
+                  <Input
+                    id="passportNumber"
+                    name="passportNumber"
+                    type="text"
+                    value={formData.passportNumber}
+                    onChange={handleInputChange}
+                    placeholder="Nhập số hộ chiếu"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="passportExpiry">Ngày hết hạn hộ chiếu</Label>
+                  <Input
+                    id="passportExpiry"
+                    name="passportExpiry"
+                    type="date"
+                    value={formData.passportExpiry}
+                    onChange={handleInputChange}
+                  />
+                </div>
               </div>
 
-              {/* Passport Number */}
-              <div className="space-y-2">
-                <Label htmlFor="passportNumber">Số hộ chiếu</Label>
-                <Input
-                  id="passportNumber"
-                  name="passportNumber"
-                  type="text"
-                  value={formData.passportNumber}
-                  onChange={handleInputChange}
-                  placeholder="Nhập số hộ chiếu"
-                />
-              </div>
-
-              {/* Passport Expiry */}
-              <div className="space-y-2">
-                <Label htmlFor="passportExpiry">Ngày hết hạn hộ chiếu</Label>
-                <Input
-                  id="passportExpiry"
-                  name="passportExpiry"
-                  type="date"
-                  value={formData.passportExpiry}
-                  onChange={handleInputChange}
-                />
-              </div>
-
-              {/* Loyalty Points - Read Only */}
-              <div className="space-y-2">
-                <Label htmlFor="loyaltyPoints">Điểm tích lũy</Label>
-                <Input
-                  id="loyaltyPoints"
-                  name="loyaltyPoints"
-                  type="text"
-                  value={userProfile?.loyaltyPoints || 0}
-                  readOnly
-                  className="bg-gray-50"
-                />
-              </div>
-
-              {/* Form Actions */}
+              {/* Submit Button */}
               <div className="flex justify-end space-x-2 pt-4">
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={handleCancelEdit}
+                  onClick={() => setEditMode(false)}
                   disabled={loading}
                 >
                   Hủy
@@ -561,77 +534,69 @@ const AccountTab = ({ userProfile, onProfileUpdate }) => {
               </div>
             </form>
           ) : (
-            <div className="space-y-4">
-              {/* Display Profile Information */}
-              <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-4">
                 <div>
                   <Label className="text-sm font-medium text-gray-500">
-                    Họ
+                    Họ và tên
                   </Label>
-                  <p className="text-sm mt-1">
-                    {userProfile?.firstName || "Chưa cập nhật"}
+                  <p className="text-sm mt-1 font-medium">
+                    {userProfileUtils.getDisplayName(userProfile)}
                   </p>
                 </div>
                 <div>
                   <Label className="text-sm font-medium text-gray-500">
-                    Tên
+                    Email
+                  </Label>
+                  <p className="text-sm mt-1">{userProfile?.email}</p>
+                </div>
+                <div>
+                  <Label className="text-sm font-medium text-gray-500">
+                    Số điện thoại
                   </Label>
                   <p className="text-sm mt-1">
-                    {userProfile?.lastName || "Chưa cập nhật"}
+                    {userProfile?.phone || "Chưa cập nhật"}
+                  </p>
+                </div>
+                <div>
+                  <Label className="text-sm font-medium text-gray-500">
+                    Ngày sinh
+                  </Label>
+                  <p className="text-sm mt-1">
+                    {formatDate(userProfile?.dateOfBirth) || "Chưa cập nhật"}
                   </p>
                 </div>
               </div>
-
-              <div>
-                <Label className="text-sm font-medium text-gray-500">
-                  Email
-                </Label>
-                <p className="text-sm mt-1">{userProfile?.email}</p>
-              </div>
-
-              <div>
-                <Label className="text-sm font-medium text-gray-500">
-                  Số điện thoại
-                </Label>
-                <p className="text-sm mt-1">
-                  {userProfile?.phone || "Chưa cập nhật"}
-                </p>
-              </div>
-
-              <div>
-                <Label className="text-sm font-medium text-gray-500">
-                  Ngày sinh
-                </Label>
-                <p className="text-sm mt-1">
-                  {userProfile?.dateOfBirth || "Chưa cập nhật"}
-                </p>
-              </div>
-
-              <div>
-                <Label className="text-sm font-medium text-gray-500">
-                  Số hộ chiếu
-                </Label>
-                <p className="text-sm mt-1">
-                  {userProfile?.passportNumber || "Chưa cập nhật"}
-                </p>
-              </div>
-
-              <div>
-                <Label className="text-sm font-medium text-gray-500">
-                  Ngày hết hạn hộ chiếu
-                </Label>
-                <p className="text-sm mt-1">
-                  {userProfile?.passportExpiry || "Chưa cập nhật"}
-                </p>
-              </div>
-
-              <div>
-                <Label className="text-sm font-medium text-gray-500">
-                  Điểm tích lũy
-                </Label>
-                <p className="text-sm mt-1">
-                  {userProfile?.loyaltyPoints || 0} điểm
-                </p>
+              <div className="space-y-4">
+                <div>
+                  <Label className="text-sm font-medium text-gray-500">
+                    Số hộ chiếu
+                  </Label>
+                  <p className="text-sm mt-1">
+                    {userProfile?.passportNumber || "Chưa cập nhật"}
+                  </p>
+                </div>
+                <div>
+                  <Label className="text-sm font-medium text-gray-500">
+                    Ngày hết hạn hộ chiếu
+                  </Label>
+                  <p className="text-sm mt-1">
+                    {formatDate(userProfile?.passportExpiry) || "Chưa cập nhật"}
+                  </p>
+                </div>
+                <div>
+                  <Label className="text-sm font-medium text-gray-500">
+                    Hạng thành viên
+                  </Label>
+                  <div className="flex items-center space-x-2 mt-1">
+                    <Badge
+                      className={`${loyaltyTier.bgColor} ${loyaltyTier.color} border-0`}
+                    >
+                      <loyaltyTier.icon className="w-3 h-3 mr-1" />
+                      {loyaltyTier.name}
+                    </Badge>
+                  </div>
+                </div>
               </div>
             </div>
           )}
@@ -643,7 +608,10 @@ const AccountTab = ({ userProfile, onProfileUpdate }) => {
         <CardHeader>
           <div className="flex items-center justify-between">
             <div>
-              <CardTitle className="text-lg">Đổi mật khẩu</CardTitle>
+              <CardTitle className="text-lg flex items-center">
+                <Lock className="mr-2 h-5 w-5" />
+                Bảo mật tài khoản
+              </CardTitle>
               <CardDescription>
                 Thay đổi mật khẩu để bảo mật tài khoản của bạn
               </CardDescription>
@@ -671,7 +639,6 @@ const AccountTab = ({ userProfile, onProfileUpdate }) => {
         {passwordMode && (
           <CardContent>
             <form onSubmit={handlePasswordSubmit} className="space-y-4">
-              {/* Current Password */}
               <div className="space-y-2">
                 <Label htmlFor="oldPassword">Mật khẩu hiện tại *</Label>
                 <div className="relative">
@@ -700,7 +667,6 @@ const AccountTab = ({ userProfile, onProfileUpdate }) => {
                 </div>
               </div>
 
-              {/* New Password */}
               <div className="space-y-2">
                 <Label htmlFor="newPassword">Mật khẩu mới *</Label>
                 <div className="relative">
@@ -729,7 +695,6 @@ const AccountTab = ({ userProfile, onProfileUpdate }) => {
                 </div>
               </div>
 
-              {/* Confirm Password */}
               <div className="space-y-2">
                 <Label htmlFor="confirmPassword">Xác nhận mật khẩu mới *</Label>
                 <div className="relative">
@@ -758,12 +723,11 @@ const AccountTab = ({ userProfile, onProfileUpdate }) => {
                 </div>
               </div>
 
-              {/* Password Actions */}
               <div className="flex justify-end space-x-2 pt-4">
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={handleCancelPassword}
+                  onClick={() => setPasswordMode(false)}
                   disabled={loading}
                 >
                   Hủy
@@ -785,11 +749,11 @@ const AccountTab = ({ userProfile, onProfileUpdate }) => {
       </Card>
 
       {/* Social Accounts Card */}
-      <Card>
+      {/* <Card>
         <CardHeader>
-          <CardTitle className="text-lg">Tài khoản mạng xã hội</CardTitle>
+          <CardTitle className="text-lg">Mạng xã hội</CardTitle>
           <CardDescription>
-            Kết nối tài khoản mạng xã hội để đăng nhập dễ dàng hơn
+            Kết nối tài khoản với các mạng xã hội
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -797,7 +761,7 @@ const AccountTab = ({ userProfile, onProfileUpdate }) => {
             {socialAccounts.map((account) => (
               <div
                 key={account.name}
-                className="flex items-center justify-between p-4 border rounded-lg"
+                className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
               >
                 <div className="flex items-center space-x-3">
                   <account.icon className="h-5 w-5" />
@@ -833,12 +797,15 @@ const AccountTab = ({ userProfile, onProfileUpdate }) => {
             ))}
           </div>
         </CardContent>
-      </Card>
+      </Card> */}
 
       {/* Delete Account Card */}
-      <Card className="border-red-200">
+      <Card className="border-red-200 dark:border-red-800">
         <CardHeader>
-          <CardTitle className="text-lg text-red-600">Xóa tài khoản</CardTitle>
+          <CardTitle className="text-lg text-red-600 flex items-center">
+            <AlertCircle className="mr-2 h-5 w-5" />
+            Xóa tài khoản
+          </CardTitle>
           <CardDescription className="text-red-600">
             Hành động này không thể hoàn tác. Tất cả dữ liệu của bạn sẽ bị xóa
             vĩnh viễn.
@@ -855,7 +822,7 @@ const AccountTab = ({ userProfile, onProfileUpdate }) => {
                   </>
                 ) : (
                   <>
-                    <Trash2 className="mr-2 h-4 w-4" />
+                    <AlertCircle className="mr-2 h-4 w-4" />
                     Xóa tài khoản
                   </>
                 )}

@@ -98,4 +98,13 @@ export const authApi = {
   updateProfile: async (profileData) => {
     return apiHandler("put", "/auth/profile/update", profileData);
   },
+
+  /**
+   * Admin tạo người dùng mới
+   * @param {{ email: string, password: string, firstName: string, lastName: string, phone?: string, role?: string }} credentials - Thông tin tạo người dùng
+   * @returns {Promise<{ success: boolean, data?: any, message: string }>}
+   */
+  adminRegister: async (credentials) => {
+    return apiHandler("post", "/auth/admin/register", credentials);
+  },
 };

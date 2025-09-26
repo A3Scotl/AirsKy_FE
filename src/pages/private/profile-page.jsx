@@ -47,16 +47,18 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { authApi } from "@/apis/auth-api";
+import { userApi } from "@/apis/user-api";
 import { useAuth } from "@/contexts/auth-context";
 import SessionInfo from "@/components/auth/session-info";
 
 const AdminProfilePage = () => {
-  const { user } = useAuth();
+  const { user, updateUser } = useAuth();
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [loadingProfile, setLoadingProfile] = useState(true);
+  const [avatarFile, setAvatarFile] = useState(null);
   const [profileData, setProfileData] = useState({
     id: "",
     firstName: "",
@@ -70,6 +72,9 @@ const AdminProfilePage = () => {
     status: "Active",
     permissions: [],
     profileImage: null,
+    // Additional fields from user data
+    dateOfBirth: "",
+    avatar: null,
   });
 
   const [passwordData, setPasswordData] = useState({
@@ -130,6 +135,11 @@ const AdminProfilePage = () => {
             status: userData.status || "Active",
             permissions: userData.permissions || [],
             profileImage: userData.profileImage || null,
+            // Additional fields
+            dateOfBirth: userData.dateOfBirth
+              ? new Date(userData.dateOfBirth).toISOString().split("T")[0]
+              : "",
+            avatar: userData.avatar || null,
           });
         } else {
           toast.error("Không thể tải thông tin profile");
@@ -150,17 +160,45 @@ const AdminProfilePage = () => {
     setIsLoading(true);
 
     try {
-      const response = await authApi.updateProfile({
-        firstName: profileData.firstName,
-        lastName: profileData.lastName,
-        phone: profileData.phone,
-        address: profileData.address,
-      });
+      // Create FormData for file upload
+      const formDataToSend = new FormData();
+
+      // Add text fields
+      formDataToSend.append("firstName", profileData.firstName.trim());
+      formDataToSend.append("lastName", profileData.lastName.trim());
+      formDataToSend.append("phone", profileData.phone.trim());
+      formDataToSend.append("dateOfBirth", profileData.dateOfBirth || "");
+
+      // Note: Avatar is handled separately in handleAvatarUpdate
+
+      // Call API to update user with FormData
+      const response = await userApi.updateUser(profileData.id, formDataToSend);
 
       if (response.success) {
         toast.success("Cập nhật thông tin thành công!");
+
+        // Update local profile data with new values
+        setProfileData((prev) => ({
+          ...prev,
+          firstName: response.data.firstName || prev.firstName,
+          lastName: response.data.lastName || prev.lastName,
+          phone: response.data.phone || prev.phone,
+          dateOfBirth: response.data.dateOfBirth || prev.dateOfBirth,
+        }));
+
+        // Update auth context to reflect changes
+        const updatedData = {
+          id: profileData.id,
+          firstName: response.data.firstName,
+          lastName: response.data.lastName,
+          fullName:
+            `${response.data.firstName} ${response.data.lastName}`.trim(),
+          phone: response.data.phone,
+          dateOfBirth: response.data.dateOfBirth,
+        };
+        updateUser(updatedData);
       } else {
-        toast.error(response.message || "Cập nhật thất bại!");
+        toast.error(response.message || "Cập nhật thất bại. Vui lòng thử lại.");
       }
     } catch (error) {
       console.error("Error updating profile:", error);
@@ -210,15 +248,53 @@ const AdminProfilePage = () => {
     }
   };
 
-  const handleImageUpload = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        setProfileData({ ...profileData, profileImage: event.target.result });
-        toast.success("Profile image uploaded successfully!");
-      };
-      reader.readAsDataURL(file);
+  const handleAvatarUpdate = async () => {
+    if (!avatarFile) {
+      toast.error("Vui lòng chọn ảnh trước!");
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      // Create FormData for avatar upload only
+      const formDataToSend = new FormData();
+
+      // Add avatar file
+      formDataToSend.append("avatar", avatarFile);
+
+      // Call API to update user avatar
+      const response = await userApi.updateUser(profileData.id, formDataToSend);
+
+      if (response.success) {
+        toast.success("Cập nhật ảnh đại diện thành công!");
+
+        // Update profile image with server response
+        if (response.data.avatar) {
+          setProfileData((prev) => ({
+            ...prev,
+            profileImage: response.data.avatar,
+            avatar: response.data.avatar,
+          }));
+        }
+
+        // Clear avatar file after successful upload
+        setAvatarFile(null);
+
+        // Update auth context
+        const updatedData = {
+          id: profileData.id,
+          avatar: response.data.avatar,
+        };
+        updateUser(updatedData);
+      } else {
+        toast.error(response.message || "Cập nhật ảnh thất bại!");
+      }
+    } catch (error) {
+      console.error("Error updating avatar:", error);
+      toast.error("Cập nhật ảnh thất bại. Vui lòng thử lại.");
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -232,6 +308,34 @@ const AdminProfilePage = () => {
         return "bg-green-100 text-green-800";
       default:
         return "bg-gray-100 text-gray-800";
+    }
+  };
+
+  const handleImageUpload = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      // Validate file type
+      if (!file.type.startsWith("image/")) {
+        toast.error("Vui lòng chọn file ảnh hợp lệ!");
+        return;
+      }
+
+      // Validate file size (max 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        toast.error("Kích thước ảnh không được vượt quá 5MB!");
+        return;
+      }
+
+      setAvatarFile(file);
+
+      // Create preview for display
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        setProfileData({ ...profileData, profileImage: event.target.result });
+      };
+      reader.readAsDataURL(file);
+
+      toast.success("Ảnh đã được chọn! Nhấn 'Cập nhật ảnh' để lưu.");
     }
   };
 
@@ -287,7 +391,7 @@ const AdminProfilePage = () => {
             <div className="flex items-center space-x-4">
               <div className="relative">
                 <Avatar className="h-20 w-20">
-                  <AvatarImage src={profileData.profileImage} alt="Profile" />
+                  <AvatarImage src={profileData.avatar} alt="Profile" />
                   <AvatarFallback className="text-xl font-bold bg-blue-100">
                     {(profileData.firstName?.[0] || "").toUpperCase()}
                     {(profileData.lastName?.[0] || "").toUpperCase()}
@@ -429,6 +533,21 @@ const AdminProfilePage = () => {
                       />
                     </div>
 
+                    <div className="space-y-2">
+                      <Label htmlFor="dateOfBirth">Ngày sinh</Label>
+                      <Input
+                        id="dateOfBirth"
+                        type="date"
+                        value={profileData.dateOfBirth}
+                        onChange={(e) =>
+                          setProfileData({
+                            ...profileData,
+                            dateOfBirth: e.target.value,
+                          })
+                        }
+                      />
+                    </div>
+
                     <Button
                       type="submit"
                       disabled={isLoading}
@@ -438,6 +557,59 @@ const AdminProfilePage = () => {
                       {isLoading ? "Đang cập nhật" : "Cập nhật thông tin"}
                     </Button>
                   </form>
+
+                  {/* Avatar Upload Section */}
+                  <Separator className="my-6" />
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-2">
+                      <Upload className="h-5 w-5" />
+                      <Label className="text-base font-medium">
+                        Cập nhật ảnh đại diện
+                      </Label>
+                    </div>
+
+                    <div className="flex items-center gap-4">
+                      <div className="relative">
+                        <input
+                          id="avatar-upload"
+                          type="file"
+                          accept="image/*"
+                          onChange={handleImageUpload}
+                          className="hidden"
+                        />
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() =>
+                            document.getElementById("avatar-upload").click()
+                          }
+                          disabled={isLoading}
+                        >
+                          <Upload className="h-4 w-4 mr-2" />
+                          Chọn ảnh
+                        </Button>
+                      </div>
+
+                      {avatarFile && (
+                        <Button
+                          type="button"
+                          onClick={handleAvatarUpdate}
+                          disabled={isLoading}
+                          className="bg-blue-600 hover:bg-blue-700"
+                        >
+                          <Save className="h-4 w-4 mr-2" />
+                          {isLoading ? "Đang tải lên..." : "Cập nhật ảnh"}
+                        </Button>
+                      )}
+                    </div>
+
+                    {avatarFile && (
+                      <div className="text-sm text-gray-600">
+                        Đã chọn: {avatarFile.name} (
+                        {(avatarFile.size / 1024 / 1024).toFixed(2)} MB)
+                      </div>
+                    )}
+                  </div>
                 </CardContent>
               </Card>
 

@@ -57,7 +57,16 @@ export const userApi = {
   },
 
   /**
-   * Chuyển đổi trạng thái active của người dùng (Admin only)
+   * Lấy danh sách booking của một user theo ID
+   * @param {number} id - ID của người dùng
+   * @returns {Promise<{ success: boolean, data?: any, message: string }>}
+   */
+  getBookingsByUserId: async (id) => {
+    return apiHandler("get", `/users/${id}/bookings`);
+  },
+
+  /**
+   * toogle active user
    * @param {number} id - ID của người dùng
    * @returns {Promise<{ success: boolean, data?: any, message: string }>}
    */

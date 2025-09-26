@@ -33,20 +33,7 @@ export function Header() {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, logout, updateUser } = useAuth();
-  console.log("🔄 Header render - current user state:", {
-    id: user?.id,
-    email: user?.email,
-    firstName: user?.firstName,
-    lastName: user?.lastName,
-    fullName: user?.fullName,
-    avatar: user?.avatar,
-    googleAvatar: user?.googleAvatar,
-    picture: user?.picture,
-    hasAvatar: !!user?.avatar,
-    hasGoogleAvatar: !!user?.googleAvatar,
-    hasPicture: !!user?.picture,
-  });
-  console.log("🔄 Header render - user state:", user);
+
   const [showHeader, setShowHeader] = useState(true);
   const lastScrollY = useRef(window.scrollY);
 
@@ -55,30 +42,9 @@ export function Header() {
     const fetchLatestUserProfile = async () => {
       if (user && user.id) {
         try {
-          console.log(
-            "🔄 Header: Fetching latest user profile from database for user ID:",
-            user.id
-          );
           const response = await authApi.me();
 
           if (response.success && response.data) {
-            console.log(
-              "✅ Header: Latest database profile fetched successfully:",
-              response.data
-            );
-            console.log("🔍 Header: Database avatar:", response.data.avatar);
-            console.log(
-              "🔍 Header: Database firstName:",
-              response.data.firstName
-            );
-            console.log(
-              "🔍 Header: Database lastName:",
-              response.data.lastName
-            );
-            console.log("🔍 Header: Current user avatar:", user.avatar);
-            console.log("🔍 Header: Current user firstName:", user.firstName);
-            console.log("🔍 Header: Current user lastName:", user.lastName);
-
             // Only update if database data is different from current data
             const hasChanges =
               response.data.avatar !== user.avatar ||
@@ -86,20 +52,12 @@ export function Header() {
               response.data.lastName !== user.lastName;
 
             if (hasChanges) {
-              console.log(
-                "🔄 Header: Database data differs from current user data, updating..."
-              );
-
               // Update auth context with latest database data
               updateUser({
                 ...response.data,
                 // Keep Google avatar as fallback
                 googleAvatar: user.googleAvatar,
               });
-
-              console.log(
-                "✅ Header: User profile updated with latest database data"
-              );
             } else {
               console.log(
                 "✅ Header: Database data matches current user data, no update needed"
@@ -135,18 +93,13 @@ export function Header() {
     // Always prioritize database firstName + lastName for display
     if (user.firstName && user.lastName) {
       const displayName = `${user.firstName} ${user.lastName}`.trim();
-      console.log("✅ Header using database name:", displayName);
       return displayName;
     }
 
     // Fallback to fullName if available
     if (user.fullName) {
-      console.log("⚠️ Header using fullName fallback:", user.fullName);
       return user.fullName;
     }
-
-    // Final fallback to email
-    console.log("⚠️ Header using email fallback:", user.email);
     return user.email || "Người dùng";
   };
 
@@ -177,18 +130,8 @@ export function Header() {
   const getAvatarUrl = () => {
     if (!user) return null;
 
-    console.log("🔍 Header getAvatarUrl - user object:", {
-      avatar: user.avatar,
-      googleAvatar: user.googleAvatar,
-      picture: user.picture,
-      fullName: user.fullName,
-      firstName: user.firstName,
-      lastName: user.lastName,
-    });
-
     // Try database avatar first (highest priority - user uploaded or updated avatar)
     if (user.avatar) {
-      console.log("✅ Header using database avatar:", user.avatar);
       return user.avatar;
     }
 
@@ -202,19 +145,18 @@ export function Header() {
           googleAvatarUrl += "=s96-c";
         }
       }
-      console.log("✅ Header using Google avatar:", googleAvatarUrl);
+
       return googleAvatarUrl;
     }
 
     // Try other avatar fields
     if (user.picture) {
-      console.log("✅ Header using picture:", user.picture);
       return user.picture;
     }
 
     // Fallback to Gravatar or UI Avatars
     const gravatarUrl = userProfileUtils.getGravatarUrl(user.email, 32);
-    console.log("🔄 Header falling back to Gravatar:", gravatarUrl);
+
     return gravatarUrl;
   };
 
@@ -310,16 +252,6 @@ export function Header() {
                             "❌ Header avatar load failed:",
                             e.target.src
                           );
-                          console.log(
-                            "🔄 Avatar URL that failed:",
-                            getAvatarUrl()
-                          );
-                        }}
-                        onLoad={() => {
-                          console.log(
-                            "✅ Header avatar loaded successfully:",
-                            getAvatarUrl()
-                          );
                         }}
                       />
                       <AvatarFallback className="bg-blue-500 text-white text-sm">
@@ -346,8 +278,14 @@ export function Header() {
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild>
+                    <Link to="/check-in" className="flex items-center w-full">
+                      <Calendar className="w-4 h-4 mr-3" />
+                      Check in
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
                     <Link
-                      to="/my-bookings"
+                      to="/profile#my-booking"
                       className="flex items-center w-full"
                     >
                       <Calendar className="w-4 h-4 mr-3" />
@@ -442,7 +380,7 @@ export function Header() {
                       <Button
                         variant="ghost"
                         className="flex items-center justify-start space-x-3 w-full"
-                        onClick={() => navigate("/my-bookings")}
+                        onClick={() => navigate("/profile#my-booking")}
                       >
                         <Calendar className="w-5 h-5" />
                         <span>Đơn đặt chỗ của tôi</span>

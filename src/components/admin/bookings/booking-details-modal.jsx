@@ -149,18 +149,6 @@ const BookingDetailsModal = ({ open, onOpenChange, booking, onEdit }) => {
                       </p>
                     </div>
                   </div>
-
-                  {booking.arrival && (
-                    <div className="flex items-center gap-3">
-                      <Clock className="h-5 w-5 text-gray-400" />
-                      <div>
-                        <p className="text-sm text-gray-600">{TEXT.arrival}</p>
-                        <p className="font-semibold">
-                          {formatDate(booking.arrival)}
-                        </p>
-                      </div>
-                    </div>
-                  )}
                 </div>
 
                 <div className="space-y-4">
@@ -260,8 +248,62 @@ const BookingDetailsModal = ({ open, onOpenChange, booking, onEdit }) => {
             </CardContent>
           </Card>
 
+          {/* Passengers Information */}
+          {booking.passengersDetails &&
+            booking.passengersDetails.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Users className="h-5 w-5" />
+                    {TEXT.passengers}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {booking.passengersDetails.map((passenger, index) => (
+                      <div
+                        key={passenger.passengerId}
+                        className="border rounded-lg p-4"
+                      >
+                        <div className="flex justify-between items-start mb-2">
+                          <h4 className="font-medium">
+                            {passenger.firstName} {passenger.lastName}
+                          </h4>
+                          <Badge variant="outline">{passenger.type}</Badge>
+                        </div>
+                        <div className="grid grid-cols-2 gap-4 text-sm">
+                          <div>
+                            <p className="text-gray-600">Ngày sinh</p>
+                            <p>{formatShortDate(passenger.dateOfBirth)}</p>
+                          </div>
+                          <div>
+                            <p className="text-gray-600">Hộ chiếu</p>
+                            <p>{passenger.passportNumber}</p>
+                          </div>
+                          {passenger.seatNumber && (
+                            <div>
+                              <p className="text-gray-600">Số ghế</p>
+                              <p>{passenger.seatNumber}</p>
+                            </div>
+                          )}
+                          {passenger.className && (
+                            <div>
+                              <p className="text-gray-600">Hạng</p>
+                              <p>{passenger.className}</p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
           {/* Additional Information */}
-          {(booking.specialRequests || booking.seatPreferences) && (
+          {(booking.specialRequests ||
+            booking.seatPreferences ||
+            booking.payment) && (
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -289,6 +331,30 @@ const BookingDetailsModal = ({ open, onOpenChange, booking, onEdit }) => {
                     <p className="text-sm bg-gray-50 p-3 rounded-md">
                       {booking.specialRequests}
                     </p>
+                  </div>
+                )}
+
+                {booking.payment && (
+                  <div>
+                    <p className="text-sm text-gray-600 font-medium">
+                      Thông Tin Thanh Toán
+                    </p>
+                    <div className="text-sm bg-gray-50 p-3 rounded-md">
+                      <p>
+                        <strong>Trạng thái:</strong>{" "}
+                        {booking.payment.status || "N/A"}
+                      </p>
+                      <p>
+                        <strong>Phương thức:</strong>{" "}
+                        {booking.payment.method || "N/A"}
+                      </p>
+                      <p>
+                        <strong>Ngày thanh toán:</strong>{" "}
+                        {booking.payment.paymentDate
+                          ? formatShortDate(booking.payment.paymentDate)
+                          : "N/A"}
+                      </p>
+                    </div>
                   </div>
                 )}
               </CardContent>
@@ -338,6 +404,19 @@ const BookingDetailsModal = ({ open, onOpenChange, booking, onEdit }) => {
                     </div>
                   </div>
                 )}
+
+                {booking.updatedAt &&
+                  booking.updatedAt !== booking.bookingDate && (
+                    <div className="flex items-start gap-4">
+                      <div className="w-2 h-2 bg-orange-600 rounded-full mt-2"></div>
+                      <div>
+                        <p className="font-medium">Cập Nhật Cuối</p>
+                        <p className="text-sm text-gray-600">
+                          {formatDate(booking.updatedAt)}
+                        </p>
+                      </div>
+                    </div>
+                  )}
 
                 <div className="flex items-start gap-4">
                   <div className="w-2 h-2 bg-gray-300 rounded-full mt-2"></div>

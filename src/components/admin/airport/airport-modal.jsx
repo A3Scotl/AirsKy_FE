@@ -17,6 +17,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import ImageUpload from "@/components/ui/image-upload";
+import { Plus, Trash2 } from "lucide-react";
 
 /**
  * Modal thêm/cập nhật sân bay
@@ -36,6 +37,7 @@ const AirportModal = ({ open, onClose, onSubmit, initialData, countries }) => {
     is_active: true,
     thumbnail: "",
     thumbnailFile: null,
+    gates: [], // Array of {gateName: string, terminal: string}
   });
 
   useEffect(() => {
@@ -55,6 +57,7 @@ const AirportModal = ({ open, onClose, onSubmit, initialData, countries }) => {
         is_active: initialData.active ?? initialData.is_active ?? true,
         thumbnail: initialData.thumbnail || "",
         thumbnailFile: null,
+        gates: initialData.gates || [], // Load existing gates
       });
     } else {
       setForm({
@@ -65,6 +68,7 @@ const AirportModal = ({ open, onClose, onSubmit, initialData, countries }) => {
         is_active: true,
         thumbnail: "",
         thumbnailFile: null,
+        gates: [],
       });
     }
   }, [initialData, open]);
@@ -85,6 +89,31 @@ const AirportModal = ({ open, onClose, onSubmit, initialData, countries }) => {
     }));
   };
 
+  // Gate management functions
+  const addGate = () => {
+    setForm((prev) => ({
+      ...prev,
+      gates: [...prev.gates, { gateName: "", terminal: "" }],
+    }));
+  };
+
+  const removeGate = (index) => {
+    // Khi xóa bất kỳ gate nào, xóa tất cả gates (theo yêu cầu: xóa 1 = xóa hết)
+    setForm((prev) => ({
+      ...prev,
+      gates: prev.gates.map(() => ({ gateName: "", terminal: "" })),
+    }));
+  };
+
+  const updateGate = (index, field, value) => {
+    setForm((prev) => ({
+      ...prev,
+      gates: prev.gates.map((gate, i) =>
+        i === index ? { ...gate, [field]: value } : gate
+      ),
+    }));
+  };
+
   const handleSubmit = (e) => {
     e.preventDefault();
 
@@ -94,7 +123,13 @@ const AirportModal = ({ open, onClose, onSubmit, initialData, countries }) => {
       countryId: form.countryId,
       cityNames: form.city_name,
       active: form.is_active,
+      gates: form.gates, // Gửi tất cả gates, để backend filter
     };
+
+    console.log(
+      "[AirportModal] All gates (before backend filter):",
+      formData.gates
+    );
 
     // Xử lý thumbnail: chỉ gửi 1 loại
     if (form.thumbnailFile instanceof File) {
@@ -102,7 +137,7 @@ const AirportModal = ({ open, onClose, onSubmit, initialData, countries }) => {
       formData.thumbnailFile = form.thumbnailFile;
     } else if (form.thumbnail) {
       console.log("[AirportModal] Sending URL:", form.thumbnail);
-      formData.thumbnail = form.thumbnail;
+      formData.thumbnailUrl = form.thumbnail;
     } else {
       console.log("[AirportModal] No thumbnail to send");
     }
@@ -206,6 +241,69 @@ const AirportModal = ({ open, onClose, onSubmit, initialData, countries }) => {
               placeholder="Chọn ảnh sân bay"
             />
           </div>
+
+          {/* Gates Section */}
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <label className="block text-sm font-medium">
+                Cửa ra máy bay (Gates)
+              </label>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={addGate}
+                className="flex items-center gap-1"
+              >
+                <Plus className="w-4 h-4" />
+                Thêm gate
+              </Button>
+            </div>
+
+            {form.gates.length === 0 ? (
+              <p className="text-sm text-muted-foreground">
+                Chưa có gate nào. Nhấn "Thêm gate" để thêm.
+              </p>
+            ) : (
+              <div className="space-y-3">
+                {form.gates.map((gate, index) => (
+                  <div
+                    key={index}
+                    className="flex items-center gap-3 p-3 border rounded-lg"
+                  >
+                    <div className="flex-1">
+                      <Input
+                        placeholder="Tên gate (VD: T7, G11)"
+                        value={gate.gateName}
+                        onChange={(e) =>
+                          updateGate(index, "gateName", e.target.value)
+                        }
+                        className="mb-2"
+                      />
+                      <Input
+                        placeholder="Terminal (VD: T5, T11)"
+                        value={gate.terminal}
+                        onChange={(e) =>
+                          updateGate(index, "terminal", e.target.value)
+                        }
+                      />
+                    </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => removeGate(index)}
+                      className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                      title="Xóa tất cả gates (gửi dữ liệu rỗng để backend xóa)"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
           <div className="flex items-center space-x-2">
             <input
               type="checkbox"

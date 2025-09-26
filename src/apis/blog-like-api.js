@@ -47,33 +47,22 @@ export const blogLikeApi = {
    */
   toggleLike: async (blogId) => {
     try {
-      console.log("Toggling like for blogId:", blogId);
       const checkResult = await blogLikeApi.checkIfLiked(blogId);
-      console.log("checkIfLiked data:", checkResult);
       if (!checkResult.success) {
-        console.error("checkIfLiked failed:", checkResult.message);
         return checkResult;
       }
-      const isCurrentlyLiked = checkResult.data === true; // Strict boolean check
-      console.log("isCurrentlyLiked:", isCurrentlyLiked);
+      const isCurrentlyLiked = checkResult.data === true;
       let result;
       if (isCurrentlyLiked) {
-        console.log("Calling unlikeBlog");
         result = await blogLikeApi.unlikeBlog(blogId);
       } else {
-        console.log("Calling likeBlog");
         result = await blogLikeApi.likeBlog(blogId);
       }
-      console.log("like/unlike result:", result);
       if (result.success) {
         result.isLiked = !isCurrentlyLiked;
-        console.log("New isLiked state:", result.isLiked);
-      } else {
-        console.error("like/unlike failed:", result.message);
       }
       return result;
     } catch (error) {
-      console.error("Error toggling like:", error);
       return {
         success: false,
         message: "Có lỗi xảy ra khi thực hiện thao tác",

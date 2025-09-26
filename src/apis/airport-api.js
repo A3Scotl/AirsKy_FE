@@ -5,7 +5,7 @@ import { apiHandler } from "@/utils/api-handler";
  */
 export const airportApi = {
   /**
-   * Tạo sân bay mới (Admin only) - Sử dụng FormData cho thumbnail
+   * Tạo sân bay mới (Admin only) - Sử dụng FormData cho thumbnail và gates
    * @param {{
    *   airportCode: string,
    *   airportName: string,
@@ -14,7 +14,9 @@ export const airportApi = {
    *   cityNames?: string,
    *   thumbnail?: string,
    *   thumbnailFile?: File,
-   *   active?: boolean
+   *   thumbnailUrl?: string,
+   *   active?: boolean,
+   *   gates?: Array<{gateName: string, terminal: string}>
    * }} airportData - Thông tin sân bay
    * @returns {Promise<{ success: boolean, data?: any, message: string }>}
    */
@@ -30,16 +32,18 @@ export const airportApi = {
     if (airportData.cityNames)
       formData.append("cityNames", airportData.cityNames);
 
-    // Xử lý thumbnail: chỉ gửi 1 loại
+    // Xử lý thumbnail: ưu tiên file upload, sau đó mới đến URL
     if (airportData.thumbnailFile instanceof File) {
       console.log(
         "[AirportAPI] Appending file:",
         airportData.thumbnailFile.name
       );
       formData.append("thumbnail", airportData.thumbnailFile);
+    } else if (airportData.thumbnailUrl) {
+      console.log("[AirportAPI] Appending URL:", airportData.thumbnailUrl);
+      formData.append("thumbnailUrl", airportData.thumbnailUrl);
     } else if (airportData.thumbnail) {
       console.log("[AirportAPI] Appending URL:", airportData.thumbnail);
-      console.log("[AirportAPI] URL type:", typeof airportData.thumbnail);
       formData.append("thumbnailUrl", airportData.thumbnail);
     }
 
@@ -47,6 +51,18 @@ export const airportApi = {
       "active",
       airportData.active !== undefined ? airportData.active.toString() : "true"
     );
+
+    // Xử lý gates array
+    if (airportData.gates && Array.isArray(airportData.gates)) {
+      airportData.gates.forEach((gate, index) => {
+        if (gate.gateName) {
+          formData.append(`gates[${index}].gateName`, gate.gateName);
+        }
+        if (gate.terminal) {
+          formData.append(`gates[${index}].terminal`, gate.terminal);
+        }
+      });
+    }
 
     // Debug: Log FormData contents
     console.log("[AirportAPI] FormData entries:");
@@ -62,7 +78,7 @@ export const airportApi = {
   },
 
   /**
-   * Cập nhật thông tin sân bay (Admin only) - Sử dụng FormData cho thumbnail
+   * Cập nhật thông tin sân bay (Admin only) - Sử dụng FormData cho thumbnail và gates
    * @param {number} id - ID của sân bay
    * @param {{
    *   airportCode: string,
@@ -72,7 +88,9 @@ export const airportApi = {
    *   cityNames?: string,
    *   thumbnail?: string,
    *   thumbnailFile?: File,
-   *   active?: boolean
+   *   thumbnailUrl?: string,
+   *   active?: boolean,
+   *   gates?: Array<{gateName: string, terminal: string}>
    * }} airportData - Thông tin cập nhật
    * @returns {Promise<{ success: boolean, data?: any, message: string }>}
    */
@@ -88,9 +106,11 @@ export const airportApi = {
     if (airportData.cityNames)
       formData.append("cityNames", airportData.cityNames);
 
-    // Xử lý thumbnail: chỉ gửi 1 loại
+    // Xử lý thumbnail: ưu tiên file upload, sau đó mới đến URL
     if (airportData.thumbnailFile instanceof File) {
       formData.append("thumbnail", airportData.thumbnailFile);
+    } else if (airportData.thumbnailUrl) {
+      formData.append("thumbnailUrl", airportData.thumbnailUrl);
     } else if (airportData.thumbnail) {
       formData.append("thumbnailUrl", airportData.thumbnail);
     }
@@ -99,6 +119,18 @@ export const airportApi = {
       "active",
       airportData.active !== undefined ? airportData.active.toString() : "true"
     );
+
+    // Xử lý gates array
+    if (airportData.gates && Array.isArray(airportData.gates)) {
+      airportData.gates.forEach((gate, index) => {
+        if (gate.gateName) {
+          formData.append(`gates[${index}].gateName`, gate.gateName);
+        }
+        if (gate.terminal) {
+          formData.append(`gates[${index}].terminal`, gate.terminal);
+        }
+      });
+    }
 
     return apiHandler("put", `/airports/${id}`, formData, {
       headers: {

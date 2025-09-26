@@ -64,51 +64,90 @@ const AdminUsers = () => {
       // If filters are applied, fetch all data for client-side filtering
       const hasFilters = statusFilter !== "all" || roleFilter !== "all";
       const apiParams = {
-        page: hasFilters ? 0 : params.page ?? pagination.page,
-        size: hasFilters ? 1000 : params.size ?? pagination.size,
+        page: hasFilters
+          ? 0
+          : params.page !== undefined
+          ? params.page
+          : pagination.page,
+        size: hasFilters
+          ? 1000
+          : params.size !== undefined
+          ? params.size
+          : pagination.size,
         search: params.search ?? searchQuery,
       };
 
       const response = await userApi.getAllUsers(apiParams);
 
+      console.log("Fetched users:", response);
+      console.log("API response data:", response.data);
+      console.log("Has filters:", hasFilters);
+
       if (response.success && response.data?.content) {
+        console.log("Raw user data:", response.data.content[0]); // Debug log
         let allUsers = response.data.content.filter(
           (user) => user?.id?.toString() !== currentUser?.id?.toString()
         );
 
-        // Apply client-side filters
-        let filteredUsers = allUsers;
+        let finalUsers;
+        let finalPagination;
 
-        if (statusFilter !== "all") {
-          const isActive = statusFilter === "Hoạt động";
-          filteredUsers = filteredUsers.filter(
-            (user) => user?.active === isActive
-          );
+        if (hasFilters) {
+          // Apply client-side filters
+          let filteredUsers = allUsers;
+
+          if (statusFilter !== "all") {
+            const isActive = statusFilter === "Hoạt động";
+            filteredUsers = filteredUsers.filter(
+              (user) => user?.active === isActive
+            );
+          }
+
+          if (roleFilter !== "all") {
+            filteredUsers = filteredUsers.filter(
+              (user) => user?.role === roleFilter
+            );
+          }
+
+          // Implement client-side pagination for filtered results
+          const pageSize = params.size ?? pagination.size;
+          const totalFiltered = filteredUsers.length;
+          const totalPages = Math.ceil(totalFiltered / pageSize);
+
+          // Reset to page 0 if current page is out of bounds after filtering
+          let currentPage = params.page ?? pagination.page;
+          if (currentPage >= totalPages && totalPages > 0) {
+            currentPage = 0;
+          }
+
+          const startIndex = currentPage * pageSize;
+          const endIndex = startIndex + pageSize;
+          finalUsers = filteredUsers.slice(startIndex, endIndex);
+
+          finalPagination = {
+            page: currentPage,
+            size: pageSize,
+            totalElements: totalFiltered,
+            totalPages: totalPages,
+          };
+        } else {
+          // No filters - use server-side pagination
+          finalUsers = allUsers;
+          finalPagination = {
+            page: params.page ?? pagination.page,
+            size: params.size ?? pagination.size,
+            totalElements: response.data.totalElements || allUsers.length,
+            totalPages:
+              response.data.totalPages ||
+              Math.ceil(
+                (response.data.totalElements || allUsers.length) /
+                  (params.size ?? pagination.size)
+              ),
+          };
         }
 
-        if (roleFilter !== "all") {
-          filteredUsers = filteredUsers.filter(
-            (user) => user?.role === roleFilter
-          );
-        }
-
-        // Implement client-side pagination for filtered results
-        const pageSize = params.size ?? pagination.size;
-        const totalFiltered = filteredUsers.length;
-        const totalPages = Math.ceil(totalFiltered / pageSize);
-
-        // Reset to page 0 if current page is out of bounds after filtering
-        let currentPage = params.page ?? pagination.page;
-        if (currentPage >= totalPages && totalPages > 0) {
-          currentPage = 0;
-        }
-
-        const startIndex = currentPage * pageSize;
-        const endIndex = startIndex + pageSize;
-        const paginatedUsers = filteredUsers.slice(startIndex, endIndex);
-
-        // Transform paginated users for display
-        const transformedUsers = paginatedUsers.map((user) => ({
+        // Transform users for display
+        const transformedUsers = finalUsers.map((user) => ({
           id: user?.id?.toString() || "N/A",
           name:
             `${user?.firstName || ""} ${user?.lastName || ""}`.trim() || "N/A",
@@ -117,9 +156,9 @@ const AdminUsers = () => {
           role: user?.role || "CUSTOMER",
           status: user?.active ? "Hoạt động" : "Đã khóa",
           active: user?.active || false,
-          avatar: null,
+          avatar: user?.avatar || null,
           joinDate: user?.createdAt
-            ? new Date(user.createdAt).toISOString().split("T")[0]
+            ? new Date(user.createdAt).toLocaleDateString("vi-VN")
             : "N/A",
           lastLogin: user?.lastLogin
             ? new Date(user.lastLogin).toISOString()
@@ -133,26 +172,43 @@ const AdminUsers = () => {
             smsNotifications: false,
             specialOffers: false,
           },
+          loyaltyPoints: user?.loyaltyPoints || 0,
+          loyaltyTier: user?.loyaltyTier || "-",
         }));
 
         setUsers(transformedUsers);
+        console.log("Transformed users:", transformedUsers[0]); // Debug log
 
-        setPagination({
-          page: currentPage,
-          size: pageSize,
-          totalElements: totalFiltered,
-          totalPages: totalPages,
-        });
+        setPagination(finalPagination);
+        console.log("Final pagination:", finalPagination);
 
-        // Calculate stats from all users (not filtered) for overview
-        const totalCustomers = allUsers.length;
-        const activeCustomers = allUsers.filter((u) => u.active).length;
-        const newRegistrations = allUsers.filter(
-          (u) =>
-            u.createdAt &&
-            new Date(u.createdAt) >
-              new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
-        ).length; // Last 30 days
+        // Calculate stats
+        let totalCustomers, activeCustomers, newRegistrations;
+
+        if (hasFilters) {
+          // When filters are applied, allUsers contains all data
+          totalCustomers = allUsers.length;
+          activeCustomers = allUsers.filter((u) => u.active).length;
+          newRegistrations = allUsers.filter(
+            (u) =>
+              u.createdAt &&
+              new Date(u.createdAt) >
+                new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
+          ).length;
+        } else {
+          // When no filters, use API metadata for accurate totals
+          totalCustomers = response.data.totalElements || allUsers.length;
+          // For active customers and new registrations, we need to calculate from current page
+          // This is approximate since we don't have full data
+          activeCustomers = allUsers.filter((u) => u.active).length;
+          newRegistrations = allUsers.filter(
+            (u) =>
+              u.createdAt &&
+              new Date(u.createdAt) >
+                new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
+          ).length;
+          // TODO: Consider fetching separate stats endpoint for accurate numbers
+        }
 
         setUserStats({
           totalCustomers,
@@ -190,18 +246,18 @@ const AdminUsers = () => {
   };
 
   const handleDeleteUser = async (user) => {
-    if (window.confirm(`Bạn có chắc chắn muốn xóa khách hàng ${user.name}?`)) {
+    if (window.confirm(`Bạn có chắc chắn muốn xóa người dùng ${user.name}?`)) {
       try {
         const response = await userApi.deleteUser(user.id);
         if (response.success) {
-          toast.success("Xóa khách hàng thành công");
+          toast.success("Xóa người dùng thành công");
           fetchUsers();
         } else {
-          toast.error("Không thể xóa khách hàng: " + response.message);
+          toast.error("Không thể xóa người dùng: " + response.message);
         }
       } catch (error) {
         console.error("Error deleting user:", error);
-        toast.error("Lỗi khi xóa khách hàng");
+        toast.error("Lỗi khi xóa người dùng");
       }
       setShowDetailsModal(false);
     }
@@ -213,7 +269,7 @@ const AdminUsers = () => {
 
     if (
       window.confirm(
-        `Bạn có chắc chắn muốn ${action} tài khoản của khách hàng ${user.name}?`
+        `Bạn có chắc chắn muốn ${action} tài khoản của người dùng ${user.name}?`
       )
     ) {
       try {
@@ -249,28 +305,20 @@ const AdminUsers = () => {
 
   const handleSaveUser = async (userData, isEdit) => {
     try {
-      let response;
       if (isEdit) {
-        response = await userApi.updateUser(selectedUser.id, userData);
-      } else {
-        // Implement createUser if available
-        // response = await userApi.createUser(userData);
-        // For now:
-        toast.info("Chức năng tạo khách hàng chưa được triển khai");
-        setShowUserModal(false);
-        return;
-      }
-
-      if (response.success) {
-        toast.success(`Cập nhật khách hàng thành công`);
+        // userData is the response from updateUser API in modal
+        toast.success("Cập nhật người dùng thành công");
         fetchUsers();
         setShowUserModal(false);
       } else {
-        toast.error(`Không thể cập nhật khách hàng: ` + response.message);
+        // For add mode, call fetchUsers to get fresh data from server
+        toast.success("Tạo người dùng thành công");
+        fetchUsers();
+        setShowUserModal(false);
       }
     } catch (error) {
       console.error(`Error saving user:`, error);
-      toast.error(`Lỗi khi lưu khách hàng`);
+      toast.error(`Lỗi khi lưu người dùng`);
     }
   };
 
@@ -288,10 +336,10 @@ const AdminUsers = () => {
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">
-            Quản lý khách hàng
+            Quản lý người dùng
           </h1>
           <p className="text-gray-600">
-            Quản lý khách hàng, vai trò và cài đặt tài khoản
+            Quản lý người dùng, vai trò và cài đặt tài khoản
           </p>
         </div>
         <div className="flex space-x-3">
@@ -308,7 +356,7 @@ const AdminUsers = () => {
           <ExportButton entity="users" />
           <Button onClick={handleAddUser}>
             <Plus className="h-4 w-4 mr-2" />
-            Thêm khách hàng
+            Thêm người dùng
           </Button>
         </div>
       </div>
@@ -320,7 +368,7 @@ const AdminUsers = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-600">
-                  Tổng khách hàng
+                  Tổng người dùng
                 </p>
                 <p className="text-2xl font-bold text-gray-900 mt-2">
                   {userStats.totalCustomers}
@@ -358,7 +406,7 @@ const AdminUsers = () => {
                   Đang hoạt động
                 </p>
                 <p className="text-2xl font-bold text-gray-900 mt-2">
-                  {userStats.activeCustomers }
+                  {userStats.activeCustomers}
                 </p>
                 {/* Change calculation can be added if needed */}
               </div>
@@ -390,9 +438,9 @@ const AdminUsers = () => {
       {/* Main Content */}
       <Card>
         <CardHeader>
-          <CardTitle>Quản lý khách hàng</CardTitle>
+          <CardTitle>Quản lý người dùng</CardTitle>
           <CardDescription>
-            Xem và quản lý tất cả tài khoản khách hàng và chi tiết của họ
+            Xem và quản lý tất cả tài khoản người dùng và chi tiết của họ
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -426,8 +474,12 @@ const AdminUsers = () => {
               <SelectContent>
                 <SelectItem value="all">Tất cả vai trò</SelectItem>
                 <SelectItem value="ADMIN">Quản trị viên</SelectItem>
-                <SelectItem value="CUSTOMER">Khách hàng</SelectItem>
+                <SelectItem value="CUSTOMER">người dùng</SelectItem>
                 <SelectItem value="BUSINESS">Doanh nghiệp</SelectItem>
+                <SelectItem value="STAFF">Nhân viên</SelectItem>
+                <SelectItem value="FLIGHT_MANAGER">
+                  Quản lý chuyến bay
+                </SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -436,7 +488,7 @@ const AdminUsers = () => {
             <div className="flex justify-center items-center py-12">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
               <span className="ml-2 text-gray-600">
-                Đang tải danh sách khách hàng...
+                Đang tải danh sách người dùng...
               </span>
             </div>
           ) : (

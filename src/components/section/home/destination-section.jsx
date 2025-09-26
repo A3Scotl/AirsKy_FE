@@ -223,34 +223,42 @@ export function DestinationSection() {
             1024: { slidesPerView: 4 },
           }}
         >
-          {destinations.map((destination) => (
-            <SwiperSlide key={destination.id || destination.countryCode}>
-              <Card
-                className="overflow-hidden hover:shadow-lg transition-shadow cursor-pointer"
-                onClick={() => handleDestinationClick(destination)}
-              >
-                <div className="relative">
-                  <img
-                    src={destination.image}
-                    alt={`${destination.country}`}
-                    className="w-full h-48 object-cover"
-                    onError={(e) => {
-                      e.target.style.display = "none";
-                    }}
-                  />
-                  <div className="absolute top-4 right-4 bg-[#2563eb] text-white px-3 py-1 rounded-full text-sm font-semibold">
-                    Từ {destination.price}
+          {destinations.length > 0 ? (
+            destinations.map((destination) => (
+              <SwiperSlide key={destination.id || destination.countryCode}>
+                <Card
+                  className="overflow-hidden hover:shadow-lg transition-shadow cursor-pointer"
+                  onClick={() => handleDestinationClick(destination)}
+                >
+                  <div className="relative">
+                    <img
+                      src={destination.image}
+                      alt={`${destination.country}`}
+                      className="w-full h-48 object-cover"
+                      onError={(e) => {
+                        e.target.style.display = "none";
+                      }}
+                    />
+                    <div className="absolute top-4 right-4 bg-[#2563eb] text-white px-3 py-1 rounded-full text-sm font-semibold">
+                      Từ {destination.price}
+                    </div>
                   </div>
-                </div>
-                <CardContent className="p-4">
-                  <p className="text-xl font-semibold text-[#111827] dark:text-white mb-1">
-                    {destination.country}
-                  </p>
-                  <span>Có {destination.flightCount} chuyến bay</span>
-                </CardContent>
-              </Card>
-            </SwiperSlide>
-          ))}
+                  <CardContent className="p-4">
+                    <p className="text-xl font-semibold text-[#111827] dark:text-white mb-1">
+                      {destination.country}
+                    </p>
+                    <span>Có {destination.flightCount} chuyến bay</span>
+                  </CardContent>
+                </Card>
+              </SwiperSlide>
+            ))
+          ) : (
+            <div className="text-center py-12">
+              <p className="text-gray-600 dark:text-gray-400">
+                Không có chuyến bay nào được tìm thấy.
+              </p>
+            </div>
+          )}
         </Swiper>
 
         {/* Custom pagination container */}

@@ -142,9 +142,10 @@ export const userProfileUtils = {
     }
 
     try {
-      return new Date(userProfile.createdAt).toLocaleDateString("en-US", {
+      return new Date(userProfile.createdAt).toLocaleDateString("vi-VN", {
         year: "numeric",
         month: "long",
+        day: "numeric",
       });
     } catch (error) {
       return "Recently joined";

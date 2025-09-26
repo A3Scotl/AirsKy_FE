@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -34,6 +34,22 @@ const UserProfile = () => {
   const [activeTab, setActiveTab] = useState("my-booking");
   const { userProfile, loading, error, refetch } = useUserProfile();
 
+  // Handle URL hash for tab navigation
+  useEffect(() => {
+    const hash = window.location.hash.replace("#", "");
+    if (
+      hash &&
+      ["my-booking", "my-blogs", "account", "settings"].includes(hash)
+    ) {
+      setActiveTab(hash);
+    }
+  }, []);
+
+  // Update URL hash when activeTab changes
+  useEffect(() => {
+    window.location.hash = activeTab;
+  }, [activeTab]);
+
   // Show loading state
   if (loading) {
     return (
@@ -64,18 +80,10 @@ const UserProfile = () => {
                     src={userProfileUtils.getBestAvatarUrl(userProfile, 96)}
                     alt={userProfileUtils.getDisplayName(userProfile)}
                     onError={(e) => {
-                      console.error("❌ Avatar load failed:", e.target.src);
-                      console.log("🔄 Falling back to UI Avatar");
                       // Fallback if main avatar fails
                       e.target.src = userProfileUtils.getUIAvatarUrl(
                         userProfile,
                         96
-                      );
-                    }}
-                    onLoad={() => {
-                      console.log(
-                        "✅ Avatar loaded successfully:",
-                        userProfileUtils.getBestAvatarUrl(userProfile, 96)
                       );
                     }}
                   />
@@ -97,13 +105,6 @@ const UserProfile = () => {
                     {userProfileUtils.getFormattedPhone(userProfile) ||
                       userProfile.phone}
                   </p>
-                )}
-                {userProfile.role && (
-                  <div className="mt-2">
-                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                      {userProfileUtils.getRoleDisplay(userProfile)}
-                    </span>
-                  </div>
                 )}
               </CardHeader>
               <Separator />
@@ -147,9 +148,11 @@ const UserProfile = () => {
                   <Button
                     variant="ghost"
                     className={`w-full justify-start ${
-                      activeTab === "setting" ? "bg-blue-100 text-blue-600" : ""
+                      activeTab === "settings"
+                        ? "bg-blue-100 text-blue-600"
+                        : ""
                     }`}
-                    onClick={() => setActiveTab("setting")}
+                    onClick={() => setActiveTab("settings")}
                   >
                     <Settings className="mr-2 h-4 w-4" />
                     Cài đặt
@@ -174,7 +177,7 @@ const UserProfile = () => {
             {activeTab === "account" && (
               <AccountTab userProfile={userProfile} onProfileUpdate={refetch} />
             )}
-            {activeTab === "setting" && (
+            {activeTab === "settings" && (
               <SettingsTab
                 userProfile={userProfile}
                 onProfileUpdate={refetch}

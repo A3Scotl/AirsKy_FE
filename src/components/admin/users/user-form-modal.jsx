@@ -4,17 +4,12 @@ import {
   User,
   Mail,
   Phone,
-  MapPin,
   Save,
   Plus,
   Edit,
-  Eye,
-  EyeOff,
   Shield,
   Crown,
   Calendar,
-  Activity,
-  CreditCard,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,7 +21,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Switch } from "@/components/ui/switch";
 import {
   Card,
   CardContent,
@@ -34,8 +28,10 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
-import { Badge } from "@/components/ui/badge";
+import { authApi } from "@/apis/auth-api";
+import { userApi } from "@/apis/user-api";
+import { toast } from "sonner";
+import ImageUpload from "@/components/ui/image-upload";
 
 const UserFormModal = ({
   open,
@@ -51,24 +47,21 @@ const UserFormModal = ({
     lastName: "",
     email: "",
     phone: "",
-    role: "Customer",
     password: "",
-    confirmPassword: "",
-    emailVerified: false,
-    sendWelcomeEmail: true,
-    enableNotifications: true,
-    // Additional fields for edit mode
-    status: "Active",
-    address: "",
+    role: "CUSTOMER",
     dateOfBirth: "",
-    gender: "",
-    accountNotes: "",
+    avatar: null,
+    passportNumber: "",
+    passportExpiry: "",
+    loyaltyPoints: 0,
+    loyaltyTier: "STANDARD",
+    active: true,
+    verified: true,
   };
 
   const [formData, setFormData] = useState(initialFormData);
+  const [avatarFile, setAvatarFile] = useState(null);
   const [errors, setErrors] = useState({});
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   // Populate form data when in edit mode
   useEffect(() => {
@@ -79,21 +72,26 @@ const UserFormModal = ({
           user.lastName || user.name?.split(" ").slice(1).join(" ") || "",
         email: user.email || "",
         phone: user.phone || "",
-        role: user.role || "Customer",
-        password: "", // Never populate password in edit mode
-        confirmPassword: "",
-        emailVerified: user.emailVerified || false,
-        sendWelcomeEmail: false, // Only relevant for new users
-        enableNotifications:
-          user.enableNotifications || user.preferences?.newsletter || true,
-        status: user.status || "Active",
-        address: user.address || "",
+        password: "",
+        role: user.role || "CUSTOMER",
         dateOfBirth: user.dateOfBirth || "",
-        gender: user.gender || "",
-        accountNotes: user.accountNotes || "",
+        avatar: user.avatar || null,
+        passportNumber: user.passportNumber || "",
+        passportExpiry: user.passportExpiry || "",
+        loyaltyPoints: user.loyaltyPoints || 0,
+        loyaltyTier: user.loyaltyTier || "STANDARD",
+        active: user.active !== undefined ? user.active : true,
+        verified:
+          user.verifiedEmail !== undefined
+            ? user.verifiedEmail
+            : user.verified !== undefined
+            ? user.verified
+            : true,
       });
+      setAvatarFile(null); // Reset avatar file
     } else {
       setFormData(initialFormData);
+      setAvatarFile(null);
     }
   }, [isEditMode, user, open]);
 
@@ -106,46 +104,6 @@ const UserFormModal = ({
       }
     }
   }, [open, isEditMode]);
-
-  // Countries list
-  const countries = [
-    "Vietnam",
-    "United States",
-    "Canada",
-    "United Kingdom",
-    "Australia",
-    "Germany",
-    "France",
-    "Japan",
-    "South Korea",
-    "Singapore",
-    "India",
-    "Brazil",
-    "Mexico",
-    "Thailand",
-    "Malaysia",
-    "Philippines",
-    "Indonesia",
-  ];
-
-  const statusOptions = [
-    { value: "Active", label: "Active", color: "bg-green-100 text-green-800" },
-    {
-      value: "Inactive",
-      label: "Inactive",
-      color: "bg-gray-100 text-gray-800",
-    },
-    {
-      value: "Suspended",
-      label: "Suspended",
-      color: "bg-red-100 text-red-800",
-    },
-    {
-      value: "Pending",
-      label: "Pending",
-      color: "bg-yellow-100 text-yellow-800",
-    },
-  ];
 
   const handleInputChange = (name, value) => {
     setFormData((prev) => ({
@@ -166,58 +124,54 @@ const UserFormModal = ({
     const newErrors = {};
 
     // Required fields for both add and edit
-    const requiredFields = [
-      "firstName",
-      "lastName",
-      "email",
-      "phone",
-      "country",
-    ];
-
-    // Password is only required for add mode
-    if (!isEditMode) {
-      requiredFields.push("password");
-    }
+    const requiredFields = ["firstName", "lastName", "email"];
 
     requiredFields.forEach((field) => {
       if (!formData[field]?.trim()) {
         const fieldName =
           field.charAt(0).toUpperCase() +
           field.slice(1).replace(/([A-Z])/g, " $1");
-        newErrors[field] = `${fieldName} is required`;
+        newErrors[field] = `${fieldName} là bắt buộc`;
+        toast.error(`${fieldName} là bắt buộc`);
       }
     });
 
+    // Password required for add mode
+    if (!isEditMode && !formData.password?.trim()) {
+      newErrors.password = "Mật khẩu là bắt buộc";
+      toast.error("Mật khẩu là bắt buộc");
+    }
+
     // Email validation
     if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-      newErrors.email = "Please enter a valid email address";
+      newErrors.email = "Vui lòng nhập địa chỉ email hợp lệ";
+      toast.error("Vui lòng nhập địa chỉ email hợp lệ");
     }
 
-    // Password validation (only for add mode or when password is provided in edit)
-    if (!isEditMode || formData.password) {
-      if (!formData.password) {
-        newErrors.password = "Password is required";
-      } else if (formData.password.length < 8) {
-        newErrors.password = "Password must be at least 8 characters";
-      }
-
-      if (formData.password !== formData.confirmPassword) {
-        newErrors.confirmPassword = "Passwords do not match";
-      }
-    }
-
-    // Phone validation
+    // Phone validation (optional field)
     if (formData.phone && !/^[\+]?[0-9\s\-\(\)]{10,15}$/.test(formData.phone)) {
-      newErrors.phone = "Please enter a valid phone number";
+      newErrors.phone = "Vui lòng nhập số điện thoại hợp lệ";
+      toast.error("Vui lòng nhập số điện thoại hợp lệ");
     }
 
-    // Date of birth validation (edit mode)
-    if (isEditMode && formData.dateOfBirth) {
+    // Date of birth validation (optional field)
+    if (formData.dateOfBirth) {
       const birthDate = new Date(formData.dateOfBirth);
       const today = new Date();
       const age = today.getFullYear() - birthDate.getFullYear();
       if (age < 13 || age > 120) {
-        newErrors.dateOfBirth = "Please enter a valid date of birth";
+        newErrors.dateOfBirth = "Vui lòng nhập ngày sinh hợp lệ";
+        toast.error("Vui lòng nhập ngày sinh hợp lệ");
+      }
+    }
+
+    // Passport expiry validation (optional field)
+    if (formData.passportExpiry) {
+      const expiryDate = new Date(formData.passportExpiry);
+      const today = new Date();
+      if (expiryDate <= today) {
+        newErrors.passportExpiry = "Ngày hết hạn hộ chiếu phải ở tương lai";
+        toast.error("Ngày hết hạn hộ chiếu phải ở tương lai");
       }
     }
 
@@ -225,37 +179,120 @@ const UserFormModal = ({
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
     if (validateForm()) {
-      const processedData = {
-        ...formData,
-        id: isEditMode ? user.id : `USR${Date.now()}`,
-        name: `${formData.firstName} ${formData.lastName}`,
-        // Only include password if it was provided
-        ...(formData.password ? { password: formData.password } : {}),
-        // Remove confirmPassword from final data
-        confirmPassword: undefined,
-        // Set timestamps
-        joinDate: isEditMode
-          ? user.joinDate
-          : new Date().toISOString().split("T")[0],
-        lastLogin: isEditMode ? user.lastLogin : new Date().toISOString(),
-        totalBookings: isEditMode ? user.totalBookings : 0,
-        totalSpent: isEditMode ? user.totalSpent : 0,
-        avatar: isEditMode ? user.avatar : null,
-        preferences: {
-          newsletter: formData.enableNotifications,
-          smsNotifications: formData.enableNotifications,
-          specialOffers: true,
-        },
-        createdAt: isEditMode ? user.createdAt : new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
+      if (!isEditMode) {
+        // Call admin register API
+        try {
+          const registerData = {
+            email: formData.email,
+            password: formData.password,
+            firstName: formData.firstName,
+            lastName: formData.lastName,
+            phone: formData.phone,
+            role: formData.role,
+          };
+          console.log("Sending registerData:", registerData);
+          const response = await authApi.adminRegister(registerData);
+          if (response.success) {
+            console.log("Admin register response:", response.data); // Debug log
+            toast.success("Tạo người dùng thành công");
+            onSave(response.data, false); // Pass the created user data
+            onClose();
+          } else {
+            toast.error(response.message || "Tạo người dùng thất bại");
+          }
+        } catch (error) {
+          console.error("Error creating user:", error);
+          toast.error("Lỗi khi tạo người dùng");
+        }
+      } else {
+        // For edit, call updateUser API
+        try {
+          let response;
 
-      onSave(processedData, isEditMode);
-      onClose();
+          if (avatarFile) {
+            // Use FormData when avatar is being uploaded
+            const formDataToSend = new FormData();
+
+            // Add basic fields
+            formDataToSend.append("firstName", formData.firstName);
+            formDataToSend.append("lastName", formData.lastName);
+            formDataToSend.append("email", formData.email);
+            formDataToSend.append("phone", formData.phone || "");
+            formDataToSend.append("role", formData.role);
+            formDataToSend.append("dateOfBirth", formData.dateOfBirth || "");
+            formDataToSend.append(
+              "passportNumber",
+              formData.passportNumber || ""
+            );
+            formDataToSend.append(
+              "passportExpiry",
+              formData.passportExpiry || ""
+            );
+            formDataToSend.append(
+              "loyaltyPoints",
+              formData.loyaltyPoints.toString()
+            );
+            formDataToSend.append("loyaltyTier", formData.loyaltyTier);
+            formDataToSend.append("active", formData.active.toString());
+            formDataToSend.append("isVerified", formData.verified.toString());
+
+            // Add avatar file
+            formDataToSend.append("avatar", avatarFile);
+
+            console.log("Sending update data with avatar for user:", user.id);
+            // Log FormData contents
+            for (let [key, value] of formDataToSend.entries()) {
+              console.log(`${key}:`, value);
+            }
+
+            response = await userApi.updateUser(user.id, formDataToSend);
+          } else {
+            // Use FormData for updates without avatar
+            const updateData = {
+              firstName: formData.firstName,
+              lastName: formData.lastName,
+              email: formData.email,
+              phone: formData.phone || "",
+              role: formData.role,
+              dateOfBirth: formData.dateOfBirth || "",
+              passportNumber: formData.passportNumber || "",
+              passportExpiry: formData.passportExpiry || "",
+              loyaltyPoints: formData.loyaltyPoints,
+              loyaltyTier: formData.loyaltyTier,
+              active: formData.active,
+              isVerified: formData.verified,
+            };
+
+            console.log(
+              "Sending update data without avatar for user:",
+              user.id,
+              updateData
+            );
+
+            // Use FormData
+            const formDataToSend = new FormData();
+            Object.keys(updateData).forEach((key) => {
+              formDataToSend.append(key, updateData[key]);
+            });
+
+            response = await userApi.updateUser(user.id, formDataToSend);
+          }
+          if (response.success) {
+            toast.success("Cập nhật người dùng thành công");
+            onSave(response.data, true);
+            onClose();
+          } else {
+            toast.error(response.message || "Cập nhật người dùng thất bại");
+          }
+        } catch (error) {
+          console.error("Error updating user:", error);
+          toast.error("Lỗi khi cập nhật người dùng");
+        }
+      }
     }
   };
 
@@ -268,24 +305,26 @@ const UserFormModal = ({
           user.lastName || user.name?.split(" ").slice(1).join(" ") || "",
         email: user.email || "",
         phone: user.phone || "",
-        country: user.country || "",
-        role: user.role || "Customer",
         password: "",
-        confirmPassword: "",
-        emailVerified: user.emailVerified || false,
-        sendWelcomeEmail: false,
-        enableNotifications:
-          user.enableNotifications || user.preferences?.newsletter || true,
-        status: user.status || "Active",
-        address: user.address || "",
+        role: user.role || "CUSTOMER",
         dateOfBirth: user.dateOfBirth || "",
-        gender: user.gender || "",
-        occupation: user.occupation || "",
-        emergencyContact: user.emergencyContact || "",
-        accountNotes: user.accountNotes || "",
+        avatar: user.avatar || null,
+        passportNumber: user.passportNumber || "",
+        passportExpiry: user.passportExpiry || "",
+        loyaltyPoints: user.loyaltyPoints || 0,
+        loyaltyTier: user.loyaltyTier || "STANDARD",
+        active: user.active !== undefined ? user.active : true,
+        verified:
+          user.verifiedEmail !== undefined
+            ? user.verifiedEmail
+            : user.verified !== undefined
+            ? user.verified
+            : true,
       });
+      setAvatarFile(null);
     } else {
       setFormData(initialFormData);
+      setAvatarFile(null);
     }
     setErrors({});
   };
@@ -301,9 +340,11 @@ const UserFormModal = ({
 
   const getRoleDescription = (role) => {
     const descriptions = {
-      Customer: "Standard user with basic booking privileges",
-      Premium: "Enhanced features and priority support",
-      Admin: "Full system access and management capabilities",
+      CUSTOMER: "Người dùng tiêu chuẩn với quyền đặt vé cơ bản",
+      BUSINESS: "Tài khoản doanh nghiệp với ưu đãi đặc biệt",
+      FLIGHT_MANAGER: "Quản lý và giám sát các chuyến bay",
+      ADMIN: "Truy cập đầy đủ hệ thống và khả năng quản lý",
+      STAFF: "Chỉ xem và quản lý check-in",
     };
     return descriptions[role] || "";
   };
@@ -330,12 +371,12 @@ const UserFormModal = ({
             )}
             <div>
               <h2 className="text-xl font-semibold text-gray-900">
-                {isEditMode ? "Edit User" : "Add New User"}
+                {isEditMode ? "Chỉnh sửa người dùng" : "Thêm người dùng mới"}
               </h2>
               <p className="text-sm text-gray-500">
                 {isEditMode
-                  ? `Update ${user?.name || user?.email || ""} information`
-                  : "Enter user details to create a new account"}
+                  ? `Cập nhật thông tin ${user?.name || user?.email || ""}`
+                  : "Nhập thông tin người dùng để tạo tài khoản mới"}
               </p>
             </div>
           </div>
@@ -351,22 +392,22 @@ const UserFormModal = ({
             <CardHeader>
               <CardTitle className="flex items-center space-x-2">
                 <User className="h-4 w-4" />
-                <span>Personal Information</span>
+                <span>Thông tin cá nhân</span>
               </CardTitle>
               <CardDescription>
-                Basic personal details and contact information
+                Thông tin cá nhân cơ bản và thông tin liên hệ
               </CardDescription>
             </CardHeader>
             <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="firstName">First Name *</Label>
+                <Label htmlFor="firstName">Tên *</Label>
                 <Input
                   id="firstName"
                   value={formData.firstName}
                   onChange={(e) =>
                     handleInputChange("firstName", e.target.value)
                   }
-                  placeholder="Enter first name"
+                  placeholder="Nhập tên"
                   className={errors.firstName ? "border-red-500" : ""}
                 />
                 {errors.firstName && (
@@ -377,14 +418,14 @@ const UserFormModal = ({
               </div>
 
               <div>
-                <Label htmlFor="lastName">Last Name *</Label>
+                <Label htmlFor="lastName">Họ *</Label>
                 <Input
                   id="lastName"
                   value={formData.lastName}
                   onChange={(e) =>
                     handleInputChange("lastName", e.target.value)
                   }
-                  placeholder="Enter last name"
+                  placeholder="Nhập họ"
                   className={errors.lastName ? "border-red-500" : ""}
                 />
                 {errors.lastName && (
@@ -393,13 +434,13 @@ const UserFormModal = ({
               </div>
 
               <div>
-                <Label htmlFor="email">Email Address *</Label>
+                <Label htmlFor="email">Địa chỉ email *</Label>
                 <Input
                   id="email"
                   type="email"
                   value={formData.email}
                   onChange={(e) => handleInputChange("email", e.target.value)}
-                  placeholder="Enter email address"
+                  placeholder="Nhập địa chỉ email"
                   className={errors.email ? "border-red-500" : ""}
                   disabled={isEditMode} // Usually email shouldn't be editable
                 />
@@ -409,13 +450,13 @@ const UserFormModal = ({
               </div>
 
               <div>
-                <Label htmlFor="phone">Phone Number *</Label>
+                <Label htmlFor="phone">Số điện thoại</Label>
                 <Input
                   id="phone"
                   type="tel"
                   value={formData.phone}
                   onChange={(e) => handleInputChange("phone", e.target.value)}
-                  placeholder="Enter phone number"
+                  placeholder="Nhập số điện thoại"
                   className={errors.phone ? "border-red-500" : ""}
                 />
                 {errors.phone && (
@@ -423,35 +464,116 @@ const UserFormModal = ({
                 )}
               </div>
 
+              {/* Avatar Upload - Full width */}
+              <div className="col-span-1 md:col-span-2">
+                <ImageUpload
+                  label="Ảnh đại diện"
+                  value={formData.avatar}
+                  onChange={(url, file) => {
+                    setAvatarFile(file);
+                    // Update preview URL
+                    setFormData((prev) => ({ ...prev, avatar: url }));
+                  }}
+                  placeholder="Chọn ảnh đại diện hoặc kéo thả vào đây"
+                  error={errors.avatar}
+                />
+              </div>
+
+              {!isEditMode && (
+                <div>
+                  <Label htmlFor="password">Mật khẩu *</Label>
+                  <Input
+                    id="password"
+                    type="password"
+                    value={formData.password}
+                    onChange={(e) =>
+                      handleInputChange("password", e.target.value)
+                    }
+                    placeholder="Nhập mật khẩu"
+                    className={errors.password ? "border-red-500" : ""}
+                  />
+                  {errors.password && (
+                    <p className="text-red-500 text-xs mt-1">
+                      {errors.password}
+                    </p>
+                  )}
+                </div>
+              )}
+
               <div>
-                <Label htmlFor="country">Country *</Label>
+                <Label htmlFor="role">Vai trò người dùng</Label>
                 <Select
-                  value={formData.country}
-                  onValueChange={(value) => handleInputChange("country", value)}
+                  value={formData.role}
+                  onValueChange={(value) => handleInputChange("role", value)}
                 >
-                  <SelectTrigger
-                    className={errors.country ? "border-red-500" : ""}
-                  >
-                    <SelectValue placeholder="Select country" />
+                  <SelectTrigger>
+                    <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {countries.map((country) => (
-                      <SelectItem key={country} value={country}>
-                        {country}
-                      </SelectItem>
-                    ))}
+                    <SelectItem value="CUSTOMER">
+                      <div className="flex items-center space-x-2">
+                        <User className="h-4 w-4" />
+                        <div>
+                          <div>Khách hàng</div>
+                          <div className="text-xs text-gray-500">
+                            {getRoleDescription("CUSTOMER")}
+                          </div>
+                        </div>
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="BUSINESS">
+                      <div className="flex items-center space-x-2">
+                        <Crown className="h-4 w-4" />
+                        <div>
+                          <div>Doanh nghiệp</div>
+                          <div className="text-xs text-gray-500">
+                            {getRoleDescription("BUSINESS")}
+                          </div>
+                        </div>
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="FLIGHT_MANAGER">
+                      <div className="flex items-center space-x-2">
+                        <Shield className="h-4 w-4" />
+                        <div>
+                          <div>Quản lý chuyến bay</div>
+                          <div className="text-xs text-gray-500">
+                            {getRoleDescription("FLIGHT_MANAGER")}
+                          </div>
+                        </div>
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="ADMIN">
+                      <div className="flex items-center space-x-2">
+                        <Shield className="h-4 w-4" />
+                        <div>
+                          <div>Quản trị viên</div>
+                          <div className="text-xs text-gray-500">
+                            {getRoleDescription("ADMIN")}
+                          </div>
+                        </div>
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="STAFF">
+                      <div className="flex items-center space-x-2">
+                        <User className="h-4 w-4" />
+                        <div>
+                          <div>Nhân viên</div>
+                          <div className="text-xs text-gray-500">
+                            {getRoleDescription("STAFF")}
+                          </div>
+                        </div>
+                      </div>
+                    </SelectItem>
                   </SelectContent>
                 </Select>
-                {errors.country && (
-                  <p className="text-red-500 text-xs mt-1">{errors.country}</p>
-                )}
               </div>
 
               {/* Additional fields for edit mode */}
               {isEditMode && (
                 <>
                   <div>
-                    <Label htmlFor="dateOfBirth">Date of Birth</Label>
+                    <Label htmlFor="dateOfBirth">Ngày sinh</Label>
                     <Input
                       id="dateOfBirth"
                       type="date"
@@ -469,258 +591,132 @@ const UserFormModal = ({
                   </div>
 
                   <div>
-                    <Label htmlFor="gender">Gender</Label>
+                    <Label htmlFor="passportNumber">Số hộ chiếu</Label>
+                    <Input
+                      id="passportNumber"
+                      value={formData.passportNumber}
+                      onChange={(e) =>
+                        handleInputChange("passportNumber", e.target.value)
+                      }
+                      placeholder="Nhập số hộ chiếu"
+                    />
+                  </div>
+
+                  <div>
+                    <Label htmlFor="passportExpiry">
+                      Ngày hết hạn hộ chiếu
+                    </Label>
+                    <Input
+                      id="passportExpiry"
+                      type="date"
+                      value={formData.passportExpiry}
+                      onChange={(e) =>
+                        handleInputChange("passportExpiry", e.target.value)
+                      }
+                      className={errors.passportExpiry ? "border-red-500" : ""}
+                    />
+                    {errors.passportExpiry && (
+                      <p className="text-red-500 text-xs mt-1">
+                        {errors.passportExpiry}
+                      </p>
+                    )}
+                  </div>
+
+                  <div>
+                    <Label htmlFor="loyaltyPoints">Điểm tích lũy</Label>
+                    <Input
+                      id="loyaltyPoints"
+                      type="number"
+                      value={formData.loyaltyPoints}
+                      onChange={(e) =>
+                        handleInputChange(
+                          "loyaltyPoints",
+                          parseInt(e.target.value) || 0
+                        )
+                      }
+                      placeholder="0"
+                      min="0"
+                    />
+                  </div>
+
+                  <div>
+                    <Label htmlFor="loyaltyTier">Cấp độ thành viên</Label>
                     <Select
-                      value={formData.gender}
+                      value={formData.loyaltyTier}
                       onValueChange={(value) =>
-                        handleInputChange("gender", value)
-                      }
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select gender" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Male">Male</SelectItem>
-                        <SelectItem value="Female">Female</SelectItem>
-                        <SelectItem value="Other">Other</SelectItem>
-                        <SelectItem value="Prefer not to say">
-                          Prefer not to say
-                        </SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div>
-                    <Label htmlFor="occupation">Occupation</Label>
-                    <Input
-                      id="occupation"
-                      value={formData.occupation}
-                      onChange={(e) =>
-                        handleInputChange("occupation", e.target.value)
-                      }
-                      placeholder="Enter occupation"
-                    />
-                  </div>
-
-                  <div>
-                    <Label htmlFor="emergencyContact">Emergency Contact</Label>
-                    <Input
-                      id="emergencyContact"
-                      value={formData.emergencyContact}
-                      onChange={(e) =>
-                        handleInputChange("emergencyContact", e.target.value)
-                      }
-                      placeholder="Emergency contact number"
-                    />
-                  </div>
-
-                  <div className="md:col-span-2">
-                    <Label htmlFor="address">Address</Label>
-                    <Input
-                      id="address"
-                      value={formData.address}
-                      onChange={(e) =>
-                        handleInputChange("address", e.target.value)
-                      }
-                      placeholder="Enter full address"
-                    />
-                  </div>
-                </>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Account Settings */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center space-x-2">
-                <Shield className="h-4 w-4" />
-                <span>Account Settings</span>
-              </CardTitle>
-              <CardDescription>
-                User role, status and account security settings
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="role">User Role</Label>
-                  <Select
-                    value={formData.role}
-                    onValueChange={(value) => handleInputChange("role", value)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Customer">
-                        <div className="flex items-center space-x-2">
-                          <User className="h-4 w-4" />
-                          <div>
-                            <div>Customer</div>
-                            <div className="text-xs text-gray-500">
-                              {getRoleDescription("Customer")}
-                            </div>
-                          </div>
-                        </div>
-                      </SelectItem>
-                      <SelectItem value="Premium">
-                        <div className="flex items-center space-x-2">
-                          <Crown className="h-4 w-4" />
-                          <div>
-                            <div>Premium</div>
-                            <div className="text-xs text-gray-500">
-                              {getRoleDescription("Premium")}
-                            </div>
-                          </div>
-                        </div>
-                      </SelectItem>
-                      <SelectItem value="Admin">
-                        <div className="flex items-center space-x-2">
-                          <Shield className="h-4 w-4" />
-                          <div>
-                            <div>Admin</div>
-                            <div className="text-xs text-gray-500">
-                              {getRoleDescription("Admin")}
-                            </div>
-                          </div>
-                        </div>
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {/* Status field - only show in edit mode */}
-                {isEditMode && (
-                  <div>
-                    <Label htmlFor="status">Account Status</Label>
-                    <Select
-                      value={formData.status}
-                      onValueChange={(value) =>
-                        handleInputChange("status", value)
+                        handleInputChange("loyaltyTier", value)
                       }
                     >
                       <SelectTrigger>
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        {statusOptions.map((status) => (
-                          <SelectItem key={status.value} value={status.value}>
-                            <div className="flex items-center">
-                              <Badge className={`${status.color} mr-2`}>
-                                {status.label}
-                              </Badge>
-                            </div>
-                          </SelectItem>
-                        ))}
+                        <SelectItem value="STANDARD">Tiêu chuẩn</SelectItem>
+                        <SelectItem value="SILVER">Bạc</SelectItem>
+                        <SelectItem value="GOLD">Vàng</SelectItem>
+                        <SelectItem value="PLATINUM">Bạch kim</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
-                )}
-              </div>
 
-              {/* Password fields */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="password">
-                    Password {!isEditMode && "*"}
-                  </Label>
-                  <div className="relative">
-                    <Input
-                      id="password"
-                      type={showPassword ? "text" : "password"}
-                      value={formData.password}
-                      onChange={(e) =>
-                        handleInputChange("password", e.target.value)
-                      }
-                      placeholder={
-                        isEditMode
-                          ? "Leave blank to keep current password"
-                          : "Enter password"
-                      }
-                      className={errors.password ? "border-red-500" : ""}
-                    />
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-                      onClick={() => setShowPassword(!showPassword)}
-                    >
-                      {showPassword ? (
-                        <EyeOff className="h-4 w-4" />
-                      ) : (
-                        <Eye className="h-4 w-4" />
-                      )}
-                    </Button>
-                  </div>
-                  {errors.password && (
-                    <p className="text-red-500 text-xs mt-1">
-                      {errors.password}
-                    </p>
-                  )}
-                </div>
-
-                <div>
-                  <Label htmlFor="confirmPassword">
-                    Confirm Password {(!isEditMode || formData.password) && "*"}
-                  </Label>
-                  <div className="relative">
-                    <Input
-                      id="confirmPassword"
-                      type={showConfirmPassword ? "text" : "password"}
-                      value={formData.confirmPassword}
-                      onChange={(e) =>
-                        handleInputChange("confirmPassword", e.target.value)
-                      }
-                      placeholder="Confirm password"
-                      className={errors.confirmPassword ? "border-red-500" : ""}
-                      disabled={isEditMode && !formData.password}
-                    />
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-                      onClick={() =>
-                        setShowConfirmPassword(!showConfirmPassword)
+                  <div>
+                    <Label htmlFor="active">Tài khoản hoạt động</Label>
+                    <Select
+                      value={formData.active.toString()}
+                      onValueChange={(value) =>
+                        handleInputChange("active", value === "true")
                       }
                     >
-                      {showConfirmPassword ? (
-                        <EyeOff className="h-4 w-4" />
-                      ) : (
-                        <Eye className="h-4 w-4" />
-                      )}
-                    </Button>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="true">Hoạt động</SelectItem>
+                        <SelectItem value="false">Không hoạt động</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
-                  {errors.confirmPassword && (
-                    <p className="text-red-500 text-xs mt-1">
-                      {errors.confirmPassword}
-                    </p>
-                  )}
-                </div>
-              </div>
+
+                  <div>
+                    <Label htmlFor="verified">Tài khoản đã xác minh</Label>
+                    <Select
+                      value={formData.verified.toString()}
+                      onValueChange={(value) =>
+                        handleInputChange("verified", value === "true")
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="true">Đã xác minh</SelectItem>
+                        <SelectItem value="false">Chưa xác minh</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </>
+              )}
             </CardContent>
           </Card>
 
           {/* Form Actions */}
           <div className="flex items-center justify-end space-x-3 pt-6 border-t border-gray-200">
             <Button type="button" variant="outline" onClick={handleReset}>
-              Reset
+              Đặt lại
             </Button>
             <Button type="button" variant="outline" onClick={onClose}>
-              Cancel
+              Hủy
             </Button>
             <Button type="submit" className="bg-blue-600 hover:bg-blue-700">
               {isEditMode ? (
                 <>
                   <Save className="h-4 w-4 mr-2" />
-                  Update User
+                  Cập nhật người dùng
                 </>
               ) : (
                 <>
                   <Save className="h-4 w-4 mr-2" />
-                  Create User
+                  Tạo người dùng
                 </>
               )}
             </Button>
