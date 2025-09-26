@@ -85,7 +85,14 @@ class AirportService {
           ? response.data
           : response.data.content || [];
 
-        return airports.map((airport) => this.formatAirportForUI(airport));
+        // Filter chỉ lấy sân bay active
+        const activeAirports = airports.filter(
+          (airport) => airport.active === true
+        );
+
+        return activeAirports.map((airport) =>
+          this.formatAirportForUI(airport)
+        );
       }
 
       return [];
@@ -152,6 +159,11 @@ class AirportService {
           return countryStr.toLowerCase().includes(countrySearchTerm);
         });
       }
+
+      // Filter chỉ lấy sân bay active
+      filteredAirports = filteredAirports.filter(
+        (airport) => airport.active === true
+      );
 
       // Limit kết quả
       const limitedResults = filteredAirports.slice(0, options.limit || 10);
@@ -329,6 +341,11 @@ class AirportService {
           `Service: Lọc theo country '${options.country}': ${filteredAirports.length} sân bay`
         );
       }
+
+      // Filter chỉ lấy sân bay active
+      filteredAirports = filteredAirports.filter(
+        (airport) => airport.active === true
+      );
 
       const nearbyAirports = await findNearestAirports(
         filteredAirports,

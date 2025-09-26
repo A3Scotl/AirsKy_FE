@@ -22,36 +22,14 @@ export function DestinationSection() {
   }, []);
 
   const handleDestinationClick = (destination) => {
-    // Tạo search criteria với airportId từ destination
-    const tomorrow = new Date();
-    tomorrow.setDate(tomorrow.getDate() + 1); // Ngày mai
-
-    const searchCriteria = {
-      from: {
-        // airportId: destination.departureAirport.airportId,
-        // airportName: destination.departureAirport.airportName,
-        country: "Việt Nam",
-      },
-      to: {
-        // airportId: destination.arrivalAirport.airportId,
-        // airportName: destination.arrivalAirport.airportName,
-        country: destination.country,
-      },
-      tripType: "ONE_WAY",
-      // departDate: tomorrow, // Thêm ngày mặc định
-      // passengers: { adults: 1, children: 0, infants: 0 },
-      searchCombinations: [], // Không cần combinations cho single search
-    };
-
     console.log("🚀 Destination clicked:", destination.country);
-    console.log("📋 Search criteria to send:", searchCriteria);
-    console.log("✈️ Flights data to send:", destination.flights);
+    console.log("📋 Flights data to send:", destination.flights);
     console.log("🧭 Navigating to: /flights");
 
-    // Navigate đến result page với search criteria và flights data
+    // Navigate đến result page với flights data
+    // searchCriteria sẽ được extract từ flights data trong result-section
     navigate("/flights", {
       state: {
-        searchCriteria,
         flightsData: destination.flights, // Truyền trực tiếp data chuyến bay
       },
     });

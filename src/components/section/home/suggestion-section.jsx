@@ -237,11 +237,24 @@ const SuggestionSection = () => {
               flight.departureAirport?.airportCode || flight.fromCode || "UNK",
             toCode:
               flight.arrivalAirport?.airportCode || flight.toCode || "UNK",
-            priceNumeric: (
-              flight.flight?.basePrice ||
-              flight.basePrice ||
-              0
-            ).toString(),
+            priceNumeric: (() => {
+              // Get lowest price from flightTravelClasses
+              if (
+                flight.flightTravelClasses &&
+                flight.flightTravelClasses.length > 0
+              ) {
+                const prices = flight.flightTravelClasses
+                  .map((tc) => tc.customPrice || tc.price || 0)
+                  .filter((price) => price > 0);
+                return prices.length > 0 ? Math.min(...prices).toString() : "0";
+              }
+              // Fallback to existing logic
+              return (
+                flight.flight?.priceNumeric ||
+                flight.priceNumeric ||
+                0
+              ).toString();
+            })(),
             duration:
               flight.flight?.duration || flight.duration
                 ? `${Math.floor(
@@ -368,19 +381,18 @@ const SuggestionSection = () => {
 
         {flights.length > 0 ? (
           <div className="text-center">
-          <Button
-            size="lg"
-            variant="outline"
-            className="bg-white hover:bg-blue-50 border-2 border-blue-200 hover:border-blue-300 text-blue-600 font-semibold px-8 py-3 rounded-xl shadow-md hover:shadow-lg transition-all"
-            onClick={handleViewAllFlights}
-          >
-            <Plane className="w-5 h-5 mr-2" />
-            Xem tất cả
-            <ArrowRight className="w-5 h-5 ml-2" />
-          </Button>
-        </div>
+            <Button
+              size="lg"
+              variant="outline"
+              className="bg-white hover:bg-blue-50 border-2 border-blue-200 hover:border-blue-300 text-blue-600 font-semibold px-8 py-3 rounded-xl shadow-md hover:shadow-lg transition-all"
+              onClick={handleViewAllFlights}
+            >
+              <Plane className="w-5 h-5 mr-2" />
+              Xem tất cả
+              <ArrowRight className="w-5 h-5 ml-2" />
+            </Button>
+          </div>
         ) : null}
-        
       </div>
     </section>
   );

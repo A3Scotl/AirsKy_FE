@@ -250,4 +250,8 @@ export const flightApi = {
       : "/flights/search-unified";
     return apiHandler("post", endpoint, request);
   },
+
+   compareFlightPrices: async (params) => {
+    return apiHandler("post", "/flights/compare-prices", params);
+  },
 };

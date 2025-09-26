@@ -14,22 +14,18 @@ import {
 import { Filter, RotateCcw, Loader2 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { airlineApi } from "@/apis/airline-api";
-import { aircraftApi } from "@/apis/aircraft-api";
 import { airportApi } from "@/apis/airport-api";
 
 export function FlightFilters({ filters, onFiltersChange, onReset }) {
   // State for API data
   const [airlines, setAirlines] = useState([]);
-  const [aircrafts, setAircrafts] = useState([]);
   const [airports, setAirports] = useState([]);
   const [loading, setLoading] = useState({
     airlines: false,
-    aircrafts: false,
     airports: false,
   });
   const [error, setError] = useState({
     airlines: null,
-    aircrafts: null,
     airports: null,
   });
 
@@ -42,7 +38,9 @@ export function FlightFilters({ filters, onFiltersChange, onReset }) {
       try {
         const response = await airlineApi.getAllAirlines({ size: 100 });
         if (response.success && response.data?.content) {
-          setAirlines(response.data.content.filter((airline) => airline.active));
+          setAirlines(
+            response.data.content.filter((airline) => airline.active)
+          );
         } else {
           console.warn("Failed to fetch airlines:", response.message);
           setError((prev) => ({
@@ -64,37 +62,6 @@ export function FlightFilters({ filters, onFiltersChange, onReset }) {
     fetchAirlines();
   }, []);
 
-  // Fetch aircrafts data
-  useEffect(() => {
-    const fetchAircrafts = async () => {
-      setLoading((prev) => ({ ...prev, aircrafts: true }));
-      setError((prev) => ({ ...prev, aircrafts: null }));
-
-      try {
-        const response = await aircraftApi.getAllAircrafts({ size: 100 });
-        if (response.success && response?.data) {
-          setAircrafts(response.data);
-        } else {
-          console.warn("Failed to fetch aircrafts:", response.message);
-          setError((prev) => ({
-            ...prev,
-            aircrafts: response.message || "Failed to load aircrafts",
-          }));
-        }
-      } catch (err) {
-        console.error("Error fetching aircrafts:", err);
-        setError((prev) => ({
-          ...prev,
-          aircrafts: "Network error while loading aircrafts",
-        }));
-      } finally {
-        setLoading((prev) => ({ ...prev, aircrafts: false }));
-      }
-    };
-
-    fetchAircrafts();
-  }, []);
-
   // Retry functions for failed API calls
   const retryFetchAirlines = () => {
     const fetchAirlines = async () => {
@@ -104,7 +71,9 @@ export function FlightFilters({ filters, onFiltersChange, onReset }) {
       try {
         const response = await airlineApi.getAllAirlines({ size: 100 });
         if (response.success && response.data?.content) {
-          setAirlines(response.data.content.filter((airline) => airline.active));
+          setAirlines(
+            response.data.content.filter((airline) => airline.active)
+          );
         } else {
           setError((prev) => ({
             ...prev,
@@ -124,33 +93,6 @@ export function FlightFilters({ filters, onFiltersChange, onReset }) {
     fetchAirlines();
   };
 
-  const retryFetchAircrafts = () => {
-    const fetchAircrafts = async () => {
-      setLoading((prev) => ({ ...prev, aircrafts: true }));
-      setError((prev) => ({ ...prev, aircrafts: null }));
-
-      try {
-        const response = await aircraftApi.getAllAircrafts({ size: 100 });
-        if (response.success && response.data) {
-          setAircrafts(response.data);
-        } else {
-          setError((prev) => ({
-            ...prev,
-            aircrafts: response.message || "Failed to load aircrafts",
-          }));
-        }
-      } catch (err) {
-        setError((prev) => ({
-          ...prev,
-          aircrafts: "Network error while loading aircrafts",
-        }));
-      } finally {
-        setLoading((prev) => ({ ...prev, aircrafts: false }));
-      }
-    };
-
-    fetchAircrafts();
-  };
 
   // Fallback mock data if API fails
   const mockAirlines = [
@@ -166,26 +108,12 @@ export function FlightFilters({ filters, onFiltersChange, onReset }) {
     "Bamboo Airways",
   ];
 
-  const mockAircraftOptions = [
-    { value: "boeing", label: "Boeing" },
-    { value: "airbus", label: "Airbus" },
-    { value: "embraer", label: "Embraer" },
-    { value: "other", label: "Other" },
-  ];
 
   // Use API data if available, otherwise fallback to mock data
   const airlinesList = airlines.length > 0 ? airlines : mockAirlines;
-  const aircraftOptions =
-    aircrafts.length > 0
-      ? aircrafts.map((aircraft) => ({
-          value: aircraft.aircraftCode || aircraft.aircraftName,
-          label: aircraft.aircraftName || aircraft.aircraftCode,
-        }))
-      : mockAircraftOptions;
 
   // Search states for filtering long lists
   const [airlineSearch, setAirlineSearch] = useState("");
-  const [aircraftSearch, setAircraftSearch] = useState("");
 
   // Filter airlines based on search
   const filteredAirlines = airlinesList.filter((airline) => {
@@ -193,11 +121,6 @@ export function FlightFilters({ filters, onFiltersChange, onReset }) {
       typeof airline === "object" ? airline.airlineName : airline;
     return airlineName.toLowerCase().includes(airlineSearch.toLowerCase());
   });
-
-  // Filter aircrafts based on search
-  const filteredAircrafts = aircraftOptions.filter((aircraft) =>
-    aircraft.label.toLowerCase().includes(aircraftSearch.toLowerCase())
-  );
 
   const departureTimeSlots = [
     { value: "early-morning", label: "Sáng sớm (00:00 - 06:00)" },
@@ -253,13 +176,6 @@ export function FlightFilters({ filters, onFiltersChange, onReset }) {
       ? [...(filters.duration || []), duration]
       : (filters.duration || []).filter((d) => d !== duration);
     onFiltersChange({ ...filters, duration: newDurations });
-  };
-
-  const handleAircraftChange = (aircraft, checked) => {
-    const newAircraft = checked
-      ? [...(filters.aircraft || []), aircraft]
-      : (filters.aircraft || []).filter((a) => a !== aircraft);
-    onFiltersChange({ ...filters, aircraft: newAircraft });
   };
 
   const formatCurrency = (amount) => {
@@ -615,74 +531,6 @@ export function FlightFilters({ filters, onFiltersChange, onReset }) {
               </div>
             ))}
           </div>
-        </div>
-
-        {/* Aircraft Type */}
-        <div>
-          <Label className="text-sm font-medium mb-2 sm:mb-3 block">
-            Loại máy bay
-          </Label>
-          {loading.aircrafts ? (
-            <div className="flex items-center justify-center py-4">
-              <Loader2 className="w-4 h-4 animate-spin mr-2" />
-              <span className="text-xs text-gray-500">Đang tải...</span>
-            </div>
-          ) : error.aircrafts ? (
-            <div className="text-xs text-red-500 py-2">
-              <div>Lỗi: {error.aircrafts}</div>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={retryFetchAircrafts}
-                className="text-xs text-blue-600 hover:text-blue-800 mt-1 h-6"
-              >
-                Thử lại
-              </Button>
-            </div>
-          ) : (
-            <>
-              {/* Search input for aircrafts if list is long */}
-              {aircraftOptions.length > 10 && (
-                <input
-                  type="text"
-                  placeholder="Tìm loại máy bay..."
-                  value={aircraftSearch}
-                  onChange={(e) => setAircraftSearch(e.target.value)}
-                  className="w-full px-2 py-1 mb-2 text-xs border rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
-                />
-              )}
-              <div className="space-y-1 sm:space-y-2">
-                {filteredAircrafts.map((aircraft) => (
-                  <div
-                    key={aircraft.value}
-                    className="flex items-center space-x-2"
-                  >
-                    <Checkbox
-                      id={aircraft.value}
-                      checked={(filters.aircraft || []).includes(
-                        aircraft.value
-                      )}
-                      onCheckedChange={(checked) =>
-                        handleAircraftChange(aircraft.value, checked)
-                      }
-                      className="h-3 w-3 sm:h-4 sm:w-4"
-                    />
-                    <Label
-                      htmlFor={aircraft.value}
-                      className="text-xs sm:text-sm font-normal"
-                    >
-                      {aircraft.label}
-                    </Label>
-                  </div>
-                ))}
-                {filteredAircrafts.length === 0 && aircraftSearch && (
-                  <div className="text-xs text-gray-500 py-2">
-                    Không tìm thấy loại máy bay nào
-                  </div>
-                )}
-              </div>
-            </>
-          )}
         </div>
       </div>
     </Card>

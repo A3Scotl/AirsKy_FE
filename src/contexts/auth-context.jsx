@@ -46,23 +46,16 @@ export function AuthProvider({ children }) {
       if (savedUser) {
         try {
           const essentialUserData = JSON.parse(savedUser);
-          console.log(
-            "🔄 Loaded essential user data from localStorage:",
-            essentialUserData
-          );
 
           // Set essential data first, then fetch complete profile
           setUser(essentialUserData);
 
           // Fetch complete profile from database
           try {
-            console.log("🔄 Fetching complete user profile from database...");
             const { authApi } = await import("@/apis/auth-api");
             const profileResult = await authApi.me();
 
             if (profileResult.success && profileResult.data) {
-              console.log("✅ Database profile fetched:", profileResult.data);
-
               // Merge database data with essential localStorage data
               const completeUserData = {
                 ...essentialUserData, // Keep essential data
@@ -71,10 +64,6 @@ export function AuthProvider({ children }) {
                 googleAvatar: essentialUserData.googleAvatar,
               };
 
-              console.log(
-                "🔄 Complete user data after merging with database:",
-                completeUserData
-              );
               setUser(completeUserData);
 
               // Update localStorage with latest essential data
@@ -132,17 +121,12 @@ export function AuthProvider({ children }) {
           fullName: decoded.name,
         };
 
-        console.log("✅ Initial user data from token:", userData);
-
         // Now fetch complete profile from database to get latest firstName, lastName, avatar
         try {
-          console.log("� Fetching complete user profile from database...");
           const { authApi } = await import("@/apis/auth-api");
           const profileResult = await authApi.me();
 
           if (profileResult.success && profileResult.data) {
-            console.log("✅ Database profile fetched:", profileResult.data);
-
             // Merge database data with existing user data
             // Database data takes priority for firstName, lastName, avatar
             const completeUserData = {
@@ -152,10 +136,6 @@ export function AuthProvider({ children }) {
               googleAvatar: userData.googleAvatar,
             };
 
-            console.log(
-              "🔄 Complete user data after merging with database:",
-              completeUserData
-            );
             setUser(completeUserData);
 
             // Save essential data only to localStorage
@@ -283,8 +263,6 @@ export function AuthProvider({ children }) {
 
   // Function để refresh token (có thể implement sau)
   const refreshToken = async () => {
-    // TODO: Implement token refresh logic
-    console.log("🔄 refreshToken called - not implemented yet");
     return false;
   };
 

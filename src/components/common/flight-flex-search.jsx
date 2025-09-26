@@ -17,6 +17,28 @@ export function FlightFlexSearch({
   allFlights = [],
   onDateSelect,
 }) {
+  // Early return check before any hooks to prevent "Rendered fewer hooks than expected" error
+  const hasValidCriteria = (() => {
+    if (!searchCriteria) return false;
+    const hasDep =
+      searchCriteria.departureAirportId ||
+      searchCriteria.fromLocations?.[0]?.airportId ||
+      searchCriteria.from?.airportId ||
+      (searchCriteria.fromLocations?.[0] || searchCriteria.from)?.match?.(
+        /\b([A-Z]{3})\b/
+      );
+    const hasArr =
+      searchCriteria.arrivalAirportId ||
+      searchCriteria.toLocations?.[0]?.airportId ||
+      searchCriteria.to?.airportId ||
+      (searchCriteria.toLocations?.[0] || searchCriteria.to)?.match?.(
+        /\b([A-Z]{3})\b/
+      );
+    return hasDep && hasArr;
+  })();
+
+  if (!hasValidCriteria) return null;
+
   const [dates, setDates] = useState([]);
   const [selectedDate, setSelectedDate] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -34,7 +56,9 @@ export function FlightFlexSearch({
   const swiperRef = useRef(null);
   const hasFetchedRef = useRef(new Set()); // Track fetched dates
 
-  const isRoundTrip = searchCriteria?.tripType === "roundtrip";
+  const isRoundTrip =
+    searchCriteria?.tripType?.toLowerCase() === "roundtrip" ||
+    searchCriteria?.tripType?.toUpperCase() === "ROUND_TRIP";
 
   // Format price helper
   const formatPrice = useCallback((price) => {
@@ -127,53 +151,118 @@ export function FlightFlexSearch({
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    const startDate = new Date(baseDate);
-    startDate.setDate(baseDate.getDate() - 3 + dateOffset * 7);
+    if (isRoundTrip && searchCriteria?.returnDate) {
+      // For round-trip, generate date pairs around the selected dates
+      // Calculate the gap between selected dates
+      const selectedGap = Math.max(
+        1,
+        Math.ceil((returnDate - baseDate) / (1000 * 60 * 60 * 24))
+      );
 
-    for (let i = 0; i < 7; i++) {
-      const currentDate = new Date(startDate);
-      currentDate.setDate(startDate.getDate() + i);
+      // Generate 7 date ranges centered around the selected dates
+      const centerIndex = 3; // Index of the selected date range in the 7 ranges
+      const startDate = new Date(baseDate);
+      startDate.setDate(baseDate.getDate() - centerIndex + dateOffset * 7);
 
-      if (currentDate < today) continue;
+      for (let i = 0; i < 7; i++) {
+        const outboundDate = new Date(startDate);
+        outboundDate.setDate(startDate.getDate() + i);
 
-      const year = currentDate.getFullYear();
-      const month = String(currentDate.getMonth() + 1).padStart(2, "0");
-      const day = String(currentDate.getDate()).padStart(2, "0");
-      const formatted = `${year}-${month}-${day}`;
+        if (outboundDate < today) continue;
 
-      const display = isRoundTrip
-        ? (() => {
-            const endDate = new Date(currentDate);
-            endDate.setDate(currentDate.getDate() + 6);
-            const startDay = currentDate.getDate();
-            const endDay = endDate.getDate();
-            const monthName = currentDate.toLocaleDateString("vi-VN", {
-              month: "short",
-            });
-            const containsUserRange =
-              currentDate <= baseDate && endDate >= returnDate;
-            return `${startDay}-${endDay} ${monthName}${
-              containsUserRange ? " ✓" : ""
-            }`;
-          })()
-        : currentDate.toLocaleDateString("vi-VN", {
-            weekday: "short",
-            day: "numeric",
-            month: "short",
-          });
+        // Calculate return date using the same gap as selected
+        const returnDateForRange = new Date(outboundDate);
+        returnDateForRange.setDate(outboundDate.getDate() + selectedGap);
 
-      const cachedPrice = pricesByDate[formatted] ?? null;
-      const cachedError = cachedPrice == null;
+        const outboundYear = outboundDate.getFullYear();
+        const outboundMonth = String(outboundDate.getMonth() + 1).padStart(
+          2,
+          "0"
+        );
+        const outboundDay = String(outboundDate.getDate()).padStart(2, "0");
+        const outboundFormatted = `${outboundYear}-${outboundMonth}-${outboundDay}`;
 
-      dates.push({
-        date: currentDate,
-        formatted,
-        display,
-        isToday: currentDate.getTime() === today.getTime(),
-        price: cachedPrice,
-        loading: false,
-        error: cachedError,
-      });
+        const returnYear = returnDateForRange.getFullYear();
+        const returnMonth = String(returnDateForRange.getMonth() + 1).padStart(
+          2,
+          "0"
+        );
+        const returnDay = String(returnDateForRange.getDate()).padStart(2, "0");
+        const returnFormatted = `${returnYear}-${returnMonth}-${returnDay}`;
+
+        // Use range key for caching and identification
+        const rangeKey = `${outboundFormatted}_${returnFormatted}`;
+
+        // Format display dates in Vietnamese
+        const outboundDisplay = outboundDate.toLocaleDateString("vi-VN", {
+          day: "numeric",
+          month: "short",
+        });
+        const returnDisplay = returnDateForRange.toLocaleDateString("vi-VN", {
+          day: "numeric",
+          month: "short",
+        });
+
+        const display = `${outboundDisplay} - ${returnDisplay}`;
+
+        // Check if this is the selected date range - compare with searchCriteria dates
+        const searchDepartFormatted = baseDate.toISOString().split("T")[0];
+        const searchReturnFormatted = returnDate.toISOString().split("T")[0];
+        const isSelectedRange =
+          outboundFormatted === searchDepartFormatted &&
+          returnFormatted === searchReturnFormatted;
+
+        const cachedPrice = pricesByDate[rangeKey] ?? null;
+        const cachedError = cachedPrice == null;
+
+        dates.push({
+          date: outboundDate,
+          formatted: rangeKey,
+          outboundDate: outboundFormatted,
+          returnDate: returnFormatted,
+          display,
+          isToday: outboundDate.getTime() === today.getTime(),
+          isSelected: isSelectedRange,
+          price: cachedPrice,
+          loading: false,
+          error: cachedError,
+        });
+      }
+    } else {
+      // For one-way, keep existing logic
+      const startDate = new Date(baseDate);
+      startDate.setDate(baseDate.getDate() - 3 + dateOffset * 7);
+
+      for (let i = 0; i < 7; i++) {
+        const currentDate = new Date(startDate);
+        currentDate.setDate(startDate.getDate() + i);
+
+        if (currentDate < today) continue;
+
+        const year = currentDate.getFullYear();
+        const month = String(currentDate.getMonth() + 1).padStart(2, "0");
+        const day = String(currentDate.getDate()).padStart(2, "0");
+        const formatted = `${year}-${month}-${day}`;
+
+        const display = currentDate.toLocaleDateString("vi-VN", {
+          weekday: "short",
+          day: "numeric",
+          month: "short",
+        });
+
+        const cachedPrice = pricesByDate[formatted] ?? null;
+        const cachedError = cachedPrice == null;
+
+        dates.push({
+          date: currentDate,
+          formatted,
+          display,
+          isToday: currentDate.getTime() === today.getTime(),
+          price: cachedPrice,
+          loading: false,
+          error: cachedError,
+        });
+      }
     }
 
     return dates;
@@ -186,14 +275,23 @@ export function FlightFlexSearch({
     parseDate,
   ]);
 
-  // Extract price from flight
+  // Extract price from flight - prioritize customPrice from flightTravelClasses
   const extractFlightPrice = useCallback((flight) => {
+    // First try to get price from flightTravelClasses
+    if (flight.flightTravelClasses && flight.flightTravelClasses.length > 0) {
+      const prices = flight.flightTravelClasses
+        .map((tc) => tc.customPrice || tc.price)
+        .filter((price) => price != null && price > 0);
+      if (prices.length > 0) {
+        return Math.min(...prices);
+      }
+    }
+
+    // Fallback to other price fields
     const price =
-      flight.basePrice ||
       flight.priceNumeric ||
       flight.price ||
       flight.totalPrice ||
-      flight.pricing?.basePrice ||
       flight.pricing?.priceNumeric ||
       flight.pricing?.price ||
       flight.pricing?.totalPrice;
@@ -231,6 +329,10 @@ export function FlightFlexSearch({
   // Get price from allFlights
   const getPriceFromAllFlights = useCallback(
     (dateObj, departureId, arrivalId) => {
+      // For round-trip, we can't easily calculate total price from allFlights
+      // since we need both outbound and return flights. Skip for now.
+      if (isRoundTrip) return null;
+
       const cacheKey = `${dateObj.formatted}_${departureId}_${arrivalId}`;
       if (priceCache.current.has(cacheKey))
         return priceCache.current.get(cacheKey);
@@ -255,10 +357,10 @@ export function FlightFlexSearch({
       priceCache.current.set(cacheKey, minPrice);
       return minPrice;
     },
-    [allFlights, extractFlightPrice, parseFlightDateStr]
+    [allFlights, extractFlightPrice, parseFlightDateStr, isRoundTrip]
   );
 
-  // Fetch price from API
+  // Fetch price from API using compare-prices endpoint
   const fetchPriceFromAPI = useCallback(
     async (dateObj, departureId, arrivalId) => {
       const requestKey = `${dateObj.formatted}_${departureId}_${arrivalId}`;
@@ -266,48 +368,83 @@ export function FlightFlexSearch({
       pendingRequests.current.add(requestKey);
 
       try {
-        const requestBody = {
-          tripType: isRoundTrip ? "ROUND_TRIP" : "ONE_WAY",
-          departureAirportId: parseInt(departureId),
-          arrivalAirportId: parseInt(arrivalId),
-          outboundDepartureDate: dateObj.formatted,
-        };
+        let requestBody;
 
-        if (isRoundTrip) {
-          const retDate = new Date(searchCriteria?.returnDate || dateObj.date);
-          if (!searchCriteria?.returnDate)
-            retDate.setDate(retDate.getDate() + 7);
-          requestBody.returnDate = `${retDate.getFullYear()}-${String(
-            retDate.getMonth() + 1
-          ).padStart(2, "0")}-${String(retDate.getDate()).padStart(2, "0")}`;
+        if (isRoundTrip && searchCriteria?.returnDate) {
+          // For round-trip, create request with both outbound and return routes
+          requestBody = {
+            type: "round-trip",
+            routes: [
+              {
+                departureAirportId: parseInt(departureId),
+                arrivalAirportId: parseInt(arrivalId),
+                date: dateObj.outboundDate || dateObj.formatted,
+              },
+              {
+                departureAirportId: parseInt(arrivalId),
+                arrivalAirportId: parseInt(departureId),
+                date: dateObj.returnDate || searchCriteria.returnDate,
+              },
+            ],
+            dateRangeDays: 2,
+          };
+        } else {
+          // For one-way
+          requestBody = {
+            type: "one-way",
+            routes: [
+              {
+                departureAirportId: parseInt(departureId),
+                arrivalAirportId: parseInt(arrivalId),
+                date: dateObj.formatted,
+              },
+            ],
+            dateRangeDays: 0,
+          };
         }
 
-        const response = await flightApi.searchUnifiedFlights(requestBody, {
-          page: 0,
-          size: 50,
-        });
+        const response = await flightApi.compareFlightPrices(requestBody);
 
-        if (response.success && response.data) {
-          let flights = isRoundTrip
-            ? response.data.roundTripPairs?.map((pair) => ({
-                totalPrice:
-                  (pair.outbound.basePrice || 0) +
-                  (pair.inbound.basePrice || 0),
-              })) || []
-            : response.data.oneWayFlights?.content || [];
+        if (response.success && response.data?.prices) {
+          if (isRoundTrip) {
+            // For round-trip, find the price with matching outbound and return dates
+            const matchingPrice = response.data.prices.find(
+              (price) =>
+                price.outboundDate === dateObj.outboundDate &&
+                price.returnDate === dateObj.returnDate
+            );
 
-          const prices = flights.map(extractFlightPrice).filter(Boolean);
-          return prices.length > 0 ? Math.min(...prices) : null;
+            // If exact match not found, try to find by outbound date only
+            if (!matchingPrice) {
+              const fallbackPrice = response.data.prices.find(
+                (price) => price.outboundDate === dateObj.outboundDate
+              );
+
+              return fallbackPrice ? fallbackPrice.totalPrice : null;
+            }
+
+            return matchingPrice ? matchingPrice.totalPrice : null;
+          } else {
+            // For one-way, find matching price
+            const matchingPrice = response.data.prices.find(
+              (price) =>
+                price.departureAirportId === parseInt(departureId) &&
+                price.arrivalAirportId === parseInt(arrivalId) &&
+                price.date === dateObj.formatted
+            );
+            return matchingPrice ? matchingPrice.minPrice : null;
+          }
         }
+
         return null;
-      } catch (err) {
-        if (err.name !== "AbortError") console.error("API error:", err);
+      } catch (error) {
+        console.error("Error fetching price from API:", error);
         return null;
       } finally {
         pendingRequests.current.delete(requestKey);
       }
     },
-    [extractFlightPrice, isRoundTrip, searchCriteria?.returnDate]
+    [isRoundTrip, searchCriteria?.returnDate, parseDate]
   );
 
   // Update prices
@@ -439,13 +576,46 @@ export function FlightFlexSearch({
   // Initialize dates and auto-select
   useEffect(() => {
     const newDates = generateDates;
+
     setDates(newDates);
 
-    if (searchCriteria?.departDate && newDates.length) {
+    if (
+      searchCriteria?.departDate &&
+      searchCriteria?.returnDate &&
+      newDates.length &&
+      isRoundTrip
+    ) {
+      // For round-trip, find the date range that matches the selected dates
+      const baseDate = parseDate(searchCriteria.departDate);
+      const returnDate = parseDate(searchCriteria.returnDate);
+
+      const baseFormatted = `${baseDate.getFullYear()}-${String(
+        baseDate.getMonth() + 1
+      ).padStart(2, "0")}-${String(baseDate.getDate()).padStart(2, "0")}`;
+
+      const returnFormatted = `${returnDate.getFullYear()}-${String(
+        returnDate.getMonth() + 1
+      ).padStart(2, "0")}-${String(returnDate.getDate()).padStart(2, "0")}`;
+
+      const selectedRangeKey = `${baseFormatted}_${returnFormatted}`;
+
+      const selected = newDates.find((d) => d.formatted === selectedRangeKey);
+
+      setSelectedDate(selected || null);
+
+      const selectedIndex = newDates.findIndex(
+        (d) => d.formatted === selectedRangeKey
+      );
+      if (selectedIndex !== -1 && swiperRef.current) {
+        swiperRef.current.slideTo(selectedIndex);
+      }
+    } else if (searchCriteria?.departDate && newDates.length && !isRoundTrip) {
+      // For one-way, keep existing logic
       const baseDate = parseDate(searchCriteria.departDate);
       const formatted = `${baseDate.getFullYear()}-${String(
         baseDate.getMonth() + 1
       ).padStart(2, "0")}-${String(baseDate.getDate()).padStart(2, "0")}`;
+
       const selected = newDates.find((d) => d.formatted === formatted);
       setSelectedDate(selected || null);
 
@@ -456,7 +626,13 @@ export function FlightFlexSearch({
         swiperRef.current.slideTo(selectedIndex);
       }
     }
-  }, [generateDates, searchCriteria?.departDate, parseDate]);
+  }, [
+    generateDates,
+    searchCriteria?.departDate,
+    searchCriteria?.returnDate,
+    parseDate,
+    isRoundTrip,
+  ]);
 
   // Trigger price update when search criteria, flights, or dates change
   useEffect(() => {
@@ -481,6 +657,7 @@ export function FlightFlexSearch({
         priceCache.current.clear();
         setPricesByDate({});
         hasFetchedRef.current.clear();
+        setSelectedDate(null); // Reset selected date when criteria change
       }
 
       updatePrices();
@@ -494,8 +671,6 @@ export function FlightFlexSearch({
   ]);
 
   useEffect(() => () => abortController.current.abort(), []);
-
-  if (!hasValidSearchCriteria) return null;
 
   // Find overall min price for highlighting
   const minOverallPrice = Math.min(
@@ -514,7 +689,17 @@ export function FlightFlexSearch({
   const handleDateSelect = useCallback(
     (dateObj) => {
       setSelectedDate(dateObj);
-      onDateSelect?.(isRoundTrip ? { departDate: dateObj.date } : dateObj.date);
+
+      if (isRoundTrip) {
+        onDateSelect?.({
+          departDate: dateObj.outboundDate,
+          returnDate: dateObj.returnDate,
+        });
+      } else {
+        // For one-way, pass single date
+
+        onDateSelect?.(dateObj.date);
+      }
     },
     [isRoundTrip, onDateSelect]
   );
@@ -609,7 +794,8 @@ export function FlightFlexSearch({
               <SwiperSlide key={`${dateObj.formatted}-${index}`}>
                 <Card
                   className={`cursor-pointer transition-all duration-300 hover:shadow-xl hover:scale-105 border-0 shadow-md ${
-                    selectedDate?.formatted === dateObj.formatted
+                    selectedDate?.formatted === dateObj.formatted ||
+                    dateObj.isSelected
                       ? "ring-2 ring-blue-500 bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/30 dark:to-blue-800/30 shadow-blue-200 dark:shadow-blue-900/50"
                       : dateObj.error
                       ? "bg-gradient-to-br from-red-50 to-red-100 dark:from-red-900/20 dark:to-red-800/20"
@@ -663,7 +849,8 @@ export function FlightFlexSearch({
                           Rẻ nhất
                         </Badge>
                       )}
-                      {selectedDate?.formatted === dateObj.formatted && (
+                      {(selectedDate?.formatted === dateObj.formatted ||
+                        dateObj.isSelected) && (
                         <Badge
                           variant="default"
                           className="text-xs px-2 py-0.5 bg-blue-600 hover:bg-blue-700 text-white shadow-sm"
@@ -722,37 +909,6 @@ export function FlightFlexSearch({
                 className="text-xs border-red-300 dark:border-red-700 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors duration-200"
               >
                 Thử lại
-              </Button>
-            </div>
-          </div>
-        )}
-
-        {selectedDate && (
-          <div className="mt-6 p-4 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-950/30 dark:to-emerald-950/30 rounded-xl border border-green-200/50 dark:border-green-800/50">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-green-100 dark:bg-green-900/50 rounded-lg">
-                  <Calendar className="h-4 w-4 text-green-600 dark:text-green-400" />
-                </div>
-                <div>
-                  <p className="text-sm font-semibold text-gray-900 dark:text-white">
-                    Ngày khởi hành: {selectedDate.display}
-                  </p>
-                  <p className="text-xs text-gray-600 dark:text-gray-400">
-                    
-                    {selectedDate.price && selectedDate.price > 0
-                      ? `Giá thấp nhất: ${formatPrice(selectedDate.price)}`
-                      : "Không có chuyến - Vui lòng chọn ngày khác hoặc tham khảo các chuyến bay khác bên dưới"}
-                  </p>
-                </div>
-              </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setSelectedDate(null)}
-                className="text-xs border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors duration-200"
-              >
-                Đặt lại
               </Button>
             </div>
           </div>

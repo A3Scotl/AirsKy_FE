@@ -9,6 +9,13 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   X,
   CalendarIcon,
   MapPin,
@@ -19,6 +26,7 @@ import {
 } from "lucide-react";
 import { format } from "date-fns";
 import AirportAutocomplete from "./airport-autocomplete";
+import { classesApi } from "@/apis/classes-api";
 
 const TRIP_TYPES = [
   { key: "ROUND_TRIP", label: "Khứ hồi" },
@@ -31,8 +39,6 @@ const PASSENGER_TYPES = [
   { key: "children", label: "Trẻ em", sub: "2–11 tuổi", min: 0 },
   { key: "infants", label: "Em bé", sub: "< 2 tuổi", min: 0 },
 ];
-
-const TRAVEL_CLASSES = ["Phổ thông", "Phổ thông cao cấp", "Thương gia"];
 
 // Date Picker Component
 function DatePicker({ date, onSelect, placeholder, disabled = false }) {
@@ -109,6 +115,8 @@ export function SearchForm({ onSearch, initialValues, onTripTypeChange }) {
     infants: 0,
   });
   const [travelClass, setTravelClass] = useState("Phổ thông");
+  const [travelClasses, setTravelClasses] = useState([]);
+  const [loadingClasses, setLoadingClasses] = useState(false);
 
   // Track if trip type was changed by user (not programmatically)
   const tripTypeChangedByUser = useRef(false);
@@ -154,6 +162,34 @@ export function SearchForm({ onSearch, initialValues, onTripTypeChange }) {
       onTripTypeChange(tripType);
     }
   }, [tripType, onTripTypeChange]);
+
+  // Load travel classes from API
+  useEffect(() => {
+    const loadTravelClasses = async () => {
+      setLoadingClasses(true);
+      try {
+        const response = await classesApi.getAllClasses();
+        if (response.success && response.data) {
+          // Extract class names from the API response
+          const classes =
+            response.data.content?.map((item) => item.className) || [];
+          setTravelClasses(classes);
+          // Set default travel class if not set and classes are loaded
+          if (classes.length > 0 && !travelClass) {
+            setTravelClass(classes[0]);
+          }
+        }
+      } catch (error) {
+        console.error("Failed to load travel classes:", error);
+        // Fallback to default classes if API fails
+        setTravelClasses(["Phổ thông", "Phổ thông cao cấp", "Thương gia"]);
+      } finally {
+        setLoadingClasses(false);
+      }
+    };
+
+    loadTravelClasses();
+  }, []);
 
   const updatePassenger = (type, value) => {
     setPassengers((prev) => ({
@@ -421,21 +457,26 @@ export function SearchForm({ onSearch, initialValues, onTripTypeChange }) {
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Hạng
                   </label>
-                  <select
+                  <Select
                     value={travelClass}
-                    onChange={(e) => setTravelClass(e.target.value)}
-                    className="w-full border border-gray-300 dark:text-gray-500 rounded-md p-2"
+                    onValueChange={setTravelClass}
+                    disabled={loadingClasses}
                   >
-                    {TRAVEL_CLASSES.map((cls) => (
-                      <option
-                        key={cls}
-                        value={cls}
-                        className="dark:text-gray-500"
-                      >
-                        {cls}
-                      </option>
-                    ))}
-                  </select>
+                    <SelectTrigger className="w-full dark:bg-gray-800 dark:text-white">
+                      <SelectValue
+                        placeholder={
+                          loadingClasses ? "Đang tải..." : "Chọn hạng vé"
+                        }
+                      />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {travelClasses.map((cls) => (
+                        <SelectItem key={cls} value={cls}>
+                          {cls}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 <Button

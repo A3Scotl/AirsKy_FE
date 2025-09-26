@@ -2,7 +2,7 @@
 export const FLIGHTS_PER_PAGE = 6;
 
 export const DEFAULT_FILTERS = {
-  priceRange: [100000, 10000000],
+  priceRange: [0, 10000000], // Changed min price from 100000 to 0 to include all flights
   airlines: [],
   aircraft: [],
   stops: [],

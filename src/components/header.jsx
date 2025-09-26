@@ -58,10 +58,6 @@ export function Header() {
                 // Keep Google avatar as fallback
                 googleAvatar: user.googleAvatar,
               });
-            } else {
-              console.log(
-                "✅ Header: Database data matches current user data, no update needed"
-              );
             }
           } else {
             console.warn(

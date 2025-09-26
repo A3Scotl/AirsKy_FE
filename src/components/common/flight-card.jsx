@@ -76,6 +76,19 @@ const combineRoundTripClasses = (outboundClasses, inboundClasses) => {
   return Object.values(combinedClasses);
 };
 
+// Helper function to get the lowest price from flight travel classes
+const getLowestPriceFromClasses = (flightTravelClasses) => {
+  if (!flightTravelClasses || flightTravelClasses.length === 0) {
+    return null;
+  }
+
+  const prices = flightTravelClasses
+    .map((cls) => cls.customPrice)
+    .filter((price) => price != null && price > 0);
+
+  return prices.length > 0 ? Math.min(...prices) : null;
+};
+
 // Helper function to get representative travel classes for multi-city
 const getMultiCityClasses = (legs) => {
   if (!legs || legs.length === 0) return [];
@@ -169,7 +182,10 @@ export function FlightCard({
     const itinerary = flight;
     const primaryLeg = itinerary.legs[0]; // First leg for basic info
 
-    if (itinerary.tripType === "ROUND_TRIP" && itinerary.legs.length >= 2) {
+    // Normalize tripType to uppercase for consistent comparison
+    const normalizedTripType = (itinerary.tripType || "").toUpperCase();
+
+    if (normalizedTripType === "ROUND_TRIP" && itinerary.legs.length >= 2) {
       // ROUND_TRIP: Use outbound flight for primary info
       const outbound = itinerary.legs[0];
       const inbound = itinerary.legs[1];
@@ -208,9 +224,21 @@ export function FlightCard({
         aircraft:
           outbound.aircraft?.aircraftName || outbound.aircraft || "Boeing 737",
 
-        // Pricing - use total price for round trip
-        priceNumeric: itinerary.totalPrice,
-        basePrice: itinerary.totalPrice,
+        // Pricing - use lowest combined price from travel classes if available
+        priceNumeric:
+          getLowestPriceFromClasses(
+            combineRoundTripClasses(
+              outbound.flightTravelClasses,
+              inbound.flightTravelClasses
+            )
+          ) || itinerary.totalPrice,
+        basePrice:
+          getLowestPriceFromClasses(
+            combineRoundTripClasses(
+              outbound.flightTravelClasses,
+              inbound.flightTravelClasses
+            )
+          ) || itinerary.totalPrice,
 
         // Capacity - use minimum of both flights
         availableSeats: Math.min(
@@ -249,7 +277,7 @@ export function FlightCard({
           inbound.flightTravelClasses
         ),
       };
-    } else if (itinerary.tripType === "MULTI_CITY") {
+    } else if (normalizedTripType === "MULTI_CITY") {
       // MULTI_CITY: Show summary info
       const firstLeg = itinerary.legs[0];
       const lastLeg = itinerary.legs[itinerary.legs.length - 1];
@@ -364,9 +392,17 @@ export function FlightCard({
           singleFlight.aircraft ||
           "Boeing 737",
 
-        // Pricing
-        priceNumeric: singleFlight.basePrice || singleFlight.priceNumeric || 0,
-        basePrice: singleFlight.basePrice || singleFlight.priceNumeric || 0,
+        // Pricing - use lowest price from travel classes if available
+        priceNumeric:
+          getLowestPriceFromClasses(singleFlight.flightTravelClasses) ||
+          singleFlight.basePrice ||
+          singleFlight.priceNumeric ||
+          0,
+        basePrice:
+          getLowestPriceFromClasses(singleFlight.flightTravelClasses) ||
+          singleFlight.basePrice ||
+          singleFlight.priceNumeric ||
+          0,
 
         // Capacity
         availableSeats: singleFlight.availableSeats,
@@ -457,9 +493,15 @@ export function FlightCard({
           ? flight.aircraft.aircraftName || "Boeing 737"
           : flight.aircraft || "Boeing 737",
 
-      // Pricing
-      priceNumeric: flight.priceNumeric || flight.basePrice || 0,
-      basePrice: flight.basePrice || flight.priceNumeric || 0,
+      // Pricing - calculate from flightTravelClasses instead of using basePrice
+      priceNumeric:
+        getLowestPriceFromClasses(flight.flightTravelClasses) ||
+        flight.priceNumeric ||
+        0,
+      basePrice:
+        getLowestPriceFromClasses(flight.flightTravelClasses) ||
+        flight.priceNumeric ||
+        0,
 
       // Capacity
       availableSeats: flight.availableSeats || 100,
@@ -538,7 +580,7 @@ export function FlightCard({
       }
 
       const formatted = date.toLocaleDateString("vi-VN", {
-        weekday: "short",
+        // weekday: "short",
         day: "numeric",
         month: "short",
         year: "numeric",
@@ -703,12 +745,12 @@ export function FlightCard({
             <div className="font-medium">
               {flightData.departureAirport?.airportCode}
             </div>
-            <div className="text-sm text-gray-600">
+            {/* <div className="text-sm text-gray-600">
               {flightData.departureAirport?.airportName}
               {!compact && (
                 <> ({flightData.departureAirport?.cityNames?.[0] || ""})</>
               )}
-            </div>
+            </div> */}
           </div>
 
           {/* Thông tin chuyến bay */}
@@ -760,12 +802,12 @@ export function FlightCard({
             <div className="font-medium">
               {flightData.arrivalAirport?.airportCode}
             </div>
-            <div className="text-sm text-gray-600">
+            {/* <div className="text-sm text-gray-600">
               {flightData.arrivalAirport?.airportName}
               {!compact && (
                 <> ({flightData.arrivalAirport?.cityNames?.[0] || ""})</>
               )}
-            </div>
+            </div> */}
           </div>
         </div>
 
@@ -835,98 +877,79 @@ export function FlightCard({
           flightData.outboundFlight &&
           flightData.returnFlight && (
             <div className="border-t pt-4 mb-4">
-              <div className="flex items-center gap-2 mb-3">
-                <Badge
-                  variant="outline"
-                  className="bg-blue-50 text-blue-700 border-blue-200"
-                >
-                  <ArrowRightLeft className="w-3 h-3 mr-1" />
-                  Khứ hồi
-                </Badge>
-                <span className="text-sm text-gray-600">
-                  Chuyến bay đi và về đã được gộp lại
-                </span>
-              </div>
-
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* Outbound flight */}
                 <div className="border rounded-lg p-3 bg-gradient-to-r from-green-50 to-blue-50 border-green-200">
-                  <div className="flex items-center gap-2 mb-2">
-                    <PlaneTakeoff className="w-4 h-4 text-green-600" />
-                    <div className="font-semibold text-green-800">
-                      {flightData.outboundFlight.flightNumber ||
-                        flightData.outboundFlight.flightId}
-                    </div>
-                    <Badge
-                      variant="outline"
-                      className="text-xs bg-green-100 text-green-700"
-                    >
-                      Chuyến đi
-                    </Badge>
-                  </div>
-                  <div className="text-xs text-gray-600 space-y-1">
-                    <div className="font-medium">
-                      {formatDate(flightData.outboundFlight.departureTime)}
-                    </div>
+                  <div className="flex items-center justify-between gap-2 mb-2">
                     <div className="flex items-center gap-2">
-                      <span>
-                        {formatTime(flightData.outboundFlight.departureTime)}
-                      </span>
-                      <ArrowRightLeft className="w-3 h-3 text-gray-400" />
-                      <span>
-                        {formatTime(flightData.outboundFlight.arrivalTime)}
-                      </span>
+                      <PlaneTakeoff className="w-4 h-4 text-green-600" />
+                      <div className="font-semibold text-green-800">
+                        {flightData.outboundFlight.flightNumber ||
+                          flightData.outboundFlight.flightId}
+                      </div>
+                      <Badge
+                        variant="outline"
+                        className="text-xs bg-green-100 text-green-700"
+                      >
+                        Chuyến đi
+                      </Badge>
                     </div>
                     <div className="font-medium text-gray-800">
                       {flightData.outboundFlight.departureAirport?.airportCode}{" "}
                       → {flightData.outboundFlight.arrivalAirport?.airportCode}
                     </div>
-                    <div className="font-medium text-blue-600">
-                      {formatPrice(
-                        flightData.outboundFlight.basePrice ||
-                          flightData.outboundFlight.priceNumeric
-                      )}
+                  </div>
+                  <div className="text-xs text-gray-600 space-y-1">
+                    <div className="font-medium flex flex-row">
+                      {formatDate(flightData.outboundFlight.departureTime)}
+                      <div className="flex items-center gap-2 ml-2">
+                        {" • "}
+                        <span>
+                          {formatTime(flightData.outboundFlight.departureTime)}
+                        </span>
+                        <ArrowRightLeft className="w-3 h-3 text-gray-400" />
+                        <span>
+                          {formatTime(flightData.outboundFlight.arrivalTime)}
+                        </span>
+                      </div>
                     </div>
                   </div>
                 </div>
 
                 {/* Return flight */}
                 <div className="border rounded-lg p-3 bg-gradient-to-r from-red-50 to-orange-50 border-red-200">
-                  <div className="flex items-center gap-2 mb-2">
-                    <PlaneLanding className="w-4 h-4 text-red-600" />
-                    <div className="font-semibold text-red-800">
-                      {flightData.returnFlight.flightNumber ||
-                        flightData.returnFlight.flightId}
-                    </div>
-                    <Badge
-                      variant="outline"
-                      className="text-xs bg-red-100 text-red-700"
-                    >
-                      Chuyến về
-                    </Badge>
-                  </div>
-                  <div className="text-xs text-gray-600 space-y-1">
-                    <div className="font-medium">
-                      {formatDate(flightData.returnFlight.departureTime)}
-                    </div>
+                  <div className="flex items-center justify-between gap-2 mb-2">
                     <div className="flex items-center gap-2">
-                      <span>
-                        {formatTime(flightData.returnFlight.departureTime)}
-                      </span>
-                      <ArrowRightLeft className="w-3 h-3 text-gray-400" />
-                      <span>
-                        {formatTime(flightData.returnFlight.arrivalTime)}
-                      </span>
+                      <PlaneLanding className="w-4 h-4 text-red-600" />
+                      <div className="font-semibold text-red-800">
+                        {flightData.returnFlight.flightNumber ||
+                          flightData.returnFlight.flightId}
+                      </div>
+                      <Badge
+                        variant="outline"
+                        className="text-xs bg-red-100 text-red-700"
+                      >
+                        Chuyến về
+                      </Badge>
                     </div>
                     <div className="font-medium text-gray-800">
                       {flightData.returnFlight.departureAirport?.airportCode} →
                       {flightData.returnFlight.arrivalAirport?.airportCode}
                     </div>
-                    <div className="font-medium text-blue-600">
-                      {formatPrice(
-                        flightData.returnFlight.basePrice ||
-                          flightData.returnFlight.priceNumeric
-                      )}
+                  </div>
+                  <div className="text-xs text-gray-600 space-y-1">
+                    <div className="font-medium flex flex-row">
+                      {formatDate(flightData.returnFlight.departureTime)}
+                      <div className="flex items-center gap-2 ml-2">
+                        {" • "}
+                        <span>
+                          {formatTime(flightData.returnFlight.departureTime)}
+                        </span>
+                        <ArrowRightLeft className="w-3 h-3 text-gray-400" />
+                        <span>
+                          {formatTime(flightData.returnFlight.arrivalTime)}
+                        </span>
+                      </div>
                     </div>
                   </div>
                 </div>

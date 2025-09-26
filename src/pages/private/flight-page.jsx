@@ -177,7 +177,7 @@ const AdminFlights = () => {
     ).length;
     const prevTotalRevenue = prevFlights.reduce((sum, flight) => {
       const bookedSeats = flight.totalSeats - (flight.availableSeats || 0);
-      return sum + bookedSeats * (flight.basePrice || 0);
+      return sum + bookedSeats * (flight.priceNumeric || 0);
     }, 0);
     const prevTotalSeats = prevFlights.reduce(
       (sum, flight) => sum + (flight.totalSeats || 0),

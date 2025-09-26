@@ -40,7 +40,8 @@ export function FlightSearchResults() {
     useSearch();
 
   const [filters, setFilters] = useState(DEFAULT_FILTERS);
-  const [activeTab, setActiveTab] = useState("ONE_WAY");
+  const [activeTab, setActiveTab] = useState("ALL"); // Flight type tabs or trip type tabs depending on context
+  const [tripTypeFilter, setTripTypeFilter] = useState(null); // Trip type filter: ONE_WAY, ROUND_TRIP, MULTI_CITY, null for all
   const [tabExpandedFlights, setTabExpandedFlights] = useState({}); // Separate expanded flights per tab
   const [selectedFares, setSelectedFares] = useState({});
   const [showMobileFilters, setShowMobileFilters] = useState(false);
@@ -64,7 +65,7 @@ export function FlightSearchResults() {
     }
   }, [flightsLoaded, loading]);
 
-  // Filter flights when they're first loaded (only on initial load, not on tab changes)
+  // Filter flights when they're first loaded (only once when all flights are loaded)
   useEffect(() => {
     if (
       allFlights.length > 0 &&
@@ -72,9 +73,9 @@ export function FlightSearchResults() {
       !loading &&
       allItineraries.length === 0
     ) {
-      filterFlightsByTripType(allFlights, activeTab);
+      filterFlightsByTripType(allFlights, "ALL"); // Load all trip types
     }
-  }, [allFlights, flightsLoaded, loading, allItineraries.length]); // Removed activeTab to prevent double filtering
+  }, [allFlights, flightsLoaded, loading, allItineraries.length]); // Removed activeTab dependency
 
   // Reset page when filters change for current tab
   useEffect(() => {
@@ -82,7 +83,7 @@ export function FlightSearchResults() {
       ...prev,
       [activeTab]: 1,
     }));
-  }, [filters, searchCriteria, activeTab]);
+  }, [filters, searchCriteria, activeTab, tripTypeFilter]);
 
   // Initialize expanded flights and pages for tabs when component mounts
   useEffect(() => {
@@ -99,16 +100,58 @@ export function FlightSearchResults() {
   // Auto search when searchCriteria is set from destination click (only if no flights loaded)
   useEffect(() => {
     if (
-      searchCriteria &&
       !loading &&
       allItineraries.length === 0 &&
       allFlights.length === 0 &&
       !flightsLoaded
     ) {
       // Check if we have direct flights data from destination click
-      if (location.state?.flightsData) {
+      if (
+        location.state?.flightsData &&
+        location.state?.flightsData.length > 0
+      ) {
+        // Extract search criteria from the first flight for search form compatibility
+        const firstFlight = location.state.flightsData[0];
+
+        // Helper function to format airport for search form compatibility
+        const formatAirportForSearch = (airport) => {
+          const primaryCityName =
+            Array.isArray(airport.cityNames) && airport.cityNames.length > 0
+              ? airport.cityNames[0]
+              : airport.city || airport.cityName || "Unknown";
+
+          return {
+            airportId: airport.airportId,
+            airportCode: airport.airportCode,
+            cityNames:
+              Array.isArray(airport.cityNames) && airport.cityNames.length > 0
+                ? airport.cityNames
+                : [primaryCityName],
+            city: primaryCityName,
+            country: airport.country || airport.countryName || "Vietnam",
+            airportName:
+              airport.airportName ||
+              `${primaryCityName} (${airport.airportCode})`,
+            displayName: `${primaryCityName} (${airport.airportCode})`,
+          };
+        };
+
+        const extractedSearchCriteria = {
+          from: formatAirportForSearch(firstFlight.departureAirport),
+          to: formatAirportForSearch(firstFlight.arrivalAirport),
+          tripType: "ONE_WAY",
+          // Add other necessary fields for search form
+          passengers: { adults: 1, children: 0, infants: 0 },
+          travelClass: "Phổ thông",
+        };
+
+        // Set search criteria for search form display
+        updateSearchCriteria(extractedSearchCriteria);
+
+        // Process the flights data
         processFlightsData(location.state.flightsData);
-      } else {
+      } else if (searchCriteria) {
+        // Normal search flow
         handleSearch(searchCriteria);
       }
     }
@@ -119,6 +162,7 @@ export function FlightSearchResults() {
     allItineraries.length,
     loading,
     flightsLoaded,
+    updateSearchCriteria,
   ]);
 
   // Scroll to results section when itineraries are loaded
@@ -133,45 +177,75 @@ export function FlightSearchResults() {
 
   const handleResetFilters = useCallback(() => {
     setFilters(DEFAULT_FILTERS);
-    setActiveTab("ONE_WAY");
+    setActiveTab("ALL");
+    setTripTypeFilter(null);
     setTabPages((prev) => ({
       ...prev,
-      ONE_WAY: 1,
+      ALL: 1,
     }));
     setTabExpandedFlights((prev) => ({
       ...prev,
-      ONE_WAY: new Set(),
+      ALL: new Set(),
     }));
+  }, []);
+
+  // Helper function to get lowest price from flight travel classes
+  const getLowestPrice = useCallback((flight) => {
+    if (flight.flightTravelClasses && flight.flightTravelClasses.length > 0) {
+      const prices = flight.flightTravelClasses
+        .map((tc) => tc.customPrice || tc.price || tc.basePrice || 0)
+        .filter((price) => price > 0);
+      return prices.length > 0 ? Math.min(...prices) : flight.priceNumeric || 0;
+    }
+    return flight.priceNumeric || 0;
   }, []);
 
   // Filter flights by trip type and convert to itineraries
   const filterFlightsByTripType = useCallback((flights, tripType) => {
+    console.log(
+      `filterFlightsByTripType called with tripType: ${tripType}, flights count: ${flights.length}`
+    );
+
+    // Log tripType distribution
+    const tripTypeCounts = {};
+    flights.forEach((flight) => {
+      const tripTypeKey = (flight.tripType || "undefined").toUpperCase();
+      tripTypeCounts[tripTypeKey] = (tripTypeCounts[tripTypeKey] || 0) + 1;
+    });
+    console.log("Trip type distribution:", tripTypeCounts);
+
     let filteredFlights = [];
 
-    if (tripType === "ONE_WAY") {
+    // Normalize tripType to uppercase for consistent comparison
+    const normalizedTripType = tripType.toUpperCase();
+
+    if (normalizedTripType === "ONE_WAY") {
       filteredFlights = flights.filter(
-        (flight) =>
-          flight.tripType === "ONE_WAY" || flight.tripType === "one_way"
+        (flight) => (flight.tripType || "").toUpperCase() === "ONE_WAY"
       );
-    } else if (tripType === "ROUND_TRIP") {
+      console.log(`ONE_WAY: Found ${filteredFlights.length} flights`);
+    } else if (normalizedTripType === "ROUND_TRIP") {
       // For ROUND_TRIP, we need to group flights into pairs
       const roundTripFlights = flights.filter(
         (flight) =>
-          flight.tripType === "ROUND_TRIP" ||
-          flight.tripType === "round_trip" ||
-          flight.type === "ROUND_TRIP" ||
-          flight.type === "round_trip"
+          (flight.tripType || "").toUpperCase() === "ROUND_TRIP" ||
+          (flight.type || "").toUpperCase() === "ROUND_TRIP"
       );
+      console.log(
+        `ROUND_TRIP: Found ${roundTripFlights.length} existing round trip flights`
+      );
+      console.log("Sample round trip flight:", roundTripFlights[0]);
 
       // If no round trip flights found, try to create pairs from one-way flights
       if (roundTripFlights.length === 0) {
         const oneWayFlights = flights.filter(
           (flight) =>
-            flight.tripType === "ONE_WAY" ||
-            flight.tripType === "one_way" ||
-            flight.type === "ONE_WAY" ||
-            flight.type === "one_way" ||
+            (flight.tripType || "").toUpperCase() === "ONE_WAY" ||
+            (flight.type || "").toUpperCase() === "ONE_WAY" ||
             (!flight.tripType && !flight.type)
+        );
+        console.log(
+          `ROUND_TRIP: Found ${oneWayFlights.length} one-way flights to create pairs from`
         );
 
         // Group flights by route (departure -> arrival)
@@ -258,61 +332,199 @@ export function FlightSearchResults() {
             processedFlights.add(flight.flightId);
             processedFlights.add(matchingReturnFlight.flightId);
           } else {
-            // If no matching flight found, treat as single flight (shouldn't happen for round trip)
+            // If no matching flight found, treat as single-leg round trip itinerary
             console.warn(
               "No matching return flight found for:",
-              flight.flightId
+              flight.flightId,
+              "- treating as single-leg round trip"
             );
+            flightPairs.push({
+              outbound: flight,
+              inbound: null, // Mark as incomplete round trip
+            });
+            processedFlights.add(flight.flightId);
           }
         }
 
         filteredFlights = flightPairs;
       }
-    } else if (tripType === "MULTI_CITY") {
+    } else if (normalizedTripType === "MULTI_CITY") {
       filteredFlights = flights.filter(
-        (flight) =>
-          flight.tripType === "MULTI_CITY" || flight.tripType === "multi_city"
+        (flight) => (flight.tripType || "").toUpperCase() === "MULTI_CITY"
+      );
+      console.log(`MULTI_CITY: Found ${filteredFlights.length} flights`);
+    } else if (normalizedTripType === "ALL") {
+      // For ALL, include all flights regardless of trip type
+      filteredFlights = flights;
+      console.log(
+        `ALL: Found ${filteredFlights.length} flights (all trip types)`
       );
     } else {
       // Default to ONE_WAY if unknown trip type
       filteredFlights = flights.filter(
-        (flight) =>
-          flight.tripType === "ONE_WAY" || flight.tripType === "one_way"
+        (flight) => (flight.tripType || "").toUpperCase() === "ONE_WAY"
+      );
+      console.log(
+        `UNKNOWN tripType ${normalizedTripType}: Defaulting to ONE_WAY, found ${filteredFlights.length} flights`
       );
     }
 
     // Convert to itineraries format
     let itineraries = [];
 
-    if (tripType === "ROUND_TRIP") {
+    if (normalizedTripType === "ROUND_TRIP") {
       // For ROUND_TRIP, each pair becomes an itinerary with two legs
-      itineraries = filteredFlights.map((pair, index) => ({
-        itineraryId: `roundtrip-${pair.outbound.flightId}-${
-          pair.inbound.flightId || index
-        }`,
-        tripType: tripType,
-        legs: [pair.outbound, pair.inbound],
-        totalPrice:
-          (pair.outbound.basePrice || 0) + (pair.inbound.basePrice || 0),
-        totalDuration:
-          (pair.outbound.duration || 0) + (pair.inbound.duration || 0),
-        totalStops:
-          (pair.outbound.stopsList?.length || 0) +
-          (pair.inbound.stopsList?.length || 0),
+      itineraries = filteredFlights.map((pair, index) => {
+        if (pair.inbound) {
+          // Complete round trip with both legs
+          return {
+            itineraryId: `roundtrip-${pair.outbound.flightId}-${pair.inbound.flightId}`,
+            tripType: "ROUND_TRIP",
+            legs: [pair.outbound, pair.inbound],
+            totalPrice:
+              getLowestPrice(pair.outbound) + getLowestPrice(pair.inbound),
+            totalDuration:
+              (pair.outbound.duration || 0) + (pair.inbound.duration || 0),
+            totalStops:
+              (pair.outbound.stopsList?.length || 0) +
+              (pair.inbound.stopsList?.length || 0),
+          };
+        } else {
+          // Incomplete round trip - treat outbound as single leg
+          return {
+            itineraryId: `roundtrip-incomplete-${pair.outbound.flightId}`,
+            tripType: "ROUND_TRIP",
+            legs: [pair.outbound],
+            totalPrice: getLowestPrice(pair.outbound),
+            totalDuration: pair.outbound.duration || 0,
+            totalStops: pair.outbound.stopsList?.length || 0,
+          };
+        }
+      });
+    } else if (normalizedTripType === "ALL") {
+      // For ALL, create itineraries for all trip types
+      const oneWayFlights = flights.filter(
+        (flight) => (flight.tripType || "").toUpperCase() === "ONE_WAY"
+      );
+      const multiCityFlights = flights.filter(
+        (flight) => (flight.tripType || "").toUpperCase() === "MULTI_CITY"
+      );
+      const roundTripFlights = flights.filter(
+        (flight) =>
+          (flight.tripType || "").toUpperCase() === "ROUND_TRIP" ||
+          (flight.type || "").toUpperCase() === "ROUND_TRIP"
+      );
+
+      // Create ONE_WAY itineraries
+      const oneWayItineraries = oneWayFlights.map((flight, index) => ({
+        itineraryId: `oneway-${flight.flightId || index}`,
+        tripType: "ONE_WAY",
+        legs: [flight],
+        totalPrice: getLowestPrice(flight),
+        totalDuration: flight.duration || 0,
+        totalStops: flight.stopsList?.length || 0,
       }));
+
+      // Create MULTI_CITY itineraries
+      const multiCityItineraries = multiCityFlights.map((flight, index) => ({
+        itineraryId: `multicity-${flight.flightId || index}`,
+        tripType: "MULTI_CITY",
+        legs: [flight],
+        totalPrice: getLowestPrice(flight),
+        totalDuration: flight.duration || 0,
+        totalStops: flight.stopsList?.length || 0,
+      }));
+
+      // Create ROUND_TRIP itineraries (pair creation logic)
+      const roundTripItineraries = [];
+      const processedFlights = new Set();
+
+      for (const flight of roundTripFlights) {
+        if (processedFlights.has(flight.flightId)) continue;
+
+        let matchingReturnFlight = null;
+        if (flight.roundTripGroupId) {
+          matchingReturnFlight = roundTripFlights.find(
+            (f) =>
+              f.roundTripGroupId === flight.roundTripGroupId &&
+              f.flightId !== flight.flightId &&
+              !processedFlights.has(f.flightId)
+          );
+        } else {
+          matchingReturnFlight = roundTripFlights.find(
+            (f) =>
+              f.departureAirport?.airportCode ===
+                flight.arrivalAirport?.airportCode &&
+              f.arrivalAirport?.airportCode ===
+                flight.departureAirport?.airportCode &&
+              f.flightId !== flight.flightId &&
+              !processedFlights.has(f.flightId)
+          );
+        }
+
+        if (matchingReturnFlight) {
+          const outbound =
+            flight.departureTime < matchingReturnFlight.departureTime
+              ? flight
+              : matchingReturnFlight;
+          const inbound =
+            flight.departureTime < matchingReturnFlight.departureTime
+              ? matchingReturnFlight
+              : flight;
+
+          roundTripItineraries.push({
+            itineraryId: `roundtrip-${outbound.flightId}-${inbound.flightId}`,
+            tripType: "ROUND_TRIP",
+            legs: [outbound, inbound],
+            totalPrice: getLowestPrice(outbound) + getLowestPrice(inbound),
+            totalDuration: (outbound.duration || 0) + (inbound.duration || 0),
+            totalStops:
+              (outbound.stopsList?.length || 0) +
+              (inbound.stopsList?.length || 0),
+          });
+
+          processedFlights.add(flight.flightId);
+          processedFlights.add(matchingReturnFlight.flightId);
+        } else {
+          // Single leg round trip
+          roundTripItineraries.push({
+            itineraryId: `roundtrip-single-${flight.flightId}`,
+            tripType: "ROUND_TRIP",
+            legs: [flight],
+            totalPrice: getLowestPrice(flight),
+            totalDuration: flight.duration || 0,
+            totalStops: flight.stopsList?.length || 0,
+          });
+          processedFlights.add(flight.flightId);
+        }
+      }
+
+      // Combine all itineraries
+      itineraries = [
+        ...oneWayItineraries,
+        ...roundTripItineraries,
+        ...multiCityItineraries,
+      ];
     } else {
       // For ONE_WAY and MULTI_CITY, each flight is a single-leg itinerary
       itineraries = filteredFlights.map((flight, index) => ({
-        itineraryId: `${tripType.toLowerCase()}-${flight.flightId || index}`,
-        tripType: tripType,
+        itineraryId: `${normalizedTripType.toLowerCase()}-${
+          flight.flightId || index
+        }`,
+        tripType: normalizedTripType,
         legs: [flight],
-        totalPrice: flight.basePrice || 0,
+        totalPrice: getLowestPrice(flight),
         totalDuration: flight.duration || 0,
         totalStops: flight.stopsList?.length || 0,
       }));
     }
 
     setAllItineraries(itineraries);
+    console.log(
+      `Created ${itineraries.length} itineraries for tripType: ${normalizedTripType}`
+    );
+    console.log("filteredFlights sample:", filteredFlights.slice(0, 2));
+    console.log("itineraries sample:", itineraries.slice(0, 2));
   }, []);
 
   // Filter flights when they're first loaded
@@ -333,9 +545,10 @@ export function FlightSearchResults() {
           }));
 
           // Filter flights immediately when trip type changes (only if flights are loaded)
-          if (allFlights.length > 0 && flightsLoaded && !loading) {
-            filterFlightsByTripType(allFlights, newTripType);
-          }
+          // Note: This is now handled by useEffect with activeTab dependency
+          // if (allFlights.length > 0 && flightsLoaded && !loading) {
+          //   filterFlightsByTripType(allFlights, newTripType);
+          // }
 
           return newTripType;
         }
@@ -353,6 +566,8 @@ export function FlightSearchResults() {
       setError(null);
 
       const response = await flightApi.getAllFlights({ size: 100 });
+
+      console.log("All flights response:", response);
 
       if (response.success && response.data?.content) {
         setAllFlights(response.data.content);
@@ -577,6 +792,21 @@ export function FlightSearchResults() {
         const response = await flightApi.searchUnifiedFlights(requestData);
 
         if (response.success) {
+          const getLowestPrice = (flight) => {
+            if (
+              flight.flightTravelClasses &&
+              flight.flightTravelClasses.length > 0
+            ) {
+              const prices = flight.flightTravelClasses
+                .map((tc) => tc.customPrice || tc.price || tc.basePrice || 0)
+                .filter((price) => price > 0);
+              return prices.length > 0
+                ? Math.min(...prices)
+                : flight.priceNumeric || 0;
+            }
+            return flight.priceNumeric || 0;
+          };
+
           // Process the response data into itineraries based on trip type
           let itineraries = [];
 
@@ -589,7 +819,7 @@ export function FlightSearchResults() {
                 itineraryId: `oneway-${flight.flightId || index}`,
                 tripType: "ONE_WAY",
                 legs: [flight],
-                totalPrice: flight.basePrice || 0,
+                totalPrice: getLowestPrice(flight),
                 totalDuration: flight.duration || 0,
                 totalStops: flight.stopsList?.length || 0,
                 // Add route info for display
@@ -608,7 +838,7 @@ export function FlightSearchResults() {
               tripType: "ROUND_TRIP",
               legs: [pair.outbound, pair.inbound],
               totalPrice:
-                (pair.outbound.basePrice || 0) + (pair.inbound.basePrice || 0),
+                getLowestPrice(pair.outbound) + getLowestPrice(pair.inbound),
               totalDuration:
                 (pair.outbound.duration || 0) + (pair.inbound.duration || 0),
               totalStops:
@@ -646,7 +876,7 @@ export function FlightSearchResults() {
             const limitedCombinations = allCombinations
               .map((combo, comboIndex) => {
                 const totalPrice = combo.reduce(
-                  (sum, f) => sum + (f.basePrice || 0),
+                  (sum, f) => sum + getLowestPrice(f),
                   0
                 );
                 const totalDuration = combo.reduce(
@@ -673,6 +903,10 @@ export function FlightSearchResults() {
           }
 
           setAllItineraries(itineraries);
+          setFlightsLoaded(true); // Mark as loaded to prevent re-loading all flights
+
+          // Set trip type filter to match the search trip type
+          setTripTypeFilter(searchData.tripType);
 
           // Update search criteria with proper format for SearchForm
           const updatedSearchCriteria = {
@@ -728,13 +962,16 @@ export function FlightSearchResults() {
         itineraryId: `oneway-${flight.flightId || index}`,
         tripType: "ONE_WAY",
         legs: [flight],
-        totalPrice: flight.basePrice || 0,
+        totalPrice: getLowestPrice(flight),
         totalDuration: flight.duration || 0,
         totalStops: flight.stopsList?.length || 0,
       }));
 
       setAllItineraries(itineraries);
       setLoading(false);
+
+      // Reset filters to default when new flights are loaded
+      setFilters(DEFAULT_FILTERS);
 
       // Reset expanded flights and pages when new flights are processed
       setTabExpandedFlights({});
@@ -758,12 +995,41 @@ export function FlightSearchResults() {
   }, []);
 
   const filteredAndSortedItineraries = useMemo(() => {
+    console.log("Starting filteredAndSortedItineraries with:", {
+      allItinerariesCount: allItineraries.length,
+      activeTab,
+      tripTypeFilter,
+      filters,
+    });
+
+    // Log trip types distribution
+    const tripTypeCounts = {};
+    allItineraries.forEach((itinerary) => {
+      const tripType = itinerary.tripType || "undefined";
+      tripTypeCounts[tripType] = (tripTypeCounts[tripType] || 0) + 1;
+    });
+    console.log("Trip type distribution in allItineraries:", tripTypeCounts);
+
     let filtered = allItineraries.filter((itinerary) => {
-      // Price filter (use totalPrice)
+      console.log(`Filtering itinerary ${itinerary.itineraryId}:`, {
+        totalPrice: itinerary.totalPrice,
+        priceRange: filters.priceRange,
+        tripType: itinerary.tripType,
+        totalStops: itinerary.totalStops,
+        totalDuration: itinerary.totalDuration,
+        legs: itinerary.legs.length,
+      });
+
+      // Price filter (use totalPrice) - skip if totalPrice is null/undefined
+      const itineraryPrice = itinerary.totalPrice;
       if (
-        itinerary.totalPrice < filters.priceRange[0] ||
-        itinerary.totalPrice > filters.priceRange[1]
+        itineraryPrice != null &&
+        (itineraryPrice < filters.priceRange[0] ||
+          itineraryPrice > filters.priceRange[1])
       ) {
+        console.log(
+          `Price filter removed itinerary ${itinerary.itineraryId}: price ${itineraryPrice} not in range [${filters.priceRange[0]}, ${filters.priceRange[1]}]`
+        );
         return false;
       }
 
@@ -912,32 +1178,62 @@ export function FlightSearchResults() {
       return true;
     });
 
-    // Tab filter - filter by trip type or flight type
-    filtered = filtered.filter((itinerary) => {
-      if (activeTab === "all") return true;
+    // Determine filtering logic based on data source
+    const hasSearchResults = tripTypeFilter && allItineraries.length > 0;
 
-      // Trip type filters
-      if (activeTab === "one-way" && itinerary.tripType !== "ONE_WAY")
-        return false;
-      if (activeTab === "round-trip" && itinerary.tripType !== "ROUND_TRIP")
-        return false;
-      if (activeTab === "multi-city" && itinerary.tripType !== "MULTI_CITY")
-        return false;
+    if (hasSearchResults) {
+      // Filter search results by trip type and flight type
+      filtered = filtered.filter((itinerary) => {
+        if (!tripTypeFilter) return true;
+        if (tripTypeFilter === "ONE_WAY" && itinerary.tripType !== "ONE_WAY")
+          return false;
+        if (
+          tripTypeFilter === "ROUND_TRIP" &&
+          itinerary.tripType !== "ROUND_TRIP"
+        )
+          return false;
+        if (
+          tripTypeFilter === "MULTI_CITY" &&
+          itinerary.tripType !== "MULTI_CITY"
+        )
+          return false;
+        return true;
+      });
+    } else {
+      // Filter loaded flights by trip type (activeTab represents trip type)
+      filtered = filtered.filter((itinerary) => {
+        if (activeTab === "ALL" || activeTab === "all") return true;
+        if (activeTab === "ONE_WAY" && itinerary.tripType !== "ONE_WAY")
+          return false;
+        if (activeTab === "ROUND_TRIP" && itinerary.tripType !== "ROUND_TRIP")
+          return false;
+        if (activeTab === "MULTI_CITY" && itinerary.tripType !== "MULTI_CITY")
+          return false;
+        return true;
+      });
+    }
 
-      // Flight type filters (domestic/international)
-      if (
-        activeTab === "domestic" &&
-        itinerary.legs.some((leg) => leg.type !== "DOMESTIC")
-      )
-        return false;
-      if (
-        activeTab === "international" &&
-        itinerary.legs.some((leg) => leg.type !== "INTERNATIONAL")
-      )
-        return false;
+    // Flight type filtering (domestic/international) - áp dụng cho cả search results và loaded flights
+    if (activeTab === "domestic" || activeTab === "international") {
+      const targetType =
+        activeTab === "domestic" ? "DOMESTIC" : "INTERNATIONAL";
 
-      return true;
-    });
+      filtered = filtered.filter((itinerary) => {
+        // Check if all legs in the itinerary match the target flight type
+        const allLegsMatchType = itinerary.legs.every((leg) => {
+          const legType = leg.type || leg.flightType;
+          return legType === targetType;
+        });
+
+        if (!allLegsMatchType) {
+          console.log(
+            `Flight type filter removed itinerary ${itinerary.itineraryId}: not ${activeTab} (${targetType})`
+          );
+          return false;
+        }
+        return true;
+      });
+    }
 
     // Sort itineraries
     filtered.sort((a, b) => {
@@ -961,10 +1257,36 @@ export function FlightSearchResults() {
       }
     });
 
-    return filtered;
-  }, [allItineraries, filters, activeTab]);
+    console.log("filteredAndSortedItineraries:", {
+      activeTab,
+      tripTypeFilter,
+      allItinerariesCount: allItineraries.length,
+      filteredCount: filtered.length,
+      sampleItinerary: allItineraries[0],
+      sampleFiltered: filtered[0],
+    });
 
-  // Prepare initial values for SearchForm
+    return filtered;
+  }, [allItineraries, filters, activeTab, tripTypeFilter]);
+
+  // Determine which tabs to show based on whether we have search results or loaded flights
+  const currentTabs = useMemo(() => {
+    if (allItineraries.length > 0 && tripTypeFilter) {
+      // When we have search results, show flight type tabs
+      return FLIGHT_TABS;
+    } else if (allItineraries.length > 0) {
+      // When we have loaded flights without search, show both trip type and flight type tabs
+      return [
+        ...FLIGHT_TABS,
+        { key: "ONE_WAY", label: "Một chiều" },
+        { key: "ROUND_TRIP", label: "Khứ hồi" },
+        { key: "MULTI_CITY", label: "Đa chặng" },
+      ];
+    } else {
+      // When no flights loaded, show basic tabs
+      return FLIGHT_TABS;
+    }
+  }, [allItineraries.length, tripTypeFilter]);
   const searchFormInitialValues = useMemo(() => {
     if (!searchCriteria) {
       // Use default trip type when no search criteria
@@ -1136,9 +1458,9 @@ export function FlightSearchResults() {
   return (
     <div className="mx-auto">
       {/* Search Form with Background Image */}
-      <div className="relative mb-12">
+      <div className="relative">
         <div
-          className="h-80 bg-cover bg-center bg-no-repeat relative"
+          className="h-64 bg-cover bg-center bg-no-repeat relative"
           style={{
             backgroundImage: `url('https://images.unsplash.com/photo-1713396124163-21d4ea332d90?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1yZWxhdGVkfDIyfHx8ZW58MHx8fHx8')`,
           }}
@@ -1156,14 +1478,12 @@ export function FlightSearchResults() {
           </div>
         </div>
 
-        <div className="absolute left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-full max-w-5xl px-4 z-20">
-          <div className="bg-white rounded-2xl shadow-2xl border border-gray-200">
-            <SearchForm
-              onSearch={handleSearch}
-              initialValues={searchFormInitialValues}
-              onTripTypeChange={handleTripTypeChange}
-            />
-          </div>
+        <div className="">
+          <SearchForm
+            onSearch={handleSearch}
+            initialValues={searchFormInitialValues}
+            onTripTypeChange={handleTripTypeChange}
+          />
         </div>
       </div>
 
@@ -1214,7 +1534,7 @@ export function FlightSearchResults() {
             />
           </div>
 
-          <div className="flex-1 min-w-0">
+          <div className="flex-1 min-w-0 ">
             {/* Results Header */}
             <div className="mb-4 sm:mb-6">
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-3 sm:mb-4 gap-2">
@@ -1241,8 +1561,16 @@ export function FlightSearchResults() {
                       variant="ghost"
                       size="sm"
                       className="text-gray-500 hover:text-gray-700"
-                      onClick={clearSearchCriteria}
-                      title="Xóa tiêu chí tìm kiếm"
+                      onClick={() => {
+                        clearSearchCriteria();
+                        // Reset search results and trigger reload of all flights for current tab
+                        setAllItineraries([]);
+                        setFlightsLoaded(false);
+                        // Reset activeTab về "ALL" để load tất cả trip types
+                        setActiveTab("ALL");
+                        setTripTypeFilter(null); // Đảm bảo không có filter trip type
+                      }}
+                      title="Xóa tiêu chí tìm kiếm và tải lại chuyến bay"
                     >
                       <X className="w-4 h-4" />
                     </Button>
@@ -1295,7 +1623,7 @@ export function FlightSearchResults() {
                 </div>
 
                 <div className="flex gap-1 sm:gap-2 overflow-x-auto">
-                  {FLIGHT_TABS.map((tab) => (
+                  {currentTabs.map((tab) => (
                     <Button
                       key={tab.key}
                       variant="outline"

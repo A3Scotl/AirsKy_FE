@@ -613,8 +613,7 @@ const normalizeFlightData = (flight) => {
       tripType: "ROUND_TRIP",
       outboundFlight: normalizeFlightData(outbound),
       returnFlight: normalizeFlightData(returnFlight),
-      totalPrice:
-        flight.totalPrice || flight.priceNumeric || flight.basePrice || 0,
+      totalPrice: flight.totalPrice || flight.priceNumeric || 0,
 
       // Use outbound for primary display
       departureTime: outbound.departureTime,
@@ -685,7 +684,7 @@ const normalizeFlightData = (flight) => {
 
       // Create legs from stopsList
       multiCityLegs: [], // Will be populated below
-      totalPrice: flight.totalPrice || flight.price || flight.basePrice || 0,
+      totalPrice: flight.totalPrice || flight.price || 0,
 
       // Use original departure and final arrival
       departureTime: flight.departureTime,
@@ -766,7 +765,7 @@ const normalizeFlightData = (flight) => {
         toCode: stop.airportCode,
 
         price: flight.price || 0,
-        basePrice: flight.basePrice || 0,
+        basePrice: flight.price || 0,
         availableSeats: flight.availableSeats || 0,
         totalSeats: flight.totalSeats || 0,
         status: flight.status || "Scheduled",
@@ -823,7 +822,7 @@ const normalizeFlightData = (flight) => {
       toCode: flight.arrivalAirport?.airportCode || flight.toCode || "N/A",
 
       price: flight.price || 0,
-      basePrice: flight.basePrice || 0,
+      basePrice: flight.price || 0,
       availableSeats: flight.availableSeats || 0,
       totalSeats: flight.totalSeats || 0,
       status: flight.status || "Scheduled",
@@ -935,8 +934,8 @@ const normalizeFlightData = (flight) => {
           : flight.aircraft || "Boeing 737",
 
       // Pricing
-      price: flight.basePrice || flight.priceNumeric || flight.price || 0,
-      basePrice: flight.basePrice || flight.priceNumeric || flight.price || 0,
+      price: flight.priceNumeric || flight.price || 0,
+      basePrice: flight.priceNumeric || flight.price || 0,
 
       // Status and availability
       status: flight.status || "Scheduled",
@@ -1052,7 +1051,6 @@ const FlightDetail = () => {
 
           try {
             const response = await flightApi.getFlightById(id);
-           
 
             if (response.success && response.data) {
               // Transform flight data to match expected structure
@@ -1093,7 +1091,6 @@ const FlightDetail = () => {
     };
 
     getFlightData();
-
   }, [location.state, id]);
 
   // Load fare options from flight data
@@ -1113,7 +1110,7 @@ const FlightDetail = () => {
           {
             id: "economy",
             name: "Phổ thông",
-            price: flight?.price || flight?.basePrice || 299000,
+            price: flight?.price || 299000,
             recommended: false,
             availableSeats: 15,
             features: [
@@ -1141,7 +1138,7 @@ const FlightDetail = () => {
         {
           id: "economy",
           name: "Phổ thông",
-          price: flight?.price || flight?.basePrice || 299000,
+          price: flight?.price || 299000,
           recommended: false,
           availableSeats: 15,
           features: [
