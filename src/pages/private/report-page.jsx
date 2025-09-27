@@ -37,12 +37,20 @@ import {
   RefreshCw,
 } from "lucide-react";
 import { format } from "date-fns";
+import {
+  formatCurrencyVND,
+  formatDateVN,
+  formatNumberVN,
+} from "@/utils/currency-utils";
 import { cn } from "@/lib/utils";
 import RevenueChart from "@/components/admin/reports/report-revenue-chart";
 import BookingChart from "@/components/admin/reports/report-booking-chart";
 import CustomerChart from "@/components/admin/reports/report-customer-chart";
 import FlightChart from "@/components/admin/reports/report-flight-chart";
 import ReportTable from "@/components/admin/reports/report-table";
+import { flightApi } from "@/apis/flight-api";
+import { bookingApi } from "@/apis/booking-api";
+import { userApi } from "@/apis/user-api";
 
 const AdminReportPage = () => {
   const [dateRange, setDateRange] = useState({
@@ -53,17 +61,17 @@ const AdminReportPage = () => {
   const [reportType, setReportType] = useState("overview");
   const [isLoading, setIsLoading] = useState(false);
 
-  // Sample data - replace with actual API calls
+  // State for real API data
   const [reportData, setReportData] = useState({
     summary: {
-      totalRevenue: 2458900,
-      totalBookings: 12486,
-      totalCustomers: 8942,
-      totalFlights: 1247,
-      revenueChange: 12.5,
-      bookingsChange: 8.3,
-      customersChange: 15.2,
-      flightsChange: -2.1,
+      totalRevenue: 0,
+      totalBookings: 0,
+      totalCustomers: 0,
+      totalFlights: 0,
+      revenueChange: 0,
+      bookingsChange: 0,
+      customersChange: 0,
+      flightsChange: 0,
     },
     charts: {
       revenue: [],
@@ -73,6 +81,13 @@ const AdminReportPage = () => {
     },
   });
 
+  // State for raw data to pass to components
+  const [rawData, setRawData] = useState({
+    bookings: [],
+    users: [],
+    flights: [],
+  });
+
   useEffect(() => {
     fetchReportData();
   }, [dateRange, period, reportType]);
@@ -80,40 +95,229 @@ const AdminReportPage = () => {
   const fetchReportData = async () => {
     setIsLoading(true);
     try {
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      // Fetch data from APIs
+      const [flightsResponse, bookingsResponse, usersResponse] =
+        await Promise.all([
+          flightApi.getAllFlights({ size: 1000 }), // Get all flights for statistics
+          bookingApi.getAllBookings({ size: 1000 }), // Get all bookings for statistics
+          userApi.getAllUsers({ size: 1000 }), // Get all users for statistics
+        ]);
 
-      // Generate sample data based on period
-      const generateData = () => {
-        const data = [];
-        const days = period === "7days" ? 7 : period === "30days" ? 30 : 90;
+      if (
+        !flightsResponse.success ||
+        !bookingsResponse.success ||
+        !usersResponse.success
+      ) {
+        throw new Error("Failed to fetch data from APIs");
+      }
 
-        for (let i = 0; i < days; i++) {
-          const date = new Date();
-          date.setDate(date.getDate() - (days - i));
+      const allFlights = flightsResponse.data?.content || [];
+      const allBookings = bookingsResponse.data?.content || [];
+      const allUsers = usersResponse.data?.content || [];
 
-          data.push({
-            date: format(date, "MM/dd"),
-            revenue: Math.floor(Math.random() * 100000) + 50000,
-            bookings: Math.floor(Math.random() * 100) + 50,
-            customers: Math.floor(Math.random() * 80) + 20,
-            flights: Math.floor(Math.random() * 20) + 10,
-          });
-        }
-        return data;
+      // Helper function to filter data by date range
+      const filterByDateRange = (items, dateField) => {
+        if (!dateRange.from || !dateRange.to) return items;
+
+        return items.filter((item) => {
+          const itemDate = new Date(item[dateField]);
+          return itemDate >= dateRange.from && itemDate <= dateRange.to;
+        });
       };
 
-      setReportData((prev) => ({
-        ...prev,
-        charts: {
-          revenue: generateData(),
-          bookings: generateData(),
-          customers: generateData(),
-          flights: generateData(),
+      // Filter data by selected date range
+      const bookings = filterByDateRange(allBookings, "createdAt");
+      const flights = filterByDateRange(allFlights, "departureTime");
+      const users = filterByDateRange(allUsers, "createdAt");
+
+      // Calculate summary statistics for current period
+      const totalRevenue = bookings.reduce(
+        (sum, booking) =>
+          sum +
+          (booking.totalAmount || booking.totalPrice || booking.price || 0),
+        0
+      );
+      const totalBookings = bookings.length;
+      const totalCustomers = users.length;
+      const totalFlights = flights.length;
+
+      // Calculate previous period (same duration before current period)
+      const periodDuration = dateRange.to.getTime() - dateRange.from.getTime();
+      const previousPeriodStart = new Date(
+        dateRange.from.getTime() - periodDuration
+      );
+      const previousPeriodEnd = new Date(dateRange.from.getTime());
+
+      const previousBookings = allBookings.filter((booking) => {
+        const bookingDate = new Date(booking.createdAt || booking.bookingDate);
+        return (
+          bookingDate >= previousPeriodStart && bookingDate < previousPeriodEnd
+        );
+      });
+
+      const previousUsers = allUsers.filter((user) => {
+        const userDate = new Date(user.createdAt);
+        return userDate >= previousPeriodStart && userDate < previousPeriodEnd;
+      });
+
+      const previousFlights = allFlights.filter((flight) => {
+        const flightDate = new Date(flight.departureTime);
+        return (
+          flightDate >= previousPeriodStart && flightDate < previousPeriodEnd
+        );
+      });
+
+      // Calculate previous period totals
+      const previousRevenue = previousBookings.reduce(
+        (sum, booking) =>
+          sum +
+          (booking.totalAmount || booking.totalPrice || booking.price || 0),
+        0
+      );
+      const previousBookingsCount = previousBookings.length;
+      const previousCustomersCount = previousUsers.length;
+      const previousFlightsCount = previousFlights.length;
+
+      // Calculate percentage changes
+      const calculateChange = (current, previous) => {
+        if (previous === 0) return current > 0 ? 100 : 0;
+        return ((current - previous) / previous) * 100;
+      };
+
+      const revenueChange = calculateChange(totalRevenue, previousRevenue);
+      const bookingsChange = calculateChange(
+        totalBookings,
+        previousBookingsCount
+      );
+      const customersChange = calculateChange(
+        totalCustomers,
+        previousCustomersCount
+      );
+      const flightsChange = calculateChange(totalFlights, previousFlightsCount);
+
+      // Generate chart data based on period and filtered data
+      const generateChartData = (type) => {
+        const data = [];
+
+        // Group data by date within the selected range
+        const dateGroups = {};
+
+        // Initialize date groups for the selected range
+        const currentDate = new Date(dateRange.from);
+        while (currentDate <= dateRange.to) {
+          const dateKey = format(currentDate, "MM/dd");
+          dateGroups[dateKey] = {
+            date: dateKey,
+            revenue: 0,
+            bookings: 0,
+            customers: 0,
+            flights: 0,
+          };
+          currentDate.setDate(currentDate.getDate() + 1);
+        }
+
+        // Populate data based on type
+        switch (type) {
+          case "revenue":
+            bookings.forEach((booking) => {
+              const bookingDate = new Date(
+                booking.createdAt || booking.bookingDate
+              );
+              const dateKey = format(bookingDate, "MM/dd");
+              if (dateGroups[dateKey]) {
+                dateGroups[dateKey].revenue +=
+                  booking.totalAmount ||
+                  booking.totalPrice ||
+                  booking.price ||
+                  0;
+              }
+            });
+            break;
+          case "bookings":
+            bookings.forEach((booking) => {
+              const bookingDate = new Date(
+                booking.createdAt || booking.bookingDate
+              );
+              const dateKey = format(bookingDate, "MM/dd");
+              if (dateGroups[dateKey]) {
+                dateGroups[dateKey].bookings += 1;
+              }
+            });
+            break;
+          case "customers":
+            users.forEach((user) => {
+              const userDate = new Date(user.createdAt);
+              const dateKey = format(userDate, "MM/dd");
+              if (dateGroups[dateKey]) {
+                dateGroups[dateKey].customers += 1;
+              }
+            });
+            break;
+          case "flights":
+            flights.forEach((flight) => {
+              const flightDate = new Date(flight.departureTime);
+              const dateKey = format(flightDate, "MM/dd");
+              if (dateGroups[dateKey]) {
+                dateGroups[dateKey].flights += 1;
+              }
+            });
+            break;
+        }
+
+        // Convert to array and sort by date
+        return Object.values(dateGroups).sort((a, b) => {
+          const dateA = new Date(a.date);
+          const dateB = new Date(b.date);
+          return dateA - dateB;
+        });
+      };
+
+      setReportData({
+        summary: {
+          totalRevenue,
+          totalBookings,
+          totalCustomers,
+          totalFlights,
+          revenueChange,
+          bookingsChange,
+          customersChange,
+          flightsChange,
         },
-      }));
+        charts: {
+          revenue: generateChartData("revenue"),
+          bookings: generateChartData("bookings"),
+          customers: generateChartData("customers"),
+          flights: generateChartData("flights"),
+        },
+      });
+
+      // Store raw data for components
+      setRawData({
+        bookings,
+        users,
+        flights,
+      });
     } catch (error) {
       console.error("Error fetching report data:", error);
+      // Set default values on error
+      setReportData({
+        summary: {
+          totalRevenue: 0,
+          totalBookings: 0,
+          totalCustomers: 0,
+          totalFlights: 0,
+          revenueChange: 0,
+          bookingsChange: 0,
+          customersChange: 0,
+          flightsChange: 0,
+        },
+        charts: {
+          revenue: [],
+          bookings: [],
+          customers: [],
+          flights: [],
+        },
+      });
     } finally {
       setIsLoading(false);
     }
@@ -125,14 +329,11 @@ const AdminReportPage = () => {
   };
 
   const formatCurrency = (amount) => {
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: "USD",
-    }).format(amount);
+    return formatCurrencyVND(amount);
   };
 
   const formatNumber = (number) => {
-    return new Intl.NumberFormat("en-US").format(number);
+    return formatNumberVN(number);
   };
 
   return (
@@ -141,10 +342,10 @@ const AdminReportPage = () => {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">
-            Reports & Analytics
+            Báo Cáo & Thống Kê
           </h1>
           <p className="text-gray-600">
-            Detailed analysis of business operations
+            Phân tích chi tiết về hoạt động kinh doanh
           </p>
         </div>
 
@@ -167,7 +368,7 @@ const AdminReportPage = () => {
                     format(dateRange.from, "dd/MM/yyyy")
                   )
                 ) : (
-                  <span>Select date</span>
+                  <span>Chọn ngày</span>
                 )}
               </Button>
             </PopoverTrigger>
@@ -185,13 +386,13 @@ const AdminReportPage = () => {
 
           <Select value={period} onValueChange={setPeriod}>
             <SelectTrigger className="w-[140px]">
-              <SelectValue placeholder="Select period" />
+              <SelectValue placeholder="Chọn khoảng thời gian" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="7days">Last 7 days</SelectItem>
-              <SelectItem value="30days">Last 30 days</SelectItem>
-              <SelectItem value="90days">Last 90 days</SelectItem>
-              <SelectItem value="custom">Custom</SelectItem>
+              <SelectItem value="7days">7 ngày qua</SelectItem>
+              <SelectItem value="30days">30 ngày qua</SelectItem>
+              <SelectItem value="90days">90 ngày qua</SelectItem>
+              <SelectItem value="custom">Tùy chỉnh</SelectItem>
             </SelectContent>
           </Select>
 
@@ -203,12 +404,12 @@ const AdminReportPage = () => {
             <RefreshCw
               className={cn("h-4 w-4 mr-2", isLoading && "animate-spin")}
             />
-            Refresh
+            Làm Mới
           </Button>
 
           <Button onClick={() => handleExportReport("excel")}>
             <Download className="h-4 w-4 mr-2" />
-            Export
+            Xuất Báo Cáo
           </Button>
         </div>
       </div>
@@ -217,7 +418,9 @@ const AdminReportPage = () => {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              Tổng Doanh Thu
+            </CardTitle>
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -239,16 +442,14 @@ const AdminReportPage = () => {
               >
                 {Math.abs(reportData.summary.revenueChange)}%
               </span>
-              <span className="ml-1">vs previous period</span>
+              <span className="ml-1">so với tháng trước</span>
             </div>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Total Bookings
-            </CardTitle>
+            <CardTitle className="text-sm font-medium">Tổng Đặt Vé</CardTitle>
             <Activity className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -270,14 +471,14 @@ const AdminReportPage = () => {
               >
                 {Math.abs(reportData.summary.bookingsChange)}%
               </span>
-              <span className="ml-1">vs previous period</span>
+              <span className="ml-1">so với tháng trước</span>
             </div>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Customers</CardTitle>
+            <CardTitle className="text-sm font-medium">Khách Hàng</CardTitle>
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -299,14 +500,14 @@ const AdminReportPage = () => {
               >
                 {Math.abs(reportData.summary.customersChange)}%
               </span>
-              <span className="ml-1">vs previous period</span>
+              <span className="ml-1">so với tháng trước</span>
             </div>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Flights</CardTitle>
+            <CardTitle className="text-sm font-medium">Chuyến Bay</CardTitle>
             <Plane className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -328,7 +529,7 @@ const AdminReportPage = () => {
               >
                 {Math.abs(reportData.summary.flightsChange)}%
               </span>
-              <span className="ml-1">vs previous period</span>
+              <span className="ml-1">so với tháng trước</span>
             </div>
           </CardContent>
         </Card>
@@ -341,59 +542,82 @@ const AdminReportPage = () => {
         className="space-y-6"
       >
         <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="revenue">Revenue</TabsTrigger>
-          <TabsTrigger value="bookings">Bookings</TabsTrigger>
-          <TabsTrigger value="customers">Customers</TabsTrigger>
+          <TabsTrigger value="overview">Tổng Quan</TabsTrigger>
+          <TabsTrigger value="revenue">Doanh Thu</TabsTrigger>
+          <TabsTrigger value="bookings">Đặt Vé</TabsTrigger>
+          <TabsTrigger value="customers">Khách Hàng</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="space-y-6">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <RevenueChart
-              data={reportData.charts.revenue}
+              bookings={rawData.bookings}
               isLoading={isLoading}
+              dateRange={dateRange}
             />
             <BookingChart
-              data={reportData.charts.bookings}
+              bookings={rawData.bookings}
               isLoading={isLoading}
+              dateRange={dateRange}
             />
             <CustomerChart
-              data={reportData.charts.customers}
+              users={rawData.users}
               isLoading={isLoading}
+              dateRange={dateRange}
             />
             <FlightChart
-              data={reportData.charts.flights}
+              flights={rawData.flights}
               isLoading={isLoading}
+              dateRange={dateRange}
             />
           </div>
-          <ReportTable type="overview" dateRange={dateRange} />
+          <ReportTable
+            type="overview"
+            dateRange={dateRange}
+            realData={rawData}
+          />
         </TabsContent>
 
         <TabsContent value="revenue" className="space-y-6">
           <RevenueChart
-            data={reportData.charts.revenue}
+            bookings={rawData.bookings}
             isLoading={isLoading}
             detailed={true}
+            dateRange={dateRange}
           />
-          <ReportTable type="revenue" dateRange={dateRange} />
+          <ReportTable
+            type="revenue"
+            dateRange={dateRange}
+            realData={rawData}
+          />
         </TabsContent>
 
         <TabsContent value="bookings" className="space-y-6">
           <BookingChart
-            data={reportData.charts.bookings}
+            bookings={rawData.bookings}
             isLoading={isLoading}
             detailed={true}
+            dateRange={dateRange}
           />
-          <ReportTable type="bookings" dateRange={dateRange} />
+          <ReportTable
+            type="bookings"
+            dateRange={dateRange}
+            realData={rawData}
+          />
         </TabsContent>
 
         <TabsContent value="customers" className="space-y-6">
           <CustomerChart
-            data={reportData.charts.customers}
+            users={rawData.users}
             isLoading={isLoading}
             detailed={true}
+            dateRange={dateRange}
           />
-          <ReportTable type="customers" dateRange={dateRange} />
+          <ReportTable
+            type="customers"
+            dateRange={dateRange}
+            realData={rawData}
+          />
         </TabsContent>
       </Tabs>
     </div>

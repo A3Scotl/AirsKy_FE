@@ -315,20 +315,20 @@ const UserTable = ({
                             setSelectedUser(user);
                             setShowDetailsModal(true);
                           }}
-                          disabled={user.email === currentUser?.email}
+                          disabled={user.id === currentUser?.id}
                         >
                           <Eye className="mr-2 h-4 w-4" />
                           Xem chi tiết
                         </DropdownMenuItem>
                         <DropdownMenuItem
                           onClick={() => onEditUser && onEditUser(user)}
-                          disabled={user.email === currentUser?.email}
+                          disabled={user.id === currentUser?.id}
                         >
                           <Edit className="mr-2 h-4 w-4" />
                           Chỉnh sửa
                         </DropdownMenuItem>
                         <DropdownMenuItem
-                          disabled={user.email === currentUser?.email}
+                          disabled={user.id === currentUser?.id}
                         >
                           <Mail className="mr-2 h-4 w-4" />
                           Gửi email
@@ -339,7 +339,7 @@ const UserTable = ({
                           <DropdownMenuItem
                             onClick={() => onSuspendUser && onSuspendUser(user)}
                             className="text-orange-600"
-                            disabled={user.email === currentUser?.email}
+                            disabled={user.id === currentUser?.id}
                           >
                             <UserX className="mr-2 h-4 w-4" />
                             Khóa tài khoản
@@ -348,7 +348,7 @@ const UserTable = ({
                           <DropdownMenuItem
                             onClick={() => onSuspendUser && onSuspendUser(user)}
                             className="text-green-600"
-                            disabled={user.email === currentUser?.email}
+                            disabled={user.id === currentUser?.id}
                           >
                             <UserCheck className="mr-2 h-4 w-4" />
                             Mở khóa tài khoản

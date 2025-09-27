@@ -71,7 +71,7 @@ const BookingConfirmation = () => {
     },
     price: {
       total: 320,
-      currency: "USD",
+      currency: "VND",
       breakdown: {
         baseFare: 280,
         taxesFees: 40,

@@ -29,13 +29,43 @@ const formatCurrency = (amount) => {
 
 // Constants
 const SEAT_PRICING = {
-  special: { priceVND: 96000, priceUSD: 4, label: "Đặc biệt", color: "bg-red-500" },
-  front: { priceVND: 48000, priceUSD: 2, label: "Phía trước", color: "bg-purple-500" },
-  legroom: { priceVND: 96000, priceUSD: 4, label: "Chỗ để chân rộng", color: "bg-blue-500" },
-  standard: { priceVND: 24000, priceUSD: 1, label: "Tiêu chuẩn", color: "bg-green-500" },
+  special: {
+    priceVND: 96000,
+    priceUSD: 4,
+    label: "Đặc biệt",
+    color: "bg-red-500",
+  },
+  front: {
+    priceVND: 48000,
+    priceUSD: 2,
+    label: "Phía trước",
+    color: "bg-purple-500",
+  },
+  legroom: {
+    priceVND: 96000,
+    priceUSD: 4,
+    label: "Chỗ để chân rộng",
+    color: "bg-blue-500",
+  },
+  standard: {
+    priceVND: 24000,
+    priceUSD: 1,
+    label: "Tiêu chuẩn",
+    color: "bg-green-500",
+  },
   occupied: { priceVND: 0, priceUSD: 0, label: "Đã đặt", color: "bg-gray-500" },
-  pending: { priceVND: 0, priceUSD: 0, label: "Đang chờ thanh toán", color: "bg-orange-500" },
-  selected: { priceVND: 0, priceUSD: 0, label: "Đã chọn", color: "bg-yellow-500" },
+  pending: {
+    priceVND: 0,
+    priceUSD: 0,
+    label: "Đang chờ thanh toán",
+    color: "bg-orange-500",
+  },
+  selected: {
+    priceVND: 0,
+    priceUSD: 0,
+    label: "Đã chọn",
+    color: "bg-yellow-500",
+  },
 };
 
 const BAGGAGE_PRICES = { firstBag: 50, secondBag: 65 };
@@ -68,7 +98,10 @@ const SeatSkeleton = () => (
       {[...Array(5)].map((_, i) => (
         <div key={i} className="flex justify-center items-center gap-2 mb-2">
           {[...Array(8)].map((_, j) => (
-            <div key={j} className="w-8 h-8 rounded bg-gray-200 animate-pulse" />
+            <div
+              key={j}
+              className="w-8 h-8 rounded bg-gray-200 animate-pulse"
+            />
           ))}
         </div>
       ))}
@@ -95,17 +128,34 @@ const SeatLegend = ({ seatLegend }) => (
 );
 
 // Aircraft Layout component
-const AircraftLayout = ({ seats, selectedSeats, passengers, handleSeatSelect }) => {
+const AircraftLayout = ({
+  seats,
+  selectedSeats,
+  passengers,
+  handleSeatSelect,
+}) => {
   const rows = [];
   for (let i = 0; i < seats.length; i += 8) {
     const rowSeats = seats.slice(i, i + 8);
     rows.push(
       <div key={i} className="flex justify-center items-center gap-2 mb-2">
-        {rowSeats.slice(0, 2).map((seat) => renderSeatButton(seat, passengers, selectedSeats, handleSeatSelect))}
+        {rowSeats
+          .slice(0, 2)
+          .map((seat) =>
+            renderSeatButton(seat, passengers, selectedSeats, handleSeatSelect)
+          )}
         <div className="w-4" />
-        {rowSeats.slice(2, 6).map((seat) => renderSeatButton(seat, passengers, selectedSeats, handleSeatSelect))}
+        {rowSeats
+          .slice(2, 6)
+          .map((seat) =>
+            renderSeatButton(seat, passengers, selectedSeats, handleSeatSelect)
+          )}
         <div className="w-4" />
-        {rowSeats.slice(6, 8).map((seat) => renderSeatButton(seat, passengers, selectedSeats, handleSeatSelect))}
+        {rowSeats
+          .slice(6, 8)
+          .map((seat) =>
+            renderSeatButton(seat, passengers, selectedSeats, handleSeatSelect)
+          )}
       </div>
     );
   }
@@ -113,7 +163,12 @@ const AircraftLayout = ({ seats, selectedSeats, passengers, handleSeatSelect }) 
 };
 
 // Helper to render seat button
-const renderSeatButton = (seat, passengers, selectedSeats, handleSeatSelect) => (
+const renderSeatButton = (
+  seat,
+  passengers,
+  selectedSeats,
+  handleSeatSelect
+) => (
   <TooltipProvider key={seat.seatNumber}>
     <Tooltip>
       <TooltipTrigger asChild>
@@ -127,7 +182,8 @@ const renderSeatButton = (seat, passengers, selectedSeats, handleSeatSelect) => 
                   ? "bg-gray-500 text-white cursor-not-allowed"
                   : selectedSeats[`passenger${index + 1}`] === seat.seatNumber
                   ? "bg-yellow-500 text-black ring-2 ring-yellow-300 animate-pulse"
-                  : SEAT_PRICING[seat.status]?.color + " hover:opacity-80 text-white"
+                  : SEAT_PRICING[seat.status]?.color +
+                    " hover:opacity-80 text-white"
               }`}
               disabled={seat.status === "occupied" || seat.status === "pending"}
               title={`Hành khách ${index + 1}`}
@@ -139,14 +195,19 @@ const renderSeatButton = (seat, passengers, selectedSeats, handleSeatSelect) => 
       </TooltipTrigger>
       <TooltipContent>
         <p>{SEAT_PRICING[seat.status]?.label || "Đang chờ thanh toán"}</p>
-        <p>Giá: {seat.status === "pending" || seat.status === "occupied" ? "N/A" : formatCurrency(seat.priceUSD)}</p>
+        <p>
+          Giá:{" "}
+          {seat.status === "pending" || seat.status === "occupied"
+            ? "N/A"
+            : formatCurrency(seat.priceVND)}
+        </p>
       </TooltipContent>
     </Tooltip>
   </TooltipProvider>
 );
 
 // Selected Seats Summary
-const SelectedSeatsSummary = ({ selectedSeats, getSeatPrice }) => (
+const SelectedSeatsSummary = ({ selectedSeats, getSeatPrice }) =>
   Object.keys(selectedSeats).length > 0 && (
     <div className="mt-4 p-3 bg-blue-50 rounded-lg">
       {Object.entries(selectedSeats).map(([passenger, seatNumber]) => (
@@ -158,11 +219,19 @@ const SelectedSeatsSummary = ({ selectedSeats, getSeatPrice }) => (
         Tổng chi phí ghế: {formatCurrency(getSeatPrice())}
       </p>
     </div>
-  )
-);
+  );
 
 // Seat Selection Card
-const SeatSelectionCard = ({ flight, fare, formData, selectedSeats, setSelectedSeats, seats, loading, seatLegend }) => {
+const SeatSelectionCard = ({
+  flight,
+  fare,
+  formData,
+  selectedSeats,
+  setSelectedSeats,
+  seats,
+  loading,
+  seatLegend,
+}) => {
   const passengers = formData.passengers;
 
   const handleSeatSelect = (seatNumber, passengerIndex) => {
@@ -171,7 +240,10 @@ const SeatSelectionCard = ({ flight, fare, formData, selectedSeats, setSelectedS
       setSelectedSeats((prev) => {
         const newSeats = { ...prev };
         Object.keys(newSeats).forEach((key) => {
-          if (newSeats[key] === seatNumber && key !== `passenger${passengerIndex + 1}`) {
+          if (
+            newSeats[key] === seatNumber &&
+            key !== `passenger${passengerIndex + 1}`
+          ) {
             delete newSeats[key];
           }
         });
@@ -188,13 +260,15 @@ const SeatSelectionCard = ({ flight, fare, formData, selectedSeats, setSelectedS
   const getSeatPrice = () =>
     Object.values(selectedSeats).reduce((total, seatNumber) => {
       const seat = seats.find((s) => s.seatNumber === seatNumber);
-      return total + (seat?.priceUSD || 0);
+      return total + (seat?.priceVND || 0);
     }, 0);
 
   return (
     <Card className="shadow-sm">
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">Chọn Chỗ Ngồi - A330</CardTitle>
+        <CardTitle className="flex items-center gap-2">
+          Chọn Chỗ Ngồi - A330
+        </CardTitle>
       </CardHeader>
       <CardContent>
         {loading ? (
@@ -205,7 +279,9 @@ const SeatSelectionCard = ({ flight, fare, formData, selectedSeats, setSelectedS
             <div className="bg-white p-6 rounded-lg border max-h-[600px] overflow-y-auto">
               <div className="text-center mb-4">
                 <Badge variant="secondary">Sơ đồ máy bay (A330)</Badge>
-                <p className="text-sm text-gray-500 mt-2">Cuộn xuống để xem thêm hàng ghế</p>
+                <p className="text-sm text-gray-500 mt-2">
+                  Cuộn xuống để xem thêm hàng ghế
+                </p>
               </div>
               <div className="max-w-md mx-auto">
                 <AircraftLayout
@@ -215,7 +291,10 @@ const SeatSelectionCard = ({ flight, fare, formData, selectedSeats, setSelectedS
                   handleSeatSelect={handleSeatSelect}
                 />
               </div>
-              <SelectedSeatsSummary selectedSeats={selectedSeats} getSeatPrice={getSeatPrice} />
+              <SelectedSeatsSummary
+                selectedSeats={selectedSeats}
+                getSeatPrice={getSeatPrice}
+              />
             </div>
           </>
         )}
@@ -225,7 +304,12 @@ const SeatSelectionCard = ({ flight, fare, formData, selectedSeats, setSelectedS
 };
 
 // Baggage Option for a single passenger
-const BaggageOption = ({ passengerIndex, passengerType, baggage, handleBaggageChange }) => (
+const BaggageOption = ({
+  passengerIndex,
+  passengerType,
+  baggage,
+  handleBaggageChange,
+}) => (
   <div className="space-y-4">
     <h4 className="font-semibold text-gray-700">
       Hành Lý Ký Gửi - Hành khách {passengerIndex + 1} ({passengerType})
@@ -239,7 +323,13 @@ const BaggageOption = ({ passengerIndex, passengerType, baggage, handleBaggageCh
         <Button
           variant="outline"
           size="sm"
-          onClick={() => handleBaggageChange(`passenger${passengerIndex + 1}`, "firstBag", -1)}
+          onClick={() =>
+            handleBaggageChange(
+              `passenger${passengerIndex + 1}`,
+              "firstBag",
+              -1
+            )
+          }
           disabled={baggage[`passenger${passengerIndex + 1}`]?.firstBag === 0}
         >
           -
@@ -250,14 +340,17 @@ const BaggageOption = ({ passengerIndex, passengerType, baggage, handleBaggageCh
         <Button
           variant="outline"
           size="sm"
-          onClick={() => handleBaggageChange(`passenger${passengerIndex + 1}`, "firstBag", 1)}
+          onClick={() =>
+            handleBaggageChange(`passenger${passengerIndex + 1}`, "firstBag", 1)
+          }
           disabled={baggage[`passenger${passengerIndex + 1}`]?.firstBag === 2}
         >
           +
         </Button>
         <span className="ml-3 font-bold text-blue-600 min-w-[80px]">
           {formatCurrency(
-            (baggage[`passenger${passengerIndex + 1}`]?.firstBag || 0) * BAGGAGE_PRICES.firstBag
+            (baggage[`passenger${passengerIndex + 1}`]?.firstBag || 0) *
+              BAGGAGE_PRICES.firstBag
           )}
         </span>
       </div>
@@ -271,7 +364,13 @@ const BaggageOption = ({ passengerIndex, passengerType, baggage, handleBaggageCh
         <Button
           variant="outline"
           size="sm"
-          onClick={() => handleBaggageChange(`passenger${passengerIndex + 1}`, "secondBag", -1)}
+          onClick={() =>
+            handleBaggageChange(
+              `passenger${passengerIndex + 1}`,
+              "secondBag",
+              -1
+            )
+          }
           disabled={baggage[`passenger${passengerIndex + 1}`]?.secondBag === 0}
         >
           -
@@ -282,14 +381,21 @@ const BaggageOption = ({ passengerIndex, passengerType, baggage, handleBaggageCh
         <Button
           variant="outline"
           size="sm"
-          onClick={() => handleBaggageChange(`passenger${passengerIndex + 1}`, "secondBag", 1)}
+          onClick={() =>
+            handleBaggageChange(
+              `passenger${passengerIndex + 1}`,
+              "secondBag",
+              1
+            )
+          }
           disabled={baggage[`passenger${passengerIndex + 1}`]?.secondBag === 2}
         >
           +
         </Button>
         <span className="ml-3 font-bold text-blue-600 min-w-[80px]">
           {formatCurrency(
-            (baggage[`passenger${passengerIndex + 1}`]?.secondBag || 0) * BAGGAGE_PRICES.secondBag
+            (baggage[`passenger${passengerIndex + 1}`]?.secondBag || 0) *
+              BAGGAGE_PRICES.secondBag
           )}
         </span>
       </div>
@@ -312,7 +418,9 @@ const BaggageOptionsCard = ({ formData, baggage, setBaggage }) => {
   return (
     <Card className="shadow-sm">
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">Tùy Chọn Hành Lý</CardTitle>
+        <CardTitle className="flex items-center gap-2">
+          Tùy Chọn Hành Lý
+        </CardTitle>
       </CardHeader>
       <CardContent>
         <div className="bg-green-50 p-4 rounded-lg mb-4">
@@ -337,7 +445,14 @@ const BaggageOptionsCard = ({ formData, baggage, setBaggage }) => {
 };
 
 // Service Option
-const ServiceOption = ({ id, label, description, checked, onChange, price }) => (
+const ServiceOption = ({
+  id,
+  label,
+  description,
+  checked,
+  onChange,
+  price,
+}) => (
   <div className="flex items-center justify-between p-4 border rounded-lg">
     <div className="flex items-center gap-3">
       <Checkbox id={id} checked={checked} onCheckedChange={onChange} />
@@ -353,7 +468,10 @@ const ServiceOption = ({ id, label, description, checked, onChange, price }) => 
 );
 
 // Additional Services Card
-const AdditionalServicesCard = ({ additionalServices, setAdditionalServices }) => {
+const AdditionalServicesCard = ({
+  additionalServices,
+  setAdditionalServices,
+}) => {
   const handleServiceChange = (service) => {
     setAdditionalServices((prev) => ({
       ...prev,
@@ -364,7 +482,9 @@ const AdditionalServicesCard = ({ additionalServices, setAdditionalServices }) =
   return (
     <Card className="shadow-sm">
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">Dịch Vụ Bổ Sung</CardTitle>
+        <CardTitle className="flex items-center gap-2">
+          Dịch Vụ Bổ Sung
+        </CardTitle>
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
@@ -399,11 +519,19 @@ const AdditionalServicesCard = ({ additionalServices, setAdditionalServices }) =
 };
 
 // Booking Summary Card
-const BookingSummary = ({ formData, getSeatPrice, getBaggagePrice, getServicesPrice, calculateTotal }) => (
+const BookingSummary = ({
+  formData,
+  getSeatPrice,
+  getBaggagePrice,
+  getServicesPrice,
+  calculateTotal,
+}) => (
   <div className="sticky top-8">
     <Card className="shadow-lg border-2 border-blue-100">
       <CardHeader className="bg-blue-50">
-        <CardTitle className="flex items-center gap-2 text-blue-800">Tóm Tắt Đặt Vé</CardTitle>
+        <CardTitle className="flex items-center gap-2 text-blue-800">
+          Tóm Tắt Đặt Vé
+        </CardTitle>
       </CardHeader>
       <CardContent className="p-6">
         <div className="space-y-4">
@@ -411,7 +539,9 @@ const BookingSummary = ({ formData, getSeatPrice, getBaggagePrice, getServicesPr
             <span className="text-gray-600">
               Giá vé cơ bản ({formData.passengers.length} hành khách)
             </span>
-            <span className="font-medium">{formatCurrency(BASE_FARE * formData.passengers.length)}</span>
+            <span className="font-medium">
+              {formatCurrency(BASE_FARE * formData.passengers.length)}
+            </span>
           </div>
           <div className="flex justify-between">
             <span className="text-gray-600">Thuế & Phí</span>
@@ -419,20 +549,28 @@ const BookingSummary = ({ formData, getSeatPrice, getBaggagePrice, getServicesPr
           </div>
           <div className="flex justify-between">
             <span className="text-gray-600">Chọn chỗ ngồi</span>
-            <span className="font-medium">{formatCurrency(getSeatPrice())}</span>
+            <span className="font-medium">
+              {formatCurrency(getSeatPrice())}
+            </span>
           </div>
           <div className="flex justify-between">
             <span className="text-gray-600">Hành lý</span>
-            <span className="font-medium">{formatCurrency(getBaggagePrice())}</span>
+            <span className="font-medium">
+              {formatCurrency(getBaggagePrice())}
+            </span>
           </div>
           <div className="flex justify-between">
             <span className="text-gray-600">Dịch vụ bổ sung</span>
-            <span className="font-medium">{formatCurrency(getServicesPrice())}</span>
+            <span className="font-medium">
+              {formatCurrency(getServicesPrice())}
+            </span>
           </div>
           <hr className="border-gray-200" />
           <div className="flex justify-between text-lg font-bold">
             <span>Tổng cộng</span>
-            <span className="text-blue-600">{formatCurrency(calculateTotal())}</span>
+            <span className="text-blue-600">
+              {formatCurrency(calculateTotal())}
+            </span>
           </div>
           <div className="space-y-3 mt-6">
             <Button className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3">
@@ -450,10 +588,13 @@ const Extras = ({ flight, fare, formData, setExtrasData }) => {
   const [selectedSeats, setSelectedSeats] = useState({});
   const [seats, setSeats] = useState([]);
   const [baggage, setBaggage] = useState(
-    formData.passengers.reduce((acc, _, index) => ({
-      ...acc,
-      [`passenger${index + 1}`]: { firstBag: 0, secondBag: 0 },
-    }), {})
+    formData.passengers.reduce(
+      (acc, _, index) => ({
+        ...acc,
+        [`passenger${index + 1}`]: { firstBag: 0, secondBag: 0 },
+      }),
+      {}
+    )
   );
   const [additionalServices, setAdditionalServices] = useState({
     travelInsurance: false,
@@ -466,14 +607,21 @@ const Extras = ({ flight, fare, formData, setExtrasData }) => {
   useEffect(() => {
     if (flight?.id && fare?.travelClass?.classId) {
       handleFetch({
-        apiCall: () => flightApi.getSeatsFlightByFlightIdAndTravelClassId(flight.id, fare.travelClass.classId),
+        apiCall: () =>
+          flightApi.getSeatsFlightByFlightIdAndTravelClassId(
+            flight.id,
+            fare.travelClass.classId
+          ),
         setData: (data) =>
           setSeats(
             data.map((seat) => ({
               seatNumber: seat.seatNumber,
               row: seat.seatNumber, // Map seatNumber to row for compatibility
               status: mapApiStatusToUiStatus(seat.status, seat.seatNumber),
-              priceUSD: SEAT_PRICING[mapApiStatusToUiStatus(seat.status, seat.seatNumber)]?.priceUSD || 0,
+              priceVND:
+                SEAT_PRICING[
+                  mapApiStatusToUiStatus(seat.status, seat.seatNumber)
+                ]?.priceVND || 0,
             }))
           ),
         setLoading,
@@ -487,31 +635,38 @@ const Extras = ({ flight, fare, formData, setExtrasData }) => {
     status,
     color: config.color,
     label: config.label,
-    price: config.priceUSD > 0 ? formatCurrency(config.priceUSD) : "N/A",
+    price: config.priceVND > 0 ? formatCurrency(config.priceVND) : "N/A",
   }));
 
   // Price calculations
   const getSeatPrice = () =>
     Object.values(selectedSeats).reduce((total, seatNumber) => {
       const seat = seats.find((s) => s.seatNumber === seatNumber);
-      return total + (seat?.priceUSD || 0);
+      return total + (seat?.priceVND || 0);
     }, 0);
 
   const getBaggagePrice = () =>
     Object.values(baggage).reduce(
       (total, bag) =>
-        total + bag.firstBag * BAGGAGE_PRICES.firstBag + bag.secondBag * BAGGAGE_PRICES.secondBag,
+        total +
+        bag.firstBag * BAGGAGE_PRICES.firstBag +
+        bag.secondBag * BAGGAGE_PRICES.secondBag,
       0
     );
 
   const getServicesPrice = () =>
     Object.entries(additionalServices).reduce(
-      (total, [service, selected]) => total + (selected ? SERVICE_PRICES[service] : 0),
+      (total, [service, selected]) =>
+        total + (selected ? SERVICE_PRICES[service] : 0),
       0
     );
 
   const calculateTotal = () =>
-    BASE_FARE * formData.passengers.length + TAXES_FEES + getSeatPrice() + getBaggagePrice() + getServicesPrice();
+    BASE_FARE * formData.passengers.length +
+    TAXES_FEES +
+    getSeatPrice() +
+    getBaggagePrice() +
+    getServicesPrice();
 
   // Update extras data
   useEffect(() => {
@@ -521,7 +676,13 @@ const Extras = ({ flight, fare, formData, setExtrasData }) => {
       additionalServices,
       total: calculateTotal(),
     });
-  }, [selectedSeats, baggage, additionalServices, setExtrasData, formData.passengers.length]);
+  }, [
+    selectedSeats,
+    baggage,
+    additionalServices,
+    setExtrasData,
+    formData.passengers.length,
+  ]);
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-700">

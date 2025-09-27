@@ -22,6 +22,11 @@ import {
   Filler,
 } from "chart.js";
 import {
+  formatCurrencyVND,
+  formatDateVN,
+  formatNumberVN,
+} from "@/utils/currency-utils";
+import {
   TrendingUp,
   TrendingDown,
   DollarSign,
@@ -43,14 +48,14 @@ ChartJS.register(
   Filler
 );
 
-const RevenueChart = ({ data, isLoading, detailed = false }) => {
+const RevenueChart = ({ bookings, isLoading, detailed = false, dateRange }) => {
   if (isLoading) {
     return (
       <Card className={detailed ? "col-span-full" : ""}>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <DollarSign className="h-5 w-5" />
-            Revenue Analytics
+            Phân tích doanh thu
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -67,26 +72,68 @@ const RevenueChart = ({ data, isLoading, detailed = false }) => {
     );
   }
 
-  if (!data || data.length === 0) {
+  if (!bookings || bookings.length === 0) {
     return (
       <Card className={detailed ? "col-span-full" : ""}>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <DollarSign className="h-5 w-5" />
-            Revenue Analytics
+            Thống Kê Doanh Thu
           </CardTitle>
           <CardDescription>
-            Track revenue performance and trends
+            Theo dõi hiệu suất và xu hướng doanh thu
           </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="text-center py-8">
-            <p className="text-gray-500">No revenue data available</p>
+            <p className="text-gray-500">Không có dữ liệu doanh thu</p>
           </div>
         </CardContent>
       </Card>
     );
   }
+
+  // Process bookings data to create chart data
+  const processBookingsData = () => {
+    // Group bookings by date
+    const revenueByDate = {};
+
+    bookings.forEach((booking) => {
+      const date = new Date(booking.createdAt || booking.bookingDate);
+
+      // Filter by date range if provided
+      if (dateRange && (date < dateRange.from || date > dateRange.to)) {
+        return;
+      }
+
+      const dateKey = date.toISOString().split("T")[0]; // YYYY-MM-DD format
+
+      if (!revenueByDate[dateKey]) {
+        revenueByDate[dateKey] = {
+          date: date,
+          revenue: 0,
+          bookings: 0,
+        };
+      }
+
+      revenueByDate[dateKey].revenue +=
+        booking.totalPrice || booking.totalAmount || 0;
+      revenueByDate[dateKey].bookings += 1;
+    });
+
+    // Convert to array and sort by date
+    const chartData = Object.values(revenueByDate)
+      .sort((a, b) => a.date - b.date)
+      .map((item) => ({
+        date: formatDateVN(item.date, "short"),
+        revenue: item.revenue,
+        bookings: item.bookings,
+      }));
+
+    return chartData;
+  };
+
+  const data = processBookingsData();
 
   const maxRevenue = Math.max(...data.map((d) => d.revenue || 0));
   const totalRevenue = data.reduce((sum, d) => sum + (d.revenue || 0), 0);
@@ -104,23 +151,16 @@ const RevenueChart = ({ data, isLoading, detailed = false }) => {
   const avgTransactionValue =
     totalRevenue / data.reduce((sum, d) => sum + (d.bookings || 0), 0);
 
-  const formatCurrency = (amount) =>
-    new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: "USD",
-      notation: "compact",
-      maximumFractionDigits: 1,
-    }).format(amount);
+  const formatCurrency = (amount) => formatCurrencyVND(amount, false);
 
-  const formatNumber = (number) =>
-    new Intl.NumberFormat("en-US").format(number);
+  const formatNumber = (number) => formatNumberVN(number);
 
   // Chart.js configuration
   const chartData = {
     labels: data.slice(0, detailed ? 20 : 10).map((item) => item.date),
     datasets: [
       {
-        label: "Revenue",
+        label: "Doanh Thu",
         data: data.slice(0, detailed ? 20 : 10).map((item) => item.revenue),
         backgroundColor: "rgba(34, 197, 94, 0.8)",
         borderColor: "rgba(34, 197, 94, 1)",
@@ -141,7 +181,7 @@ const RevenueChart = ({ data, isLoading, detailed = false }) => {
       tooltip: {
         callbacks: {
           label: function (context) {
-            return `Revenue: ${formatCurrency(context.parsed.y)}`;
+            return `Doanh Thu: ${formatCurrency(context.parsed.y)}`;
           },
         },
         backgroundColor: "rgba(0, 0, 0, 0.8)",
@@ -179,7 +219,7 @@ const RevenueChart = ({ data, isLoading, detailed = false }) => {
     labels: data.slice(0, detailed ? 20 : 10).map((item) => item.date),
     datasets: [
       {
-        label: "Revenue Trend",
+        label: "Xu Hướng Doanh Thu",
         data: data.slice(0, detailed ? 20 : 10).map((item) => item.revenue),
         borderColor: "rgba(59, 130, 246, 1)",
         backgroundColor: "rgba(59, 130, 246, 0.1)",
@@ -203,7 +243,7 @@ const RevenueChart = ({ data, isLoading, detailed = false }) => {
       tooltip: {
         callbacks: {
           label: function (context) {
-            return `Revenue: ${formatCurrency(context.parsed.y)}`;
+            return `Doanh Thu: ${formatCurrency(context.parsed.y)}`;
           },
         },
         backgroundColor: "rgba(0, 0, 0, 0.8)",
@@ -234,10 +274,10 @@ const RevenueChart = ({ data, isLoading, detailed = false }) => {
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <DollarSign className="h-5 w-5" />
-          Revenue Analytics
+          Phân tích doanh thu
         </CardTitle>
         <CardDescription>
-          Revenue performance metrics and financial insights
+          Các chỉ số hiệu suất doanh thu và thông tin tài chính
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -247,13 +287,13 @@ const RevenueChart = ({ data, isLoading, detailed = false }) => {
             <div className="text-2xl font-bold text-green-600">
               {formatCurrency(totalRevenue)}
             </div>
-            <div className="text-sm text-gray-600">Total Revenue</div>
+            <div className="text-sm text-gray-600">Tổng Doanh Thu</div>
           </div>
           <div className="text-center p-4 bg-blue-50 rounded-lg border">
             <div className="text-2xl font-bold text-blue-600">
               {formatCurrency(avgRevenue)}
             </div>
-            <div className="text-sm text-gray-600">Daily Average</div>
+            <div className="text-sm text-gray-600">Trung Bình Ngày</div>
           </div>
           <div className="text-center p-4 bg-purple-50 rounded-lg border">
             <div className="text-2xl font-bold text-purple-600">
@@ -265,14 +305,14 @@ const RevenueChart = ({ data, isLoading, detailed = false }) => {
               ) : (
                 <TrendingDown className="h-3 w-3 text-red-500" />
               )}
-              Growth
+              Tăng Trưởng
             </div>
           </div>
           <div className="text-center p-4 bg-orange-50 rounded-lg border">
             <div className="text-2xl font-bold text-orange-600">
               {formatCurrency(avgTransactionValue)}
             </div>
-            <div className="text-sm text-gray-600">Avg Transaction</div>
+            <div className="text-sm text-gray-600">Giá Trị TB/Giao Dịch</div>
           </div>
         </div>
 
@@ -282,7 +322,7 @@ const RevenueChart = ({ data, isLoading, detailed = false }) => {
           <div>
             <h4 className="font-medium mb-3 flex items-center gap-2">
               <CreditCard className="h-4 w-4" />
-              Revenue Performance
+              Hiệu suất doanh thu
             </h4>
             <div className="h-64 w-full">
               <Bar data={chartData} options={chartOptions} />
@@ -295,7 +335,7 @@ const RevenueChart = ({ data, isLoading, detailed = false }) => {
               <div>
                 <h4 className="font-medium mb-3 flex items-center gap-2">
                   <Calendar className="h-4 w-4" />
-                  Revenue Trend Analysis
+                  Phân tích xu hướng
                 </h4>
                 <div className="h-64 w-full">
                   <Line data={trendData} options={trendOptions} />
@@ -305,12 +345,12 @@ const RevenueChart = ({ data, isLoading, detailed = false }) => {
               {/* Performance Metrics */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-4">
-                  <h5 className="font-medium text-sm">Financial Performance</h5>
+                  <h5 className="font-medium text-sm">Hiệu suất tài chính</h5>
                   <div className="space-y-3">
                     <div className="flex justify-between items-center">
                       <span className="text-sm flex items-center gap-2">
                         <Target className="h-4 w-4 text-blue-500" />
-                        Target Achievement
+                        Mục tiêu đạt được
                       </span>
                       <Badge
                         variant={
@@ -326,7 +366,7 @@ const RevenueChart = ({ data, isLoading, detailed = false }) => {
                     />
 
                     <div className="flex justify-between items-center">
-                      <span className="text-sm">Revenue Efficiency</span>
+                      <span className="text-sm">Hiệu suất doanh thu</span>
                       <Badge variant="outline">87.5%</Badge>
                     </div>
                     <Progress value={87.5} className="h-2" />
@@ -334,7 +374,9 @@ const RevenueChart = ({ data, isLoading, detailed = false }) => {
                 </div>
 
                 <div className="space-y-4">
-                  <h5 className="font-medium text-sm">Top Revenue Days</h5>
+                  <h5 className="font-medium text-sm">
+                    Top doanh thu trong các ngày
+                  </h5>
                   <div className="space-y-3">
                     {data
                       .sort((a, b) => b.revenue - a.revenue)
@@ -367,26 +409,12 @@ const RevenueChart = ({ data, isLoading, detailed = false }) => {
             /* Quick Performance Overview */
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <h5 className="font-medium text-sm">Target Progress</h5>
-                <div className="flex justify-between text-sm">
-                  <span>Current vs Target</span>
-                  <span className="font-medium">
-                    {targetAchievement.toFixed(1)}%
-                  </span>
-                </div>
-                <Progress
-                  value={Math.min(targetAchievement, 100)}
-                  className="h-2"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <h5 className="font-medium text-sm">Best Performance</h5>
+                <h5 className="font-medium text-sm">Hiệu Suất Tốt Nhất</h5>
                 <div className="text-sm">
                   <div className="font-medium">
                     {formatCurrency(maxRevenue)}
                   </div>
-                  <div className="text-gray-500">Peak day revenue</div>
+                  <div className="text-gray-500">Doanh thu ngày cao nhất</div>
                 </div>
               </div>
             </div>

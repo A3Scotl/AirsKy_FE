@@ -26,11 +26,9 @@ export function DestinationSection() {
     console.log("📋 Flights data to send:", destination.flights);
     console.log("🧭 Navigating to: /flights");
 
-    // Navigate đến result page với flights data
-    // searchCriteria sẽ được extract từ flights data trong result-section
     navigate("/flights", {
       state: {
-        flightsData: destination.flights, // Truyền trực tiếp data chuyến bay
+        flightsData: destination.flights,
       },
     });
   };

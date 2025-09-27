@@ -23,6 +23,11 @@ import {
   Filler,
 } from "chart.js";
 import {
+  formatCurrencyVND,
+  formatDateVN,
+  formatNumberVN,
+} from "@/utils/currency-utils";
+import {
   TrendingUp,
   TrendingDown,
   Users,
@@ -46,14 +51,14 @@ ChartJS.register(
   Filler
 );
 
-const CustomerChart = ({ data, isLoading, detailed = false }) => {
+const CustomerChart = ({ users, isLoading, detailed = false, dateRange }) => {
   if (isLoading) {
     return (
       <Card className={detailed ? "col-span-full" : ""}>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Users className="h-5 w-5" />
-            Customer Analytics
+            Thống Kê Khách Hàng
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -70,24 +75,116 @@ const CustomerChart = ({ data, isLoading, detailed = false }) => {
     );
   }
 
-  if (!data || data.length === 0) {
+  if (!users || users.length === 0) {
     return (
       <Card className={detailed ? "col-span-full" : ""}>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Users className="h-5 w-5" />
-            Customer Analytics
+            Thống Kê Khách Hàng
           </CardTitle>
-          <CardDescription>Customer analysis and demographics</CardDescription>
+          <CardDescription>
+            Phân tích khách hàng và nhân khẩu học
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="text-center py-8">
-            <p className="text-gray-500">No customer data available</p>
+            <p className="text-gray-500">Không có dữ liệu khách hàng</p>
           </div>
         </CardContent>
       </Card>
     );
   }
+
+  // Process users data
+  const processUsersData = () => {
+    // Group users by registration date
+    const usersByDate = {};
+    const loyaltyTiers = { standard: 0, silver: 0, gold: 0, platinum: 0 };
+    const ageGroups = { "18-25": 0, "26-35": 0, "36-50": 0, "51+": 0 };
+    const authProviders = { local: 0, google: 0, facebook: 0 };
+    const activityStats = { active: 0, verified: 0, total: users.length };
+
+    // Tính ngày hiện tại để phân tích new/returning customers
+    const now = new Date();
+    const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+
+    users.forEach((user) => {
+      // Group by registration date
+      const date = new Date(user.createdAt || user.registrationDate);
+
+      // Filter by date range if provided
+      if (dateRange && (date < dateRange.from || date > dateRange.to)) {
+        return;
+      }
+
+      const dateKey = date.toISOString().split("T")[0]; // YYYY-MM-DD format
+
+      if (!usersByDate[dateKey]) {
+        usersByDate[dateKey] = {
+          date: date,
+          customers: 0,
+        };
+      }
+
+      usersByDate[dateKey].customers += 1;
+
+      // Count loyalty tiers (dựa trên dữ liệu thực)
+      const tier = user.loyaltyTier?.toLowerCase() || "standard";
+      if (loyaltyTiers.hasOwnProperty(tier)) {
+        loyaltyTiers[tier] += 1;
+      }
+
+      // Count auth providers
+      const provider = user.authProvider?.toLowerCase() || "local";
+      if (authProviders.hasOwnProperty(provider)) {
+        authProviders[provider] += 1;
+      }
+
+      // Count activity stats
+      if (user.active) activityStats.active += 1;
+      if (user.verified) activityStats.verified += 1;
+
+      // Tính tuổi từ dateOfBirth
+      if (user.dateOfBirth) {
+        const birthDate = new Date(user.dateOfBirth);
+        const age = now.getFullYear() - birthDate.getFullYear();
+        const monthDiff = now.getMonth() - birthDate.getMonth();
+
+        const actualAge =
+          monthDiff < 0 ||
+          (monthDiff === 0 && now.getDate() < birthDate.getDate())
+            ? age - 1
+            : age;
+
+        if (actualAge >= 18 && actualAge <= 25) ageGroups["18-25"] += 1;
+        else if (actualAge >= 26 && actualAge <= 35) ageGroups["26-35"] += 1;
+        else if (actualAge >= 36 && actualAge <= 50) ageGroups["36-50"] += 1;
+        else if (actualAge > 50) ageGroups["51+"] += 1;
+      } else {
+        // Nếu không có ngày sinh, phân loại vào nhóm 26-35 (phổ biến nhất)
+        ageGroups["26-35"] += 1;
+      }
+    });
+
+    // Convert to array and sort by date
+    const chartData = Object.values(usersByDate)
+      .sort((a, b) => a.date - b.date)
+      .map((item) => ({
+        date: formatDateVN(item.date, "short"),
+        customers: item.customers,
+      }));
+
+    return { chartData, loyaltyTiers, ageGroups, authProviders, activityStats };
+  };
+
+  const {
+    chartData: data,
+    loyaltyTiers,
+    ageGroups,
+    authProviders,
+    activityStats,
+  } = processUsersData();
 
   const maxCustomers = Math.max(...data.map((d) => d.customers || 0));
   const totalCustomers = data.reduce((sum, d) => sum + (d.customers || 0), 0);
@@ -99,28 +196,60 @@ const CustomerChart = ({ data, isLoading, detailed = false }) => {
         100
       : 0;
 
-  // Customer demographics and metrics
-  const newCustomersRate = 35;
-  const returningCustomersRate = 65;
-  const customerSatisfaction = 92.8;
-  const avgLifetimeValue = 1250;
+  // Tính toán các thống kê thực từ dữ liệu
+  const now = new Date();
+  const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+  const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
 
-  const formatNumber = (number) =>
-    new Intl.NumberFormat("en-US").format(number);
-  const formatCurrency = (amount) =>
-    new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: "USD",
-      notation: "compact",
-      maximumFractionDigits: 1,
-    }).format(amount);
+  // Phân tích khách hàng mới (đăng ký trong 30 ngày qua)
+  const newCustomersCount = users.filter((user) => {
+    const createdAt = new Date(user.createdAt);
+    return createdAt >= thirtyDaysAgo;
+  }).length;
+
+  const newCustomersRate =
+    totalCustomers > 0 ? (newCustomersCount / totalCustomers) * 100 : 0;
+
+  // Phân tích khách hàng quay lại (đăng nhập trong 7 ngày qua)
+  const returningCustomersCount = users.filter((user) => {
+    if (!user.lastLogin) return false;
+    const lastLogin = new Date(user.lastLogin);
+    return lastLogin >= sevenDaysAgo;
+  }).length;
+
+  const returningCustomersRate =
+    totalCustomers > 0 ? (returningCustomersCount / totalCustomers) * 100 : 0;
+
+  // Tỷ lệ khách hàng active và verified
+  const activeRate =
+    activityStats.total > 0
+      ? (activityStats.active / activityStats.total) * 100
+      : 0;
+  const verifiedRate =
+    activityStats.total > 0
+      ? (activityStats.verified / activityStats.total) * 100
+      : 0;
+
+  // Tính tuổi trung bình
+  const ages = users
+    .filter((user) => user.dateOfBirth)
+    .map((user) => {
+      const birthDate = new Date(user.dateOfBirth);
+      return now.getFullYear() - birthDate.getFullYear();
+    });
+
+  const avgAge =
+    ages.length > 0 ? ages.reduce((sum, age) => sum + age, 0) / ages.length : 0;
+
+  const formatNumber = (number) => formatNumberVN(number);
+  const formatCurrency = (amount) => formatCurrencyVND(amount, false);
 
   // Line Chart Configuration
   const lineChartData = {
     labels: data.slice(0, detailed ? 20 : 12).map((item) => item.date),
     datasets: [
       {
-        label: "Customers",
+        label: "Khách Hàng",
         data: data.slice(0, detailed ? 20 : 12).map((item) => item.customers),
         borderColor: "rgba(147, 51, 234, 1)",
         backgroundColor: "rgba(147, 51, 234, 0.1)",
@@ -144,7 +273,7 @@ const CustomerChart = ({ data, isLoading, detailed = false }) => {
       tooltip: {
         callbacks: {
           label: function (context) {
-            return `Customers: ${formatNumber(context.parsed.y)}`;
+            return `Khách Hàng: ${formatNumber(context.parsed.y)}`;
           },
         },
         backgroundColor: "rgba(0, 0, 0, 0.8)",
@@ -168,17 +297,17 @@ const CustomerChart = ({ data, isLoading, detailed = false }) => {
   // Customer Activity by Day of Week Bar Chart
   const weeklyActivityData = {
     labels: [
-      "Monday",
-      "Tuesday",
-      "Wednesday",
-      "Thursday",
-      "Friday",
-      "Saturday",
-      "Sunday",
+      "Thứ Hai",
+      "Thứ Ba",
+      "Thứ Tư",
+      "Thứ Năm",
+      "Thứ Sáu",
+      "Thứ Bảy",
+      "Chủ Nhật",
     ],
     datasets: [
       {
-        label: "Customer Activity",
+        label: "Hoạt Động Khách Hàng",
         data: [85, 92, 88, 95, 120, 78, 65],
         backgroundColor: [
           "rgba(59, 130, 246, 0.8)",
@@ -215,7 +344,7 @@ const CustomerChart = ({ data, isLoading, detailed = false }) => {
       tooltip: {
         callbacks: {
           label: function (context) {
-            return `Active customers: ${context.parsed.y}`;
+            return `Khách hàng hoạt động: ${context.parsed.y}`;
           },
         },
         backgroundColor: "rgba(0, 0, 0, 0.8)",
@@ -238,29 +367,26 @@ const CustomerChart = ({ data, isLoading, detailed = false }) => {
 
   // Customer Age Groups Doughnut Chart
   const ageGroupData = {
-    labels: [
-      "18-25 years",
-      "26-35 years",
-      "36-45 years",
-      "46-55 years",
-      "55+ years",
-    ],
+    labels: ["18-25 tuổi", "26-35 tuổi", "36-50 tuổi", "51+ tuổi"],
     datasets: [
       {
-        data: [20, 35, 25, 15, 5],
+        data: [
+          ageGroups["18-25"],
+          ageGroups["26-35"],
+          ageGroups["36-50"],
+          ageGroups["51+"],
+        ],
         backgroundColor: [
           "rgba(59, 130, 246, 0.8)",
           "rgba(34, 197, 94, 0.8)",
           "rgba(251, 191, 36, 0.8)",
           "rgba(147, 51, 234, 0.8)",
-          "rgba(156, 163, 175, 0.8)",
         ],
         borderColor: [
           "rgba(59, 130, 246, 1)",
           "rgba(34, 197, 94, 1)",
           "rgba(251, 191, 36, 1)",
           "rgba(147, 51, 234, 1)",
-          "rgba(156, 163, 175, 1)",
         ],
         borderWidth: 2,
       },
@@ -284,7 +410,7 @@ const CustomerChart = ({ data, isLoading, detailed = false }) => {
       tooltip: {
         callbacks: {
           label: function (context) {
-            return `Age ${context.label}: ${context.parsed}%`;
+            return `Tuổi ${context.label}: ${context.parsed}%`;
           },
         },
       },
@@ -296,10 +422,10 @@ const CustomerChart = ({ data, isLoading, detailed = false }) => {
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Users className="h-5 w-5" />
-          Customer Analytics
+          Phân tích khách hàng
         </CardTitle>
         <CardDescription>
-          Customer demographics and behavior insights
+          Thông tin nhân khẩu học và hành vi của khách hàng
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -309,32 +435,27 @@ const CustomerChart = ({ data, isLoading, detailed = false }) => {
             <div className="text-2xl font-bold text-blue-600">
               {formatNumber(totalCustomers)}
             </div>
-            <div className="text-sm text-gray-600">Total Customers</div>
+            <div className="text-sm text-gray-600">Tổng Khách Hàng</div>
           </div>
           <div className="text-center p-4 bg-green-50 rounded-lg border">
             <div className="text-2xl font-bold text-green-600">
-              {Math.abs(customerGrowth).toFixed(1)}%
+              {newCustomersRate.toFixed(1)}%
             </div>
-            <div className="text-sm text-gray-600 flex items-center justify-center gap-1">
-              {customerGrowth > 0 ? (
-                <TrendingUp className="h-3 w-3 text-green-500" />
-              ) : (
-                <TrendingDown className="h-3 w-3 text-red-500" />
-              )}
-              Growth
+            <div className="text-sm text-gray-600">
+              Khách Hàng Mới (30 ngày)
             </div>
           </div>
           <div className="text-center p-4 bg-purple-50 rounded-lg border">
             <div className="text-2xl font-bold text-purple-600">
-              {customerSatisfaction}%
+              {verifiedRate.toFixed(1)}%
             </div>
-            <div className="text-sm text-gray-600">Satisfaction</div>
+            <div className="text-sm text-gray-600">Đã Xác Minh</div>
           </div>
           <div className="text-center p-4 bg-orange-50 rounded-lg border">
             <div className="text-2xl font-bold text-orange-600">
-              {formatCurrency(avgLifetimeValue)}
+              {avgAge > 0 ? avgAge.toFixed(1) : "N/A"}
             </div>
-            <div className="text-sm text-gray-600">Avg LTV</div>
+            <div className="text-sm text-gray-600">Tuổi Trung Bình</div>
           </div>
         </div>
 
@@ -344,7 +465,7 @@ const CustomerChart = ({ data, isLoading, detailed = false }) => {
           <div>
             <h4 className="font-medium mb-3 flex items-center gap-2">
               <UserCheck className="h-4 w-4" />
-              Customer Activity Trends
+              Xu Hướng Hoạt Động Khách Hàng
             </h4>
             <div className="h-64 w-full">
               <Line data={lineChartData} options={lineChartOptions} />
@@ -357,7 +478,7 @@ const CustomerChart = ({ data, isLoading, detailed = false }) => {
             <div className="space-y-3">
               <h5 className="font-medium text-sm flex items-center gap-2">
                 <Calendar className="h-4 w-4" />
-                Activity by Day of Week
+                Hoạt Động Theo Ngày Trong Tuần
               </h5>
               <div className="h-64 w-full">
                 <Bar
@@ -371,7 +492,7 @@ const CustomerChart = ({ data, isLoading, detailed = false }) => {
             <div className="space-y-3">
               <h5 className="font-medium text-sm flex items-center gap-2">
                 <Clock className="h-4 w-4" />
-                Customer Age Groups
+                Nhóm Tuổi Khách Hàng
               </h5>
               <div className="h-64 w-full">
                 <Doughnut data={ageGroupData} options={ageGroupOptions} />
@@ -379,50 +500,66 @@ const CustomerChart = ({ data, isLoading, detailed = false }) => {
             </div>
           </div>
 
-          {/* Customer Type Metrics */}
+          {/* Customer Loyalty & Auth Analysis */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="space-y-4">
-              <h5 className="font-medium text-sm">Customer Types</h5>
-              <div className="space-y-3">
-                <div className="flex justify-between items-center">
-                  <span className="text-sm flex items-center gap-2">
-                    <UserPlus className="h-4 w-4 text-green-500" />
-                    New Customers
-                  </span>
-                  <Badge variant="outline">{newCustomersRate}%</Badge>
-                </div>
-                <Progress value={newCustomersRate} className="h-2" />
-
-                <div className="flex justify-between items-center">
-                  <span className="text-sm flex items-center gap-2">
-                    <UserCheck className="h-4 w-4 text-blue-500" />
-                    Returning Customers
-                  </span>
-                  <Badge variant="outline">{returningCustomersRate}%</Badge>
-                </div>
-                <Progress value={returningCustomersRate} className="h-2" />
+            {/* Loyalty Tiers */}
+            <div className="space-y-3">
+              <h5 className="font-medium text-sm">Cấp Độ Thành Viên</h5>
+              <div className="space-y-2">
+                {Object.entries(loyaltyTiers).map(([tier, count]) => (
+                  <div key={tier} className="flex justify-between items-center">
+                    <span className="text-sm capitalize">{tier}</span>
+                    <div className="flex items-center gap-2">
+                      <div className="w-20 bg-gray-200 rounded-full h-2">
+                        <div
+                          className="bg-purple-600 h-2 rounded-full"
+                          style={{
+                            width: `${
+                              totalCustomers > 0
+                                ? (count / totalCustomers) * 100
+                                : 0
+                            }%`,
+                          }}
+                        ></div>
+                      </div>
+                      <span className="text-sm font-medium w-8 text-right">
+                        {count}
+                      </span>
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
 
-            <div className="space-y-4">
-              <h5 className="font-medium text-sm">Key Metrics</h5>
-              <div className="space-y-3">
-                <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
-                  <span className="text-sm">Peak Day</span>
-                  <span className="font-medium">
-                    {formatNumber(maxCustomers)}
-                  </span>
-                </div>
-                <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
-                  <span className="text-sm">Daily Average</span>
-                  <span className="font-medium">
-                    {Math.round(avgCustomers)}
-                  </span>
-                </div>
-                <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
-                  <span className="text-sm">Avg Trips/Customer</span>
-                  <span className="font-medium">4.2</span>
-                </div>
+            {/* Auth Providers */}
+            <div className="space-y-3">
+              <h5 className="font-medium text-sm">Các Hình thức đăng nhập</h5>
+              <div className="space-y-2">
+                {Object.entries(authProviders).map(([provider, count]) => (
+                  <div
+                    key={provider}
+                    className="flex justify-between items-center"
+                  >
+                    <span className="text-sm capitalize">{provider}</span>
+                    <div className="flex items-center gap-2">
+                      <div className="w-20 bg-gray-200 rounded-full h-2">
+                        <div
+                          className="bg-blue-600 h-2 rounded-full"
+                          style={{
+                            width: `${
+                              totalCustomers > 0
+                                ? (count / totalCustomers) * 100
+                                : 0
+                            }%`,
+                          }}
+                        ></div>
+                      </div>
+                      <span className="text-sm font-medium w-8 text-right">
+                        {count}
+                      </span>
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
           </div>
@@ -432,30 +569,45 @@ const CustomerChart = ({ data, isLoading, detailed = false }) => {
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
                 <div>
                   <div className="text-lg font-bold">
-                    {(
-                      (data.filter((d) => d.customers > avgCustomers).length /
-                        data.length) *
-                      100
-                    ).toFixed(0)}
+                    {activeRate.toFixed(1)}%
+                  </div>
+                  <div className="text-xs text-gray-600">Tỷ Lệ Active</div>
+                </div>
+                <div>
+                  <div className="text-lg font-bold">
+                    {Object.keys(loyaltyTiers)
+                      .reduce(
+                        (a, b) => (loyaltyTiers[a] > loyaltyTiers[b] ? a : b),
+                        "standard"
+                      )
+                      .toUpperCase()}
+                  </div>
+                  <div className="text-xs text-gray-600">Cấp Độ Phổ Biến</div>
+                </div>
+                <div>
+                  <div className="text-lg font-bold">
+                    {Object.keys(authProviders)
+                      .reduce(
+                        (a, b) => (authProviders[a] > authProviders[b] ? a : b),
+                        "local"
+                      )
+                      .toUpperCase()}
+                  </div>
+                  <div className="text-xs text-gray-600">
+                    Đăng Nhập Phổ Biến
+                  </div>
+                </div>
+                <div>
+                  <div className="text-lg font-bold">
+                    {totalCustomers > 0
+                      ? (
+                          (returningCustomersCount / totalCustomers) *
+                          100
+                        ).toFixed(1)
+                      : 0}
                     %
                   </div>
-                  <div className="text-xs text-gray-600">
-                    Above Average Days
-                  </div>
-                </div>
-                <div>
-                  <div className="text-lg font-bold">8.5</div>
-                  <div className="text-xs text-gray-600">
-                    Avg Session Duration
-                  </div>
-                </div>
-                <div>
-                  <div className="text-lg font-bold">3.2</div>
-                  <div className="text-xs text-gray-600">Pages per Session</div>
-                </div>
-                <div>
-                  <div className="text-lg font-bold">78%</div>
-                  <div className="text-xs text-gray-600">Mobile Users</div>
+                  <div className="text-xs text-gray-600">Tỷ Lệ Quay Lại</div>
                 </div>
               </div>
             </div>

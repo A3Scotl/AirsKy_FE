@@ -129,3 +129,75 @@ export const extractArrivalTime = (leg) => {
 
   return null;
 };
+
+/**
+ * Format ngày tháng theo định dạng Việt Nam
+ * @param {Date|string} date - Ngày cần format
+ * @param {string} format - Định dạng (short, medium, long, full)
+ * @returns {string} - Chuỗi ngày tháng đã format
+ */
+export const formatDateVN = (date, format = "medium") => {
+  if (!date) return "N/A";
+
+  try {
+    const dateObj = typeof date === "string" ? new Date(date) : date;
+    if (!dateObj || isNaN(dateObj.getTime())) return "N/A";
+
+    const options = {
+      short: {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+      },
+      medium: {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+      },
+      long: {
+        day: "numeric",
+        month: "long",
+        year: "numeric",
+      },
+      full: {
+        weekday: "long",
+        day: "numeric",
+        month: "long",
+        year: "numeric",
+      },
+    };
+
+    return dateObj.toLocaleDateString(
+      "vi-VN",
+      options[format] || options.medium
+    );
+  } catch (error) {
+    console.warn("Failed to format Vietnamese date:", date, error);
+    return "N/A";
+  }
+};
+
+/**
+ * Format ngày giờ đầy đủ theo Việt Nam
+ * @param {Date|string} date - Ngày giờ cần format
+ * @returns {string} - Chuỗi ngày giờ đã format
+ */
+export const formatDateTimeVN = (date) => {
+  if (!date) return "N/A";
+
+  try {
+    const dateObj = typeof date === "string" ? new Date(date) : date;
+    if (!dateObj || isNaN(dateObj.getTime())) return "N/A";
+
+    return dateObj.toLocaleString("vi-VN", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  } catch (error) {
+    console.warn("Failed to format Vietnamese datetime:", date, error);
+    return "N/A";
+  }
+};

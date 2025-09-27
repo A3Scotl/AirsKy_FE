@@ -85,9 +85,7 @@ const AdminUsers = () => {
 
       if (response.success && response.data?.content) {
         console.log("Raw user data:", response.data.content[0]); // Debug log
-        let allUsers = response.data.content.filter(
-          (user) => user?.id?.toString() !== currentUser?.id?.toString()
-        );
+        let allUsers = response.data.content;
 
         let finalUsers;
         let finalPagination;

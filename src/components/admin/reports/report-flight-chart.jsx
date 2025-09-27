@@ -33,6 +33,11 @@ import {
   AlertTriangle,
   XCircle,
 } from "lucide-react";
+import {
+  formatCurrencyVND,
+  formatDateVN,
+  formatNumberVN,
+} from "@/utils/currency-utils";
 
 // Register Chart.js components
 ChartJS.register(
@@ -49,14 +54,122 @@ ChartJS.register(
   Filler
 );
 
-const FlightChart = ({ data, isLoading, detailed = false }) => {
+const FlightChart = ({ flights, isLoading, detailed = false, dateRange }) => {
+  // Process flight data from database
+  const processFlightsData = () => {
+    if (!flights || flights.length === 0) {
+      return { chartData: [], statusCounts: {}, topRoutes: [] };
+    }
+
+    // Group flights by date
+    const flightsByDate = {};
+    flights.forEach((flight) => {
+      const date = new Date(flight.departureTime);
+
+      // Filter by date range if provided
+      if (dateRange && (date < dateRange.from || date > dateRange.to)) {
+        return;
+      }
+
+      const dateKey = date.toISOString().split("T")[0]; // YYYY-MM-DD format
+
+      if (!flightsByDate[dateKey]) {
+        flightsByDate[dateKey] = {
+          date: formatDateVN(date),
+          flights: 0,
+          scheduled: 0,
+          completed: 0,
+          cancelled: 0,
+        };
+      }
+
+      flightsByDate[dateKey].flights += 1;
+
+      // Count by status
+      const status = flight.status?.toLowerCase() || "scheduled";
+      if (status === "completed" || status === "arrived") {
+        flightsByDate[dateKey].completed += 1;
+      } else if (status === "cancelled") {
+        flightsByDate[dateKey].cancelled += 1;
+      } else {
+        flightsByDate[dateKey].scheduled += 1;
+      }
+    });
+
+    // Convert to array and sort by date
+    const chartData = Object.values(flightsByDate).sort(
+      (a, b) => new Date(a.date) - new Date(b.date)
+    );
+
+    // Calculate status counts for doughnut chart
+    const statusCounts = {
+      onTime: flights.filter(
+        (f) => f.status === "completed" || f.status === "arrived"
+      ).length,
+      delayed: flights.filter((f) => f.status === "delayed").length,
+      cancelled: flights.filter((f) => f.status === "cancelled").length,
+    };
+
+    // Calculate top routes with real metrics
+    const routeCounts = {};
+    flights.forEach((flight) => {
+      const route = `${flight.departureAirport?.code || "DEP"} - ${
+        flight.arrivalAirport?.code || "ARR"
+      }`;
+      routeCounts[route] = (routeCounts[route] || 0) + 1;
+    });
+
+    // Get top routes with additional metrics
+    const topRoutes = Object.entries(routeCounts)
+      .sort(([, a], [, b]) => b - a)
+      .slice(0, 6)
+      .map(([route, count]) => {
+        // Calculate additional metrics for each route
+        const routeFlights = flights.filter(
+          (f) =>
+            `${f.departureAirport?.code || "DEP"} - ${
+              f.arrivalAirport?.code || "ARR"
+            }` === route
+        );
+
+        const totalPassengers = routeFlights.reduce(
+          (sum, f) => sum + (f.passengers || f.bookedSeats || 0),
+          0
+        );
+        const totalCapacity = routeFlights.reduce(
+          (sum, f) => sum + (f.totalSeats || f.capacity || 200),
+          0
+        );
+        const occupancyRate =
+          totalCapacity > 0
+            ? Math.round((totalPassengers / totalCapacity) * 100)
+            : 0;
+
+        const totalRevenue = routeFlights.reduce(
+          (sum, f) => sum + (f.revenue || f.totalRevenue || 0),
+          0
+        );
+
+        return {
+          route,
+          flights: count,
+          occupancy: occupancyRate,
+          revenue: formatCurrencyVND(totalRevenue),
+          passengers: totalPassengers,
+        };
+      });
+
+    return { chartData, statusCounts, topRoutes };
+  };
+
+  const { chartData: data, statusCounts, topRoutes } = processFlightsData();
   if (isLoading) {
     return (
       <Card className={detailed ? "col-span-full" : ""}>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Plane className="h-5 w-5" />
-            Flight Analytics
+            Thống Kê Chuyến Bay
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -79,15 +192,15 @@ const FlightChart = ({ data, isLoading, detailed = false }) => {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Plane className="h-5 w-5" />
-            Flight Analytics
+            Thống Kê Chuyến Bay
           </CardTitle>
           <CardDescription>
-            Flight operations and performance metrics
+            Hoạt động chuyến bay và các chỉ số hiệu suất
           </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="text-center py-8">
-            <p className="text-gray-500">No flight data available</p>
+            <p className="text-gray-500">Không có dữ liệu chuyến bay</p>
           </div>
         </CardContent>
       </Card>
@@ -104,23 +217,43 @@ const FlightChart = ({ data, isLoading, detailed = false }) => {
         100
       : 0;
 
-  // Flight operation metrics
-  const onTimeRate = 85.2;
-  const delayedRate = 12.3;
-  const cancelledRate = 2.5;
-  const avgOccupancyRate = 78.5;
-  const avgFlightDuration = 2.3;
-  const activeAircraft = 18;
+  // Calculate additional metrics from real data
+  const avgFlightDuration =
+    flights && flights.length > 0
+      ? (
+          flights.reduce(
+            (sum, f) => sum + (f.duration || f.flightDuration || 2.3),
+            0
+          ) / flights.length
+        ).toFixed(1)
+      : 2.3;
 
-  const formatNumber = (number) =>
-    new Intl.NumberFormat("en-US").format(number);
+  const activeAircraft =
+    flights && flights.length > 0
+      ? new Set(
+          flights.map((f) => f.aircraftId || f.aircraft?.id).filter(Boolean)
+        ).size || 18
+      : 18;
+
+  const avgOccupancyRate =
+    flights && flights.length > 0
+      ? Math.round(
+          flights.reduce((sum, f) => {
+            const passengers = f.passengers || f.bookedSeats || 0;
+            const capacity = f.totalSeats || f.capacity || 200;
+            return sum + (capacity > 0 ? (passengers / capacity) * 100 : 0);
+          }, 0) / flights.length
+        )
+      : 78.5;
+
+  const formatNumber = (number) => formatNumberVN(number);
 
   // Bar Chart Configuration
   const barChartData = {
     labels: data.slice(0, detailed ? 20 : 12).map((item) => item.date),
     datasets: [
       {
-        label: "Flights",
+        label: "Chuyến Bay",
         data: data.slice(0, detailed ? 20 : 12).map((item) => item.flights),
         backgroundColor: "rgba(14, 165, 233, 0.8)",
         borderColor: "rgba(14, 165, 233, 1)",
@@ -141,7 +274,7 @@ const FlightChart = ({ data, isLoading, detailed = false }) => {
       tooltip: {
         callbacks: {
           label: function (context) {
-            return `Flights: ${formatNumber(context.parsed.y)}`;
+            return `Chuyến Bay: ${formatNumber(context.parsed.y)}`;
           },
         },
         backgroundColor: "rgba(0, 0, 0, 0.8)",
@@ -167,10 +300,14 @@ const FlightChart = ({ data, isLoading, detailed = false }) => {
 
   // Flight Status Doughnut Chart
   const statusData = {
-    labels: ["On-Time", "Delayed", "Cancelled"],
+    labels: ["Đúng Giờ", "Trễ", "Hủy"],
     datasets: [
       {
-        data: [onTimeRate, delayedRate, cancelledRate],
+        data: [
+          statusCounts.onTime,
+          statusCounts.delayed,
+          statusCounts.cancelled,
+        ],
         backgroundColor: [
           "rgba(34, 197, 94, 0.8)",
           "rgba(251, 191, 36, 0.8)",
@@ -209,11 +346,11 @@ const FlightChart = ({ data, isLoading, detailed = false }) => {
 
   // Radar Chart for Route Performance
   const radarData = {
-    labels: ["NYC → LAX", "CHI → MIA", "DEN → SEA", "ATL → LAS", "BOS → SFO"],
+    labels: topRoutes.slice(0, 5).map((route) => route.route),
     datasets: [
       {
-        label: "Flight Frequency",
-        data: [45, 32, 28, 25, 22],
+        label: "Tần Suất Chuyến Bay",
+        data: topRoutes.slice(0, 5).map((route) => route.flights),
         borderColor: "rgba(59, 130, 246, 1)",
         backgroundColor: "rgba(59, 130, 246, 0.2)",
         pointBackgroundColor: "rgba(59, 130, 246, 1)",
@@ -222,8 +359,8 @@ const FlightChart = ({ data, isLoading, detailed = false }) => {
         pointHoverBorderColor: "rgba(59, 130, 246, 1)",
       },
       {
-        label: "Occupancy Rate",
-        data: [85, 72, 90, 68, 76],
+        label: "Tỷ Lệ Lấp Đầy",
+        data: topRoutes.slice(0, 5).map((route) => route.occupancy),
         borderColor: "rgba(34, 197, 94, 1)",
         backgroundColor: "rgba(34, 197, 94, 0.2)",
         pointBackgroundColor: "rgba(34, 197, 94, 1)",
@@ -254,23 +391,15 @@ const FlightChart = ({ data, isLoading, detailed = false }) => {
     },
   };
 
-  // Sample route data
-  const topRoutes = [
-    { route: "NYC → LAX", flights: 45, occupancy: 85, revenue: "$1.2M" },
-    { route: "CHI → MIA", flights: 32, occupancy: 72, revenue: "$890K" },
-    { route: "DEN → SEA", flights: 28, occupancy: 90, revenue: "$950K" },
-    { route: "ATL → LAS", flights: 25, occupancy: 68, revenue: "$720K" },
-  ];
-
   return (
     <Card className={detailed ? "col-span-full" : ""}>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Plane className="h-5 w-5" />
-          Flight Analytics
+          Thống Kê Chuyến Bay
         </CardTitle>
         <CardDescription>
-          Flight operations and performance insights
+          Hoạt động chuyến bay và phân tích hiệu suất
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -280,25 +409,28 @@ const FlightChart = ({ data, isLoading, detailed = false }) => {
             <div className="text-2xl font-bold text-blue-600">
               {formatNumber(totalFlights)}
             </div>
-            <div className="text-sm text-gray-600">Total Flights</div>
+            <div className="text-sm text-gray-600">Tổng Chuyến Bay</div>
           </div>
           <div className="text-center p-4 bg-green-50 rounded-lg border">
             <div className="text-2xl font-bold text-green-600">
-              {onTimeRate}%
+              {totalFlights > 0
+                ? Math.round((statusCounts.onTime / totalFlights) * 100)
+                : 0}
+              %
             </div>
-            <div className="text-sm text-gray-600">On-Time Rate</div>
+            <div className="text-sm text-gray-600">Tỷ Lệ Đúng Giờ</div>
           </div>
           <div className="text-center p-4 bg-purple-50 rounded-lg border">
             <div className="text-2xl font-bold text-purple-600">
               {avgOccupancyRate}%
             </div>
-            <div className="text-sm text-gray-600">Occupancy Rate</div>
+            <div className="text-sm text-gray-600">Tỷ Lệ Lấp Đầy</div>
           </div>
           <div className="text-center p-4 bg-orange-50 rounded-lg border">
             <div className="text-2xl font-bold text-orange-600">
               {Math.round(avgFlights)}
             </div>
-            <div className="text-sm text-gray-600">Daily Average</div>
+            <div className="text-sm text-gray-600">Trung Bình Ngày</div>
           </div>
         </div>
 
@@ -308,7 +440,7 @@ const FlightChart = ({ data, isLoading, detailed = false }) => {
           <div>
             <h4 className="font-medium mb-3 flex items-center gap-2">
               <Clock className="h-4 w-4" />
-              Flight Activity
+              Hoạt Động Chuyến Bay
             </h4>
             <div className="h-64 w-full">
               <Bar data={barChartData} options={barChartOptions} />
@@ -320,7 +452,7 @@ const FlightChart = ({ data, isLoading, detailed = false }) => {
             {/* Flight Status Distribution */}
             <div className="space-y-3">
               <h5 className="font-medium text-sm">
-                Flight Status Distribution
+                Phân Bổ Trạng Thái Chuyến Bay
               </h5>
               <div className="h-64 w-full">
                 <Doughnut data={statusData} options={statusOptions} />
@@ -331,7 +463,7 @@ const FlightChart = ({ data, isLoading, detailed = false }) => {
             {detailed && (
               <div className="space-y-3">
                 <h5 className="font-medium text-sm">
-                  Route Performance Analysis
+                  Phân Tích Hiệu Suất Tuyến Bay
                 </h5>
                 <div className="h-64 w-full">
                   <Radar data={radarData} options={radarOptions} />
@@ -342,7 +474,7 @@ const FlightChart = ({ data, isLoading, detailed = false }) => {
             {/* Top Routes (shown when not detailed or as second chart when detailed) */}
             {!detailed && (
               <div className="space-y-3">
-                <h5 className="font-medium text-sm">Top Routes</h5>
+                <h5 className="font-medium text-sm">Các Tuyến Bay Hàng Đầu</h5>
                 <div className="space-y-3">
                   {topRoutes.slice(0, 4).map((route, index) => (
                     <div
@@ -352,7 +484,7 @@ const FlightChart = ({ data, isLoading, detailed = false }) => {
                       <div>
                         <div className="font-medium text-sm">{route.route}</div>
                         <div className="text-xs text-gray-500">
-                          {route.flights} flights
+                          {route.flights} chuyến bay
                         </div>
                       </div>
                       <div className="text-right">
@@ -376,9 +508,12 @@ const FlightChart = ({ data, isLoading, detailed = false }) => {
               <div className="flex items-center gap-3">
                 <CheckCircle className="h-8 w-8 text-green-500" />
                 <div>
-                  <div className="font-medium">On-Time</div>
+                  <div className="font-medium">Đúng Giờ</div>
                   <div className="text-sm text-gray-600">
-                    {onTimeRate}% of flights
+                    {totalFlights > 0
+                      ? Math.round((statusCounts.onTime / totalFlights) * 100)
+                      : 0}
+                    % chuyến bay
                   </div>
                 </div>
               </div>
@@ -388,9 +523,12 @@ const FlightChart = ({ data, isLoading, detailed = false }) => {
               <div className="flex items-center gap-3">
                 <AlertTriangle className="h-8 w-8 text-yellow-500" />
                 <div>
-                  <div className="font-medium">Delayed</div>
+                  <div className="font-medium">Trễ</div>
                   <div className="text-sm text-gray-600">
-                    {delayedRate}% of flights
+                    {totalFlights > 0
+                      ? Math.round((statusCounts.delayed / totalFlights) * 100)
+                      : 0}
+                    % chuyến bay
                   </div>
                 </div>
               </div>
@@ -400,9 +538,14 @@ const FlightChart = ({ data, isLoading, detailed = false }) => {
               <div className="flex items-center gap-3">
                 <XCircle className="h-8 w-8 text-red-500" />
                 <div>
-                  <div className="font-medium">Cancelled</div>
+                  <div className="font-medium">Hủy</div>
                   <div className="text-sm text-gray-600">
-                    {cancelledRate}% of flights
+                    {totalFlights > 0
+                      ? Math.round(
+                          (statusCounts.cancelled / totalFlights) * 100
+                        )
+                      : 0}
+                    % chuyến bay
                   </div>
                 </div>
               </div>
@@ -430,7 +573,7 @@ const FlightChart = ({ data, isLoading, detailed = false }) => {
                         <div>
                           <div className="font-medium">{route.route}</div>
                           <div className="text-sm text-gray-600">
-                            {route.flights} flights
+                            {route.flights} chuyến bay
                           </div>
                         </div>
                       </div>
@@ -439,7 +582,7 @@ const FlightChart = ({ data, isLoading, detailed = false }) => {
                           {route.revenue}
                         </div>
                         <div className="text-sm text-gray-600">
-                          {route.occupancy}% occupancy
+                          {route.occupancy}% lấp đầy
                         </div>
                       </div>
                     </div>
@@ -453,15 +596,19 @@ const FlightChart = ({ data, isLoading, detailed = false }) => {
                   <div className="text-lg font-bold">
                     {formatNumber(maxFlights)}
                   </div>
-                  <div className="text-xs text-gray-600">Peak Day Flights</div>
+                  <div className="text-xs text-gray-600">
+                    Chuyến Bay Ngày Cao Điểm
+                  </div>
                 </div>
                 <div>
                   <div className="text-lg font-bold">{avgFlightDuration}h</div>
-                  <div className="text-xs text-gray-600">Avg Duration</div>
+                  <div className="text-xs text-gray-600">
+                    Thời Gian Trung Bình
+                  </div>
                 </div>
                 <div>
                   <div className="text-lg font-bold">{activeAircraft}</div>
-                  <div className="text-xs text-gray-600">Active Aircraft</div>
+                  <div className="text-xs text-gray-600">Máy Bay Hoạt Động</div>
                 </div>
                 <div>
                   <div className="text-lg font-bold">
@@ -473,7 +620,7 @@ const FlightChart = ({ data, isLoading, detailed = false }) => {
                     ) : (
                       <TrendingDown className="h-3 w-3 text-red-500" />
                     )}
-                    Growth
+                    Tăng Trưởng
                   </div>
                 </div>
               </div>
