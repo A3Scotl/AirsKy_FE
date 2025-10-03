@@ -110,7 +110,7 @@ const RefundModal = ({ open, onClose, paymentData }) => {
     }
 
     const maxRefundAmount = paymentData.amount;
-    const processingFeeRefund = refundType === "full" ? paymentData.fees : 0;
+    const processingFeeRefund = 0; // Fees not available in current API
     const calculatedRefundAmount =
       refundType === "full" ? maxRefundAmount : parseFloat(refundAmount) || 0;
 
@@ -197,16 +197,16 @@ const RefundModal = ({ open, onClose, paymentData }) => {
   };
 
   const refundReasons = [
-    "Customer request",
-    "Duplicate payment",
-    "Flight cancellation",
-    "Flight delay/schedule change",
-    "Service not provided",
-    "Technical error",
-    "Fraud prevention",
-    "Chargeback prevention",
-    "Goodwill gesture",
-    "Other",
+    "Yêu cầu của khách hàng",
+    "Thanh toán trùng lặp",
+    "Hủy chuyến bay",
+    "Chuyến bay trễ/thay đổi lịch",
+    "Không cung cấp dịch vụ",
+    "Lỗi kỹ thuật",
+    "Ngăn chặn gian lận",
+    "Ngăn chặn hoàn tiền",
+    "Thiện chí",
+    "Khác",
   ];
 
   return (
@@ -252,7 +252,7 @@ const RefundModal = ({ open, onClose, paymentData }) => {
             <CardContent className="space-y-3">
               <div className="flex justify-between">
                 <span className="text-gray-600">{TEXT.fields.customer}</span>
-                <span className="font-medium">{paymentData.customerName}</span>
+                <span className="font-medium">N/A</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-600">
@@ -267,24 +267,21 @@ const RefundModal = ({ open, onClose, paymentData }) => {
                   {TEXT.fields.originalAmount}
                 </span>
                 <span className="font-bold text-green-600">
-                  {formatCurrency(paymentData.amount, paymentData.currency)}
+                  {formatCurrency(paymentData.amount, "VND")}
                 </span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-600">
                   {TEXT.fields.processingFees}
                 </span>
-                <span className="font-medium">
-                  {formatCurrency(paymentData.fees, paymentData.currency)}
-                </span>
+                <span className="font-medium">{formatCurrency(0, "VND")}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-600">
                   {TEXT.fields.paymentMethod}
                 </span>
                 <span className="font-medium capitalize">
-                  {paymentData.method.replace("_", " ")} (
-                  {paymentData.methodDetails})
+                  {paymentData.paymentMethod.replace("_", " ")}
                 </span>
               </div>
             </CardContent>
@@ -416,10 +413,7 @@ const RefundModal = ({ open, onClose, paymentData }) => {
                   {TEXT.fields.refundAmount}
                 </span>
                 <span className="font-bold text-purple-600">
-                  {formatCurrency(
-                    calculations.calculatedRefundAmount,
-                    paymentData.currency
-                  )}
+                  {formatCurrency(calculations.calculatedRefundAmount, "VND")}
                 </span>
               </div>
               {refundType === "full" && (
@@ -428,10 +422,7 @@ const RefundModal = ({ open, onClose, paymentData }) => {
                     {TEXT.fields.processingFeeRefund}
                   </span>
                   <span className="font-medium text-green-600">
-                    {formatCurrency(
-                      calculations.processingFeeRefund,
-                      paymentData.currency
-                    )}
+                    {formatCurrency(calculations.processingFeeRefund, "VND")}
                   </span>
                 </div>
               )}
@@ -439,19 +430,13 @@ const RefundModal = ({ open, onClose, paymentData }) => {
               <div className="flex justify-between text-lg font-bold">
                 <span>{TEXT.fields.totalRefund}</span>
                 <span className="text-purple-600">
-                  {formatCurrency(
-                    calculations.totalRefund,
-                    paymentData.currency
-                  )}
+                  {formatCurrency(calculations.totalRefund, "VND")}
                 </span>
               </div>
               <div className="flex justify-between text-sm text-gray-600">
                 <span>{TEXT.fields.remainingBalance}</span>
                 <span>
-                  {formatCurrency(
-                    calculations.remainingBalance,
-                    paymentData.currency
-                  )}
+                  {formatCurrency(calculations.remainingBalance, "VND")}
                 </span>
               </div>
             </CardContent>

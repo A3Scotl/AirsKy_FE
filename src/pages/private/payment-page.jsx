@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import {
   DollarSign,
   TrendingUp,
@@ -22,11 +22,23 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Calendar as CalendarComponent } from "@/components/ui/calendar";
+import { format } from "date-fns";
+import { vi } from "date-fns/locale";
 import PaymentAnalytics from "@/components/admin/payments/payment-analytics";
 import PaymentTable from "@/components/admin/payments/payment-table";
 import PaymentDetailsModal from "@/components/admin/payments/payment-details-modal";
 import RefundModal from "@/components/admin/payments/payment-refund-modal";
+import PaymentMethods from "@/components/admin/payments/payment-methods";
 import ExportButton from "@/components/common/export-button";
+import { paymentApi } from "@/apis/payment-api";
+import { formatCurrencyVND } from "@/utils/currency-utils";
+import { toast } from "sonner";
 
 const AdminPaymentPage = () => {
   const [activeTab, setActiveTab] = useState("transactions");
@@ -34,34 +46,207 @@ const AdminPaymentPage = () => {
   const [statusFilter, setStatusFilter] = useState("all");
   const [methodFilter, setMethodFilter] = useState("all");
   const [dateRange, setDateRange] = useState("30");
+  const [startDate, setStartDate] = useState(null);
+  const [endDate, setEndDate] = useState(null);
+  const [refreshKey, setRefreshKey] = useState(0);
   const [selectedPayment, setSelectedPayment] = useState(null);
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
   const [isRefundModalOpen, setIsRefundModalOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [paymentsData, setPaymentsData] = useState([]);
 
-  // Payment statistics
-  const paymentStats = {
-    totalRevenue: 2847560.0,
-    totalTransactions: 15847,
-    averageTransaction: 179.65,
-    successRate: 98.7,
-    dailyGrowth: 8.2,
-    monthlyGrowth: 23.5,
-    pendingAmount: 45890.5,
-    refundedAmount: 12340.75,
-  };
+  // Fetch payments data for statistics
+  useEffect(() => {
+    const fetchPaymentsData = async () => {
+      try {
+        // Build query parameters
+        const params = {
+          page: 0,
+          size: 1000, // Get enough data for statistics
+        };
+
+        // Add date filters
+        if (dateRange !== "all") {
+          if (dateRange === "custom" && startDate && endDate) {
+            params.startDate = startDate.toISOString().split("T")[0];
+            params.endDate = endDate.toISOString().split("T")[0];
+          } else if (dateRange !== "custom") {
+            const days = parseInt(dateRange);
+            const endDate = new Date();
+            const startDate = new Date();
+            startDate.setDate(endDate.getDate() - days);
+            params.startDate = startDate.toISOString().split("T")[0];
+            params.endDate = endDate.toISOString().split("T")[0];
+          }
+        }
+
+        const response = await paymentApi.getAllPayments(params);
+        if (response.success) {
+          setPaymentsData(response.data.content || response.data || []);
+        }
+      } catch (error) {
+        console.error("Error fetching payments data:", error);
+        setPaymentsData([]);
+      }
+    };
+
+    fetchPaymentsData();
+  }, [dateRange, startDate, endDate, refreshKey]);
+
+  // Calculate payment statistics from real data
+  const paymentStats = useMemo(() => {
+    if (!paymentsData.length) {
+      const now = new Date();
+      const currentMonth = now.getMonth() + 1;
+      const currentYear = now.getFullYear();
+      const previousMonth = currentMonth === 1 ? 12 : currentMonth - 1;
+      const previousYear = currentMonth === 1 ? currentYear - 1 : currentYear;
+
+      return {
+        totalRevenue: 0,
+        totalTransactions: 0,
+        averageTransaction: 0,
+        successRate: 0,
+        dailyGrowth: 0,
+        monthlyGrowth: 0,
+        pendingAmount: 0,
+        refundedAmount: 0,
+        currentMonth,
+        currentYear,
+        previousMonth,
+        previousYear,
+      };
+    }
+
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const thisMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+
+    // Month info for display
+    const currentMonth = now.getMonth() + 1; // JavaScript months are 0-indexed
+    const currentYear = now.getFullYear();
+    const previousMonth = currentMonth === 1 ? 12 : currentMonth - 1;
+    const previousYear = currentMonth === 1 ? currentYear - 1 : currentYear;
+
+    // Calculate totals
+    const totalRevenue = paymentsData
+      .filter((p) => p.status === "SUCCESS")
+      .reduce((sum, p) => sum + (p.amount || 0), 0);
+
+    const totalTransactions = paymentsData.length;
+
+    const successfulTransactions = paymentsData.filter(
+      (p) => p.status === "SUCCESS"
+    ).length;
+    const successRate =
+      totalTransactions > 0
+        ? (successfulTransactions / totalTransactions) * 100
+        : 0;
+
+    const averageTransaction =
+      successfulTransactions > 0 ? totalRevenue / successfulTransactions : 0;
+
+    // Calculate pending and refunded amounts
+    const pendingAmount = paymentsData
+      .filter((p) => p.status === "PENDING")
+      .reduce((sum, p) => sum + (p.amount || 0), 0);
+
+    const refundedAmount = paymentsData
+      .filter((p) => p.status === "REFUNDED")
+      .reduce((sum, p) => sum + (p.amount || 0), 0);
+
+    // Calculate growth rates (simplified - comparing with previous period)
+    const todayRevenue = paymentsData
+      .filter((p) => p.status === "SUCCESS" && new Date(p.paymentDate) >= today)
+      .reduce((sum, p) => sum + (p.amount || 0), 0);
+
+    const yesterdayRevenue = paymentsData
+      .filter(
+        (p) =>
+          p.status === "SUCCESS" &&
+          new Date(p.paymentDate) >= yesterday &&
+          new Date(p.paymentDate) < today
+      )
+      .reduce((sum, p) => sum + (p.amount || 0), 0);
+
+    const dailyGrowth =
+      yesterdayRevenue > 0
+        ? ((todayRevenue - yesterdayRevenue) / yesterdayRevenue) * 100
+        : 0;
+
+    // Calculate monthly growth (compare same period)
+    const thisMonthRevenue = paymentsData
+      .filter(
+        (p) => p.status === "SUCCESS" && new Date(p.paymentDate) >= thisMonth
+      )
+      .reduce((sum, p) => sum + (p.amount || 0), 0);
+
+    // For fair comparison, calculate last month revenue for the same number of days
+    const daysIntoMonth = now.getDate();
+    const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const lastMonthEnd = new Date(
+      now.getFullYear(),
+      now.getMonth() - 1,
+      daysIntoMonth
+    );
+
+    const lastMonthRevenue = paymentsData
+      .filter((p) => {
+        const paymentDate = new Date(p.paymentDate);
+        return (
+          p.status === "SUCCESS" &&
+          paymentDate >= lastMonthStart &&
+          paymentDate <= lastMonthEnd
+        );
+      })
+      .reduce((sum, p) => sum + (p.amount || 0), 0);
+
+    const monthlyGrowth =
+      lastMonthRevenue > 0
+        ? ((thisMonthRevenue - lastMonthRevenue) / lastMonthRevenue) * 100
+        : 0;
+
+    return {
+      totalRevenue,
+      totalTransactions,
+      averageTransaction,
+      successRate,
+      dailyGrowth,
+      monthlyGrowth,
+      pendingAmount,
+      refundedAmount,
+      currentMonth,
+      currentYear,
+      previousMonth,
+      previousYear,
+    };
+  }, [paymentsData]);
 
   const handleRefresh = async () => {
-    setIsLoading(true);
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    setIsLoading(false);
+    try {
+      setIsLoading(true);
+      // Trigger refresh by incrementing key
+      setRefreshKey((prev) => prev + 1);
+      toast.success("Dữ liệu đã được làm mới");
+    } catch (error) {
+      console.error("Error refreshing payments data:", error);
+      toast.error("Không thể làm mới dữ liệu");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const handleExportData = () => {
-    // In real implementation, this would export payment data
-    // console.log("Exporting payment data...");
-    alert("Payment data exported successfully!");
+  const handleResetFilters = () => {
+    setSearchTerm("");
+    setStatusFilter("all");
+    setMethodFilter("all");
+    setDateRange("30");
+    setStartDate(null);
+    setEndDate(null);
+    toast.success("Đã đặt lại bộ lọc");
   };
 
   const handleViewDetails = (payment) => {
@@ -96,6 +281,14 @@ const AdminPaymentPage = () => {
         <div className="flex items-center space-x-3">
           <Button
             variant="outline"
+            onClick={handleResetFilters}
+            className="flex items-center space-x-2"
+          >
+            <Filter className="h-4 w-4" />
+            <span>Đặt lại bộ lọc</span>
+          </Button>
+          <Button
+            variant="outline"
             onClick={handleRefresh}
             disabled={isLoading}
             className="flex items-center space-x-2"
@@ -119,11 +312,14 @@ const AdminPaymentPage = () => {
               </div>
               <div>
                 <p className="text-2xl font-bold text-green-600">
-                  ${paymentStats.totalRevenue.toLocaleString()}
+                  {formatCurrencyVND(paymentStats.totalRevenue)}
                 </p>
                 <p className="text-xs text-gray-500">Tổng doanh thu</p>
                 <p className="text-xs text-green-600">
-                  +{paymentStats.monthlyGrowth}% tháng này
+                  {paymentStats.monthlyGrowth >= 0 ? "+" : ""}
+                  {paymentStats.monthlyGrowth.toFixed(1)}% (
+                  {paymentStats.currentMonth}/{paymentStats.currentYear} vs{" "}
+                  {paymentStats.previousMonth}/{paymentStats.previousYear})
                 </p>
               </div>
             </div>
@@ -142,7 +338,7 @@ const AdminPaymentPage = () => {
                 </p>
                 <p className="text-xs text-gray-500">Tổng giao dịch</p>
                 <p className="text-xs text-blue-600">
-                  +{paymentStats.dailyGrowth}% hôm nay
+                  {paymentStats.dailyGrowth.toFixed(1)}% hôm nay
                 </p>
               </div>
             </div>
@@ -157,13 +353,13 @@ const AdminPaymentPage = () => {
               </div>
               <div>
                 <p className="text-2xl font-bold">
-                  ${paymentStats.averageTransaction}
+                  {formatCurrencyVND(paymentStats.averageTransaction)}
                 </p>
                 <p className="text-xs text-gray-500">
                   Giá trị giao dịch trung bình
                 </p>
                 <p className="text-xs text-purple-600">
-                  {paymentStats.successRate}% tỷ lệ thành công
+                  {paymentStats.successRate.toFixed(1)}% tỷ lệ thành công
                 </p>
               </div>
             </div>
@@ -177,12 +373,16 @@ const AdminPaymentPage = () => {
                 <Users className="h-6 w-6 text-orange-600" />
               </div>
               <div>
-                <p className="text-2xl font-bold">
-                  ${paymentStats.pendingAmount.toLocaleString()}
-                </p>
-                <p className="text-xs text-gray-500"> Tiền đang chờ</p>
                 <p className="text-xs text-orange-600">
-                  ${paymentStats.refundedAmount.toLocaleString()} hoàn tiền
+                  <div>
+                    <p className="text-2xl font-bold">
+                      {formatCurrencyVND(paymentStats.pendingAmount)}
+                    </p>
+                    <p className="text-xs text-gray-500"> Tiền đang chờ</p>
+                    <p className="text-xs text-orange-600">
+                      {formatCurrencyVND(paymentStats.refundedAmount)} hoàn tiền
+                    </p>
+                  </div>
                 </p>
               </div>
             </div>
@@ -198,7 +398,7 @@ const AdminPaymentPage = () => {
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
                 <Input
-                  placeholder="Search by transaction ID, customer name, or email..."
+                  placeholder="Tìm theo mã thanh toán, mã đặt chỗ..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="pl-10"
@@ -208,47 +408,85 @@ const AdminPaymentPage = () => {
 
             <Select value={statusFilter} onValueChange={setStatusFilter}>
               <SelectTrigger>
-                <SelectValue placeholder="Status" />
+                <SelectValue placeholder="Trạng thái" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Tất cả</SelectItem>
-                <SelectItem value="completed">Hoàn thành</SelectItem>
-                <SelectItem value="pending">Đang chờ</SelectItem>
-                <SelectItem value="failed">Thất bại</SelectItem>
-                <SelectItem value="refunded">Hoàn tiền</SelectItem>
-                <SelectItem value="cancelled">Đã hủy</SelectItem>
+                <SelectItem value="SUCCESS">Thành công</SelectItem>
+                <SelectItem value="PENDING">Đang chờ</SelectItem>
+                <SelectItem value="REFUNDED">Đã hoàn tiền</SelectItem>
               </SelectContent>
             </Select>
 
             <Select value={methodFilter} onValueChange={setMethodFilter}>
               <SelectTrigger>
-                <SelectValue placeholder="Payment Method" />
+                <SelectValue placeholder="Phương thức" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Tất cả</SelectItem>
-                <SelectItem value="credit_card">Thẻ tín dụng</SelectItem>
-                <SelectItem value="debit_card">Thẻ ghi nợ</SelectItem>
-                <SelectItem value="paypal">PayPal</SelectItem>
-                <SelectItem value="bank_transfer">
-                  Chuyển khoản ngân hàng
-                </SelectItem>
+                <SelectItem value="CREDIT_CARD">Thẻ tín dụng</SelectItem>
+                <SelectItem value="BANK_TRANSFER">Chuyển khoản</SelectItem>
+                <SelectItem value="PAYPAL">PayPal</SelectItem>
               </SelectContent>
             </Select>
 
-            <Select value={dateRange} onValueChange={setDateRange}>
-              <SelectTrigger>
-                <SelectValue placeholder="Date Range" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="7">7 ngày qua</SelectItem>
-                <SelectItem value="30">30 ngày qua</SelectItem>
-                <SelectItem value="90">3 tháng qua</SelectItem>
-                <SelectItem value="365">1 năm qua</SelectItem>
-                <SelectItem value="custom">
-                  Khoảng thời gian tùy chỉnh
-                </SelectItem>
-              </SelectContent>
-            </Select>
+            <div className="space-y-2">
+              <Select value={dateRange} onValueChange={setDateRange}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Thời gian" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="7">7 ngày qua</SelectItem>
+                  <SelectItem value="30">30 ngày qua</SelectItem>
+                  <SelectItem value="90">3 tháng qua</SelectItem>
+                  <SelectItem value="365">1 năm qua</SelectItem>
+                  <SelectItem value="all">Tất cả</SelectItem>
+                  <SelectItem value="custom">Tùy chỉnh</SelectItem>
+                </SelectContent>
+              </Select>
+
+              {dateRange === "custom" && (
+                <div className="flex gap-2">
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button variant="outline" className="flex-1">
+                        <Calendar className="mr-2 h-4 w-4" />
+                        {startDate
+                          ? format(startDate, "dd/MM/yyyy", { locale: vi })
+                          : "Từ ngày"}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0">
+                      <CalendarComponent
+                        mode="single"
+                        selected={startDate}
+                        onSelect={setStartDate}
+                        initialFocus
+                      />
+                    </PopoverContent>
+                  </Popover>
+
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button variant="outline" className="flex-1">
+                        <Calendar className="mr-2 h-4 w-4" />
+                        {endDate
+                          ? format(endDate, "dd/MM/yyyy", { locale: vi })
+                          : "Đến ngày"}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0">
+                      <CalendarComponent
+                        mode="single"
+                        selected={endDate}
+                        onSelect={setEndDate}
+                        initialFocus
+                      />
+                    </PopoverContent>
+                  </Popover>
+                </div>
+              )}
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -259,9 +497,9 @@ const AdminPaymentPage = () => {
         onValueChange={setActiveTab}
         className="space-y-6"
       >
-        <TabsList className="grid w-full grid-cols-2">
-          {/* <TabsTrigger value="overview">Overview</TabsTrigger> */}
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="transactions">Giao dịch</TabsTrigger>
+          <TabsTrigger value="methods">Phương thức thanh toán</TabsTrigger>
           <TabsTrigger value="analytics">Phân tích</TabsTrigger>
         </TabsList>
 
@@ -278,6 +516,9 @@ const AdminPaymentPage = () => {
                   statusFilter={statusFilter}
                   methodFilter={methodFilter}
                   dateRange={dateRange}
+                  startDate={startDate}
+                  endDate={endDate}
+                  refreshKey={refreshKey}
                   onViewDetails={handleViewDetails}
                   onRefund={handleRefund}
                   limit={5}
@@ -299,6 +540,9 @@ const AdminPaymentPage = () => {
                 statusFilter={statusFilter}
                 methodFilter={methodFilter}
                 dateRange={dateRange}
+                startDate={startDate}
+                endDate={endDate}
+                refreshKey={refreshKey}
                 onViewDetails={handleViewDetails}
                 onRefund={handleRefund}
                 showActions={true}
@@ -307,8 +551,16 @@ const AdminPaymentPage = () => {
           </Card>
         </TabsContent>
 
+        <TabsContent value="methods" className="space-y-6">
+          <PaymentMethods />
+        </TabsContent>
+
         <TabsContent value="analytics" className="space-y-6">
-          <PaymentAnalytics />
+          <PaymentAnalytics
+            dateRange={dateRange}
+            startDate={startDate}
+            endDate={endDate}
+          />
         </TabsContent>
       </Tabs>
 

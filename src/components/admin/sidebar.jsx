@@ -17,6 +17,7 @@ import {
   MapPin,
   Moon,
   Sun,
+  Star,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/auth-context";
@@ -38,7 +39,8 @@ const AdminSidebar = ({ sidebarOpen, setSidebarOpen }) => {
       location.pathname.startsWith("/admin/aircrafts") ||
       location.pathname.startsWith("/admin/travel-classes") ||
       location.pathname.startsWith("/admin/airlines") ||
-      location.pathname.startsWith("/admin/countries"),
+      location.pathname.startsWith("/admin/countries") ||
+      location.pathname.startsWith("/admin/reviews"),
   });
 
   const toggleMenu = (key) => {
@@ -76,6 +78,7 @@ const AdminSidebar = ({ sidebarOpen, setSidebarOpen }) => {
         { name: "Hạng vé", href: "/admin/travel-classes", icon: Tag },
         { name: "Hãng bay", href: "/admin/airlines", icon: User },
         { name: "Quốc gia", href: "/admin/countries", icon: MapPin },
+        { name: "Đánh giá", href: "/admin/reviews", icon: Star },
       ],
     },
     { name: "Quản lý người dùng", href: "/admin/users", icon: Users },
