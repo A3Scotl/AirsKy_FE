@@ -40,16 +40,15 @@ export const flightApi = {
   getFlightById: async (id) => {
     return apiHandler("get", `/flights/${id}`);
   },
-    /**
+  /**
    * Lấy thông tin ghế của chuyến bay theo hạng vé
    * @param {number} flightId - ID chuyến bay
    * @param {number} travelClassId - ID hạng vé
    * @returns {Promise<{ success: boolean, data?: any, message: string }>}
    */
-  getSeatsFlightByFlightIdAndTravelClassId: async (flightId,travelClassId) => {
+  getSeatsFlightByFlightIdAndTravelClassId: async (flightId, travelClassId) => {
     return apiHandler("get", `/flights/${flightId}/seats/${travelClassId}`);
   },
-
 
   /**
    * Lấy danh sách chuyến bay (phân trang)
@@ -251,7 +250,98 @@ export const flightApi = {
     return apiHandler("post", endpoint, request);
   },
 
-   compareFlightPrices: async (params) => {
+  /**
+   * Tìm kiếm chuyến bay multi-city (kết hợp nhiều chặng one-way)
+   * @param {Array} segments - Array các chặng bay { departureAirportIds, arrivalAirportIds, date }
+   * @param {string} travelClass - Hạng vé
+   * @param {object} passengers - Số lượng hành khách
+   * @returns {Promise<{ success: boolean, data?: any, message: string }>}
+   */
+  searchMultiCityFlights: async (segments, travelClass, passengers) => {
+    try {
+      console.log("Searching multi-city flights:", {
+        segments,
+        travelClass,
+        passengers,
+      });
+
+      // Tìm kiếm từng chặng riêng biệt sử dụng unified API
+      const segmentResults = await Promise.all(
+        segments.map(async (segment, index) => {
+          const segmentSearches = [];
+
+          // Tạo các tổ hợp sân bay cho mỗi chặng
+          for (const departureAirportId of segment.departureAirportIds) {
+            for (const arrivalAirportId of segment.arrivalAirportIds) {
+              segmentSearches.push(
+                flightApi.searchUnifiedFlights({
+                  tripType: "ONE_WAY",
+                  departureAirportId,
+                  arrivalAirportId,
+                  outboundDepartureDate: segment.date,
+                  passengers,
+                  travelClass,
+                })
+              );
+            }
+          }
+
+          // Thực hiện tất cả tìm kiếm cho chặng này
+          const results = await Promise.all(segmentSearches);
+          const allFlights = results
+            .filter((result) => result.success && result.data)
+            .flatMap((result) => {
+              // Extract flights from unified API response
+              if (result.data.oneWayFlights?.content) {
+                return result.data.oneWayFlights.content;
+              } else if (Array.isArray(result.data)) {
+                return result.data;
+              } else {
+                return [];
+              }
+            })
+            .map((flight) => ({
+              ...flight,
+              segmentIndex: index,
+              segmentLabel: `Chặng ${index + 1}`,
+            }));
+
+          console.log(
+            `Segment ${index + 1} found ${allFlights.length} flights`
+          );
+          return allFlights;
+        })
+      );
+
+      return {
+        success: true,
+        data: {
+          segments: segmentResults,
+          totalSegments: segments.length,
+          searchCriteria: {
+            travelClass,
+            passengers,
+            segments: segments.map((seg, idx) => ({
+              index: idx + 1,
+              departureAirportIds: seg.departureAirportIds,
+              arrivalAirportIds: seg.arrivalAirportIds,
+              date: seg.date,
+            })),
+          },
+        },
+        message: `Tìm thấy kết quả cho ${segmentResults.length} chặng bay`,
+      };
+    } catch (error) {
+      console.error("Error searching multi-city flights:", error);
+      return {
+        success: false,
+        message: "Lỗi khi tìm kiếm chuyến bay đa thành phố",
+        error: error.message,
+      };
+    }
+  },
+
+  compareFlightPrices: async (params) => {
     return apiHandler("post", "/flights/compare-prices", params);
   },
 };

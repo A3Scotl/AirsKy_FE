@@ -89,23 +89,6 @@ const getLowestPriceFromClasses = (flightTravelClasses) => {
   return prices.length > 0 ? Math.min(...prices) : null;
 };
 
-// Helper function to get representative travel classes for multi-city
-const getMultiCityClasses = (legs) => {
-  if (!legs || legs.length === 0) return [];
-
-  // For multi-city, we can either:
-  // 1. Use classes from the first leg (current approach)
-  // 2. Find common classes across all legs
-  // 3. Show classes for each leg separately
-
-  // Option 1: Use first leg (simplest)
-  return legs[0]?.flightTravelClasses || [];
-
-  // Option 2: Find common classes (more complex but accurate)
-  // const allClasses = legs.map(leg => leg.flightTravelClasses || []);
-  // return findCommonClasses(allClasses);
-};
-
 export function FlightCard({
   flight,
   onSelect,
@@ -122,6 +105,18 @@ export function FlightCard({
   const navigate = useNavigate();
   const [showMultiCityModal, setShowMultiCityModal] = useState(false);
   const [fareSelectionStep, setFareSelectionStep] = useState("outbound"); // 'outbound' or 'return'
+
+  // Debug log for multi-city flights
+  if (flight?.tripType === "MULTI_CITY") {
+    console.log("FlightCard received MULTI_CITY flight:", {
+      tripType: flight.tripType,
+      isMultiCityDisplay: flight.isMultiCityDisplay,
+      legsCount: flight.legs?.length,
+      allLegsCount: flight.allLegs?.length,
+      segments: flight.segments,
+      flight: flight,
+    });
+  }
 
   // Helper function to safely parse date
   const parseDate = (dateString) => {
@@ -185,7 +180,92 @@ export function FlightCard({
     // Normalize tripType to uppercase for consistent comparison
     const normalizedTripType = (itinerary.tripType || "").toUpperCase();
 
-    if (normalizedTripType === "ROUND_TRIP" && itinerary.legs.length >= 2) {
+    // Debug log for multi-city
+    if (normalizedTripType === "MULTI_CITY") {
+      console.log("FlightCard processing MULTI_CITY:", {
+        tripType: normalizedTripType,
+        legsCount: itinerary.legs.length,
+        itineraryId: itinerary.itineraryId,
+        isMultiCityDisplay: itinerary.isMultiCityDisplay,
+        legs: itinerary.legs.map((leg) => ({
+          flightNumber: leg.flightNumber,
+          route: `${leg.departureAirport?.airportCode} → ${leg.arrivalAirport?.airportCode}`,
+        })),
+      });
+    }
+
+    if (normalizedTripType === "MULTI_CITY" && itinerary.legs.length >= 2) {
+      console.log(
+        "FlightCard entering MULTI_CITY branch with",
+        itinerary.legs.length,
+        "legs"
+      );
+      // MULTI_CITY: Use first leg for primary info, show full route
+      const firstLeg = itinerary.legs[0];
+      const lastLeg = itinerary.legs[itinerary.legs.length - 1];
+
+      flightData = {
+        flightNumber: itinerary.legs.map((leg) => leg.flightNumber).join(" → "),
+        flightId: itinerary.itineraryId,
+
+        // Airline info - use first leg's airline
+        airline: firstLeg.airline?.airlineName || "Multi Airlines",
+        airlineName: firstLeg.airline?.airlineName || "Multi Airlines",
+        airlineCode: firstLeg.airline?.airlineCode || "",
+        airlineLogo:
+          firstLeg.airline?.thumbnail ||
+          "https://via.placeholder.com/40x40?text=Multi",
+        thumbnail: firstLeg.airline?.thumbnail,
+
+        // Route info - show full multi-city route
+        from: firstLeg.departureAirport?.cityNames?.[0] || "Unknown",
+        fromCode: firstLeg.departureAirport?.airportCode || "UNK",
+        to: lastLeg.arrivalAirport?.cityNames?.[0] || "Unknown",
+        toCode: lastLeg.arrivalAirport?.airportCode || "UNK",
+
+        // Airport details
+        departureAirport: firstLeg.departureAirport,
+        arrivalAirport: lastLeg.arrivalAirport,
+
+        // Time info - use first leg departure and last leg arrival
+        departureTime: firstLeg.departureTime,
+        arrivalTime: lastLeg.arrivalTime,
+
+        // Multi-city specific data
+        segments: itinerary.legs.length,
+        routeInfo: itinerary.routeInfo,
+        allLegs: itinerary.legs,
+
+        // Flight details - sum up values
+        duration: itinerary.totalDuration,
+        totalPrice: itinerary.totalPrice,
+        totalStops: itinerary.totalStops,
+
+        // Status and type
+        status: "ON_TIME",
+        tripType: itinerary.tripType,
+
+        // Display flags
+        isMultiCityDisplay: true,
+        isRoundTripDisplay: false,
+
+        // Pricing info
+        price: itinerary.totalPrice || 0,
+        priceNumeric: itinerary.totalPrice || 0,
+
+        // Contact info from first leg
+        contact: firstLeg.airline?.contact,
+
+        // Itinerary ID
+        itineraryId: itinerary.itineraryId,
+
+        // Travel classes - use first leg's classes
+        flightTravelClasses: firstLeg.flightTravelClasses || [],
+      };
+    } else if (
+      normalizedTripType === "ROUND_TRIP" &&
+      itinerary.legs.length >= 2
+    ) {
       // ROUND_TRIP: Use outbound flight for primary info
       const outbound = itinerary.legs[0];
       const inbound = itinerary.legs[1];
@@ -276,80 +356,6 @@ export function FlightCard({
           outbound.flightTravelClasses,
           inbound.flightTravelClasses
         ),
-      };
-    } else if (normalizedTripType === "MULTI_CITY") {
-      // MULTI_CITY: Show summary info
-      const firstLeg = itinerary.legs[0];
-      const lastLeg = itinerary.legs[itinerary.legs.length - 1];
-
-      flightData = {
-        flightNumber: `${itinerary.legs.length} chặng`,
-        flightId: firstLeg.flightId || itinerary.itineraryId,
-
-        // Airline info - use first leg
-        airline: firstLeg.airline?.airlineName || "Multiple Airlines",
-        airlineName: firstLeg.airline?.airlineName || "Multiple Airlines",
-        airlineCode: firstLeg.airline?.airlineCode || "",
-        airlineLogo:
-          firstLeg.airline?.thumbnail ||
-          "https://via.placeholder.com/40x40?text=Logo",
-        thumbnail: firstLeg.airline?.thumbnail,
-
-        // Route info - show first to last
-        from: firstLeg.departureAirport?.cityNames?.[0] || "Unknown",
-        fromCode: firstLeg.departureAirport?.airportCode || "UNK",
-        to: lastLeg.arrivalAirport?.cityNames?.[0] || "Unknown",
-        toCode: lastLeg.arrivalAirport?.airportCode || "UNK",
-
-        // Airport details
-        departureAirport: firstLeg.departureAirport,
-        arrivalAirport: lastLeg.arrivalAirport,
-
-        // Time info - use first leg departure, last leg arrival
-        departureTime: firstLeg.departureTime,
-        arrivalTime: lastLeg.arrivalTime,
-
-        // Flight details
-        duration: itinerary.totalDuration,
-        type: "MULTI_CITY",
-        status: "ON_TIME", // Assume on time for multi-city
-        aircraft: "Multiple Aircraft",
-
-        // Pricing
-        priceNumeric: itinerary.totalPrice,
-        basePrice: itinerary.totalPrice,
-
-        // Capacity - use minimum across all legs
-        availableSeats: Math.min(
-          ...itinerary.legs.map((leg) => leg.availableSeats || 0)
-        ),
-        totalSeats: Math.min(
-          ...itinerary.legs.map(
-            (leg) => leg.aircraft?.totalSeats || leg.totalSeats || 0
-          )
-        ),
-
-        // Additional info
-        stops: itinerary.totalStops,
-        stopsList: itinerary.legs?.flatMap((leg) => leg.stopsList || []) || [],
-        gate: null,
-        terminal: null,
-        businessName: "Multi-City",
-        tripType: itinerary.tripType,
-
-        // Multi-city specific data
-        isMultiCityDisplay: true,
-        multiCityLegs: itinerary.legs,
-        totalLegs: itinerary.legs.length,
-
-        // Contact info
-        contact: firstLeg.airline?.contact,
-
-        // Itinerary ID
-        itineraryId: itinerary.itineraryId,
-
-        // Travel classes - get representative classes for multi-city
-        flightTravelClasses: getMultiCityClasses(itinerary.legs),
       };
     } else {
       // ONE_WAY or default: Use single leg
@@ -647,7 +653,7 @@ export function FlightCard({
           className="bg-purple-50 text-purple-700 border-purple-200"
         >
           <Route className="w-3 h-3 mr-1" />
-          Đa chặng ({flightData.totalStops} điểm dừng)
+          Đa thành phố ({flightData.segments} chặng)
         </Badge>
       );
     }
@@ -719,13 +725,19 @@ export function FlightCard({
           <div className="text-right">
             <div className="text-2xl font-bold text-blue-600">
               {formatPrice(
-                flightData.isRoundTripDisplay
+                flightData.isMultiCityDisplay
+                  ? flightData.totalPrice || flightData.price
+                  : flightData.isRoundTripDisplay
                   ? flightData.combinedPrice
                   : flightData.basePrice
               )}
             </div>
             <div className="text-sm text-gray-500">
-              {flightData.isRoundTripDisplay ? "/cặp vé khứ hồi" : "/khách"}
+              {flightData.isMultiCityDisplay
+                ? `/toàn bộ hành trình`
+                : flightData.isRoundTripDisplay
+                ? "/cặp vé khứ hồi"
+                : "/khách"}
             </div>
           </div>
         </div>
@@ -811,6 +823,99 @@ export function FlightCard({
           </div>
         </div>
 
+        {/* Multi-city segments display */}
+        {flightData.isMultiCityDisplay && flightData.allLegs && (
+          <div className="mb-4 bg-gradient-to-r from-purple-50 to-blue-50 rounded-lg p-4 border border-purple-200">
+            <h4 className="text-sm font-semibold mb-3 flex items-center justify-between">
+              <div className="flex items-center">
+                <Route className="w-4 h-4 mr-2 text-purple-600" />
+                Chi tiết hành trình đa thành phố ({flightData.segments} chặng)
+              </div>
+              <div className="text-sm font-bold text-purple-700">
+                Tổng: {formatPrice(flightData.totalPrice || flightData.price)}
+              </div>
+            </h4>
+            <div className="space-y-3">
+              {flightData.allLegs.map((leg, index) => {
+                const segmentPrice = getLowestPriceFromClasses(
+                  leg.flightTravelClasses
+                );
+                return (
+                  <div
+                    key={index}
+                    className="flex items-center justify-between text-sm bg-white rounded-lg p-3 border-l-4 border-purple-300"
+                  >
+                    <div className="flex items-center gap-4">
+                      <span className="font-medium text-purple-600 bg-purple-100 rounded-full w-6 h-6 flex items-center justify-center text-xs">
+                        {index + 1}
+                      </span>
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium text-gray-800">
+                          {leg.departureAirport?.airportCode}
+                        </span>
+                        <ChevronRight className="w-3 h-3 text-gray-400" />
+                        <span className="font-medium text-gray-800">
+                          {leg.arrivalAirport?.airportCode}
+                        </span>
+                      </div>
+                      <span className="text-gray-600 font-mono text-xs bg-gray-100 px-2 py-1 rounded">
+                        {leg.flightNumber}
+                      </span>
+                      <span className="text-xs text-gray-500">
+                        {leg.airline?.airlineName}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-4 text-gray-600">
+                      <div className="text-right">
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium">
+                            {formatTime(leg.departureTime)}
+                          </span>
+                          <span>→</span>
+                          <span className="font-medium">
+                            {formatTime(leg.arrivalTime)}
+                          </span>
+                        </div>
+                        <div className="text-xs text-gray-500">
+                          {formatDuration(leg.duration)}
+                        </div>
+                      </div>
+                      {segmentPrice && (
+                        <div className="text-right">
+                          <div className="font-semibold text-blue-600 text-sm">
+                            {formatPrice(segmentPrice)}
+                          </div>
+                          <div className="text-xs text-gray-500">/khách</div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Tổng kết hành trình */}
+            <div className="mt-3 pt-3 border-t border-purple-200 bg-white rounded-lg p-3">
+              <div className="flex items-center justify-between text-sm">
+                <div className="flex items-center gap-4">
+                  <span className="font-medium">Tổng thời gian bay:</span>
+                  <span className="text-gray-600">
+                    {formatDuration(
+                      flightData.totalDuration || flightData.duration
+                    )}
+                  </span>
+                </div>
+                <div className="flex items-center gap-4">
+                  <span className="font-medium">Tổng điểm dừng:</span>
+                  <span className="text-gray-600">
+                    {flightData.totalStops || 0}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Thông tin hãng hàng không và chỗ ngồi - Ẩn trong chế độ compact */}
         {!compact && (
           <div className="flex items-center justify-between mb-4">
@@ -834,8 +939,23 @@ export function FlightCard({
                       if (onSelect) {
                         onSelect();
                       } else {
+                        // For multi-city flights, pass the original flight (itinerary) with all legs
+                        const flightToPass =
+                          flightData.isMultiCityDisplay && flight.legs
+                            ? {
+                                ...flightData,
+                                isMultiCity: true,
+                                legs: flight.legs,
+                                segments: flight.segments,
+                                routeInfo: flight.routeInfo,
+                                totalDuration: flight.totalDuration,
+                                allLegs: flight.allLegs || flight.legs,
+                                originalItinerary: flight,
+                              }
+                            : flightData;
+
                         navigate(`/detail/${flightData.flightId}`, {
-                          state: { flight: flightData },
+                          state: { flight: flightToPass },
                         });
                       }
                     }}
@@ -859,8 +979,23 @@ export function FlightCard({
                 if (onSelect) {
                   onSelect();
                 } else {
+                  // For multi-city flights, pass the original flight (itinerary) with all legs
+                  const flightToPass =
+                    flightData.isMultiCityDisplay && flight.legs
+                      ? {
+                          ...flightData,
+                          isMultiCity: true,
+                          legs: flight.legs,
+                          segments: flight.segments,
+                          routeInfo: flight.routeInfo,
+                          totalDuration: flight.totalDuration,
+                          allLegs: flight.allLegs || flight.legs,
+                          originalItinerary: flight,
+                        }
+                      : flightData;
+
                   navigate(`/detail/${flightData.flightId}`, {
-                    state: { flight: flightData },
+                    state: { flight: flightToPass },
                   });
                 }
               }}
@@ -957,227 +1092,8 @@ export function FlightCard({
             </div>
           )}
 
-        {/* Multi-city flight details - Ẩn trong chế độ compact */}
-        {!compact && flightData.isMultiCityDisplay && (
-          <div className="border-t pt-4 mb-4">
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-2">
-                <Badge
-                  variant="outline"
-                  className="bg-purple-50 text-purple-700 border-purple-200"
-                >
-                  <Route className="w-3 h-3 mr-1" />
-                  Đa chặng
-                </Badge>
-                <span className="text-sm text-gray-600">
-                  {Array.isArray(flightData.stopsList)
-                    ? flightData.stopsList.length
-                    : 0}{" "}
-                  điểm dừng • {flightData.multiCityLegs?.length || 1} chuyến bay
-                </span>
-              </div>
-              <Dialog
-                open={showMultiCityModal}
-                onOpenChange={setShowMultiCityModal}
-              >
-                <DialogTrigger asChild>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="text-purple-600 border-purple-300"
-                  >
-                    <Map className="w-3 h-3 mr-1" />
-                    Xem chi tiết
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="max-w-2xl">
-                  <DialogHeader>
-                    <DialogTitle className="flex items-center gap-2">
-                      <Route className="w-5 h-5 text-purple-600" />
-                      Chi tiết hành trình đa chặng
-                    </DialogTitle>
-                  </DialogHeader>
-                  <div className="space-y-4">
-                    {flightData.multiCityLegs?.map((leg, index) => {
-                      // Tạo danh sách các điểm trong hành trình: điểm khởi hành + các điểm dừng + điểm đến
-                      const routePoints = [
-                        {
-                          airportCode: leg.departureAirport?.airportCode,
-                          airportName: leg.departureAirport?.airportName,
-                          cityName: leg.departureAirport?.cityNames?.[0],
-                          time: leg.departureTime,
-                          type: "departure",
-                        },
-                        ...(leg.stopsList || []).map((stop) => ({
-                          airportCode: stop.airportCode,
-                          airportName: stop.airportName,
-                          cityName: stop.cityName || stop.airportName, // Ưu tiên cityName, fallback to airportName
-                          time: stop.arrivalTime,
-                          type: "stop",
-                          stopDuration: stop.stopDuration,
-                          departureTime: stop.departureTime,
-                        })),
-                        {
-                          airportCode: leg.arrivalAirport?.airportCode,
-                          airportName: leg.arrivalAirport?.airportName,
-                          cityName: leg.arrivalAirport?.cityNames?.[0],
-                          time: leg.arrivalTime,
-                          type: "arrival",
-                        },
-                      ];
-
-                      return (
-                        <div
-                          key={leg.flightId}
-                          className="border rounded-lg p-4"
-                        >
-                          <div className="flex items-center justify-between mb-3">
-                            <div className="flex items-center gap-2">
-                              <Badge variant="outline" className="bg-blue-50">
-                                Chuyến {index + 1}
-                              </Badge>
-                              <span className="font-semibold">
-                                {leg.flightNumber}
-                              </span>
-                            </div>
-                            <div className="text-right text-sm text-gray-600">
-                              <div>{leg.airline?.airlineName}</div>
-                              <div>
-                                {leg.aircraft?.aircraftName ||
-                                  leg.aircraft?.aircraftCode}
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* Hiển thị hành trình chi tiết */}
-                          <div className="space-y-2">
-                            {routePoints.map((point, pointIndex) => (
-                              <div
-                                key={pointIndex}
-                                className="flex items-center gap-3"
-                              >
-                                <div className="flex flex-col items-center">
-                                  <div
-                                    className={`w-4 h-4 rounded-full flex items-center justify-center ${
-                                      point.type === "departure"
-                                        ? "bg-green-500"
-                                        : point.type === "arrival"
-                                        ? "bg-red-500"
-                                        : "bg-yellow-500"
-                                    }`}
-                                  >
-                                    {point.type === "departure" && (
-                                      <Plane className="w-2 h-2 text-white" />
-                                    )}
-                                    {point.type === "stop" && (
-                                      <MapPin className="w-2 h-2 text-white" />
-                                    )}
-                                    {point.type === "arrival" && (
-                                      <PlaneLanding className="w-2 h-2 text-white" />
-                                    )}
-                                  </div>
-                                  {pointIndex < routePoints.length - 1 && (
-                                    <div className="w-0.5 h-8 bg-gray-300 mt-1"></div>
-                                  )}
-                                </div>
-                                <div className="flex-1">
-                                  <div className="flex items-center justify-between">
-                                    <div>
-                                      <div className="font-medium text-gray-800">
-                                        {point.airportCode}
-                                      </div>
-                                      <div className="text-sm text-gray-600 font-medium">
-                                        {point.airportName}
-                                      </div>
-                                      {point.cityName &&
-                                        point.cityName !==
-                                          point.airportName && (
-                                          <div className="text-xs text-gray-500">
-                                            {point.cityName}
-                                          </div>
-                                        )}
-                                    </div>
-                                    <div className="text-right">
-                                      <div className="font-medium">
-                                        {formatTime(point.time)}
-                                      </div>
-                                      <div className="text-sm text-gray-500">
-                                        {formatDate(point.time)}
-                                      </div>
-                                    </div>
-                                  </div>
-                                  {point.type === "stop" &&
-                                    point.stopDuration && (
-                                      <div className="mt-1 text-xs text-orange-600 bg-orange-50 px-2 py-1 rounded">
-                                        <div className="font-medium">
-                                          Dừng{" "}
-                                          {Math.floor(point.stopDuration / 60)}h{" "}
-                                          {point.stopDuration % 60}m
-                                        </div>
-                                        {point.departureTime && (
-                                          <div className="text-gray-500">
-                                            Khởi hành lại:{" "}
-                                            {formatTime(point.departureTime)}
-                                          </div>
-                                        )}
-                                      </div>
-                                    )}
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-
-                          <div className="mt-3 pt-3 border-t border-gray-200">
-                            <div className="flex items-center justify-between text-sm">
-                              <div className="text-gray-600">
-                                <div>
-                                  Thời gian bay: {formatDuration(leg.duration)}
-                                </div>
-                                {leg.stopsList && leg.stopsList.length > 0 && (
-                                  <div className="text-orange-600">
-                                    Tổng dừng:{" "}
-                                    {leg.stopsList.reduce(
-                                      (total, stop) =>
-                                        total + (stop.stopDuration || 0),
-                                      0
-                                    )}{" "}
-                                    phút
-                                  </div>
-                                )}
-                              </div>
-                              <div className="font-medium text-blue-600">
-                                {formatPrice(leg.basePrice)}
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </DialogContent>
-              </Dialog>
-            </div>
-
-            {/* Summary of multi-city route */}
-            <div className="bg-purple-50 border border-purple-200 rounded-lg p-3">
-              <div className="flex items-center justify-between text-sm">
-                <div className="flex items-center gap-2">
-                  <MapPin className="w-4 h-4 text-purple-600" />
-                  <span className="font-medium">
-                    {flightData.fromCode} → {flightData.toCode}
-                  </span>
-                </div>
-                <div className="text-gray-600">
-                  {formatDuration(flightData.duration)} • Tổng:{" "}
-                  {formatPrice(flightData.basePrice)}
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
         {/* Fare Selection Section - Ẩn trong chế độ compact */}
-        {!compact && onToggleDetails && (
+        {/* {!compact && onToggleDetails && (
           <div className="mt-4">
             <Button
               variant="link"
@@ -1194,7 +1110,6 @@ export function FlightCard({
 
             {expandedFlights?.has(flight.itineraryId) && (
               <div className="mt-4 border-t pt-4 bg-gray-50 dark:bg-gray-800 -mx-3 sm:-mx-4 px-3 sm:px-4 pb-4 rounded-b-lg">
-                {/* Round Trip Fare Selection */}
                 {flightData.isRoundTripDisplay ? (
                   <RoundTripFareSelection
                     flightData={flightData}
@@ -1205,7 +1120,6 @@ export function FlightCard({
                     onProceedToBooking={onProceedToBooking}
                   />
                 ) : (
-                  /* One Way Fare Selection */
                   <div>
                     <h3 className="text-lg font-semibold mb-4 text-gray-900 dark:text-gray-200">
                       Chọn loại vé phù hợp
@@ -1215,7 +1129,6 @@ export function FlightCard({
                       flightData.flightTravelClasses.length > 0 ? (
                         flightData.flightTravelClasses.map(
                           (travelClass, index) => {
-                            // Determine if this is recommended (first class or cheapest)
                             const isRecommended =
                               index === 0 ||
                               travelClass.customPrice ===
@@ -1297,7 +1210,6 @@ export function FlightCard({
                           }
                         )
                       ) : (
-                        // Fallback when no flightTravelClasses available
                         <div className="col-span-full text-center py-8 text-gray-500">
                           <p>Không có thông tin hạng vé cho chuyến bay này</p>
                           <p className="text-sm mt-2">
@@ -1356,7 +1268,7 @@ export function FlightCard({
               </div>
             )}
           </div>
-        )}
+        )} */}
       </CardContent>
     </Card>
   );

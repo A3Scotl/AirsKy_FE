@@ -72,10 +72,6 @@ export function Header() {
           );
         }
       } else {
-        console.log(
-          "⚠️ Header: No user or user ID available for fetching profile, user:",
-          user
-        );
       }
     };
 

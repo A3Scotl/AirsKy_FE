@@ -19,19 +19,17 @@ import {
 import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
 import PropTypes from "prop-types";
+import { formatDateVN } from "@/utils/currency-utils";
 
-// Custom date formatting function
-const formatDate = (date, formatString = "dd/MM/yyyy") => {
-  if (!date) return "dd/mm/yyyy";
-  const d = new Date(date);
-  if (isNaN(d.getTime())) return "dd/mm/yyyy";
-  const day = d.getDate().toString().padStart(2, "0");
-  const month = (d.getMonth() + 1).toString().padStart(2, "0");
-  const year = d.getFullYear();
-  return formatString === "dd/MM/yyyy" ? `${day}/${month}/${year}` : d.toLocaleDateString("vi-VN");
-};
-
-const PassengerDetails = ({ formData, updateFormData, updatePassenger }) => {
+const PassengerDetails = ({
+  formData,
+  updateFormData,
+  updatePassenger,
+  flightType = "DOMESTIC",
+}) => {
+  // Determine if passport is required based on flight type
+  const isInternationalFlight = flightType === "INTERNATIONAL";
+  const isDomesticFlight = flightType === "DOMESTIC";
   const addPassenger = () => {
     if (formData.passengers.length >= 10) {
       alert("Số lượng hành khách tối đa là 10.");
@@ -41,9 +39,20 @@ const PassengerDetails = ({ formData, updateFormData, updatePassenger }) => {
       ...formData.passengers,
       {
         type: "ADULT",
-        fullName: "",
+        firstName: "",
+        lastName: "",
+        fullName: "", // Keep for backward compatibility
         dob: null,
-        passport: "",
+        gender: "", // New field for all passengers
+        phone: "", // New field for adults only
+        email: "", // New field for adults only
+        // Passport fields - only required for international flights
+        passport: isInternationalFlight
+          ? {
+              number: "",
+            }
+          : "",
+        passportNumber: "", // New field for API compatibility
         frequentFlyer: "",
       },
     ]);
@@ -51,7 +60,10 @@ const PassengerDetails = ({ formData, updateFormData, updatePassenger }) => {
 
   const removePassenger = (index) => {
     if (formData.passengers.length > 1) {
-      updateFormData("passengers", formData.passengers.filter((_, i) => i !== index));
+      updateFormData(
+        "passengers",
+        formData.passengers.filter((_, i) => i !== index)
+      );
     }
   };
 
@@ -62,8 +74,15 @@ const PassengerDetails = ({ formData, updateFormData, updatePassenger }) => {
         <p className="text-sm text-gray-600 dark:text-gray-300">
           Vui lòng cung cấp thông tin cần thiết cho tất cả hành khách
         </p>
+        <div className="mt-2 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+          <p className="text-sm text-blue-800 dark:text-blue-200">
+            <strong>Yêu cầu giấy tờ tùy thân:</strong>{" "}
+            {isInternationalFlight
+              ? "Chuyến bay quốc tế - Bắt buộc có hộ chiếu còn hạn"
+              : "Chuyến bay nội địa - Bắt buộc có căn cước công dân"}
+          </p>
+        </div>
       </div>
-
 
       {/* Passengers */}
       {Array.isArray(formData.passengers) ? (
@@ -94,15 +113,33 @@ const PassengerDetails = ({ formData, updateFormData, updatePassenger }) => {
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               <div>
-                <Label htmlFor={`p${index}-fullname`} className="text-sm">
-                  Họ và tên *
+                <Label htmlFor={`p${index}-firstname`} className="text-sm">
+                  Họ *
                 </Label>
                 <Input
-                  id={`p${index}-fullname`}
-                  placeholder="Nhập họ và tên (viết hoa, không dấu)"
+                  id={`p${index}-firstname`}
+                  placeholder="Họ (viết hoa, không dấu)"
                   className="text-sm dark:bg-[#171717]"
-                  value={passenger.fullName}
-                  onChange={(e) => updatePassenger(index, "fullName", e.target.value)}
+                  value={passenger.firstName || ""}
+                  onChange={(e) =>
+                    updatePassenger(index, "firstName", e.target.value)
+                  }
+                  required
+                  aria-required="true"
+                />
+              </div>
+              <div>
+                <Label htmlFor={`p${index}-lastname`} className="text-sm">
+                  Tên *
+                </Label>
+                <Input
+                  id={`p${index}-lastname`}
+                  placeholder="Tên (viết hoa, không dấu)"
+                  className="text-sm dark:bg-[#171717]"
+                  value={passenger.lastName || ""}
+                  onChange={(e) =>
+                    updatePassenger(index, "lastName", e.target.value)
+                  }
                   required
                   aria-required="true"
                 />
@@ -113,7 +150,9 @@ const PassengerDetails = ({ formData, updateFormData, updatePassenger }) => {
                 </Label>
                 <Select
                   value={passenger.type}
-                  onValueChange={(value) => updatePassenger(index, "type", value)}
+                  onValueChange={(value) =>
+                    updatePassenger(index, "type", value)
+                  }
                 >
                   <SelectTrigger className="text-sm dark:bg-[#171717]">
                     <SelectValue placeholder="Chọn loại hành khách" />
@@ -125,7 +164,27 @@ const PassengerDetails = ({ formData, updateFormData, updatePassenger }) => {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="sm:col-span-2 lg:col-span-1">
+              <div>
+                <Label htmlFor={`p${index}-gender`} className="text-sm">
+                  Giới tính *
+                </Label>
+                <Select
+                  value={passenger.gender}
+                  onValueChange={(value) =>
+                    updatePassenger(index, "gender", value)
+                  }
+                >
+                  <SelectTrigger className="text-sm dark:bg-[#171717]">
+                    <SelectValue placeholder="Chọn giới tính" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="MALE">Nam</SelectItem>
+                    <SelectItem value="FEMALE">Nữ</SelectItem>
+                    <SelectItem value="OTHER">Khác</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
                 <Label htmlFor={`p${index}-dob`} className="text-sm">
                   Ngày sinh *
                 </Label>
@@ -139,7 +198,11 @@ const PassengerDetails = ({ formData, updateFormData, updatePassenger }) => {
                       )}
                     >
                       <CalendarIcon className="mr-2 h-4 w-4" />
-                      {passenger.dob ? formatDate(passenger.dob) : <span>dd/mm/yyyy</span>}
+                      {passenger.dob ? (
+                        formatDateVN(passenger.dob, "short")
+                      ) : (
+                        <span>dd/mm/yyyy</span>
+                      )}
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-auto p-0">
@@ -153,17 +216,99 @@ const PassengerDetails = ({ formData, updateFormData, updatePassenger }) => {
                 </Popover>
               </div>
               <div className="sm:col-span-2 lg:col-span-2">
-                <Label htmlFor={`p${index}-passport`} className="text-sm">
-                  Số hộ chiếu (tùy chọn)
+                <Label htmlFor={`p${index}-id`} className="text-sm">
+                  {isInternationalFlight
+                    ? "Số hộ chiếu *"
+                    : "Căn cước công dân *"}
                 </Label>
                 <Input
-                  id={`p${index}-passport`}
-                  placeholder="Nhập số hộ chiếu"
+                  id={`p${index}-id`}
+                  placeholder={
+                    isInternationalFlight
+                      ? "Nhập số hộ chiếu"
+                      : "Nhập số căn cước công dân"
+                  }
                   className="text-sm dark:bg-[#171717]"
-                  value={passenger.passport}
-                  onChange={(e) => updatePassenger(index, "passport", e.target.value)}
+                  value={
+                    isInternationalFlight
+                      ? passenger.passport?.number || ""
+                      : passenger.passport || ""
+                  }
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    if (isInternationalFlight) {
+                      updatePassenger(index, "passport", {
+                        ...passenger.passport,
+                        number: value,
+                      });
+                    } else {
+                      updatePassenger(index, "passport", value);
+                    }
+                  }}
+                  required
+                  aria-required="true"
+                  maxLength={isInternationalFlight ? 20 : 12}
+                  pattern={isInternationalFlight ? undefined : "[0-9]{12}"}
                 />
+                {!isInternationalFlight && (
+                  <p className="text-xs text-gray-500 mt-1">
+                    Căn cước công dân gồm 12 chữ số
+                  </p>
+                )}
               </div>
+            </div>
+
+            {/* Additional fields for adults */}
+            {passenger.type === "ADULT" && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
+                <div>
+                  <Label htmlFor={`p${index}-phone`} className="text-sm">
+                    Số điện thoại *
+                  </Label>
+                  <Input
+                    id={`p${index}-phone`}
+                    placeholder="Ví dụ: 0912345678"
+                    className="text-sm dark:bg-[#171717]"
+                    value={passenger.phone || ""}
+                    onChange={(e) =>
+                      updatePassenger(index, "phone", e.target.value)
+                    }
+                    required
+                    type="tel"
+                    pattern="[0-9]{10,11}"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor={`p${index}-email`} className="text-sm">
+                    Email *
+                  </Label>
+                  <Input
+                    id={`p${index}-email`}
+                    placeholder="Ví dụ: example@email.com"
+                    className="text-sm dark:bg-[#171717]"
+                    value={passenger.email || ""}
+                    onChange={(e) =>
+                      updatePassenger(index, "email", e.target.value)
+                    }
+                    required
+                    type="email"
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Baggage Information */}
+            <div className="mt-4 p-3 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
+              <h5 className="font-semibold text-green-800 dark:text-green-200 mb-2">
+                Hành Lý Miễn Phí
+              </h5>
+              <ul className="text-sm text-green-700 dark:text-green-300 space-y-1">
+                <li>✅ 1 túi xách tay (10kg)</li>
+                <li>✅ Hành lý ký gửi 23kg (tùy hạng vé)</li>
+              </ul>
+              <p className="text-xs text-green-600 dark:text-green-400 mt-2">
+                Tùy chọn hành lý bổ sung có thể chọn ở bước tiếp theo.
+              </p>
             </div>
           </div>
         ))
@@ -196,13 +341,22 @@ PassengerDetails.propTypes = {
         type: PropTypes.oneOf(["ADULT", "CHILD", "INFANT"]),
         fullName: PropTypes.string,
         dob: PropTypes.instanceOf(Date),
-        passport: PropTypes.string,
+        gender: PropTypes.oneOf(["MALE", "FEMALE", "OTHER"]),
+        phone: PropTypes.string,
+        email: PropTypes.string,
+        passport: PropTypes.oneOfType([
+          PropTypes.string,
+          PropTypes.shape({
+            number: PropTypes.string,
+          }),
+        ]),
         frequentFlyer: PropTypes.string,
       })
     ).isRequired,
   }).isRequired,
   updateFormData: PropTypes.func.isRequired,
   updatePassenger: PropTypes.func.isRequired,
+  flightType: PropTypes.oneOf(["DOMESTIC", "INTERNATIONAL"]),
 };
 
 export default PassengerDetails;

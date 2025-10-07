@@ -23,6 +23,8 @@ import {
   ArrowRightLeft,
   Loader2,
   RotateCcw,
+  Plus,
+  Minus,
 } from "lucide-react";
 import { format } from "date-fns";
 import AirportAutocomplete from "./airport-autocomplete";
@@ -31,7 +33,7 @@ import { classesApi } from "@/apis/classes-api";
 const TRIP_TYPES = [
   { key: "ROUND_TRIP", label: "Khứ hồi" },
   { key: "ONE_WAY", label: "Một chiều" },
-  { key: "MULTI_CITY", label: "Nhiều thành phố" },
+  { key: "MULTI_CITY", label: "Đa thành phố" },
 ];
 
 const PASSENGER_TYPES = [
@@ -104,10 +106,13 @@ export function SearchForm({ onSearch, initialValues, onTripTypeChange }) {
   const [departDate, setDepartDate] = useState();
   const [returnDate, setReturnDate] = useState();
   const [validationErrors, setValidationErrors] = useState([]);
-  const [multiTrips, setMultiTrips] = useState([
-    { from: [], to: [], date: null },
-    { from: [], to: [], date: null },
+
+  // Multi-city state
+  const [multiCityTrips, setMultiCityTrips] = useState([
+    { from: null, to: null, departDate: null },
+    { from: null, to: null, departDate: null },
   ]);
+
   const [passengerPopup, setPassengerPopup] = useState(false);
   const [passengers, setPassengers] = useState({
     adults: 1,
@@ -147,12 +152,11 @@ export function SearchForm({ onSearch, initialValues, onTripTypeChange }) {
         }
       );
       setTravelClass(initialValues.travelClass || "Phổ thông");
-      setMultiTrips(
-        initialValues.multiTrips || [
-          { from: [], to: [], date: null },
-          { from: [], to: [], date: null },
-        ]
-      );
+
+      // Handle multi-city trips
+      if (initialValues.multiTrips && initialValues.multiTrips.length > 0) {
+        setMultiCityTrips(initialValues.multiTrips);
+      }
     }
   }, [initialValues]);
 
@@ -198,19 +202,24 @@ export function SearchForm({ onSearch, initialValues, onTripTypeChange }) {
     }));
   };
 
-  const handleAddTrip = () =>
-    setMultiTrips([...multiTrips, { from: [], to: [], date: null }]);
+  // Multi-city trip handlers
+  const addMultiCityTrip = () => {
+    setMultiCityTrips((prev) => [
+      ...prev,
+      { from: [], to: [], departDate: null },
+    ]);
+  };
 
-  const handleRemoveTrip = (i) => {
-    if (multiTrips.length > 2) {
-      setMultiTrips(multiTrips.filter((_, idx) => idx !== i));
+  const removeMultiCityTrip = (index) => {
+    if (multiCityTrips && multiCityTrips.length > 2) {
+      setMultiCityTrips((prev) => prev.filter((_, i) => i !== index));
     }
   };
 
-  const updateMultiTrip = (index, field, value) => {
-    const updatedTrips = [...multiTrips];
-    updatedTrips[index][field] = value;
-    setMultiTrips(updatedTrips);
+  const updateMultiCityTrip = (index, field, value) => {
+    setMultiCityTrips((prev) =>
+      prev.map((trip, i) => (i === index ? { ...trip, [field]: value } : trip))
+    );
   };
 
   const passengerSummary = `${passengers.adults} Người lớn${
@@ -221,6 +230,14 @@ export function SearchForm({ onSearch, initialValues, onTripTypeChange }) {
 
   // Check if form has any data to reset
   const hasDataToReset = () => {
+    const hasMultiCityData =
+      multiCityTrips && multiCityTrips.length > 0
+        ? multiCityTrips.some(
+            (trip) =>
+              trip.from?.length > 0 || trip.to?.length > 0 || trip.departDate
+          )
+        : false;
+
     return (
       fromLocations.length > 0 ||
       toLocations.length > 0 ||
@@ -230,7 +247,8 @@ export function SearchForm({ onSearch, initialValues, onTripTypeChange }) {
       passengers.children > 0 ||
       passengers.infants > 0 ||
       travelClass !== "Phổ thông" ||
-      tripType !== "ROUND_TRIP"
+      tripType !== "ROUND_TRIP" ||
+      hasMultiCityData
     );
   };
 
@@ -247,22 +265,12 @@ export function SearchForm({ onSearch, initialValues, onTripTypeChange }) {
     } else if (tripType === "ONE_WAY") {
       return fromLocations.length > 0 && toLocations.length > 0 && departDate;
     } else if (tripType === "MULTI_CITY") {
-      if (!multiTrips || multiTrips.length < 2) return false;
-
-      return multiTrips.every((trip) => {
-        const hasFrom = trip.from && trip.from.length > 0;
-        const hasTo = trip.to && trip.to.length > 0;
-        const hasDate = trip.date;
-        const notSameAirport = !(
-          trip.from &&
-          trip.to &&
-          trip.from.some((fromLoc) =>
-            trip.to.some((toLoc) => fromLoc.airportCode === toLoc.airportCode)
+      return multiCityTrips && multiCityTrips.length > 0
+        ? multiCityTrips.every(
+            (trip) =>
+              trip.from?.length > 0 && trip.to?.length > 0 && trip.departDate
           )
-        );
-
-        return hasFrom && hasTo && hasDate && notSameAirport;
-      });
+        : false;
     }
     return false;
   };
@@ -312,11 +320,24 @@ export function SearchForm({ onSearch, initialValues, onTripTypeChange }) {
     } else if (tripType === "MULTI_CITY") {
       searchData = {
         ...searchData,
-        multiTrips,
+        multiCityTrips: multiCityTrips.map((trip) => ({
+          fromLocations: trip.from || [],
+          toLocations: trip.to || [],
+          departDate:
+            trip.departDate &&
+            trip.departDate instanceof Date &&
+            !isNaN(trip.departDate.getTime())
+              ? trip.departDate
+              : null,
+        })),
       };
     }
 
     console.log("Submitting search data:", searchData);
+
+    // Store search data in localStorage for later use
+    localStorage.setItem("searchData", JSON.stringify(searchData));
+
     if (onSearch) {
       onSearch(searchData);
     }
@@ -328,6 +349,10 @@ export function SearchForm({ onSearch, initialValues, onTripTypeChange }) {
     setToLocations([]);
     setDepartDate();
     setReturnDate();
+    setMultiCityTrips([
+      { from: [], to: [], departDate: null },
+      { from: [], to: [], departDate: null },
+    ]);
     setValidationErrors([]);
   };
 
@@ -638,97 +663,102 @@ export function SearchForm({ onSearch, initialValues, onTripTypeChange }) {
           </div>
         )}
 
-        {/* Multi-city Form */}
-        {tripType === "MULTI_CITY" && (
+        {/* Multi-City Form */}
+        {tripType === "MULTI_CITY" && multiCityTrips && (
           <div className="space-y-4">
-            {multiTrips.map((trip, index) => (
+            {multiCityTrips.map((trip, index) => (
               <div
                 key={index}
-                className="space-y-3 sm:space-y-0 sm:flex sm:gap-4 sm:items-center p-3 sm:p-0 border sm:border-0 rounded-lg sm:rounded-none bg-gray-50 sm:bg-transparent"
+                className="grid md:grid-cols-4 gap-4 p-4 bg-gray-50 rounded-lg border border-gray-200"
               >
-                <div className="flex items-center justify-between sm:hidden mb-2">
-                  <span className="text-sm font-medium text-gray-700">
-                    Chuyến bay {index + 1}
-                  </span>
-                  {multiTrips.length > 2 && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleRemoveTrip(index)}
-                      className="text-red-500 hover:bg-red-50 h-8 w-8 p-0"
-                    >
-                      <X className="w-4 h-4" />
-                    </Button>
+                <div className="relative">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Từ sân bay {index + 1}
+                  </label>
+                  <AirportAutocomplete
+                    placeholder="Chọn sân bay đi"
+                    value={trip.from || []}
+                    onChange={(value) =>
+                      updateMultiCityTrip(index, "from", value)
+                    }
+                    multiple={true}
+                  />
+                  {trip.from && trip.from.length > 1 && (
+                    <div className="text-xs text-blue-600 mt-1">
+                      Đã chọn {trip.from.length} sân bay đi
+                    </div>
                   )}
                 </div>
 
-                <div className="flex-1">
-                  <label className="block text-xs font-medium text-gray-600 mb-1 sm:hidden">
-                    Từ
+                <div className="relative">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Đến sân bay {index + 1}
                   </label>
                   <AirportAutocomplete
-                    placeholder="Từ đâu?"
-                    value={trip.from}
-                    onChange={(value) => updateMultiTrip(index, "from", value)}
+                    placeholder="Chọn sân bay đến"
+                    value={trip.to || []}
+                    onChange={(value) =>
+                      updateMultiCityTrip(index, "to", value)
+                    }
+                    multiple={true}
                   />
+                  {trip.to && trip.to.length > 1 && (
+                    <div className="text-xs text-blue-600 mt-1">
+                      Đã chọn {trip.to.length} sân bay đến
+                    </div>
+                  )}
                 </div>
 
-                <div className="flex-1">
-                  <label className="block text-xs font-medium text-gray-600 mb-1 sm:hidden">
-                    Đến
-                  </label>
-                  <AirportAutocomplete
-                    placeholder="Đến đâu?"
-                    value={trip.to}
-                    onChange={(value) => updateMultiTrip(index, "to", value)}
-                  />
-                </div>
-
-                <div className="flex-1">
-                  <label className="block text-xs font-medium text-gray-600 mb-1 sm:hidden">
-                    Ngày đi
+                <div className="relative">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Ngày đi {index + 1}
                   </label>
                   <DatePicker
-                    date={trip.date}
-                    onSelect={(value) => updateMultiTrip(index, "date", value)}
-                    placeholder="Ngày đi"
+                    date={trip.departDate}
+                    onSelect={(date) =>
+                      updateMultiCityTrip(index, "departDate", date)
+                    }
+                    placeholder="Chọn ngày đi"
                   />
                 </div>
 
-                {multiTrips.length > 2 && (
-                  <div className="hidden sm:block">
+                <div className="flex items-end space-x-2">
+                  {index > 1 && (
                     <Button
-                      variant="ghost"
+                      variant="outline"
                       size="icon"
-                      onClick={() => handleRemoveTrip(index)}
-                      className="text-red-500 hover:bg-red-50"
+                      onClick={() => removeMultiCityTrip(index)}
+                      className="text-red-600 hover:text-red-700 hover:bg-red-50 border-red-300"
+                      title="Xóa chuyến bay này"
                     >
-                      <X className="w-4 h-4" />
+                      <Minus className="w-4 h-4" />
                     </Button>
-                  </div>
-                )}
+                  )}
+
+                  {index === multiCityTrips.length - 1 &&
+                    multiCityTrips.length < 6 && (
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={addMultiCityTrip}
+                        className="text-blue-600 hover:text-blue-700 hover:bg-blue-50 border-blue-300"
+                        title="Thêm chuyến bay"
+                      >
+                        <Plus className="w-4 h-4" />
+                      </Button>
+                    )}
+                </div>
               </div>
             ))}
 
-            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 sm:items-center">
+            <div className="flex justify-center">
               <Button
-                variant="outline"
-                onClick={handleAddTrip}
-                className="text-blue-500 hover:text-blue-600 border-blue-200 hover:bg-blue-50 w-full sm:w-auto"
-              >
-                + Thêm chuyến bay
-              </Button>
-
-              <Button
-                className="bg-blue-500 text-white hover:bg-blue-600 disabled:bg-gray-400 disabled:cursor-not-allowed w-full sm:w-auto sm:ml-auto dark:bg-blue-50 dark:text-gray-800 dark:hover:bg-blue-100"
+                className="bg-blue-500 text-white hover:bg-blue-600 disabled:bg-gray-400 disabled:cursor-not-allowed dark:bg-blue-50 dark:text-gray-800 dark:hover:bg-blue-100"
                 onClick={handleSearch}
                 disabled={!isFormValid()}
               >
-                {fromLocations.length > 1 || toLocations.length > 1
-                  ? `Tìm chuyến bay (${
-                      fromLocations.length * toLocations.length
-                    } kết hợp)`
-                  : "Tìm chuyến bay"}
+                Tìm chuyến bay đa thành phố ({multiCityTrips?.length || 0}{" "}
+                chặng)
               </Button>
             </div>
           </div>
