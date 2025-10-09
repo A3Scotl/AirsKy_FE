@@ -698,6 +698,15 @@ export function FlightSearchResults() {
             duration: leg.duration,
             aircraft: leg.aircraft || leg.aircraftName,
             aircraftName: leg.aircraftName || leg.aircraft,
+            // Aircraft details from API
+            aircraftInfo:
+              leg.aircraft && typeof leg.aircraft === "object"
+                ? leg.aircraft
+                : null,
+            seatLayout: leg.aircraft?.seatLayout || null,
+            totalSeats: leg.aircraft?.totalSeats || null,
+            aircraftId: leg.aircraft?.aircraftId || null,
+            aircraftCode: leg.aircraft?.aircraftCode || null,
             stops: leg.stops || 0,
             segmentIndex: index,
             segmentLabel: `Chặng ${index + 1}`,

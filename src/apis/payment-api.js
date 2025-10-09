@@ -67,6 +67,55 @@ const paymentApi = {
   deletePayment: async (id) => {
     return apiHandler("delete", `/payments/${id}`);
   },
+
+  /**
+   * Create a new payment for booking
+   * @param {Object} paymentData - Payment request data
+   * @param {number} paymentData.bookingId - Booking ID
+   * @param {string} paymentData.paymentMethod - Payment method (CREDIT_CARD, PAYPAL, BANK_TRANSFER)
+   * @param {number} paymentData.totalAmount - Total amount to pay
+   * @returns {Promise<{ success: boolean, data?: any, message: string }>}
+   */
+  createPayment: async (paymentData) => {
+    return apiHandler("post", "/payments", paymentData);
+  },
+
+  /**
+   * Get payments by booking ID
+   * @param {number} bookingId - Booking ID
+   * @returns {Promise<{ success: boolean, data?: any, message: string }>}
+   */
+  getPaymentsByBooking: async (bookingId) => {
+    return apiHandler("get", `/payments/booking/${bookingId}`);
+  },
+
+  /**
+   * Execute PayPal payment (success callback)
+   * @param {string} paymentId - PayPal payment ID
+   * @param {string} payerId - PayPal payer ID
+   * @param {number} bookingId - Booking ID
+   * @returns {Promise<{ success: boolean, data?: any, message: string }>}
+   */
+  executePayPalPayment: async (paymentId, payerId, bookingId) => {
+    const params = new URLSearchParams({
+      paymentId,
+      PayerID: payerId,
+      bookingId: bookingId.toString(),
+    });
+    return apiHandler("get", `/payments/success?${params.toString()}`);
+  },
+
+  /**
+   * Handle PayPal payment cancellation
+   * @param {number} bookingId - Booking ID
+   * @returns {Promise<{ success: boolean, data?: any, message: string }>}
+   */
+  cancelPayPalPayment: async (bookingId) => {
+    const params = new URLSearchParams({
+      bookingId: bookingId.toString(),
+    });
+    return apiHandler("get", `/payments/cancel?${params.toString()}`);
+  },
 };
 
 export { paymentApi };

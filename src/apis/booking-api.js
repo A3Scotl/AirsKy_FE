@@ -55,4 +55,18 @@ export const bookingApi = {
   deleteBooking: async (id) => {
     return apiHandler("delete", `/bookings/${id}`);
   },
+
+  /**
+   * Tìm booking theo mã booking và tên hành khách
+   * @param {string} bookingCode - Mã booking
+   * @param {string} fullName - Họ tên đầy đủ của hành khách
+   * @returns {Promise<{ success: boolean, data?: any, message: string }>}
+   */
+  lookupBooking: async (bookingCode, fullName) => {
+    const queryParams = new URLSearchParams();
+    queryParams.append("bookingCode", bookingCode);
+    queryParams.append("fullName", fullName);
+    const queryString = queryParams.toString();
+    return apiHandler("get", `/bookings/lookup?${queryString}`);
+  },
 };

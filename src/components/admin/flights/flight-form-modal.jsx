@@ -114,12 +114,8 @@ const TEXT = {
   removeStop: "Xóa",
   stopAirport: "Sân Bay Dừng",
   stopDuration: "Thời Gian Dừng (phút)",
-  travelClasses: "Hạng vé",
-  addClass: "Thêm hạng vé",
-  removeClass: "Xóa hạng vé",
-  selectClass: "Chọn hạng vé",
-  customPrice: "Giá Tùy Chỉnh",
-  classAvailableSeats: "Ghế Còn Trống",
+  onTime: "Đúng Giờ",
+
   businessId: "ID Doanh Nghiệp",
   tripType: "Loại Chuyến",
   gateId: "ID Cổng",
@@ -140,20 +136,10 @@ const TEXT = {
   outboundFlight: "Chuyến Bay Đi",
   returnFlight: "Chuyến Bay Về",
   flightDirection: "Hướng Chuyến Bay",
-  multiCityFlight: "Chuyến Bay Đa Thành Phố",
-  multiCityStops: "Điểm Dừng Đa Thành Phố",
-  addMultiCityStop: "Thêm Điểm Dừng",
-  removeMultiCityStop: "Xóa Điểm Dừng",
-  stopOrder: "Thứ Tự Dừng",
-  stopArrivalTime: "Thời Gian Đến",
-  stopDepartureTime: "Thời Gian Khởi Hành",
-  selectMultiCityFlight: "Chọn Chuyến Bay Đa Thành Phố",
-  multiCityFlightInfo: "Thông Tin Chuyến Bay Đa Thành Phố",
-  createMultiCityFlight: "Tạo Chuyến Bay Đa Thành Phố",
 };
 
 const flightTypes = ["DOMESTIC", "INTERNATIONAL"];
-const tripTypes = ["ONE_WAY", "ROUND_TRIP", "MULTI_CITY"];
+const tripTypes = ["ONE_WAY", "ROUND_TRIP"];
 const statusOptions = [
   { value: "ON_TIME", label: TEXT.onTime },
   { value: "DEPARTED", label: TEXT.departed },
@@ -178,26 +164,13 @@ const FlightFormModal = ({
     departureTime: "",
     arrivalDate: "",
     arrivalTime: "",
-    totalSeats: "",
     gateId: "",
     basePrice: "",
     type: "",
     status: "ON_TIME",
     businessId: "",
     tripType: "ONE_WAY",
-    stops: "NON_STOP",
-    stopsList: [],
-    flightTravelClasses: [],
     roundTripGroupId: "",
-    // Các trường bổ sung cho edit mode
-    terminal: "",
-    checkInCounter: "",
-    baggage: "",
-    mealService: "",
-    entertainment: "",
-    wifiAvailable: false,
-    delayReason: "",
-    remarks: "",
   };
 
   const [formData, setFormData] = useState(initialFormData);
@@ -205,10 +178,8 @@ const FlightFormModal = ({
   const [airports, setAirports] = useState([]);
   const [airlines, setAirlines] = useState([]);
   const [aircrafts, setAircrafts] = useState([]);
-  const [travelClasses, setTravelClasses] = useState([]);
   const [gates, setGates] = useState([]);
   const [isRoundTrip, setIsRoundTrip] = useState(false);
-  const [isMultiCity, setIsMultiCity] = useState(false);
   const [isReturnFlight, setIsReturnFlight] = useState(false);
   const [outboundFlight, setOutboundFlight] = useState(null);
   const [existingFlights, setExistingFlights] = useState([]);
@@ -295,33 +266,28 @@ const FlightFormModal = ({
     if (open) {
       const loadData = async () => {
         try {
-          const [airportsRes, airlinesRes, aircraftsRes, classesRes] =
-            await Promise.all([
-              airportApi.getAllAirports(),
-              airlineApi.getAllAirlines(),
-              aircraftApi.getAllAircrafts(),
-              classesApi.getAllClasses(),
-            ]);
+          const [airportsRes, airlinesRes, aircraftsRes] = await Promise.all([
+            airportApi.getAllAirports(),
+            airlineApi.getAllAirlines(),
+            aircraftApi.getAllAircrafts(),
+          ]);
 
           const ensureArray = (data) =>
             Array.isArray(data) ? data : data ? [data] : [];
 
           setAirports(
             ensureArray(airportsRes?.data?.content || airportsRes?.data).filter(
-              (a) => a.active == true
+              (a) => a.active === true
             )
           );
           setAirlines(
             // filter active airline
             ensureArray(airlinesRes?.data?.content || airlinesRes?.data).filter(
-              (a) => a.active == true
+              (a) => a.active === true
             )
           );
           setAircrafts(
             ensureArray(aircraftsRes?.data?.content || aircraftsRes?.data)
-          );
-          setTravelClasses(
-            ensureArray(classesRes?.data?.content || classesRes?.data)
           );
         } catch (error) {
           // Handle error silently
@@ -333,47 +299,29 @@ const FlightFormModal = ({
       setFormData(initialFormData);
       setErrors({});
       setIsRoundTrip(false);
-      setIsMultiCity(false);
+      setIsReturnFlight(false);
       setOutboundFlight(null);
     }
   }, [open, isEditMode]);
 
   useEffect(() => {
-    console.log("=== LOAD GATES DEBUG ===");
-    console.log("formData.departureAirportId:", formData.departureAirportId);
-    console.log("open:", open);
-
     if (formData.departureAirportId && open) {
-      console.log(
-        "Loading gates for departure airport:",
-        formData.departureAirportId
-      );
-
       const loadGates = async () => {
         try {
-          console.log(
-            "Calling airportApi.getAirportById with:",
-            formData.departureAirportId
-          );
           const airportRes = await airportApi.getAirportById(
             formData.departureAirportId
           );
-          console.log("Airport API response:", airportRes);
-
           const gatesData = Array.isArray(airportRes?.data?.gates)
             ? airportRes?.data?.gates
             : [];
 
-          console.log("All gates:", gatesData);
           setGates(gatesData);
         } catch (error) {
-          console.error("Error loading gates:", error);
           setGates([]);
         }
       };
       loadGates();
     } else {
-      console.log("Not loading gates - conditions not met");
       setGates([]);
     }
   }, [formData.departureAirportId, open]);
@@ -401,35 +349,19 @@ const FlightFormModal = ({
         departureTime: departureTime ? format(departureTime, "HH:mm") : "",
         arrivalDate: arrivalTime ? format(arrivalTime, "yyyy-MM-dd") : "",
         arrivalTime: arrivalTime ? format(arrivalTime, "HH:mm") : "",
-        totalSeats: flight.totalSeats || "",
         gateId: String(flight.gateId || ""),
         basePrice: flight.basePrice || "",
         type: flight.type || "",
         status: flight.status || "ON_TIME",
         businessId: String(flight.businessId || ""),
         tripType: flight.tripType || "ONE_WAY",
-        stops: flight.stops || "NON_STOP",
-        stopsList: flight.stopsList || [],
-        flightTravelClasses: flight.flightTravelClasses || [],
         roundTripGroupId: flight.roundTripGroupId || "",
-        terminal: flight.terminal || "",
-        checkInCounter: flight.checkInCounter || "",
-        baggage: flight.baggage || "",
-        mealService: flight.mealService || "",
-        entertainment: flight.entertainment || "",
-        wifiAvailable: !!flight.wifiAvailable,
-        delayReason: flight.delayReason || "",
-        remarks: flight.remarks || "",
       });
 
       setIsRoundTrip(!!flight.roundTripGroupId);
-      setIsMultiCity(
-        flight.tripType === "MULTI_CITY" || flight.stops === "MULTI_CITY"
-      );
     } else {
       setFormData(initialFormData);
       setIsRoundTrip(false);
-      setIsMultiCity(false);
       setIsReturnFlight(false);
       setOutboundFlight(null);
     }
@@ -438,7 +370,6 @@ const FlightFormModal = ({
   useEffect(() => {
     if (!isEditMode) {
       if (isRoundTrip) {
-        setIsMultiCity(false);
         setIsReturnFlight(false);
         // Tạo mã khứ hồi duy nhất
         const createGroupId = async () => {
@@ -454,30 +385,20 @@ const FlightFormModal = ({
         createGroupId();
       } else if (isReturnFlight) {
         setIsRoundTrip(false);
-        setIsMultiCity(false);
         setFormData((prev) => ({
           ...prev,
           tripType: "ROUND_TRIP",
           // roundTripGroupId sẽ được set khi chọn outboundFlight
         }));
-      } else if (isMultiCity) {
-        setIsRoundTrip(false);
-        setIsReturnFlight(false);
-        setFormData((prev) => ({
-          ...prev,
-          tripType: "MULTI_CITY",
-          stops: "MULTI_CITY",
-        }));
       } else {
         setFormData((prev) => ({
           ...prev,
           tripType: "ONE_WAY",
-          stops: "NON_STOP",
           roundTripGroupId: "",
         }));
       }
     }
-  }, [isRoundTrip, isMultiCity, isReturnFlight, isEditMode]);
+  }, [isRoundTrip, isReturnFlight, isEditMode]);
 
   const validateField = (field, value, currentFormData = formData) => {
     // Skip validation if field is empty (except for required fields)
@@ -538,7 +459,7 @@ const FlightFormModal = ({
         if (!value) return TEXT.requiredField;
         return "";
 
-        // case "gateId":
+      case "gateId":
         if (!isEditMode && !value) return TEXT.requiredField;
         if (!isEditMode && !gates.find((g) => String(g.gateId) === value)) {
           return "Cổng không tồn tại";
@@ -588,58 +509,6 @@ const FlightFormModal = ({
     }
   };
 
-  const validateClassAvailableSeats = (value, index, currentFormData) => {
-    if (!value || value < 0) {
-      return "Không âm";
-    }
-
-    // Check if individual class seats exceed aircraft capacity
-    if (currentFormData.aircraftId) {
-      const selectedAircraft = aircrafts.find(
-        (a) => String(a.aircraftId) === currentFormData.aircraftId
-      );
-
-      if (selectedAircraft && selectedAircraft.totalSeats) {
-        const seatsValue = parseInt(value) || 0;
-        if (seatsValue > selectedAircraft.totalSeats) {
-          return `Số ghế không được vượt quá sức chứa máy bay (${selectedAircraft.totalSeats})`;
-        }
-      }
-    }
-
-    return "";
-  };
-
-  const validateTotalSeats = (currentFormData) => {
-    if (
-      currentFormData.flightTravelClasses.length > 0 &&
-      currentFormData.aircraftId
-    ) {
-      const selectedAircraft = aircrafts.find(
-        (a) => String(a.aircraftId) === currentFormData.aircraftId
-      );
-
-      if (selectedAircraft && selectedAircraft.totalSeats) {
-        const totalAvailableSeats = currentFormData.flightTravelClasses.reduce(
-          (total, cls) => total + (parseInt(cls.availableSeats) || 0),
-          0
-        );
-
-        if (totalAvailableSeats > selectedAircraft.totalSeats) {
-          return `Tổng số ghế khả dụng (${totalAvailableSeats}) không được vượt quá sức chứa máy bay (${selectedAircraft.totalSeats})`;
-        }
-      }
-    }
-    return "";
-  };
-
-  const validateClassPrice = (value) => {
-    if (!value || value <= 0) {
-      return TEXT.priceGreaterZero;
-    }
-    return "";
-  };
-
   const handleInputChange = (field, value) => {
     const newFormData = { ...formData, [field]: value };
     setFormData(newFormData);
@@ -663,37 +532,8 @@ const FlightFormModal = ({
       setErrors((prev) => ({ ...prev, arrivalAirportId: arrivalError }));
     }
 
-    // If changing aircraft, also validate all travel classes
-    if (field === "aircraftId" && newFormData.flightTravelClasses.length > 0) {
-      newFormData.flightTravelClasses.forEach((cls, index) => {
-        if (cls.availableSeats) {
-          const seatsError = validateClassAvailableSeats(
-            cls.availableSeats,
-            index,
-            newFormData
-          );
-          if (seatsError) {
-            setErrors((prev) => ({
-              ...prev,
-              [`availableSeats_${index}`]: seatsError,
-            }));
-          } else {
-            setErrors((prev) => ({ ...prev, [`availableSeats_${index}`]: "" }));
-          }
-        }
-      });
-
-      // Also validate total seats
-      const totalSeatsError = validateTotalSeats(newFormData);
-      setErrors((prev) => ({
-        ...prev,
-        totalSeats: totalSeatsError || "", // Clear if no error
-      }));
-    }
-
     // If changing departure airport, clear gate selection and reload gates
     if (field === "departureAirportId") {
-      console.log("Departure airport changed, clearing gate selection");
       setFormData((prev) => ({ ...prev, gateId: "" }));
       setErrors((prev) => ({ ...prev, gateId: "" }));
     }
@@ -732,15 +572,6 @@ const FlightFormModal = ({
   const handleRoundTripToggle = (checked) => {
     setIsRoundTrip(checked);
     if (checked) {
-      setIsMultiCity(false);
-      setIsReturnFlight(false);
-    }
-  };
-
-  const handleMultiCityToggle = (checked) => {
-    setIsMultiCity(checked);
-    if (checked) {
-      setIsRoundTrip(false);
       setIsReturnFlight(false);
     }
   };
@@ -749,174 +580,19 @@ const FlightFormModal = ({
     setIsReturnFlight(checked);
     if (checked) {
       setIsRoundTrip(false);
-      setIsMultiCity(false);
-    }
-  };
-
-  const handleAddStop = () => {
-    const newStop = isMultiCity
-      ? {
-          airportId: "",
-          arrivalTime: "",
-          departureTime: "",
-          stopOrder: formData.stopsList.length + 1,
-        }
-      : { airportId: "", duration: "" };
-    setFormData((prev) => ({
-      ...prev,
-      stopsList: [...prev.stopsList, newStop],
-    }));
-  };
-
-  const handleRemoveStop = (index) => {
-    setFormData((prev) => ({
-      ...prev,
-      stopsList: prev.stopsList.filter((_, i) => i !== index),
-    }));
-  };
-
-  const handleStopChange = (index, field, value) => {
-    setFormData((prev) => ({
-      ...prev,
-      stopsList: prev.stopsList.map((stop, i) =>
-        i === index ? { ...stop, [field]: value } : stop
-      ),
-    }));
-  };
-
-  const handleAddClass = () => {
-    const newFormData = {
-      ...formData,
-      flightTravelClasses: [
-        ...formData.flightTravelClasses,
-        { classId: "", customPrice: "", availableSeats: "" },
-      ],
-    };
-    setFormData(newFormData);
-
-    // Validate total seats after adding new class
-    const totalSeatsError = validateTotalSeats(newFormData);
-    setErrors((prev) => ({
-      ...prev,
-      totalSeats: totalSeatsError || "", // Clear if no error
-    }));
-  };
-
-  const handleRemoveClass = (index) => {
-    const newFormData = {
-      ...formData,
-      flightTravelClasses: formData.flightTravelClasses.filter(
-        (_, i) => i !== index
-      ),
-    };
-    setFormData(newFormData);
-
-    // Clear errors for the removed class
-    const errorKey = `availableSeats_${index}`;
-    setErrors((prev) => {
-      const newErrors = { ...prev };
-      delete newErrors[errorKey];
-      delete newErrors[`customPrice_${index}`];
-      delete newErrors[`classId_${index}`];
-      return newErrors;
-    });
-
-    // Validate total seats after removing class
-    const totalSeatsError = validateTotalSeats(newFormData);
-    setErrors((prev) => ({
-      ...prev,
-      totalSeats: totalSeatsError || "", // Clear if no error
-    }));
-  };
-
-  const handleClassChange = (index, field, value) => {
-    const newFormData = {
-      ...formData,
-      flightTravelClasses: formData.flightTravelClasses.map((cls, i) =>
-        i === index ? { ...cls, [field]: value } : cls
-      ),
-    };
-    setFormData(newFormData);
-
-    // Clear previous error for this field
-    setErrors((prev) => ({
-      ...prev,
-      [field === "availableSeats"
-        ? `availableSeats_${index}`
-        : `customPrice_${index}`]: "",
-    }));
-
-    // Perform real-time validation for availableSeats
-    if (field === "availableSeats") {
-      // Clear totalSeats error when availableSeats is changed
-      setErrors((prev) => ({ ...prev, totalSeats: "" }));
-
-      // Validate individual class availableSeats
-      const availableSeatsError = validateClassAvailableSeats(
-        value,
-        index,
-        newFormData
-      );
-      if (availableSeatsError) {
-        setErrors((prev) => ({
-          ...prev,
-          [`availableSeats_${index}`]: availableSeatsError,
-        }));
-      }
-
-      // Validate total seats across all classes
-      const totalSeatsError = validateTotalSeats(newFormData);
-      if (totalSeatsError) {
-        setErrors((prev) => ({ ...prev, totalSeats: totalSeatsError }));
-      } else {
-        setErrors((prev) => ({ ...prev, totalSeats: "" })); // Clear error
-      }
-    }
-
-    // Validate customPrice
-    if (field === "customPrice") {
-      const priceError = validateClassPrice(value);
-      if (priceError) {
-        setErrors((prev) => ({
-          ...prev,
-          [`customPrice_${index}`]: priceError,
-        }));
-      }
     }
   };
 
   const validateForm = () => {
-    console.log("=== VALIDATE FORM DEBUG ===");
-    console.log("Form data:", formData);
-    console.log("isEditMode:", isEditMode);
-    console.log("isReturnFlight:", isReturnFlight);
-    console.log("isMultiCity:", isMultiCity);
-    console.log("outboundFlight:", outboundFlight);
-
     const newErrors = {};
 
     if (isReturnFlight && !isEditMode && !outboundFlight) {
-      newErrors.outboundFlight = isReturnFlight
-        ? "Vui lòng chọn chuyến bay đi để tạo chuyến về"
-        : "Vui lòng chọn chuyến bay đi";
-    }
-
-    if (isMultiCity && formData.stopsList.length === 0) {
-      newErrors.multiCityStops =
-        "Phải có ít nhất một điểm dừng cho đa thành phố";
+      newErrors.outboundFlight = "Vui lòng chọn chuyến bay đi để tạo chuyến về";
     }
 
     // Validate round-trip flights
     if ((isRoundTrip || isReturnFlight) && !formData.roundTripGroupId) {
       newErrors.roundTripGroupId = "Chuyến bay khứ hồi phải có mã nhóm khứ hồi";
-    }
-
-    if (
-      (isRoundTrip || isReturnFlight) &&
-      formData.departureAirportId === formData.arrivalAirportId
-    ) {
-      newErrors.arrivalAirportId =
-        "Sân bay khởi hành và đến phải khác nhau cho chuyến bay khứ hồi";
     }
 
     const requiredFields = [
@@ -949,70 +625,6 @@ const FlightFormModal = ({
       if (dep >= arr) newErrors.arrivalTime = TEXT.arrivalAfterDeparture;
     }
 
-    if (formData.stopsList.length > 0) {
-      formData.stopsList.forEach((stop, index) => {
-        if (isMultiCity) {
-          // Validate stop order is consecutive starting from 1
-          const expectedStopOrder = index + 1;
-          if (stop.stopOrder && stop.stopOrder !== expectedStopOrder) {
-            newErrors[
-              `stopOrder_${index}`
-            ] = `Thứ tự điểm dừng phải là ${expectedStopOrder}`;
-          }
-
-          if (!stop.arrivalTime)
-            newErrors[`stopArrivalTime_${index}`] = "Bắt buộc";
-          if (!stop.departureTime)
-            newErrors[`stopDepartureTime_${index}`] = "Bắt buộc";
-
-          // Validate stop duration >= 20 minutes
-          if (stop.arrivalTime && stop.departureTime) {
-            const arrivalTime = new Date(stop.arrivalTime);
-            const departureTime = new Date(stop.departureTime);
-            const stopDurationMinutes =
-              (departureTime - arrivalTime) / (1000 * 60);
-
-            if (stopDurationMinutes < 20) {
-              newErrors[`stopDuration_${index}`] =
-                "Thời gian dừng phải ít nhất 20 phút";
-            }
-
-            if (arrivalTime >= departureTime) {
-              newErrors[`stopTimes_${index}`] =
-                "Thời gian khởi hành phải sau thời gian đến";
-            }
-          }
-
-          // Validate consecutive stops are not at the same airport
-          if (index > 0) {
-            const prevStop = formData.stopsList[index - 1];
-            if (prevStop.airportId === stop.airportId) {
-              newErrors[`consecutiveStops_${index}`] =
-                "Các điểm dừng liên tiếp không được ở cùng sân bay";
-            }
-
-            // Validate stop times are sequential
-            if (prevStop.departureTime && stop.arrivalTime) {
-              const prevDeparture = new Date(prevStop.departureTime);
-              const currentArrival = new Date(stop.arrivalTime);
-              if (currentArrival <= prevDeparture) {
-                newErrors[`sequentialStops_${index}`] =
-                  "Thời gian đến của điểm dừng phải sau thời gian khởi hành của điểm dừng trước";
-              }
-            }
-          }
-        } else {
-          if (stop.duration < 20 || stop.duration > 1440) {
-            newErrors[`stopDuration_${index}`] =
-              "Thời gian dừng từ 20 phút đến 24 giờ";
-          }
-        }
-        if (!airports.find((a) => String(a.airportId) === stop.airportId)) {
-          newErrors[`stopAirport_${index}`] = "Sân bay không tồn tại";
-        }
-      });
-    }
-
     if (!airlines.find((a) => String(a.airlineId) === formData.airlineId))
       newErrors.airlineId = "Hãng hàng không không tồn tại";
     if (!aircrafts.find((a) => String(a.aircraftId) === formData.aircraftId))
@@ -1025,16 +637,6 @@ const FlightFormModal = ({
     if (selectedAirline && !selectedAirline.active) {
       newErrors.airlineId = "Hãng hàng không không hoạt động";
     }
-
-    // Validate travel classes exist
-    formData.flightTravelClasses.forEach((cls, index) => {
-      if (
-        cls.classId &&
-        !travelClasses.find((tc) => String(tc.classId) === cls.classId)
-      ) {
-        newErrors[`classId_${index}`] = "Hạng vé không tồn tại";
-      }
-    });
 
     if (
       !airports.find((a) => String(a.airportId) === formData.departureAirportId)
@@ -1065,55 +667,7 @@ const FlightFormModal = ({
     if (!isEditMode && !gates.find((g) => String(g.gateId) === formData.gateId))
       newErrors.gateId = "Cổng không tồn tại";
 
-    formData.flightTravelClasses.forEach((cls, index) => {
-      if (!cls.classId) newErrors[`classId_${index}`] = "Bắt buộc";
-      if (cls.customPrice <= 0)
-        newErrors[`customPrice_${index}`] = TEXT.priceGreaterZero;
-
-      // Validate availableSeats
-      if (cls.availableSeats < 0) {
-        newErrors[`availableSeats_${index}`] = "Không âm";
-      } else if (formData.aircraftId) {
-        const selectedAircraft = aircrafts.find(
-          (a) => String(a.aircraftId) === formData.aircraftId
-        );
-        if (selectedAircraft && selectedAircraft.totalSeats) {
-          const seatsValue = parseInt(cls.availableSeats) || 0;
-          if (seatsValue > selectedAircraft.totalSeats) {
-            newErrors[
-              `availableSeats_${index}`
-            ] = `Số ghế không được vượt quá sức chứa máy bay (${selectedAircraft.totalSeats})`;
-          }
-        }
-      }
-    });
-
-    // Validate total available seats don't exceed aircraft capacity
-    if (formData.flightTravelClasses.length > 0 && formData.aircraftId) {
-      const selectedAircraft = aircrafts.find(
-        (a) => String(a.aircraftId) === formData.aircraftId
-      );
-
-      if (selectedAircraft && selectedAircraft.totalSeats) {
-        const totalAvailableSeats = formData.flightTravelClasses.reduce(
-          (total, cls) => total + (parseInt(cls.availableSeats) || 0),
-          0
-        );
-
-        if (totalAvailableSeats > selectedAircraft.totalSeats) {
-          newErrors.totalSeats = `Tổng số ghế khả dụng (${totalAvailableSeats}) không được vượt quá sức chứa máy bay (${selectedAircraft.totalSeats})`;
-        } else {
-          // Clear totalSeats error if validation passes
-          delete newErrors.totalSeats;
-        }
-      } else {
-        // Clear totalSeats error if no aircraft selected
-        delete newErrors.totalSeats;
-      }
-    } else {
-      // Clear totalSeats error if no travel classes
-      delete newErrors.totalSeats;
-    }
+    delete newErrors.totalSeats;
 
     // Filter out empty string errors
     const filteredErrors = {};
@@ -1141,21 +695,6 @@ const FlightFormModal = ({
 
     const loadingToast = toast.loading(isEditMode ? "Cập nhật..." : "Tạo...");
     try {
-      const processedClasses = formData.flightTravelClasses
-        .filter((cls) => cls.classId)
-        .map((cls) => ({
-          classId: parseInt(cls.classId),
-          customPrice: parseFloat(cls.customPrice) || 0,
-          availableSeats: parseInt(cls.availableSeats) || 0,
-        }));
-
-      if (processedClasses.length === 0)
-        throw new Error("Thêm ít nhất một hạng vé");
-
-      const selectedAircraft = aircrafts.find(
-        (a) => String(a.aircraftId) === formData.aircraftId
-      );
-
       const processedData = {
         airlineId: parseInt(formData.airlineId),
         aircraftId: parseInt(formData.aircraftId),
@@ -1171,31 +710,14 @@ const FlightFormModal = ({
         type: formData.type,
         status: formData.status,
         businessId:
-          parseInt(formData.businessId) > 0 ? parseInt(formData.businessId) : 1, // Fallback to 1 if invalid
+          parseInt(formData.businessId) > 0 ? parseInt(formData.businessId) : 1,
         tripType: formData.tripType,
-        flightTravelClasses: processedClasses,
-        stops: formData.stops,
+        basePrice: parseFloat(formData.basePrice) || 0,
         // Only include roundTripGroupId if it's not empty
         ...(formData.roundTripGroupId &&
           formData.roundTripGroupId.trim() !== "" && {
             roundTripGroupId: formData.roundTripGroupId,
           }),
-        ...(formData.stops !== "NON_STOP" && {
-          stopsList: formData.stopsList.map((stop, i) =>
-            isMultiCity
-              ? {
-                  airportId: parseInt(stop.airportId),
-                  arrivalTime: new Date(stop.arrivalTime).toISOString(),
-                  departureTime: new Date(stop.departureTime).toISOString(),
-                  stopOrder: stop.stopOrder || i + 1,
-                }
-              : {
-                  airportId: parseInt(stop.airportId),
-                  duration: parseInt(stop.duration),
-                }
-          ),
-          stops: formData.stops,
-        }),
         // Only include flightId for edit mode
         ...(isEditMode && { flightId: flight.flightId }),
       };
@@ -1239,7 +761,6 @@ const FlightFormModal = ({
     );
     setErrors({});
     setIsRoundTrip(false);
-    setIsMultiCity(false);
     setIsReturnFlight(false);
     setOutboundFlight(null);
   };
@@ -1379,21 +900,6 @@ const FlightFormModal = ({
                   />
                 </div>
 
-                {/* Toggle đa thành phố */}
-                <div className="flex justify-between items-center">
-                  <div>
-                    <Label className="font-medium">
-                      {TEXT.multiCityFlight}
-                    </Label>
-                    <p className="text-xs text-gray-500">
-                      Tạo đa thành phố với stops
-                    </p>
-                  </div>
-                  <Switch
-                    checked={isMultiCity}
-                    onCheckedChange={handleMultiCityToggle}
-                  />
-                </div>
                 {/* Thông báo trạng thái */}
                 {isRoundTrip && formData.roundTripGroupId && (
                   <div className="p-3 bg-blue-50 rounded-md">
@@ -1414,15 +920,6 @@ const FlightFormModal = ({
                       <strong>Chế độ tạo chuyến về được bật</strong>
                       <br />
                       Chọn chuyến bay đi từ danh sách bên dưới
-                    </div>
-                  </div>
-                )}
-
-                {isMultiCity && (
-                  <div className="p-3 bg-purple-50 rounded-md">
-                    <div className="text-sm text-purple-800">
-                      <strong>Chế độ đa thành phố được bật</strong> - Sẽ có thể
-                      thêm điểm dừng
                     </div>
                   </div>
                 )}
@@ -1506,7 +1003,7 @@ const FlightFormModal = ({
               <TabsTrigger value="basic">Thông tin cơ bản</TabsTrigger>
               <TabsTrigger value="route">Tuyến bay</TabsTrigger>
               <TabsTrigger value="stops">Điểm dừng</TabsTrigger>
-              <TabsTrigger value="classes">Giá và hạng vé</TabsTrigger>
+              <TabsTrigger value="classes">Giá vé</TabsTrigger>
             </TabsList>
 
             <TabsContent value="basic">
@@ -1998,176 +1495,24 @@ const FlightFormModal = ({
             </TabsContent>
 
             <TabsContent value="stops">
-              {isMultiCity && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-base flex items-center">
-                      <MapPin className="h-4 w-4 mr-2" />
-                      {TEXT.multiCityStops}
-                    </CardTitle>
-                    <CardDescription className="text-xs">
-                      {TEXT.multiCityFlightInfo}
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    {formData.stopsList.map((stop, index) => (
-                      <Card key={index} className="p-4 space-y-2">
-                        <div className="flex justify-between">
-                          <Label>Stop {index + 1}</Label>
-                          <Button
-                            variant="ghost"
-                            onClick={() => handleRemoveStop(index)}
-                          >
-                            <Minus className="h-4 w-4" />
-                          </Button>
-                        </div>
-                        <div className="grid grid-cols-1 md:grid-cols-{isMultiCity ? 4 : 2} gap-4">
-                          <div>
-                            <Label>{TEXT.stopAirport} *</Label>
-                            <Select
-                              value={stop.airportId}
-                              onValueChange={(v) =>
-                                handleStopChange(index, "airportId", v)
-                              }
-                            >
-                              <SelectTrigger
-                                className={
-                                  errors[`stopAirport_${index}`]
-                                    ? "border-red-500"
-                                    : ""
-                                }
-                              >
-                                <SelectValue placeholder="Chọn sân bay" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {airports.map((a) => (
-                                  <SelectItem
-                                    key={a.airportId}
-                                    value={String(a.airportId)}
-                                  >
-                                    {a.airportCode} - {a.airportName}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                            {errors[`stopAirport_${index}`] && (
-                              <p className="text-red-500 text-xs">
-                                {errors[`stopAirport_${index}`]}
-                              </p>
-                            )}
-                          </div>
-                          {isMultiCity ? (
-                            <>
-                              <div>
-                                <Label>{TEXT.stopArrivalTime} *</Label>
-                                <Input
-                                  type="datetime-local"
-                                  value={stop.arrivalTime}
-                                  onChange={(e) =>
-                                    handleStopChange(
-                                      index,
-                                      "arrivalTime",
-                                      e.target.value
-                                    )
-                                  }
-                                  className={
-                                    errors[`stopArrivalTime_${index}`]
-                                      ? "border-red-500"
-                                      : ""
-                                  }
-                                />
-                                {errors[`stopArrivalTime_${index}`] && (
-                                  <p className="text-red-500 text-xs">
-                                    {errors[`stopArrivalTime_${index}`]}
-                                  </p>
-                                )}
-                              </div>
-                              <div>
-                                <Label>{TEXT.stopDepartureTime} *</Label>
-                                <Input
-                                  type="datetime-local"
-                                  value={stop.departureTime}
-                                  onChange={(e) =>
-                                    handleStopChange(
-                                      index,
-                                      "departureTime",
-                                      e.target.value
-                                    )
-                                  }
-                                  className={
-                                    errors[`stopDepartureTime_${index}`]
-                                      ? "border-red-500"
-                                      : ""
-                                  }
-                                />
-                                {errors[`stopDepartureTime_${index}`] && (
-                                  <p className="text-red-500 text-xs">
-                                    {errors[`stopDepartureTime_${index}`]}
-                                  </p>
-                                )}
-                              </div>
-                              <div>
-                                <Label>{TEXT.stopOrder}</Label>
-                                <Input
-                                  type="number"
-                                  value={stop.stopOrder}
-                                  onChange={(e) =>
-                                    handleStopChange(
-                                      index,
-                                      "stopOrder",
-                                      e.target.value
-                                    )
-                                  }
-                                  min={1}
-                                />
-                              </div>
-                            </>
-                          ) : (
-                            <div>
-                              <Label>{TEXT.stopDuration} (phút) *</Label>
-                              <Input
-                                type="number"
-                                value={stop.duration}
-                                onChange={(e) =>
-                                  handleStopChange(
-                                    index,
-                                    "duration",
-                                    e.target.value
-                                  )
-                                }
-                                className={
-                                  errors[`stopDuration_${index}`]
-                                    ? "border-red-500"
-                                    : ""
-                                }
-                              />
-                              {errors[`stopDuration_${index}`] && (
-                                <p className="text-red-500 text-xs">
-                                  {errors[`stopDuration_${index}`]}
-                                </p>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                      </Card>
-                    ))}
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={handleAddStop}
-                      className="w-full"
-                    >
-                      <Plus className="h-4 w-4 mr-2" />{" "}
-                      {isMultiCity ? TEXT.addMultiCityStop : TEXT.addStop}
-                    </Button>
-                    {errors.multiCityStops && (
-                      <p className="text-red-500 text-xs">
-                        {errors.multiCityStops}
-                      </p>
-                    )}
-                  </CardContent>
-                </Card>
-              )}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base flex items-center">
+                    <MapPin className="h-4 w-4 mr-2" />
+                    Điểm dừng
+                  </CardTitle>
+                  <CardDescription className="text-xs">
+                    Hiện tại chỉ hỗ trợ chuyến bay thẳng
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="p-4 bg-gray-50 rounded-md text-center">
+                    <p className="text-sm text-gray-600">
+                      Chức năng điểm dừng đang được phát triển
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
             </TabsContent>
 
             <TabsContent value="classes">
@@ -2175,166 +1520,40 @@ const FlightFormModal = ({
                 <CardHeader>
                   <CardTitle className="text-base flex items-center">
                     <Users className="h-4 w-4 mr-2" />
-                    {TEXT.travelClasses}
+                    Giá chuyến bay
                   </CardTitle>
                   <CardDescription className="text-xs">
-                    Quản lý hạng và giá
+                    Giá cơ bản cho chuyến bay
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  {/* Hiển thị thông tin tổng quan về ghế */}
-                  {formData.aircraftId && (
-                    <div className="p-3 bg-blue-50 border border-blue-200 rounded-md">
-                      <div className="text-sm text-blue-800">
-                        <strong>Thông tin sức chứa:</strong>
-                        {(() => {
-                          const selectedAircraft = aircrafts.find(
-                            (a) => String(a.aircraftId) === formData.aircraftId
-                          );
-                          if (selectedAircraft) {
-                            const totalAvailableSeats =
-                              formData.flightTravelClasses.reduce(
-                                (total, cls) =>
-                                  total + (parseInt(cls.availableSeats) || 0),
-                                0
-                              );
-                            return (
-                              <>
-                                <br />
-                                Máy bay: {selectedAircraft.aircraftName}
-                                <br />
-                                Sức chứa: {selectedAircraft.totalSeats} ghế
-                                <br />
-                                Tổng ghế khả dụng: {totalAvailableSeats} ghế
-                              </>
-                            );
-                          }
-                          return null;
-                        })()}
-                      </div>
-                    </div>
-                  )}
-
-                  {formData.flightTravelClasses.map((cls, index) => (
-                    <Card key={index} className="p-4 space-y-2">
-                      <div className="flex justify-between">
-                        <Label>Hạng {index + 1}</Label>
-                        <Button
-                          variant="ghost"
-                          onClick={() => handleRemoveClass(index)}
-                        >
-                          <Minus className="h-4 w-4" />
-                        </Button>
-                      </div>
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div>
-                          <Label>{TEXT.selectClass} *</Label>
-                          <Select
-                            value={cls.classId}
-                            onValueChange={(v) =>
-                              handleClassChange(index, "classId", v)
-                            }
-                          >
-                            <SelectTrigger
-                              className={
-                                errors[`classId_${index}`]
-                                  ? "border-red-500"
-                                  : ""
-                              }
-                            >
-                              <SelectValue placeholder="Chọn hạng" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {travelClasses.map((c) => (
-                                <SelectItem
-                                  key={c.classId}
-                                  value={String(c.classId)}
-                                >
-                                  {c.className}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          {errors[`classId_${index}`] && (
-                            <p className="text-red-500 text-xs">
-                              {errors[`classId_${index}`]}
-                            </p>
-                          )}
-                        </div>
-                        <div>
-                          <Label>{TEXT.customPrice}</Label>
-                          <Input
-                            type="number"
-                            value={cls.customPrice}
-                            onChange={(e) =>
-                              handleClassChange(
-                                index,
-                                "customPrice",
-                                e.target.value
-                              )
-                            }
-                            className={
-                              errors[`customPrice_${index}`]
-                                ? "border-red-500"
-                                : ""
-                            }
-                          />
-                          {errors[`customPrice_${index}`] && (
-                            <p className="text-red-500 text-xs">
-                              {errors[`customPrice_${index}`]}
-                            </p>
-                          )}
-                        </div>
-                        <div>
-                          <Label>{TEXT.classAvailableSeats}</Label>
-                          <Input
-                            type="number"
-                            value={cls.availableSeats}
-                            onChange={(e) =>
-                              handleClassChange(
-                                index,
-                                "availableSeats",
-                                e.target.value
-                              )
-                            }
-                            className={
-                              errors[`availableSeats_${index}`]
-                                ? "border-red-500"
-                                : ""
-                            }
-                          />
-                          {errors[`availableSeats_${index}`] && (
-                            <p className="text-red-500 text-xs">
-                              {errors[`availableSeats_${index}`]}
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                    </Card>
-                  ))}
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={handleAddClass}
-                    className="w-full"
-                  >
-                    <Plus className="h-4 w-4 mr-2" /> {TEXT.addClass}
-                  </Button>
-
-                  {/* Hiển thị lỗi tổng số ghế */}
-                  {errors.totalSeats && errors.totalSeats.trim() !== "" && (
-                    <div className="p-3 bg-red-50 border border-red-200 rounded-md">
-                      <p className="text-red-600 text-sm font-medium">
-                        ⚠️ {errors.totalSeats}
-                      </p>
-                    </div>
-                  )}
+                  <div>
+                    <Label>Giá cơ bản (VNĐ) *</Label>
+                    <Input
+                      type="number"
+                      value={formData.basePrice}
+                      onChange={(e) =>
+                        handleInputChange("basePrice", e.target.value)
+                      }
+                      placeholder="Nhập giá cơ bản"
+                      className={errors.basePrice ? "border-red-500" : ""}
+                      min="0"
+                      step="1000"
+                    />
+                    {errors.basePrice && (
+                      <p className="text-red-500 text-xs">{errors.basePrice}</p>
+                    )}
+                    <p className="text-xs text-gray-500 mt-1">
+                      Đây là giá cơ bản cho chuyến bay. Các hạng vé sẽ được tính
+                      toán dựa trên giá này.
+                    </p>
+                  </div>
                 </CardContent>
               </Card>
             </TabsContent>
           </Tabs>
 
-          {seatLayout && (
+          {seatLayout && selectedAircraft && (
             <Card>
               <CardHeader>
                 <CardTitle className="text-base flex items-center">

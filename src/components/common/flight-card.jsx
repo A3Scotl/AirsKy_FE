@@ -234,7 +234,32 @@ export function FlightCard({
         // Multi-city specific data
         segments: itinerary.legs.length,
         routeInfo: itinerary.routeInfo,
-        allLegs: itinerary.legs,
+        allLegs: itinerary.legs.map((leg, index) => ({
+          ...leg,
+          // Ensure each leg has proper aircraft info structure
+          aircraftInfo: leg.aircraftInfo || leg.aircraft || null,
+          seatLayout:
+            leg.aircraft?.seatLayout ||
+            leg.seatLayout ||
+            leg.aircraftInfo?.seatLayout ||
+            "N/A",
+          totalSeats:
+            leg.aircraft?.totalSeats ||
+            leg.totalSeats ||
+            leg.aircraftInfo?.totalSeats ||
+            0,
+          aircraftId:
+            leg.aircraft?.aircraftId ||
+            leg.aircraftId ||
+            leg.aircraftInfo?.aircraftId,
+          aircraftName:
+            leg.aircraft?.aircraftName ||
+            leg.aircraftName ||
+            leg.aircraftInfo?.aircraftName ||
+            "N/A",
+          // Add leg index for identification
+          legIndex: index,
+        })),
 
         // Flight details - sum up values
         duration: itinerary.totalDuration,
@@ -304,6 +329,21 @@ export function FlightCard({
         aircraft:
           outbound.aircraft?.aircraftName || outbound.aircraft || "Boeing 737",
 
+        // Aircraft info - preserve the full aircraft object from outbound
+        aircraftInfo:
+          typeof outbound.aircraft === "object" && outbound.aircraft !== null
+            ? outbound.aircraft
+            : outbound.aircraftInfo || null,
+        seatLayout:
+          outbound.aircraft?.seatLayout ||
+          outbound.seatLayout ||
+          outbound.aircraftInfo?.seatLayout ||
+          "N/A",
+        aircraftId:
+          outbound.aircraft?.aircraftId ||
+          outbound.aircraftId ||
+          outbound.aircraftInfo?.aircraftId,
+
         // Pricing - use lowest combined price from travel classes if available
         priceNumeric:
           getLowestPriceFromClasses(
@@ -326,8 +366,14 @@ export function FlightCard({
           inbound.availableSeats || 0
         ),
         totalSeats: Math.min(
-          outbound.aircraft?.totalSeats || outbound.totalSeats || 0,
-          inbound.aircraft?.totalSeats || inbound.totalSeats || 0
+          outbound.aircraft?.totalSeats ||
+            outbound.totalSeats ||
+            outbound.aircraftInfo?.totalSeats ||
+            0,
+          inbound.aircraft?.totalSeats ||
+            inbound.totalSeats ||
+            inbound.aircraftInfo?.totalSeats ||
+            0
         ),
 
         // Additional info
@@ -341,8 +387,44 @@ export function FlightCard({
 
         // Round-trip specific data
         isRoundTripDisplay: true,
-        outboundFlight: outbound,
-        returnFlight: inbound,
+        outboundFlight: {
+          ...outbound,
+          // Ensure aircraft info is properly structured for outbound
+          aircraftInfo: outbound.aircraftInfo || outbound.aircraft || null,
+          seatLayout:
+            outbound.aircraft?.seatLayout ||
+            outbound.seatLayout ||
+            outbound.aircraftInfo?.seatLayout ||
+            "N/A",
+          totalSeats:
+            outbound.aircraft?.totalSeats ||
+            outbound.totalSeats ||
+            outbound.aircraftInfo?.totalSeats ||
+            0,
+          aircraftId:
+            outbound.aircraft?.aircraftId ||
+            outbound.aircraftId ||
+            outbound.aircraftInfo?.aircraftId,
+        },
+        returnFlight: {
+          ...inbound,
+          // Ensure aircraft info is properly structured for return/inbound
+          aircraftInfo: inbound.aircraftInfo || inbound.aircraft || null,
+          seatLayout:
+            inbound.aircraft?.seatLayout ||
+            inbound.seatLayout ||
+            inbound.aircraftInfo?.seatLayout ||
+            "N/A",
+          totalSeats:
+            inbound.aircraft?.totalSeats ||
+            inbound.totalSeats ||
+            inbound.aircraftInfo?.totalSeats ||
+            0,
+          aircraftId:
+            inbound.aircraft?.aircraftId ||
+            inbound.aircraftId ||
+            inbound.aircraftInfo?.aircraftId,
+        },
         combinedPrice: itinerary.totalPrice,
 
         // Contact info
@@ -394,9 +476,23 @@ export function FlightCard({
         type: singleFlight.type,
         status: singleFlight.status,
         aircraft:
-          singleFlight.aircraft?.aircraftName ||
-          singleFlight.aircraft ||
-          "Boeing 737",
+          singleFlight.aircraft?.aircraftName || singleFlight.aircraft || "N/A",
+
+        // Aircraft info - preserve the full aircraft object
+        aircraftInfo:
+          typeof singleFlight.aircraft === "object" &&
+          singleFlight.aircraft !== null
+            ? singleFlight.aircraft
+            : singleFlight.aircraftInfo || null,
+        seatLayout:
+          singleFlight.aircraft?.seatLayout ||
+          singleFlight.seatLayout ||
+          singleFlight.aircraftInfo?.seatLayout ||
+          "N/A",
+        aircraftId:
+          singleFlight.aircraft?.aircraftId ||
+          singleFlight.aircraftId ||
+          singleFlight.aircraftInfo?.aircraftId,
 
         // Pricing - use lowest price from travel classes if available
         priceNumeric:
@@ -413,7 +509,9 @@ export function FlightCard({
         // Capacity
         availableSeats: singleFlight.availableSeats,
         totalSeats:
-          singleFlight.aircraft?.totalSeats || singleFlight.totalSeats,
+          singleFlight.aircraft?.totalSeats ||
+          singleFlight.totalSeats ||
+          singleFlight.aircraftInfo?.totalSeats,
 
         // Additional info
         stops: singleFlight.stops,
@@ -499,6 +597,21 @@ export function FlightCard({
           ? flight.aircraft.aircraftName || "Boeing 737"
           : flight.aircraft || "Boeing 737",
 
+      // Aircraft info - preserve the full aircraft object
+      aircraftInfo:
+        typeof flight.aircraft === "object" && flight.aircraft !== null
+          ? flight.aircraft
+          : flight.aircraftInfo || null,
+      seatLayout:
+        flight.aircraft?.seatLayout ||
+        flight.seatLayout ||
+        flight.aircraftInfo?.seatLayout ||
+        "N/A",
+      aircraftId:
+        flight.aircraft?.aircraftId ||
+        flight.aircraftId ||
+        flight.aircraftInfo?.aircraftId,
+
       // Pricing - calculate from flightTravelClasses instead of using basePrice
       priceNumeric:
         getLowestPriceFromClasses(flight.flightTravelClasses) ||
@@ -511,7 +624,11 @@ export function FlightCard({
 
       // Capacity
       availableSeats: flight.availableSeats || 100,
-      totalSeats: flight.aircraft?.totalSeats || "N/A",
+      totalSeats:
+        flight.aircraft?.totalSeats ||
+        flight.totalSeats ||
+        flight.aircraftInfo?.totalSeats ||
+        "N/A",
 
       // Additional info
       stops: flight.stops || [],
@@ -667,6 +784,43 @@ export function FlightCard({
       </Badge>
     );
   };
+
+  // Debug aircraft info after processing
+  console.log("🔍 FlightCard processed data:", {
+    originalFlight: flight,
+    processedFlightData: flightData,
+    aircraftInfo: flightData.aircraftInfo,
+    seatLayout: flightData.seatLayout,
+    totalSeats: flightData.totalSeats,
+    aircraft: flightData.aircraft,
+    // Round-trip specific debug
+    isRoundTrip: flightData.isRoundTripDisplay,
+    outboundAircraft: flightData.outboundFlight
+      ? {
+          aircraftInfo: flightData.outboundFlight.aircraftInfo,
+          seatLayout: flightData.outboundFlight.seatLayout,
+          totalSeats: flightData.outboundFlight.totalSeats,
+        }
+      : null,
+    returnAircraft: flightData.returnFlight
+      ? {
+          aircraftInfo: flightData.returnFlight.aircraftInfo,
+          seatLayout: flightData.returnFlight.seatLayout,
+          totalSeats: flightData.returnFlight.totalSeats,
+        }
+      : null,
+    // Multi-city specific debug
+    isMultiCity: flightData.isMultiCityDisplay,
+    allLegsAircraft:
+      flightData.allLegs?.map((leg, index) => ({
+        legIndex: index,
+        flightNumber: leg.flightNumber,
+        aircraftInfo: leg.aircraftInfo,
+        seatLayout: leg.seatLayout,
+        totalSeats: leg.totalSeats,
+        aircraftName: leg.aircraftName,
+      })) || null,
+  });
 
   return (
     <Card
@@ -954,6 +1108,17 @@ export function FlightCard({
                               }
                             : flightData;
 
+                        console.log(
+                          "🚀 FlightCard navigate with flight data:",
+                          {
+                            flightToPass,
+                            aircraftInfo: flightToPass.aircraftInfo,
+                            seatLayout: flightToPass.seatLayout,
+                            totalSeats: flightToPass.totalSeats,
+                            aircraft: flightToPass.aircraft,
+                          }
+                        );
+
                         navigate(`/detail/${flightData.flightId}`, {
                           state: { flight: flightToPass },
                         });
@@ -993,6 +1158,23 @@ export function FlightCard({
                           originalItinerary: flight,
                         }
                       : flightData;
+
+                  console.log(
+                    "🚀 FlightCard navigate with flight data (multi-city):",
+                    {
+                      flightToPass,
+                      aircraftInfo: flightToPass.aircraftInfo,
+                      seatLayout: flightToPass.seatLayout,
+                      totalSeats: flightToPass.totalSeats,
+                      aircraft: flightToPass.aircraft,
+                      legs: flightToPass.legs?.map((leg) => ({
+                        aircraftInfo: leg.aircraftInfo,
+                        seatLayout: leg.seatLayout,
+                        totalSeats: leg.totalSeats,
+                        aircraft: leg.aircraft,
+                      })),
+                    }
+                  );
 
                   navigate(`/detail/${flightData.flightId}`, {
                     state: { flight: flightToPass },

@@ -15,7 +15,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Menu, User, LogOut, Calendar } from "lucide-react";
+import { Menu, User, LogOut, Calendar, Plane } from "lucide-react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/auth-context";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
@@ -27,6 +27,8 @@ const MENU_ITEMS = [
   { label: "Chuyến Bay", path: "flights" },
   { label: "Ưu Đãi", path: "deals" },
   { label: "Tin Tức", path: "blog" },
+  { label: "Check-in", path: "check-in" },
+  { label: "Chuyến bay của tôi", path: "my-flights" },
 ];
 
 export function Header() {
@@ -267,12 +269,6 @@ export function Header() {
                     <Link to="/profile" className="flex items-center w-full">
                       <User className="w-4 h-4 mr-3" />
                       Hồ sơ cá nhân
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <Link to="/check-in" className="flex items-center w-full">
-                      <Calendar className="w-4 h-4 mr-3" />
-                      Check in
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild>

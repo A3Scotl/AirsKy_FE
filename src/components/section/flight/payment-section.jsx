@@ -215,7 +215,7 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
     }
 
     // One-way flight calculation
-    const basePrice = fare?.customPrice || fare?.basePrice || 0;
+    const basePrice = fare?.price || fare?.basePrice || 0;
     return formData.passengers.reduce((total, p) => {
       const discountedPrice =
         p.type === "CHILD"
@@ -387,12 +387,6 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
       if (Object.keys(assignedSeats).length > 0) {
         // Cập nhật state để hiển thị ghế đã gán
         setAutoAssignedSeats(assignedSeats);
-
-        toast.success(
-          `Đã tự động gán ${
-            Object.keys(assignedSeats).length
-          } ghế trống cho hành khách`
-        );
       }
 
       return {
@@ -418,8 +412,21 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
     setIsProcessing(true);
 
     try {
-      // Auto assign seats from API if none selected
-      const autoAssignResult = await autoAssignSeats();
+      // Auto assign seats from API only if no seats are selected from extras
+      let autoAssignResult = {
+        seats: {},
+        seatMapping: {},
+        availableSeatsData: [],
+      };
+      const hasSelectedSeats =
+        extrasData?.selectedSeats &&
+        Object.keys(extrasData.selectedSeats).length > 0;
+
+      if (!hasSelectedSeats) {
+        // Only auto-assign if no seats were selected in extras
+        autoAssignResult = await autoAssignSeats();
+      }
+
       const finalSelectedSeats = {
         ...extrasData?.selectedSeats,
         ...autoAssignResult.seats,
@@ -467,10 +474,10 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
         console.log(
           `Getting random seat for flight ${flightId}, class ${classId}`
         );
-        const randomSeatId = await getRandomAvailableSeat(flightId, classId);
-        if (randomSeatId) {
-          console.log(`Assigned random seat ID:`, randomSeatId);
-          return randomSeatId;
+        const randomSeat = await getRandomAvailableSeat(flightId, classId);
+        if (randomSeat) {
+          console.log(`Assigned random seat:`, randomSeat);
+          return randomSeat.seatId;
         }
 
         console.error(
@@ -518,12 +525,12 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
       });
 
       // Helper function to get random available seat
-      const getRandomAvailableSeat = async (flightId, classId) => {
+      const getRandomAvailableSeat = async (flightId, travelClassId) => {
         try {
           const response =
             await flightApi.getSeatsFlightByFlightIdAndTravelClassId(
               flightId,
-              classId
+              travelClassId
             );
           // Check if response has data property and is array
           const seatsData = response.success ? response.data : response;
@@ -534,7 +541,12 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
           if (availableSeats.length > 0) {
             const randomSeat =
               availableSeats[Math.floor(Math.random() * availableSeats.length)];
-            return randomSeat.seatId || randomSeat.id; // Return actual seat ID from database
+            return {
+              seatId: randomSeat.seatId || randomSeat.id,
+              seatNumber: randomSeat.seatNumber,
+              priceVND: randomSeat.priceVND || 0,
+              seatType: randomSeat.type,
+            };
           }
           return null;
         } catch (error) {
@@ -605,10 +617,12 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
         bookingData.flightSegments = flight.legs.map((leg, index) => {
           const classId =
             leg.selectedClass?.id || leg.flightTravelClasses?.[0]?.id || 1;
+          const travelClassId = leg.selectedClass?.travelClass?.id || 1;
           return {
-            segmentId: index + 1,
+            segmentOrder: index + 1,
             flightId: leg.id || leg.flightId,
             classId: classId,
+            travelClassId: travelClassId,
             departure: {
               code: leg.departureAirport?.airportCode || leg.from || "N/A",
               city:
@@ -656,8 +670,8 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
                 "N/A",
             },
             price:
-              leg.selectedClass?.customPrice ||
-              leg.flightTravelClasses?.[0]?.customPrice ||
+              leg.selectedClass?.price ||
+              leg.flightTravelClasses?.[0]?.price ||
               0,
             aircraft: leg.aircraft || leg.aircraftName || "Unknown Aircraft",
             duration: leg.duration
@@ -698,11 +712,17 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
         bookingData.flightSegments = [
           // Outbound segment
           {
-            segmentId: 1,
+            segmentOrder: 1,
             flightId: parseInt(outboundData?.id || outboundData?.flightId || 0),
             classId:
-              flight.selectedOutboundFare?.travelClass?.classId ||
-              fare.travelClass?.classId ||
+              flight.selectedOutboundFare?.id ||
+              outboundData?.selectedClass?.id ||
+              fare.id ||
+              1,
+            travelClassId:
+              flight.selectedOutboundFare?.travelClass?.id ||
+              outboundData?.selectedClass?.travelClass?.id ||
+              fare.travelClass?.id ||
               1,
             departure: {
               code:
@@ -763,8 +783,8 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
                 "N/A",
             },
             price:
-              flight.selectedOutboundFare?.customPrice ||
-              outboundData.flightTravelClasses?.[0]?.customPrice ||
+              flight.selectedOutboundFare?.price ||
+              outboundData.flightTravelClasses?.[0]?.price ||
               outboundData.price ||
               0,
             aircraft:
@@ -782,11 +802,17 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
           },
           // Return segment
           {
-            segmentId: 2,
+            segmentOrder: 2,
             flightId: parseInt(returnData?.id || returnData?.flightId || 0),
             classId:
-              flight.selectedReturnFare?.travelClass?.classId ||
-              fare.travelClass?.classId ||
+              flight.selectedReturnFare?.id ||
+              returnData?.selectedClass?.id ||
+              fare.id ||
+              1,
+            travelClassId:
+              flight.selectedReturnFare?.travelClass?.id ||
+              returnData?.selectedClass?.travelClass?.id ||
+              fare.travelClass?.id ||
               1,
             departure: {
               code:
@@ -847,8 +873,8 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
                 "N/A",
             },
             price:
-              flight.selectedReturnFare?.customPrice ||
-              returnData.flightTravelClasses?.[0]?.customPrice ||
+              flight.selectedReturnFare?.price ||
+              returnData.flightTravelClasses?.[0]?.price ||
               returnData.price ||
               0,
             aircraft:
@@ -887,7 +913,7 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
 
         bookingData.flightSegments = [
           {
-            segmentId: 1,
+            segmentOrder: 1,
             flightId: parseInt(
               flightData.id ||
                 flightData.flightId ||
@@ -897,8 +923,11 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
                 selectedFlight.outbound?.flightId ||
                 0
             ),
-            classId:
-              flightData.selectedClass?.id || fare.travelClass?.classId || 1,
+            classId: flightData.selectedClass?.id || fare.id || 1,
+            travelClassId:
+              flightData.selectedClass?.travelClass?.id ||
+              fare.travelClass?.id ||
+              1,
             departure: {
               code:
                 flightData.departureAirport?.code ||
@@ -975,7 +1004,7 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
                 flight.arrivalAirport?.gates?.[0]?.gateName ||
                 "N/A",
             },
-            price: fare.customPrice || fare.price || flightData.totalPrice || 0,
+            price: fare.price || flightData.totalPrice || 0,
             aircraft:
               flightData.aircraft ||
               flightData.aircraftName ||
@@ -1003,9 +1032,10 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
       console.log(
         "Flight segments before seat assignment:",
         bookingData.flightSegments.map((s) => ({
-          segmentId: s.segmentId,
+          segmentOrder: s.segmentOrder,
           flightId: s.flightId,
           classId: s.classId,
+          travelClassId: s.travelClassId,
           flightIdType: typeof s.flightId,
           classIdType: typeof s.classId,
         }))
@@ -1054,7 +1084,7 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
           const seatId = await getSeatIdFromMapping(
             selectedSeat,
             segment.flightId,
-            segment.classId
+            segment.travelClassId || segment.classId
           );
 
           passengerSeats.push({
@@ -1142,7 +1172,7 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
         console.log(
           "Flight Segments Details:",
           bookingData.flightSegments.map((segment) => ({
-            segmentId: segment.segmentId,
+            segmentOrder: segment.segmentOrder,
             flightId: segment.flightId,
             classId: segment.classId,
             from: `${segment.departure.code} (${segment.departure.city})`,
@@ -1344,11 +1374,6 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
                 return (
                   <>
                     {selectedSeatsCount}/{totalSeatsNeeded}
-                    {selectedSeatsCount < totalSeatsNeeded && (
-                      <span className="text-blue-600 text-xs ml-1">
-                        (Tự động gán ghế trống)
-                      </span>
-                    )}
                   </>
                 );
               })()}
@@ -1392,8 +1417,7 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
                         >
                           <div className="flex items-center justify-between mb-2">
                             <h5 className="font-medium text-purple-700">
-                              Chặng {index + 1}:{" "}
-                              {leg.departureAirport?.code} →{" "}
+                              Chặng {index + 1}: {leg.departureAirport?.code} →{" "}
                               {leg.arrivalAirport?.code}
                             </h5>
                             <span className="text-sm font-mono bg-purple-100 px-2 py-1 rounded">
@@ -1763,12 +1787,12 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
                     )}
 
                   {/* Thông báo khi không có ghế nào */}
-                  {Object.keys(extrasData?.selectedSeats || {}).length === 0 &&
+                  {/* {Object.keys(extrasData?.selectedSeats || {}).length === 0 &&
                     Object.keys(autoAssignedSeats).length === 0 && (
                       <p className="text-sm text-gray-500">
                         Sẽ tự động gán ghế trống khi thanh toán
                       </p>
-                    )}
+                    )} */}
                 </div>
 
                 {/* Hành lý */}
@@ -1933,11 +1957,28 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
                         : "Em bé"}
                       )
                     </span>
-                    <span className="text-gray-500">
-                      Ghế:{" "}
-                      {extrasData?.selectedSeats?.[`passenger${index + 1}`] ||
-                        "Tự động"}
-                    </span>
+                    <div className="text-right">
+                      <span className="text-gray-500 text-xs block">
+                        Ghế:{" "}
+                        {extrasData?.selectedSeats?.[`passenger${index + 1}`] ||
+                          autoAssignedSeats?.[`passenger${index + 1}`] ||
+                          "Tự động"}
+                      </span>
+                      {(extrasData?.selectedSeats?.[`passenger${index + 1}`] ||
+                        autoAssignedSeats?.[`passenger${index + 1}`]) && (
+                        <span className="text-xs text-blue-500">
+                          {flight?.aircraft ||
+                            flight?.outbound?.aircraft ||
+                            flight?.flight?.aircraft ||
+                            "N/A"}{" "}
+                          |{" "}
+                          {flight?.seatLayout ||
+                            flight?.outbound?.seatLayout ||
+                            flight?.flight?.seatLayout ||
+                            "N/A"}
+                        </span>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>
@@ -1994,7 +2035,7 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
               ) : (
                 // One-way pricing calculated per passenger
                 formData.passengers.map((passenger, index) => {
-                  const basePrice = fare?.customPrice || fare?.basePrice || 0;
+                  const basePrice = fare?.price || fare?.basePrice || 0;
                   const discountedPrice =
                     passenger.type === "CHILD"
                       ? basePrice * 0.75

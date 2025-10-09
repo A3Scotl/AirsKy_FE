@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import SEO from "@/components/common/seo";
 import Stepper from "@/lib/Stepper";
 import PassengerDetails from "@/components/section/flight/passenger-detail-section";
@@ -8,6 +8,7 @@ import Extras from "@/components/section/flight/extras-section";
 import Payment from "@/components/section/flight/payment-section";
 import PropTypes from "prop-types";
 import { Badge } from "@/components/ui/badge";
+import { toast, Toaster } from "sonner";
 
 const steps = [
   { title: "Chọn chuyến bay" },
@@ -107,9 +108,8 @@ const FlightInfo = ({ flightDetails, fare }) => {
                 <div className="text-blue-600 font-medium">
                   {formatCurrencyVND(
                     leg.segmentFare?.price ||
-                      leg.selectedClass?.customPrice ||
                       leg.selectedClass?.price ||
-                      flightDetails.selectedClass?.customPrice ||
+                      flightDetails.selectedClass?.price ||
                       0
                   )}
                 </div>
@@ -168,7 +168,7 @@ const FlightInfo = ({ flightDetails, fare }) => {
             <div className="text-sm space-y-1">
               <div className="font-medium">
                 {flightDetails.outbound?.from || "N/A"} →{" "}
-                {flightDetails.outbound?.to || "N/A"}
+                {flightDetails.outbound?.arrivalAirport?.code || "N/A"}
               </div>
               <div className="text-gray-600">
                 {flightDetails.outbound?.departureDate || "N/A"}
@@ -179,9 +179,7 @@ const FlightInfo = ({ flightDetails, fare }) => {
               </div>
               <div className="text-blue-600 font-medium">
                 {formatCurrencyVND(
-                  flightDetails.outbound?.selectedClass?.customPrice ||
-                    flightDetails.outbound?.selectedClass?.price ||
-                    0
+                  flightDetails.outbound?.selectedClass?.price || 0
                 )}
               </div>
             </div>
@@ -200,7 +198,7 @@ const FlightInfo = ({ flightDetails, fare }) => {
             <div className="text-sm space-y-1">
               <div className="font-medium">
                 {flightDetails.return?.from || "N/A"} →{" "}
-                {flightDetails.return?.to || "N/A"}
+                {flightDetails.return?.arrivalAirport?.code || "N/A"}
               </div>
               <div className="text-gray-600">
                 {flightDetails.return?.departureDate || "N/A"}
@@ -211,9 +209,7 @@ const FlightInfo = ({ flightDetails, fare }) => {
               </div>
               <div className="text-blue-600 font-medium">
                 {formatCurrencyVND(
-                  flightDetails.return?.selectedClass?.customPrice ||
-                    flightDetails.return?.selectedClass?.price ||
-                    0
+                  flightDetails.return?.selectedClass?.price || 0
                 )}
               </div>
             </div>
@@ -255,7 +251,9 @@ const FlightInfo = ({ flightDetails, fare }) => {
         <div className="text-sm space-y-1">
           <div className="font-medium">
             {flightDetails.flight?.from || "N/A"} →{" "}
-            {flightDetails.flight?.to || flightDetails.flight?.arrivalAirport?.code || "N/A"}
+            {flightDetails.flight?.to ||
+              flightDetails.flight?.arrivalAirport?.code ||
+              "N/A"}
           </div>
           <div className="text-gray-600">
             {flightDetails.flight?.departureDate || "N/A"}
@@ -265,11 +263,7 @@ const FlightInfo = ({ flightDetails, fare }) => {
             {flightDetails.flight?.arrivalTime}
           </div>
           <div className="text-blue-600 font-medium">
-            {formatCurrencyVND(
-              flightDetails.selectedClass?.customPrice ||
-                flightDetails.selectedClass?.price ||
-                0
-            )}
+            {formatCurrencyVND(flightDetails.selectedClass?.price || 0)}
           </div>
         </div>
       </div>
@@ -285,6 +279,8 @@ function FlightBookingStepper() {
     passengers: [],
   });
   const [extrasData, setExtrasData] = useState({});
+  const [validationErrors, setValidationErrors] = useState({});
+  const [isStepValid, setIsStepValid] = useState(false);
   // Determine flight type based on departure and arrival airports
   const getFlightType = () => {
     if (!flight.departureAirport || !flight.arrivalAirport) return "DOMESTIC";
@@ -442,8 +438,129 @@ function FlightBookingStepper() {
     }
   }, []);
 
+  // Validate current step whenever formData changes
+  useEffect(() => {
+    validateCurrentStepRealtime();
+  }, [formData, currentStep, flightType]);
+
+  // Validate email format
+  const validateEmail = (email) => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  };
+
+  // Validate phone format (Vietnam)
+  const validatePhone = (phone) => {
+    const phoneRegex = /^(\+84|84|0)[3-9]\d{8}$/;
+    return phoneRegex.test(phone);
+  };
+
+  // Real-time validation for current step
+  const validateCurrentStepRealtime = () => {
+    const errors = {};
+    let isValid = true;
+
+    switch (currentStep) {
+      case 2: // Passenger Details
+        // Check passengers
+        if (!formData.passengers || formData.passengers.length === 0) {
+          errors.passengers = "Cần ít nhất 1 hành khách";
+          isValid = false;
+        } else {
+          formData.passengers.forEach((passenger, index) => {
+            const passengerErrors = {};
+
+            if (!passenger.firstName?.trim()) {
+              passengerErrors.firstName = "Tên không được để trống";
+              isValid = false;
+            }
+
+            if (!passenger.lastName?.trim()) {
+              passengerErrors.lastName = "Họ không được để trống";
+              isValid = false;
+            }
+
+            if (!passenger.dob) {
+              passengerErrors.dateOfBirth = "Ngày sinh không được để trống";
+              isValid = false;
+            }
+
+            if (!passenger.gender) {
+              passengerErrors.gender = "Vui lòng chọn giới tính";
+              isValid = false;
+            }
+
+            // For international flights, passport is required
+            if (flightType === "INTERNATIONAL" && !passenger.passport?.trim()) {
+              passengerErrors.passport =
+                "Số hộ chiếu bắt buộc cho chuyến bay quốc tế";
+              isValid = false;
+            }
+
+            if (Object.keys(passengerErrors).length > 0) {
+              errors[`passenger_${index}`] = passengerErrors;
+            }
+          });
+        }
+
+        // // Check contact information
+        // if (!formData.contactInfo?.email?.trim()) {
+        //   errors.contactEmail = "Email liên hệ không được để trống";
+        //   isValid = false;
+        // } else if (!validateEmail(formData.contactInfo.email)) {
+        //   errors.contactEmail = "Email không đúng định dạng";
+        //   isValid = false;
+        // }
+
+        // if (!formData.contactInfo?.phone?.trim()) {
+        //   errors.contactPhone = "Số điện thoại không được để trống";
+        //   isValid = false;
+        // } else if (!validatePhone(formData.contactInfo.phone)) {
+        //   errors.contactPhone = "Số điện thoại không đúng định dạng";
+        //   isValid = false;
+        // }
+
+        break;
+
+      case 3: // Extras
+        // Extras step is optional, always valid
+        isValid = true;
+        break;
+
+      default:
+        isValid = true;
+        break;
+    }
+
+    setValidationErrors(errors);
+    setIsStepValid(isValid);
+    return isValid;
+  };
+
+  const validateCurrentStep = () => {
+    const isValid = validateCurrentStepRealtime();
+
+    if (!isValid) {
+      // Show toast with first error
+      const firstError = Object.values(validationErrors).find((error) =>
+        typeof error === "string" ? error : Object.values(error)[0]
+      );
+
+      if (typeof firstError === "string") {
+        toast.error(firstError);
+      } else if (typeof firstError === "object") {
+        const nestedError = Object.values(firstError)[0];
+        toast.error(nestedError);
+      }
+    }
+
+    return isValid;
+  };
+
   const handleNext = () => {
-    if (currentStep < steps.length) setCurrentStep(currentStep + 1);
+    if (validateCurrentStep() && currentStep < steps.length) {
+      setCurrentStep(currentStep + 1);
+    }
   };
 
   const handleBack = () => {
@@ -484,6 +601,7 @@ function FlightBookingStepper() {
             updateFormData={updateFormData}
             updatePassenger={updatePassenger}
             flightType={flightType}
+            validationErrors={validationErrors}
           />
         );
       case 3:
@@ -531,6 +649,7 @@ function FlightBookingStepper() {
 
   return (
     <>
+      <Toaster position="top-right" richColors closeButton duration={4000} />
       <SEO
         title={getStepTitle(currentStep)}
         description={getStepDescription(currentStep)}
@@ -559,9 +678,12 @@ function FlightBookingStepper() {
             </button>
             <button
               type="button"
-              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 order-1 sm:order-2"
+              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed order-1 sm:order-2"
               onClick={handleNext}
-              disabled={currentStep === steps.length}
+              disabled={
+                currentStep === steps.length ||
+                (currentStep >= 2 && !isStepValid)
+              }
             >
               {currentStep === steps.length ? "Hoàn tất" : "Tiếp tục →"}
             </button>

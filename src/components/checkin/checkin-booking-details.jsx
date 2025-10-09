@@ -19,22 +19,34 @@ const CheckInBookingDetails = ({ booking, onProceed, onBack }) => {
   if (!booking) return null;
 
   const isAlreadyCheckedIn =
-    booking.status === "Đã check-in" || booking.status === "Checked-in";
-  const canCheckIn = !isAlreadyCheckedIn && booking.canCheckIn;
+    booking.checkinStatus === "ALREADY_CHECKED_IN" || booking.isCheckedIn;
+  const canCheckIn =
+    booking.checkinStatus === "ELIGIBLE" && !booking.isCheckedIn;
+  const isPaymentPending = booking.checkinStatus === "PAYMENT_PENDING";
 
   const getStatusColor = (status) => {
     switch (status) {
-      case "Đã check-in":
-      case "Checked-in":
+      case "ALREADY_CHECKED_IN":
         return "bg-green-100 text-green-800 border-green-200";
-      case "Chưa check-in":
-      case "Not checked-in":
+      case "ELIGIBLE":
+        return "bg-blue-100 text-blue-800 border-blue-200";
+      case "PAYMENT_PENDING":
         return "bg-yellow-100 text-yellow-800 border-yellow-200";
-      case "Hết hạn":
-      case "Expired":
-        return "bg-red-100 text-red-800 border-red-200";
       default:
         return "bg-gray-100 text-gray-800 border-gray-200";
+    }
+  };
+
+  const getStatusText = (status) => {
+    switch (status) {
+      case "ALREADY_CHECKED_IN":
+        return "Đã check-in";
+      case "ELIGIBLE":
+        return "Đủ điều kiện check-in";
+      case "PAYMENT_PENDING":
+        return "Chờ thanh toán";
+      default:
+        return status;
     }
   };
 
@@ -66,8 +78,11 @@ const CheckInBookingDetails = ({ booking, onProceed, onBack }) => {
               <User className="w-5 h-5 text-blue-500" />
               <span>Thông tin đặt chỗ</span>
             </div>
-            <Badge variant="outline" className={getStatusColor(booking.status)}>
-              {booking.status}
+            <Badge
+              variant="outline"
+              className={getStatusColor(booking.checkinStatus)}
+            >
+              {getStatusText(booking.checkinStatus)}
             </Badge>
           </CardTitle>
         </CardHeader>
@@ -81,6 +96,23 @@ const CheckInBookingDetails = ({ booking, onProceed, onBack }) => {
               <p className="text-sm text-gray-600">Hành khách</p>
               <p className="font-semibold">{booking.passenger}</p>
             </div>
+            {booking.passportNumber && (
+              <div>
+                <p className="text-sm text-gray-600">Số hộ chiếu</p>
+                <p className="font-semibold">{booking.passportNumber}</p>
+              </div>
+            )}
+            {booking.ticketPrice && (
+              <div>
+                <p className="text-sm text-gray-600">Giá vé</p>
+                <p className="font-semibold text-green-600">
+                  {new Intl.NumberFormat("vi-VN", {
+                    style: "currency",
+                    currency: "VND",
+                  }).format(booking.ticketPrice)}
+                </p>
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>
@@ -191,7 +223,25 @@ const CheckInBookingDetails = ({ booking, onProceed, onBack }) => {
         </Card>
       )}
 
-      {!canCheckIn && !isAlreadyCheckedIn && (
+      {isPaymentPending && (
+        <Card className="border-yellow-200 bg-yellow-50">
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-3">
+              <AlertTriangle className="w-6 h-6 text-yellow-600" />
+              <div>
+                <p className="font-semibold text-yellow-800">
+                  Vé chưa được thanh toán
+                </p>
+                <p className="text-sm text-yellow-700">
+                  Bạn cần thanh toán vé trước khi có thể check-in online.
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {!canCheckIn && !isAlreadyCheckedIn && !isPaymentPending && (
         <Card className="border-yellow-200 bg-yellow-50">
           <CardContent className="pt-6">
             <div className="flex items-center gap-3">
@@ -223,6 +273,11 @@ const CheckInBookingDetails = ({ booking, onProceed, onBack }) => {
         {isAlreadyCheckedIn && (
           <Button onClick={onProceed} className="flex-1">
             Xem thẻ lên máy bay
+          </Button>
+        )}
+        {isPaymentPending && (
+          <Button disabled className="flex-1" variant="secondary">
+            Chờ thanh toán
           </Button>
         )}
       </div>

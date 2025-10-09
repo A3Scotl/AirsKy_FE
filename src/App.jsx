@@ -41,6 +41,7 @@ const BlogDetailPage = lazy(() =>
   import("@/pages/public/detail/blog-detail-page")
 );
 const CheckinPage = lazy(() => import("@/pages/public/check-in-page"));
+const MyFlightsPage = lazy(() => import("@/pages/public/my-flights-page"));
 
 const NotFoundPage = lazy(() =>
   import("@/pages/public/not-found/not-found-page")
@@ -174,6 +175,14 @@ function AppRoutes() {
                 element={
                   <PageTransition>
                     <CheckinPage />
+                  </PageTransition>
+                }
+              />
+              <Route
+                path="/my-flights"
+                element={
+                  <PageTransition>
+                    <MyFlightsPage />
                   </PageTransition>
                 }
               />

@@ -14,7 +14,14 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { CheckCircle, MapPin, Plane } from "lucide-react";
+import {
+  CheckCircle,
+  MapPin,
+  Plane,
+  CheckSquare,
+  Tag,
+  CreditCard,
+} from "lucide-react";
 import {
   formatCurrencyVND,
   formatDateVN,
@@ -37,34 +44,76 @@ const BookingConfirmation = () => {
   }, [navigate]);
 
   // Helper function to get flight segment info from API response
-  const getFlightSegmentInfo = (segments) => {
-    if (!segments || segments.length === 0) return [];
+  const getFlightSegmentInfo = (segments, flight) => {
+    if (!segments || segments.length === 0) {
+      // Fallback to main flight data if segments not available
+      if (flight) {
+        return [
+          {
+            departure: {
+              city: flight.departureAirport?.cityNames?.[0] || flight.from,
+              airport: flight.departureAirport?.airportName || "N/A",
+              airportCode: flight.departureAirport?.airportCode || flight.from,
+              country: flight.departureAirport?.country || "N/A",
+              time: flight.departureTime || "N/A",
+              date: flight.departureDate || "N/A",
+              terminal: flight.departureAirport?.gates?.[0]?.terminal || "N/A",
+              gate: flight.departureAirport?.gates?.[0]?.gateName || "N/A",
+            },
+            arrival: {
+              city: flight.arrivalAirport?.cityNames?.[0] || flight.to,
+              airport: flight.arrivalAirport?.airportName || "N/A",
+              airportCode: flight.arrivalAirport?.airportCode || flight.to,
+              country: flight.arrivalAirport?.country || "N/A",
+              time: flight.arrivalTime || "N/A",
+              date: flight.arrivalDate || "N/A",
+              terminal: flight.arrivalAirport?.gates?.[0]?.terminal || "N/A",
+              gate: flight.arrivalAirport?.gates?.[0]?.gateName || "N/A",
+            },
+            flight: {
+              flightNumber: flight.flightNumber,
+              airline: flight.airline || flight.airlineName,
+              aircraft: flight.aircraft || flight.aircraftName,
+              duration: flight.duration ? `${flight.duration} minutes` : "N/A",
+            },
+          },
+        ];
+      }
+      return [];
+    }
 
     return segments.map((segment) => ({
       departure: {
-        city: segment.departureAirport.city,
-        airport: segment.departureAirport.name,
-        airportCode: segment.departureAirport.code,
-        country: segment.departureAirport.country,
+        city:
+          segment.departureAirport?.cityNames?.[0] ||
+          segment.departureAirport?.city,
+        airport:
+          segment.departureAirport?.airportName ||
+          segment.departureAirport?.name,
+        airportCode: segment.departureAirport?.airportCode || "N/A",
+        country: segment.departureAirport?.country || "N/A",
         time: formatTimeVN(segment.departureTime),
         date: formatDateVN(segment.departureTime),
-        terminal: segment.departureAirport.gates?.[0]?.terminal || "N/A",
-        gate: segment.departureAirport.gates?.[0]?.gateNumber || "N/A",
+        terminal: segment.departureAirport?.gates?.[0]?.terminal || "N/A",
+        gate: segment.departureAirport?.gates?.[0]?.gateName || "N/A",
       },
       arrival: {
-        city: segment.arrivalAirport.city,
-        airport: segment.arrivalAirport.name,
-        airportCode: segment.arrivalAirport.code,
-        country: segment.arrivalAirport.country,
+        city:
+          segment.arrivalAirport?.cityNames?.[0] ||
+          segment.arrivalAirport?.city,
+        airport:
+          segment.arrivalAirport?.airportName || segment.arrivalAirport?.name,
+        airportCode: segment.arrivalAirport?.airportCode || "N/A",
+        country: segment.arrivalAirport?.country || "N/A",
         time: formatTimeVN(segment.arrivalTime),
         date: formatDateVN(segment.arrivalTime),
-        terminal: segment.arrivalAirport.gates?.[0]?.terminal || "N/A",
-        gate: segment.arrivalAirport.gates?.[0]?.gateNumber || "N/A",
+        terminal: segment.arrivalAirport?.gates?.[0]?.terminal || "N/A",
+        gate: segment.arrivalAirport?.gates?.[0]?.gateName || "N/A",
       },
       flight: {
         flightNumber: segment.flightNumber,
-        airline: segment.airline.name,
-        aircraft: segment.aircraft?.name || "N/A",
+
+        aircraft: segment.aircraft || "N/A",
         duration: segment.duration || "N/A",
       },
     }));
@@ -90,15 +139,53 @@ const BookingConfirmation = () => {
   const bookingDetails = {
     bookingId: bookingData.bookingId || bookingData.bookingCode,
     bookingCode: bookingData.bookingCode || bookingData.bookingId,
-    status: bookingData.status || "CONFIRMED",
-    flightSegments: getFlightSegmentInfo(bookingData.flightSegments),
+    status: bookingData.status || bookingData.bookingStatus || "CONFIRMED",
+    flightType: bookingData.flightType || bookingData.flight?.type || "ONE_WAY",
+    flightSegments: getFlightSegmentInfo(
+      bookingData.flightSegments || [],
+      bookingData.flight
+    ),
     passengers: bookingData.passengers || [],
     baggage: bookingData.baggage || [],
-    ancillaryServices: bookingData.ancillaryServices || [],
+    ancillaryServices: bookingData.selectedAncillaryServices
+      ? Object.values(bookingData.selectedAncillaryServices).map((service) => ({
+          name:
+            bookingData.availableAncillaryServices?.find(
+              (s) => s.serviceId === service.serviceId
+            )?.serviceName || "Unknown Service",
+          price:
+            bookingData.availableAncillaryServices?.find(
+              (s) => s.serviceId === service.serviceId
+            )?.price || 0,
+          quantity: service.quantity || 1,
+          notes: service.notes || "",
+        }))
+      : bookingData.ancillaryServices || [],
+    assignedSeats:
+      bookingData.assignedSeats || bookingData.extrasData?.selectedSeats || {},
+    appliedDeal: bookingData.appliedDeal,
     price: {
-      subtotal: bookingData.totalPrice || bookingData.price?.subtotal || 0,
+      subtotal:
+        bookingData.flight?.totalPrice ||
+        bookingData.totalAmount ||
+        bookingData.totalPrice ||
+        0,
       taxes: bookingData.taxes || bookingData.price?.taxes || 0,
-      total: bookingData.totalPrice || bookingData.price?.total || 0,
+      total:
+        bookingData.totalAmount ||
+        bookingData.totalPrice ||
+        bookingData.price?.total ||
+        0,
+    },
+    payment: {
+      method: bookingData.payment?.paymentMethod || "N/A",
+      status:
+        bookingData.payment?.paymentStatus ||
+        bookingData.paymentStatus ||
+        "PENDING",
+      transactionId: bookingData.payment?.reference || bookingData.bookingCode,
+      amount: bookingData.payment?.amount || bookingData.totalAmount,
+      paidAt: bookingData.payment?.paymentDate,
     },
   };
 
@@ -197,8 +284,7 @@ const BookingConfirmation = () => {
                               Chặng {index + 1}: {segment.flight.flightNumber}
                             </Badge>
                             <span className="text-sm text-gray-600 dark:text-gray-400">
-                              {segment.flight.airline} •{" "}
-                              {segment.flight.aircraft}
+                              Máy bay: {segment.flight.aircraft || "N/A"}
                             </span>
                           </div>
 
@@ -212,10 +298,7 @@ const BookingConfirmation = () => {
                               <p className="text-sm text-gray-600 dark:text-gray-400">
                                 {segment.departure.airport}
                               </p>
-                              <p className="text-xs text-gray-500">
-                                {segment.departure.airportCode} -{" "}
-                                {segment.departure.country}
-                              </p>
+                              
                               <p className="text-lg font-bold dark:text-gray-200 mt-2">
                                 {segment.departure.time}
                               </p>
@@ -252,10 +335,7 @@ const BookingConfirmation = () => {
                               <p className="text-sm text-gray-600 dark:text-gray-400">
                                 {segment.arrival.airport}
                               </p>
-                              <p className="text-xs text-gray-500">
-                                {segment.arrival.airportCode} -{" "}
-                                {segment.arrival.country}
-                              </p>
+                             
                               <p className="text-lg font-bold dark:text-gray-200 mt-2">
                                 {segment.arrival.time}
                               </p>
@@ -313,6 +393,59 @@ const BookingConfirmation = () => {
                 </CardContent>
               </Card>
 
+              {/* Assigned Seats */}
+              {Object.keys(bookingDetails.assignedSeats).length > 0 && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <CheckSquare className="w-5 h-5" />
+                      Ghế Đã Chọn
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-3">
+                      {Object.entries(bookingDetails.assignedSeats).map(
+                        ([flightId, seatsData]) => (
+                          <div
+                            key={flightId}
+                            className="border rounded-lg p-3 bg-gray-50 dark:bg-gray-800"
+                          >
+                            <h4 className="font-medium mb-2 dark:text-gray-200">
+                              Chuyến bay {flightId}:
+                            </h4>
+                            <div className="space-y-2">
+                              {Object.entries(seatsData).map(
+                                ([passengerId, seatInfo]) => (
+                                  <div
+                                    key={passengerId}
+                                    className="flex justify-between items-center p-2 bg-white dark:bg-gray-700 rounded"
+                                  >
+                                    <span className="dark:text-gray-200">
+                                      Hành khách {passengerId}: Ghế{" "}
+                                      {seatInfo.seatNumber}
+                                    </span>
+                                    <div className="text-right">
+                                      <span className="text-sm text-gray-600 dark:text-gray-400">
+                                        {seatInfo.seatClass}
+                                      </span>
+                                      {seatInfo.price > 0 && (
+                                        <div className="font-medium text-blue-600">
+                                          {formatCurrencyVND(seatInfo.price)}
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
+                                )
+                              )}
+                            </div>
+                          </div>
+                        )
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
               {/* Baggage & Services */}
               <Card>
                 <CardHeader>
@@ -330,14 +463,28 @@ const BookingConfirmation = () => {
                           {bookingDetails.baggage.map((bag, index) => (
                             <div
                               key={index}
-                              className="flex justify-between p-2 bg-gray-50 dark:bg-gray-800 rounded"
+                              className="flex justify-between items-center p-3 bg-gray-50 dark:bg-gray-800 rounded-lg"
                             >
-                              <span className="dark:text-gray-200">
-                                {bag.type}: {bag.weight}
-                              </span>
-                              <span className="font-medium text-blue-600">
-                                {formatCurrencyVND(bag.price)}
-                              </span>
+                              <div className="flex-1">
+                                <p className="font-medium dark:text-gray-200">
+                                  {bag.type === "CHECK_IN"
+                                    ? "Hành lý ký gửi"
+                                    : "Hành lý xách tay"}
+                                </p>
+                                <p className="text-sm text-gray-600 dark:text-gray-400">
+                                  Gói: {bag.purchasedPackage || bag.weight}
+                                </p>
+                              </div>
+                              <div className="text-right">
+                                <p className="font-medium text-blue-600">
+                                  {formatCurrencyVND(
+                                    bag.packagePrice || bag.price
+                                  )}
+                                </p>
+                                <p className="text-xs text-gray-500">
+                                  {bag.isIncluded ? "Đã bao gồm" : "Phụ thu"}
+                                </p>
+                              </div>
                             </div>
                           ))}
                         </div>
@@ -355,14 +502,34 @@ const BookingConfirmation = () => {
                             (service, index) => (
                               <div
                                 key={index}
-                                className="flex justify-between p-2 bg-gray-50 dark:bg-gray-800 rounded"
+                                className="flex justify-between items-center p-3 bg-gray-50 dark:bg-gray-800 rounded-lg"
                               >
-                                <span className="dark:text-gray-200">
-                                  {service.name}
-                                </span>
-                                <span className="font-medium text-blue-600">
-                                  {formatCurrencyVND(service.price)}
-                                </span>
+                                <div className="flex-1">
+                                  <p className="font-medium dark:text-gray-200">
+                                    {service.name}
+                                  </p>
+                                  <p className="text-sm text-gray-600 dark:text-gray-400">
+                                    Số lượng: {service.quantity || 1}
+                                  </p>
+                                  {service.notes && (
+                                    <p className="text-xs text-gray-500">
+                                      Ghi chú: {service.notes}
+                                    </p>
+                                  )}
+                                </div>
+                                <div className="text-right">
+                                  <p className="font-medium text-blue-600">
+                                    {formatCurrencyVND(
+                                      service.price * (service.quantity || 1)
+                                    )}
+                                  </p>
+                                  {service.quantity > 1 && (
+                                    <p className="text-xs text-gray-500">
+                                      {formatCurrencyVND(service.price)} x{" "}
+                                      {service.quantity}
+                                    </p>
+                                  )}
+                                </div>
                               </div>
                             )
                           )}
@@ -383,6 +550,50 @@ const BookingConfirmation = () => {
 
             {/* Price Summary */}
             <div className="space-y-6">
+              {/* Applied Deal */}
+              {bookingDetails.appliedDeal && (
+                <Card className="border-green-200 bg-green-50 dark:bg-green-900/20 dark:border-green-800">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2 text-green-700 dark:text-green-400">
+                      <Tag className="w-5 h-5" />
+                      Ưu Đãi Áp Dụng
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-2">
+                      <div className="flex justify-between items-center">
+                        <span className="font-medium text-green-800 dark:text-green-300">
+                          {bookingDetails.appliedDeal.name ||
+                            bookingDetails.appliedDeal.title}
+                        </span>
+                        <Badge variant="success">
+                          {bookingDetails.appliedDeal.discountType ===
+                          "PERCENTAGE"
+                            ? `${bookingDetails.appliedDeal.discountValue}%`
+                            : formatCurrencyVND(
+                                bookingDetails.appliedDeal.discountValue
+                              )}
+                        </Badge>
+                      </div>
+                      {bookingDetails.appliedDeal.description && (
+                        <p className="text-sm text-green-700 dark:text-green-400">
+                          {bookingDetails.appliedDeal.description}
+                        </p>
+                      )}
+                      <div className="flex justify-between font-medium text-green-800 dark:text-green-300">
+                        <span>Tiết kiệm:</span>
+                        <span>
+                          -
+                          {formatCurrencyVND(
+                            bookingDetails.appliedDeal.discountAmount || 0
+                          )}
+                        </span>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
               <Card>
                 <CardHeader>
                   <CardTitle>Tổng Quan Giá</CardTitle>
@@ -390,11 +601,74 @@ const BookingConfirmation = () => {
                 <CardContent>
                   <div className="space-y-3">
                     <div className="flex justify-between">
-                      <span>Tổng phụ</span>
+                      <span>Vé máy bay</span>
                       <span>
                         {formatCurrencyVND(bookingDetails.price.subtotal)}
                       </span>
                     </div>
+
+                    {/* Seat charges */}
+                    {Object.keys(bookingDetails.assignedSeats).length > 0 &&
+                      Object.entries(bookingDetails.assignedSeats).map(
+                        ([flightId, seatsData]) =>
+                          Object.entries(seatsData).map(
+                            ([passengerId, seatInfo]) =>
+                              seatInfo.price > 0 && (
+                                <div
+                                  key={`${flightId}-${passengerId}`}
+                                  className="flex justify-between text-sm"
+                                >
+                                  <span>Ghế {seatInfo.seatNumber}</span>
+                                  <span>
+                                    {formatCurrencyVND(seatInfo.price)}
+                                  </span>
+                                </div>
+                              )
+                          )
+                      )}
+
+                    {/* Baggage charges */}
+                    {bookingDetails.baggage.map(
+                      (bag, index) =>
+                        bag.packagePrice > 0 && (
+                          <div
+                            key={index}
+                            className="flex justify-between text-sm"
+                          >
+                            <span>Hành lý {bag.purchasedPackage}</span>
+                            <span>{formatCurrencyVND(bag.packagePrice)}</span>
+                          </div>
+                        )
+                    )}
+
+                    {/* Service charges */}
+                    {bookingDetails.ancillaryServices.map((service, index) => (
+                      <div key={index} className="flex justify-between text-sm">
+                        <span>
+                          {service.name}{" "}
+                          {service.quantity > 1 && `(x${service.quantity})`}
+                        </span>
+                        <span>
+                          {formatCurrencyVND(
+                            service.price * (service.quantity || 1)
+                          )}
+                        </span>
+                      </div>
+                    ))}
+
+                    {bookingDetails.appliedDeal && (
+                      <div className="flex justify-between text-green-600">
+                        <span>
+                          Giảm giá ({bookingDetails.appliedDeal.name})
+                        </span>
+                        <span>
+                          -
+                          {formatCurrencyVND(
+                            bookingDetails.appliedDeal.discountAmount || 0
+                          )}
+                        </span>
+                      </div>
+                    )}
                     {bookingDetails.price.taxes > 0 && (
                       <div className="flex justify-between">
                         <span>Thuế và phí</span>
@@ -413,6 +687,80 @@ const BookingConfirmation = () => {
                   </div>
                 </CardContent>
               </Card>
+
+              {/* Payment Information */}
+              {bookingDetails.payment &&
+                Object.keys(bookingDetails.payment).length > 0 && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <CreditCard className="w-5 h-5" />
+                        Thông Tin Thanh Toán
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-3">
+                        {bookingDetails.payment.method && (
+                          <div className="flex justify-between">
+                            <span>Phương thức:</span>
+                            <span className="font-medium">
+                              {bookingDetails.payment.method === "CARD"
+                                ? "Thẻ tín dụng/Ghi nợ"
+                                : bookingDetails.payment.method ===
+                                  "BANK_TRANSFER"
+                                ? "Chuyển khoản ngân hàng"
+                                : bookingDetails.payment.method === "E_WALLET"
+                                ? "Ví điện tử"
+                                : bookingDetails.payment.method}
+                            </span>
+                          </div>
+                        )}
+                        {bookingDetails.payment.transactionId && (
+                          <div className="flex justify-between">
+                            <span>Mã giao dịch:</span>
+                            <span className="font-mono text-sm">
+                              {bookingDetails.payment.transactionId}
+                            </span>
+                          </div>
+                        )}
+                        {bookingDetails.payment.status && (
+                          <div className="flex justify-between">
+                            <span>Trạng thái:</span>
+                            <Badge
+                              variant={
+                                bookingDetails.payment.status === "COMPLETED" ||
+                                bookingDetails.payment.status === "SUCCESS"
+                                  ? "success"
+                                  : bookingDetails.payment.status === "PENDING"
+                                  ? "secondary"
+                                  : "destructive"
+                              }
+                            >
+                              {bookingDetails.payment.status === "COMPLETED" ||
+                              bookingDetails.payment.status === "SUCCESS"
+                                ? "Thành công"
+                                : bookingDetails.payment.status === "PENDING"
+                                ? "Đang xử lý"
+                                : bookingDetails.payment.status === "FAILED"
+                                ? "Thất bại"
+                                : bookingDetails.payment.status}
+                            </Badge>
+                          </div>
+                        )}
+                        {bookingDetails.payment.paidAt && (
+                          <div className="flex justify-between">
+                            <span>Thời gian thanh toán:</span>
+                            <span className="text-sm">
+                              {new Date(
+                                bookingDetails.payment.paidAt
+                              ).toLocaleString("vi-VN")}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
             </div>
           </div>
 

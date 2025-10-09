@@ -26,6 +26,7 @@ const PassengerDetails = ({
   updateFormData,
   updatePassenger,
   flightType = "DOMESTIC",
+  validationErrors = {},
 }) => {
   // Determine if passport is required based on flight type
   const isInternationalFlight = flightType === "INTERNATIONAL";
@@ -119,7 +120,11 @@ const PassengerDetails = ({
                 <Input
                   id={`p${index}-firstname`}
                   placeholder="Họ (viết hoa, không dấu)"
-                  className="text-sm dark:bg-[#171717]"
+                  className={`text-sm dark:bg-[#171717] ${
+                    validationErrors[`passenger_${index}`]?.firstName
+                      ? "border-red-500 focus:border-red-500"
+                      : ""
+                  }`}
                   value={passenger.firstName || ""}
                   onChange={(e) =>
                     updatePassenger(index, "firstName", e.target.value)
@@ -127,6 +132,11 @@ const PassengerDetails = ({
                   required
                   aria-required="true"
                 />
+                {validationErrors[`passenger_${index}`]?.firstName && (
+                  <p className="mt-1 text-xs text-red-500">
+                    {validationErrors[`passenger_${index}`].firstName}
+                  </p>
+                )}
               </div>
               <div>
                 <Label htmlFor={`p${index}-lastname`} className="text-sm">
@@ -135,7 +145,11 @@ const PassengerDetails = ({
                 <Input
                   id={`p${index}-lastname`}
                   placeholder="Tên (viết hoa, không dấu)"
-                  className="text-sm dark:bg-[#171717]"
+                  className={`text-sm dark:bg-[#171717] ${
+                    validationErrors[`passenger_${index}`]?.lastName
+                      ? "border-red-500 focus:border-red-500"
+                      : ""
+                  }`}
                   value={passenger.lastName || ""}
                   onChange={(e) =>
                     updatePassenger(index, "lastName", e.target.value)
@@ -143,6 +157,11 @@ const PassengerDetails = ({
                   required
                   aria-required="true"
                 />
+                {validationErrors[`passenger_${index}`]?.lastName && (
+                  <p className="mt-1 text-xs text-red-500">
+                    {validationErrors[`passenger_${index}`].lastName}
+                  </p>
+                )}
               </div>
               <div>
                 <Label htmlFor={`p${index}-type`} className="text-sm">
@@ -194,7 +213,9 @@ const PassengerDetails = ({
                       variant="outline"
                       className={cn(
                         "w-full justify-start text-left font-normal text-sm dark:bg-[#171717]",
-                        !passenger.dob && "text-muted-foreground"
+                        !passenger.dob && "text-muted-foreground",
+                        validationErrors[`passenger_${index}`]?.dateOfBirth &&
+                          "border-red-500"
                       )}
                     >
                       <CalendarIcon className="mr-2 h-4 w-4" />
@@ -214,6 +235,11 @@ const PassengerDetails = ({
                     />
                   </PopoverContent>
                 </Popover>
+                {validationErrors[`passenger_${index}`]?.dateOfBirth && (
+                  <p className="mt-1 text-xs text-red-500">
+                    {validationErrors[`passenger_${index}`].dateOfBirth}
+                  </p>
+                )}
               </div>
               <div className="sm:col-span-2 lg:col-span-2">
                 <Label htmlFor={`p${index}-id`} className="text-sm">
@@ -329,16 +355,15 @@ const PassengerDetails = ({
 
 PassengerDetails.propTypes = {
   formData: PropTypes.shape({
-    contact: PropTypes.shape({
-      fullName: PropTypes.string,
-      phone: PropTypes.string,
+    contactInfo: PropTypes.shape({
       email: PropTypes.string,
-      confirmEmail: PropTypes.string,
-      isPassenger: PropTypes.bool,
-    }).isRequired,
+      phone: PropTypes.string,
+    }),
     passengers: PropTypes.arrayOf(
       PropTypes.shape({
         type: PropTypes.oneOf(["ADULT", "CHILD", "INFANT"]),
+        firstName: PropTypes.string,
+        lastName: PropTypes.string,
         fullName: PropTypes.string,
         dob: PropTypes.instanceOf(Date),
         gender: PropTypes.oneOf(["MALE", "FEMALE", "OTHER"]),
@@ -357,6 +382,7 @@ PassengerDetails.propTypes = {
   updateFormData: PropTypes.func.isRequired,
   updatePassenger: PropTypes.func.isRequired,
   flightType: PropTypes.oneOf(["DOMESTIC", "INTERNATIONAL"]),
+  validationErrors: PropTypes.object,
 };
 
 export default PassengerDetails;

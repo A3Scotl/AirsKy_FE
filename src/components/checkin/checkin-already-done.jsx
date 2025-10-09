@@ -16,6 +16,7 @@ import {
   RefreshCw,
   AlertTriangle,
 } from "lucide-react";
+import { toast } from "sonner";
 
 const CheckInAlreadyDone = ({
   booking,
@@ -31,9 +32,11 @@ const CheckInAlreadyDone = ({
     try {
       await onEmail();
       setEmailSent(true);
+      toast.success("Thẻ lên máy bay đã được gửi đến email của bạn!");
       setTimeout(() => setEmailSent(false), 3000);
     } catch (error) {
       console.error("Failed to send email:", error);
+      toast.error("Có lỗi xảy ra khi gửi email. Vui lòng thử lại.");
     }
   };
 
@@ -41,9 +44,11 @@ const CheckInAlreadyDone = ({
     try {
       setDownloadStarted(true);
       await onDownload();
+      toast.success("Thẻ lên máy bay đã được tải xuống thành công!");
       setTimeout(() => setDownloadStarted(false), 3000);
     } catch (error) {
       console.error("Failed to download:", error);
+      toast.error("Có lỗi xảy ra khi tải xuống. Vui lòng thử lại.");
       setDownloadStarted(false);
     }
   };

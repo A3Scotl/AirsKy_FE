@@ -724,7 +724,7 @@ const FlightDetailsModal = ({ flight, open, onClose, onEdit, onDelete }) => {
                         </h4>
                         <div className="text-right">
                           <div className="text-xl font-bold text-green-600">
-                            {formatCurrency(travelClass.customPrice)}
+                            {formatCurrency(travelClass.price)}
                           </div>
                           <div className="text-xs text-gray-500">/khách</div>
                         </div>
@@ -777,7 +777,7 @@ const FlightDetailsModal = ({ flight, open, onClose, onEdit, onDelete }) => {
                             {TEXT.availableSeats}:
                           </span>
                           <span className="font-semibold text-blue-600">
-                            {travelClass.availableSeats}
+                            {travelClass.capacity}
                           </span>
                         </div>
 

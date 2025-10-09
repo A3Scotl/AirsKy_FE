@@ -5,68 +5,14 @@ import CheckInBookingDetails from "@/components/checkin/checkin-booking-details"
 import CheckInSeatSelection from "@/components/checkin/checkin-seat-selection";
 import CheckInSuccess from "@/components/checkin/checkin-success";
 import CheckInAlreadyDone from "@/components/checkin/checkin-already-done";
-
-// Mock data - in real app, this would come from API
-const mockBookings = {
-  VN123456: {
-    code: "VN123456",
-    passenger: "Nguyen Van A",
-    flight: "VN123",
-    from: "SGN",
-    to: "HAN",
-    date: "2025-10-01",
-    time: "08:00",
-    seat: null,
-    status: "Chưa check-in",
-    baggage: "20kg",
-    gate: "A12",
-    boardingTime: "07:30",
-    canCheckIn: true,
-    checkInTime: null,
-  },
-  VN789012: {
-    code: "VN789012",
-    passenger: "Tran Thi B",
-    flight: "VN456",
-    from: "HAN",
-    to: "SGN",
-    date: "2025-10-02",
-    time: "14:00",
-    seat: "15A",
-    status: "Đã check-in",
-    baggage: "15kg",
-    gate: "B08",
-    boardingTime: "13:30",
-    canCheckIn: false,
-    checkInTime: "2025-09-30T10:15:00",
-  },
-};
-
-const availableSeats = [
-  "12A",
-  "12B",
-  "12C",
-  "13A",
-  "13B",
-  "13C",
-  "14A",
-  "14B",
-  "14C",
-  "15A",
-  "15B",
-  "15C",
-  "16A",
-  "16B",
-  "16C",
-  "17A",
-  "17B",
-  "17C",
-];
+import { checkinApi } from "@/apis/checkin-api";
+import { toast } from "sonner";
 
 export default function CheckInPage() {
   const [currentStep, setCurrentStep] = useState("search"); // search, details, seat-selection, success, already-done
   const [showTermsModal, setShowTermsModal] = useState(false);
   const [booking, setBooking] = useState(null);
+  const [passengers, setPassengers] = useState([]); // Array of eligible passengers
   const [selectedSeat, setSelectedSeat] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
@@ -80,42 +26,87 @@ export default function CheckInPage() {
     setError("");
 
     try {
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1500));
+      const response = await checkinApi.getCheckinEligiblePassengers(
+        searchData.bookingCode.trim(),
+        searchData.passengerName.trim()
+      );
 
-      const foundBooking = mockBookings[searchData.bookingCode];
+      if (response.success && response.data) {
+        const eligiblePassengers = Array.isArray(response.data)
+          ? response.data
+          : [response.data];
 
-      if (!foundBooking) {
-        setError(
-          "Không tìm thấy đặt chỗ với thông tin đã nhập. Vui lòng kiểm tra lại."
-        );
-        return;
-      }
+        if (eligiblePassengers.length === 0) {
+          setError(
+            "Không tìm thấy hành khách đủ điều kiện check-in với thông tin đã nhập."
+          );
+          toast.error("Không tìm thấy hành khách đủ điều kiện check-in");
+          return;
+        }
 
-      // Check passenger name (case insensitive)
-      if (
-        foundBooking.passenger.toLowerCase() !==
-        searchData.passengerName.toLowerCase()
-      ) {
-        setError(
-          "Tên hành khách không khớp với mã đặt chỗ. Vui lòng kiểm tra lại."
-        );
-        return;
-      }
+        // Set passengers data
+        setPassengers(eligiblePassengers);
 
-      setBooking(foundBooking);
+        // For now, use the first passenger as the booking data
+        // In a real app, you might want to show a selection if multiple passengers
+        const firstPassenger = eligiblePassengers[0];
 
-      // Check if already checked in
-      if (
-        foundBooking.status === "Đã check-in" ||
-        foundBooking.status === "Checked-in"
-      ) {
-        setCurrentStep("already-done");
+        // Create booking object from passenger data
+        const bookingData = {
+          code: searchData.bookingCode,
+          passenger: firstPassenger.fullName,
+          passengerId: firstPassenger.passengerId,
+          passportNumber: firstPassenger.passportNumber,
+          seat: firstPassenger.seatNumber,
+          ticketPrice: firstPassenger.ticketPrice,
+          isCheckedIn: firstPassenger.isCheckedIn,
+          checkinStatus: firstPassenger.checkinStatus,
+          // Additional fields that might come from flight info
+          flight: "VN123", // This should come from API
+          from: "SGN", // This should come from API
+          to: "HAN", // This should come from API
+          date: "2025-10-01", // This should come from API
+          time: "08:00", // This should come from API
+          baggage: "20kg", // This should come from API
+          gate: "A12", // This should come from API
+          boardingTime: "07:30", // This should come from API
+        };
+
+        setBooking(bookingData);
+
+        // Check check-in status
+        if (
+          firstPassenger.checkinStatus === "ALREADY_CHECKED_IN" ||
+          firstPassenger.isCheckedIn
+        ) {
+          setCurrentStep("already-done");
+          toast.info("Hành khách đã check-in trước đó");
+        } else if (firstPassenger.checkinStatus === "PAYMENT_PENDING") {
+          setError(
+            "Vé chưa được thanh toán. Vui lòng thanh toán trước khi check-in."
+          );
+          toast.error("Vé chưa được thanh toán");
+          return;
+        } else if (firstPassenger.checkinStatus === "ELIGIBLE") {
+          setCurrentStep("details");
+          toast.success("Tìm thấy hành khách đủ điều kiện check-in");
+        } else {
+          setError("Trạng thái check-in không hợp lệ.");
+          toast.error("Trạng thái check-in không hợp lệ");
+          return;
+        }
       } else {
-        setCurrentStep("details");
+        const errorMessage =
+          response.message || "Không tìm thấy đặt chỗ với thông tin đã nhập.";
+        setError(errorMessage);
+        toast.error(errorMessage);
       }
     } catch (err) {
-      setError("Có lỗi xảy ra khi tìm kiếm đặt chỗ. Vui lòng thử lại.");
+      console.error("Error searching booking:", err);
+      const errorMessage =
+        "Có lỗi xảy ra khi tìm kiếm đặt chỗ. Vui lòng thử lại.";
+      setError(errorMessage);
+      toast.error(errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -131,23 +122,41 @@ export default function CheckInPage() {
 
   const handleConfirmCheckIn = async () => {
     setIsLoading(true);
+    setError("");
 
     try {
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 2000));
-
-      // Update booking with selected seat and check-in status
-      const updatedBooking = {
-        ...booking,
-        seat: selectedSeat,
-        status: "Đã check-in",
-        checkInTime: new Date().toISOString(),
+      // Prepare check-in data
+      const checkinData = {
+        passengerId: booking.passengerId,
+        seatNumber: selectedSeat || booking.seat, // Use selected seat or existing seat
+        // Add other required fields based on your CheckinRequest DTO
       };
 
-      setBooking(updatedBooking);
-      setCurrentStep("success");
+      const response = await checkinApi.createCheckin(checkinData);
+
+      if (response.success && response.data) {
+        // Update booking with check-in data
+        const updatedBooking = {
+          ...booking,
+          seat: selectedSeat || booking.seat,
+          isCheckedIn: true,
+          checkinStatus: "ALREADY_CHECKED_IN",
+          checkInTime: new Date().toISOString(),
+        };
+
+        setBooking(updatedBooking);
+        setCurrentStep("success");
+        toast.success("Check-in thành công!");
+      } else {
+        const errorMessage = response.message || "Có lỗi xảy ra khi check-in.";
+        setError(errorMessage);
+        toast.error(errorMessage);
+      }
     } catch (err) {
-      setError("Có lỗi xảy ra khi check-in. Vui lòng thử lại.");
+      console.error("Error during check-in:", err);
+      const errorMessage = "Có lỗi xảy ra khi check-in. Vui lòng thử lại.";
+      setError(errorMessage);
+      toast.error(errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -169,6 +178,7 @@ export default function CheckInPage() {
 
   const handleNewCheckIn = () => {
     setBooking(null);
+    setPassengers([]);
     setSelectedSeat(null);
     setError("");
     setCurrentStep("search");

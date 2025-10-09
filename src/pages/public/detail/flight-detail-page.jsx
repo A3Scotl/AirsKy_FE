@@ -160,6 +160,21 @@ const normalizeFlightData = (flight) => {
         },
         aircraft: leg.aircraft?.aircraftName || leg.aircraftName,
         aircraftName: leg.aircraft?.aircraftName || leg.aircraftName,
+        // Keep aircraft object from API for seat layout and details
+        aircraftInfo:
+          typeof leg.aircraft === "object" && leg.aircraft !== null
+            ? leg.aircraft
+            : null,
+        seatLayout: leg.aircraft?.seatLayout || null,
+        totalSeats: leg.aircraft?.totalSeats || null,
+        aircraftId: leg.aircraft?.aircraftId || null,
+        aircraftCode: leg.aircraft?.aircraftCode || null,
+        flightTravelClasses: (leg.flightTravelClasses || []).map((tc) => ({
+          ...tc,
+          availableSeats: tc.capacity
+            ? tc.capacity - (tc.bookedSeat || 0)
+            : tc.availableSeats || 0,
+        })),
       })),
       totalPrice: flight.totalPrice || flight.price || 0,
       segments: flight.legs.length,
@@ -199,7 +214,12 @@ const normalizeFlightData = (flight) => {
       ),
 
       // Use first leg's travel classes as primary
-      flightTravelClasses: firstLeg.flightTravelClasses || [],
+      flightTravelClasses: (firstLeg.flightTravelClasses || []).map((tc) => ({
+        ...tc,
+        availableSeats: tc.capacity
+          ? tc.capacity - (tc.bookedSeat || 0)
+          : tc.availableSeats || 0,
+      })),
 
       // Status and availability (use minimum across all legs)
       status: flight.status || firstLeg.status || "Scheduled",
@@ -215,6 +235,14 @@ const normalizeFlightData = (flight) => {
       stops: flight.legs.reduce((total, leg) => total + (leg.stops || 0), 0),
       stopsList: flight.legs.flatMap((leg) => leg.stopsList || []),
       aircraft: firstLeg.aircraft?.aircraftName || firstLeg.aircraftName,
+      // Multi-city aircraft info from first leg
+      aircraftInfo:
+        typeof firstLeg.aircraft === "object" && firstLeg.aircraft !== null
+          ? firstLeg.aircraft
+          : null,
+      seatLayout: firstLeg.aircraft?.seatLayout || null,
+      aircraftId: firstLeg.aircraft?.aircraftId || null,
+      aircraftCode: firstLeg.aircraft?.aircraftCode || null,
       type: "MULTI_CITY",
       businessName: flight.businessName || firstLeg.businessName,
 
@@ -388,7 +416,12 @@ const normalizeFlightData = (flight) => {
       duration: (outbound.duration || 0) + (returnFlight.duration || 0),
 
       // Travel classes
-      flightTravelClasses: outbound.flightTravelClasses || [],
+      flightTravelClasses: (outbound.flightTravelClasses || []).map((tc) => ({
+        ...tc,
+        availableSeats: tc.capacity
+          ? tc.capacity - (tc.bookedSeat || 0)
+          : tc.availableSeats || 0,
+      })),
 
       // Status and availability
       status: flight.status || outbound.status || "Scheduled",
@@ -472,13 +505,39 @@ const normalizeFlightData = (flight) => {
       stops: flight.stops || 0,
       stopsList: flight.stopsList || [],
 
-      // Aircraft info
+      // Aircraft info from API
       aircraft:
         typeof flight.aircraft === "object" && flight.aircraft !== null
           ? flight.aircraft.aircraftName ||
             flight.aircraft.aircraftCode ||
             "N/A"
           : flight.aircraft || "N/A",
+
+      // Complete aircraft object for reference
+      aircraftInfo:
+        typeof flight.aircraft === "object" ? flight.aircraft : null,
+
+      // Seat layout and capacity info from API aircraft object
+      seatLayout:
+        typeof flight.aircraft === "object" && flight.aircraft !== null
+          ? flight.aircraft.seatLayout
+          : flight.seatLayout || "N/A",
+      totalSeats:
+        typeof flight.aircraft === "object" && flight.aircraft !== null
+          ? flight.aircraft.totalSeats
+          : flight.totalSeats ||
+            (flight.flightTravelClasses
+              ? flight.flightTravelClasses.reduce(
+                  (total, tc) => total + (tc.capacity || 0),
+                  0
+                )
+              : 0),
+      availableSeatsByClass:
+        flight.flightTravelClasses?.reduce((acc, tc) => {
+          acc[tc.travelClass?.className || "Unknown"] =
+            tc.capacity - (tc.bookedSeat || 0);
+          return acc;
+        }, {}) || {},
 
       // Pricing
       price: flight.priceNumeric || flight.price || 0,
@@ -488,7 +547,6 @@ const normalizeFlightData = (flight) => {
       // Status and availability
       status: flight.status || "N/A",
       availableSeats: flight.availableSeats || 0,
-      totalSeats: flight.totalSeats || 0,
 
       // Additional info
       gate:
@@ -499,8 +557,70 @@ const normalizeFlightData = (flight) => {
         "TBA",
       type: flight.type || "ONE_WAY",
 
-      // Travel classes
-      flightTravelClasses: flight.flightTravelClasses || [],
+      // Travel classes - with fallback mock data if empty
+      flightTravelClasses:
+        flight.flightTravelClasses && flight.flightTravelClasses.length > 0
+          ? flight.flightTravelClasses.map((tc) => ({
+              ...tc,
+              availableSeats: tc.capacity
+                ? tc.capacity - (tc.bookedSeat || 0)
+                : tc.availableSeats || 0,
+            }))
+          : [
+              // Fallback mock travel classes based on basePrice
+              {
+                id: `mock-economy-${flight.id || "default"}`,
+                travelClass: {
+                  className: "Economy",
+                  benefits: "Hành lý xách tay, Thức ăn nhẹ",
+                  changeable: false,
+                  refundable: false,
+                  priceMultiplier: 1.0,
+                },
+                price: flight.basePrice || flight.price || 0,
+                capacity: Math.floor((flight.totalSeats || 50) * 0.7),
+                bookedSeat: Math.floor(Math.random() * 10),
+                availableSeats:
+                  Math.floor((flight.totalSeats || 50) * 0.7) -
+                  Math.floor(Math.random() * 10),
+              },
+              {
+                id: `mock-business-${flight.id || "default"}`,
+                travelClass: {
+                  className: "Business",
+                  benefits:
+                    "Hành lý xách tay, Hành lý ký gửi, Bữa ăn cao cấp, Chỗ ngồi rộng rãi",
+                  changeable: true,
+                  refundable: true,
+                  priceMultiplier: 2.0,
+                },
+                price: Math.round((flight.basePrice || flight.price || 0) * 2),
+                capacity: Math.floor((flight.totalSeats || 50) * 0.2),
+                bookedSeat: Math.floor(Math.random() * 5),
+                availableSeats:
+                  Math.floor((flight.totalSeats || 50) * 0.2) -
+                  Math.floor(Math.random() * 5),
+              },
+              {
+                id: `mock-first-${flight.id || "default"}`,
+                travelClass: {
+                  className: "First Class",
+                  benefits:
+                    "Tất cả quyền lợi cao cấp, Ghế nằm phẳng, Dịch vụ cá nhân",
+                  changeable: true,
+                  refundable: true,
+                  priceMultiplier: 3.5,
+                },
+                price: Math.round(
+                  (flight.basePrice || flight.price || 0) * 3.5
+                ),
+                capacity: Math.floor((flight.totalSeats || 50) * 0.1),
+                bookedSeat: Math.floor(Math.random() * 2),
+                availableSeats:
+                  Math.floor((flight.totalSeats || 50) * 0.1) -
+                  Math.floor(Math.random() * 2),
+              },
+            ],
 
       // Additional fields for compatibility
       businessName: flight.businessName || "",
@@ -747,6 +867,21 @@ const FlightDetail = () => {
             );
           }
 
+          // Debug aircraft information
+          console.log("🛩️ Aircraft Debug Info:", {
+            rawFlight: flight.aircraft,
+            flightToProcess: flightToProcess.aircraft,
+            legs: flightToProcess.legs?.map((leg) => ({
+              aircraft: leg.aircraft,
+              aircraftName: leg.aircraftName,
+              seatLayout: leg.aircraft?.seatLayout,
+              totalSeats: leg.aircraft?.totalSeats,
+            })),
+            outbound: flightToProcess.outbound?.aircraft,
+            return: flightToProcess.return?.aircraft,
+            flight: flightToProcess.flight?.aircraft,
+          });
+
           // Transform flight data to match expected structure
           const transformedFlight = normalizeFlightData(flightToProcess);
           console.log("🚀 Transformed flight data:", transformedFlight);
@@ -797,9 +932,9 @@ const FlightDetail = () => {
 
       if (flightData.isRoundTrip) {
         if (savedOutboundFare) {
-          setOutboundFare(savedOutboundFare);
+          setOutboundFare(parseInt(savedOutboundFare, 10));
           if (savedReturnFare) {
-            setReturnFare(savedReturnFare);
+            setReturnFare(parseInt(savedReturnFare, 10));
             setFareSelectionStep("confirm");
           } else {
             setFareSelectionStep("return");
@@ -807,7 +942,7 @@ const FlightDetail = () => {
         }
       } else {
         if (savedSelectedFare) {
-          setSelectedFare(savedSelectedFare);
+          setSelectedFare(parseInt(savedSelectedFare, 10));
         }
       }
     }
@@ -845,6 +980,15 @@ const FlightDetail = () => {
       console.log("🚀 isMultiCity:", flightData?.isMultiCity);
       console.log("🚀 legs:", flightData?.legs);
       console.log("🚀 selectedFare:", selectedFare);
+      console.log("🚀 Aircraft Debug:", {
+        aircraft: flightData?.aircraft,
+        aircraftType: typeof flightData?.aircraft,
+        seatLayout: flightData?.aircraft?.seatLayout,
+        totalSeats: flightData?.aircraft?.totalSeats,
+        flightSeatLayout: flightData?.seatLayout,
+        flightTotalSeats: flightData?.totalSeats,
+        aircraftInfo: flightData?.aircraftInfo,
+      });
 
       let bookingData;
 
@@ -932,33 +1076,27 @@ const FlightDetail = () => {
                 gate: leg.departureAirport?.gates?.[0]?.gateName || "TBA",
                 terminal: leg.departureAirport?.gates?.[0]?.terminal || "TBA",
               },
-              arrivalAirport: {
-                code: leg.arrivalAirport?.airportCode,
-                name:
-                  leg.arrivalAirport?.airportName || leg.arrivalAirport?.name,
-                city:
-                  leg.arrivalAirport?.city ||
-                  leg.arrivalAirport?.cityNames?.[0],
-                airportName:
-                  leg.arrivalAirport?.airportName || leg.arrivalAirport?.name,
-                gate: leg.arrivalAirport?.gates?.[0]?.gateName || "TBA",
-                terminal: leg.arrivalAirport?.gates?.[0]?.terminal || "TBA",
-              },
-              arrivalAirport: {
-                code: leg.arrivalAirport?.airportCode,
-                name:
-                  leg.arrivalAirport?.airportName || leg.arrivalAirport?.name,
-                city:
-                  leg.arrivalAirport?.city ||
-                  leg.arrivalAirport?.cityNames?.[0],
-                airportName:
-                  leg.arrivalAirport?.airportName || leg.arrivalAirport?.name,
-                gate: leg.arrivalAirport?.gates?.[0]?.gateName || "TBA",
-                terminal: leg.arrivalAirport?.gates?.[0]?.terminal || "TBA",
-              },
               duration: leg.duration,
-              aircraft: leg.aircraft || leg.aircraftName,
-              aircraftName: leg.aircraftName || leg.aircraft,
+              aircraft:
+                typeof leg.aircraft === "object" && leg.aircraft !== null
+                  ? leg.aircraft.aircraftName || leg.aircraft.aircraftCode
+                  : leg.aircraft || leg.aircraftName,
+              aircraftName:
+                typeof leg.aircraft === "object" && leg.aircraft !== null
+                  ? leg.aircraft.aircraftName || leg.aircraft.aircraftCode
+                  : leg.aircraftName || leg.aircraft,
+              seatLayout:
+                leg.seatLayout ||
+                (typeof leg.aircraft === "object" && leg.aircraft !== null
+                  ? leg.aircraft.seatLayout
+                  : null) ||
+                "N/A",
+              totalSeats:
+                leg.totalSeats ||
+                (typeof leg.aircraft === "object" && leg.aircraft !== null
+                  ? leg.aircraft.totalSeats
+                  : null) ||
+                0,
               stops: leg.stops || 0,
               segmentIndex: index,
               segmentLabel: `Chặng ${index + 1}`,
@@ -1071,13 +1209,33 @@ const FlightDetail = () => {
             },
             duration: flightData.outboundFlight?.duration,
             aircraft:
-              flightData.outboundFlight?.aircraft ||
-              flightData.outboundFlight?.aircraftName ||
-              "N/A",
+              typeof flightData.outboundFlight?.aircraft === "object" &&
+              flightData.outboundFlight?.aircraft !== null
+                ? flightData.outboundFlight.aircraft.aircraftName ||
+                  flightData.outboundFlight.aircraft.aircraftCode
+                : flightData.outboundFlight?.aircraft ||
+                  flightData.outboundFlight?.aircraftName ||
+                  "N/A",
             aircraftName:
-              flightData.outboundFlight?.aircraftName ||
-              flightData.outboundFlight?.aircraft ||
+              typeof flightData.outboundFlight?.aircraft === "object" &&
+              flightData.outboundFlight?.aircraft !== null
+                ? flightData.outboundFlight.aircraft.aircraftName ||
+                  flightData.outboundFlight.aircraft.aircraftCode
+                : flightData.outboundFlight?.aircraftName ||
+                  flightData.outboundFlight?.aircraft ||
+                  "N/A",
+            seatLayout:
+              flightData.outboundFlight?.aircraftInfo?.seatLayout ||
+              flightData.outboundFlight?.seatLayout ||
+              (typeof flightData.outboundFlight?.aircraft === "object" &&
+                flightData.outboundFlight?.aircraft?.seatLayout) ||
               "N/A",
+            totalSeats:
+              flightData.outboundFlight?.aircraftInfo?.totalSeats ||
+              flightData.outboundFlight?.totalSeats ||
+              (typeof flightData.outboundFlight?.aircraft === "object" &&
+                flightData.outboundFlight?.aircraft?.totalSeats) ||
+              0,
           },
           return: {
             id:
@@ -1135,20 +1293,38 @@ const FlightDetail = () => {
             },
             duration: flightData.returnFlight?.duration,
             aircraft:
-              flightData.returnFlight?.aircraft ||
-              flightData.returnFlight?.aircraftName ||
-              "N/A",
+              typeof flightData.returnFlight?.aircraft === "object" &&
+              flightData.returnFlight?.aircraft !== null
+                ? flightData.returnFlight.aircraft.aircraftName ||
+                  flightData.returnFlight.aircraft.aircraftCode
+                : flightData.returnFlight?.aircraft ||
+                  flightData.returnFlight?.aircraftName ||
+                  "N/A",
             aircraftName:
-              flightData.returnFlight?.aircraftName ||
-              flightData.returnFlight?.aircraft ||
+              typeof flightData.returnFlight?.aircraft === "object" &&
+              flightData.returnFlight?.aircraft !== null
+                ? flightData.returnFlight.aircraft.aircraftName ||
+                  flightData.returnFlight.aircraft.aircraftCode
+                : flightData.returnFlight?.aircraftName ||
+                  flightData.returnFlight?.aircraft ||
+                  "N/A",
+            seatLayout:
+              flightData.returnFlight?.aircraftInfo?.seatLayout ||
+              flightData.returnFlight?.seatLayout ||
+              (typeof flightData.returnFlight?.aircraft === "object" &&
+                flightData.returnFlight?.aircraft?.seatLayout) ||
               "N/A",
+            totalSeats:
+              flightData.returnFlight?.aircraftInfo?.totalSeats ||
+              flightData.returnFlight?.totalSeats ||
+              (typeof flightData.returnFlight?.aircraft === "object" &&
+                flightData.returnFlight?.aircraft?.totalSeats) ||
+              0,
           },
           totalPrice:
-            (outboundTravelClass?.customPrice || 0) +
-            (returnTravelClass?.customPrice || 0),
+            (outboundTravelClass?.price || 0) + (returnTravelClass?.price || 0),
           formattedTotalPrice: formatCurrencyVND(
-            (outboundTravelClass?.customPrice || 0) +
-              (returnTravelClass?.customPrice || 0)
+            (outboundTravelClass?.price || 0) + (returnTravelClass?.price || 0)
           ),
           currency: "VND",
           passengers: 1,
@@ -1199,15 +1375,36 @@ const FlightDetail = () => {
                 flightData.arrivalAirport?.gates?.[0]?.terminal || "TBA",
             },
             duration: flightData.duration,
-            aircraft: flightData.aircraft || flightData.aircraftName || "N/A",
+            aircraft:
+              typeof flightData.aircraft === "object" &&
+              flightData.aircraft !== null
+                ? flightData.aircraft.aircraftName ||
+                  flightData.aircraft.aircraftCode
+                : flightData.aircraft || flightData.aircraftName || "N/A",
             aircraftName:
-              flightData.aircraftName || flightData.aircraft || "N/A",
+              typeof flightData.aircraft === "object" &&
+              flightData.aircraft !== null
+                ? flightData.aircraft.aircraftName ||
+                  flightData.aircraft.aircraftCode
+                : flightData.aircraftName || flightData.aircraft || "N/A",
+            seatLayout:
+              flightData.aircraftInfo?.seatLayout ||
+              flightData.seatLayout ||
+              (typeof flightData.aircraft === "object" &&
+                flightData.aircraft?.seatLayout) ||
+              "N/A",
+            totalSeats:
+              flightData.aircraftInfo?.totalSeats ||
+              flightData.totalSeats ||
+              (typeof flightData.aircraft === "object" &&
+                flightData.aircraft?.totalSeats) ||
+              0,
             stops: flightData.stops,
           },
           selectedClass: selectedTravelClass,
-          totalPrice: selectedTravelClass?.customPrice || 0,
+          totalPrice: selectedTravelClass?.price || 0,
           formattedTotalPrice: formatCurrencyVND(
-            selectedTravelClass?.customPrice || 0
+            selectedTravelClass?.price || 0
           ),
           currency: "VND",
           passengers: 1,
@@ -1453,7 +1650,8 @@ const FlightDetail = () => {
                         {flightData.outboundFlight?.arrival?.city || "N/A"}
                       </div>
                       <div className="text-sm font-medium">
-                        {flightData.outboundFlight?.arrival?.code || "N/A"}
+                        {flightData.outboundFlight?.arrivalAirport
+                          ?.airportCode || "N/A"}
                       </div>
                     </div>
                   </div>
@@ -1499,7 +1697,8 @@ const FlightDetail = () => {
                         {flightData.returnFlight?.arrival?.city || "N/A"}
                       </div>
                       <div className="text-sm font-medium">
-                        {flightData.returnFlight?.arrival?.code || "N/A"}
+                        {flightData.returnFlight?.arrivalAirport?.airportCode ||
+                          "N/A"}
                       </div>
                     </div>
                   </div>
@@ -1550,7 +1749,7 @@ const FlightDetail = () => {
                     {flightData.arrival?.city || "N/A"}
                   </div>
                   <div className="text-sm text-gray-600">
-                    {flightData.arrival?.code || "N/A"}
+                    {flightData.arrivalAirport?.airportCode || "N/A"}
                   </div>
                   <div className="text-sm text-gray-500">
                     {flightData.arrival?.date || "N/A"}
@@ -1562,7 +1761,7 @@ const FlightDetail = () => {
         </Card>
 
         {/* Main Content */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Flight Details */}
           <div className="lg:col-span-2">
             <Tabs defaultValue="details" className="w-full">
@@ -1724,6 +1923,28 @@ const FlightDetail = () => {
                                     flightData.legs[flightData.legs.length - 1]
                                       ?.arrivalAirport?.airportCode
                                   }`}
+                              </span>
+                            </div>
+                            <div>
+                              <span className="text-gray-600">Máy bay:</span>
+                              <span className="font-medium ml-2">
+                                {flightData.aircraft || "N/A"}
+                              </span>
+                            </div>
+                            <div>
+                              <span className="text-gray-600">
+                                Cấu hình ghế:
+                              </span>
+                              <span className="font-medium ml-2">
+                                {flightData.seatLayout || "N/A"}
+                              </span>
+                            </div>
+                            <div>
+                              <span className="text-gray-600">
+                                Tổng số ghế:
+                              </span>
+                              <span className="font-medium ml-2">
+                                {flightData.totalSeats || 0} ghế
                               </span>
                             </div>
                             <div>
@@ -1938,654 +2159,875 @@ const FlightDetail = () => {
               </TabsContent>
             </Tabs>
           </div>
+        </div>
+        {/* Fare Selection */}
+        <div className="space-y-6 mt-10">
+          <Card>
+            <CardHeader>
+              <CardTitle>
+                {flightData?.isMultiCity
+                  ? "Chọn hạng vé cho chuyến bay Multi-City"
+                  : flightData?.isRoundTrip
+                  ? "Chọn hạng vé cho chuyến bay khứ hồi"
+                  : "Chọn loại vé phù hợp"}
+              </CardTitle>
+              {(outboundFare || returnFare || selectedFare) && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={resetFareSelection}
+                >
+                  Đặt lại lựa chọn
+                </Button>
+              )}
+            </CardHeader>
+            <CardContent>
+              {flightData?.isMultiCity ? (
+                // Multi-city fare selection - Individual segment selection
+                <div className="space-y-6">
+                  <div className="bg-gradient-to-r from-purple-50 to-blue-50 rounded-lg p-4 mb-6 border border-purple-200">
+                    <h4 className="font-semibold text-purple-800 mb-2 flex items-center">
+                      <Map className="w-5 h-5 mr-2" />
+                      Chuyến bay Multi-City ({flightData.legs?.length || 0}{" "}
+                      chặng)
+                    </h4>
+                    <p className="text-sm text-purple-700 mb-3">
+                      Chọn hạng vé riêng cho từng chặng trong hành trình của
+                      bạn.
+                    </p>
+                  </div>
 
-          {/* Fare Selection */}
-          <div className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>
-                  {flightData?.isMultiCity
-                    ? "Chọn hạng vé cho chuyến bay Multi-City"
-                    : flightData?.isRoundTrip
-                    ? "Chọn hạng vé cho chuyến bay khứ hồi"
-                    : "Chọn loại vé phù hợp"}
-                </CardTitle>
-                {(outboundFare || returnFare || selectedFare) && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={resetFareSelection}
-                  >
-                    Đặt lại lựa chọn
-                  </Button>
-                )}
-              </CardHeader>
-              <CardContent>
-                {flightData?.isMultiCity ? (
-                  // Multi-city fare selection - Individual segment selection
-                  <div className="space-y-6">
-                    <div className="bg-gradient-to-r from-purple-50 to-blue-50 rounded-lg p-4 mb-6 border border-purple-200">
-                      <h4 className="font-semibold text-purple-800 mb-2 flex items-center">
-                        <Map className="w-5 h-5 mr-2" />
-                        Chuyến bay Multi-City ({flightData.legs?.length ||
-                          0}{" "}
-                        chặng)
-                      </h4>
-                      <p className="text-sm text-purple-700 mb-3">
-                        Chọn hạng vé riêng cho từng chặng trong hành trình của
-                        bạn.
-                      </p>
-                    </div>
-
-                    {/* Individual segment fare selection */}
-                    {flightData.legs?.map((leg, segmentIndex) => (
-                      <div
-                        key={segmentIndex}
-                        className="bg-white border rounded-lg p-4"
-                      >
-                        <div className="flex items-center gap-3 mb-4">
-                          <span
-                            className="font-medium text-white rounded-full w-8 h-8 flex items-center justify-center text-sm"
-                            style={{
-                              backgroundColor: `hsl(${
-                                segmentIndex * 60
-                              }, 70%, 50%)`,
-                            }}
-                          >
-                            {segmentIndex + 1}
-                          </span>
-                          <div>
-                            <h5 className="font-semibold text-lg">
-                              Chặng {segmentIndex + 1}:{" "}
-                              {leg.departureAirport?.airportCode} →{" "}
-                              {leg.arrivalAirport?.airportCode}
-                            </h5>
-                            <div className="text-sm text-gray-600">
-                              {leg.flightNumber} •{" "}
-                              {formatTimeVN(leg.departureTime)} -{" "}
-                              {formatTimeVN(leg.arrivalTime)}
-                            </div>
+                  {/* Individual segment fare selection */}
+                  {flightData.legs?.map((leg, segmentIndex) => (
+                    <div
+                      key={segmentIndex}
+                      className="bg-white border rounded-lg p-4"
+                    >
+                      <div className="flex items-center gap-3 mb-4">
+                        <span
+                          className="font-medium text-white rounded-full w-8 h-8 flex items-center justify-center text-sm"
+                          style={{
+                            backgroundColor: `hsl(${
+                              segmentIndex * 60
+                            }, 70%, 50%)`,
+                          }}
+                        >
+                          {segmentIndex + 1}
+                        </span>
+                        <div>
+                          <h5 className="font-semibold text-lg">
+                            Chặng {segmentIndex + 1}:{" "}
+                            {leg.departureAirport?.airportCode} →{" "}
+                            {leg.arrivalAirport?.airportCode}
+                          </h5>
+                          <div className="text-sm text-gray-600">
+                            {leg.flightNumber} •{" "}
+                            {formatTimeVN(leg.departureTime)} -{" "}
+                            {formatTimeVN(leg.arrivalTime)}
                           </div>
                         </div>
+                      </div>
 
-                        {/* Fare options for this segment */}
-                        {leg.flightTravelClasses &&
-                        leg.flightTravelClasses.length > 0 ? (
-                          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                            {leg.flightTravelClasses.map(
-                              (travelClass, classIndex) => {
-                                const segmentFareKey = `segment-${segmentIndex}-${travelClass.id}`;
-                                const isSelected =
-                                  selectedFare === segmentFareKey;
+                      {/* Fare options for this segment */}
+                      {leg.flightTravelClasses &&
+                      leg.flightTravelClasses.length > 0 ? (
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                          {leg.flightTravelClasses.map(
+                            (travelClass, classIndex) => {
+                              const segmentFareKey = `segment-${segmentIndex}-${travelClass.id}`;
+                              const isSelected =
+                                selectedFare === segmentFareKey;
 
-                                return (
-                                  <div
-                                    key={travelClass.id}
-                                    className={`border rounded-lg p-3 cursor-pointer transition-all duration-200 ${
-                                      isSelected
-                                        ? "ring-2 ring-blue-500 bg-blue-50 border-blue-200"
-                                        : "hover:border-blue-300 hover:shadow-sm"
-                                    } ${
-                                      classIndex === 0
-                                        ? "bg-gradient-to-br from-blue-50 to-indigo-50 relative"
-                                        : "bg-white"
-                                    }`}
-                                    onClick={() => {
-                                      // Update the segment fare selection
-                                      const newSegmentFares = {
-                                        ...(_selectedFares.segmentFares || {}),
-                                      };
-                                      newSegmentFares[segmentIndex] = {
-                                        travelClassId: travelClass.id,
-                                        className:
-                                          travelClass.travelClass?.className,
-                                        price: travelClass.customPrice,
-                                        availableSeats:
-                                          travelClass.availableSeats,
-                                      };
-                                      _setSelectedFares((prev) => ({
-                                        ...prev,
-                                        segmentFares: newSegmentFares,
-                                      }));
-                                    }}
-                                  >
-                                    {classIndex === 0 && (
-                                      <Badge className="absolute -top-2 right-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-sm text-xs">
-                                        Phổ biến
-                                      </Badge>
-                                    )}
+                              return (
+                                <div
+                                  key={travelClass.id}
+                                  className={`border rounded-lg p-3 cursor-pointer transition-all duration-200 ${
+                                    isSelected
+                                      ? "ring-2 ring-blue-500 bg-blue-50 border-blue-200"
+                                      : "hover:border-blue-300 hover:shadow-sm"
+                                  } ${
+                                    classIndex === 0
+                                      ? "bg-gradient-to-br from-blue-50 to-indigo-50 relative"
+                                      : "bg-white"
+                                  }`}
+                                  onClick={() => {
+                                    // Update the segment fare selection
+                                    const newSegmentFares = {
+                                      ...(_selectedFares.segmentFares || {}),
+                                    };
+                                    newSegmentFares[segmentIndex] = {
+                                      travelClassId: travelClass.id,
+                                      className:
+                                        travelClass.travelClass?.className,
+                                      price: travelClass.price,
+                                      availableSeats:
+                                        travelClass.availableSeats,
+                                    };
+                                    _setSelectedFares((prev) => ({
+                                      ...prev,
+                                      segmentFares: newSegmentFares,
+                                    }));
+                                  }}
+                                >
+                                  {classIndex === 0 && (
+                                    <Badge className="absolute -top-2 right-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-sm text-xs">
+                                      Phổ biến
+                                    </Badge>
+                                  )}
 
-                                    <div className="mb-3">
-                                      <h6 className="font-bold text-gray-900 mb-1">
-                                        {travelClass.travelClass?.className ||
-                                          `Hạng ${classIndex + 1}`}
-                                      </h6>
-                                      <p className="text-lg font-bold text-blue-600 mb-1">
-                                        {formatCurrencyVND(
-                                          travelClass.customPrice
-                                        )}
-                                      </p>
-                                      <p className="text-xs text-gray-500">
-                                        cho chặng này
-                                      </p>
-                                      <p className="text-xs text-orange-600 mt-1">
-                                        Còn {travelClass.availableSeats} ghế
-                                      </p>
-                                    </div>
-
-                                    <div className="space-y-1 mb-3">
-                                      <div className="flex items-center text-xs">
-                                        <CheckCircle className="w-3 h-3 text-green-500 mr-1" />
-                                        <span>Hành lý xách tay</span>
-                                      </div>
-                                      <div className="flex items-center text-xs">
-                                        {travelClass.travelClass?.benefits
-                                          ?.toLowerCase()
-                                          .includes("ký gửi") ? (
-                                          <CheckCircle className="w-3 h-3 text-green-500 mr-1" />
-                                        ) : (
-                                          <div className="w-3 h-3 rounded-full border border-gray-300 mr-1" />
-                                        )}
-                                        <span
-                                          className={
-                                            !travelClass.travelClass?.benefits
-                                              ?.toLowerCase()
-                                              .includes("ký gửi")
-                                              ? "text-gray-400 line-through"
-                                              : ""
-                                          }
-                                        >
-                                          Hành lý ký gửi
-                                        </span>
-                                      </div>
-                                    </div>
-
-                                    {_selectedFares.segmentFares?.[segmentIndex]
-                                      ?.travelClassId === travelClass.id ? (
-                                      <div className="w-full py-1 px-2 bg-green-100 border border-green-300 rounded text-center text-green-800 text-xs font-medium">
-                                        ✓ Đã chọn
-                                      </div>
-                                    ) : (
-                                      <Button
-                                        variant="outline"
-                                        size="sm"
-                                        className="w-full text-xs border-gray-300 hover:border-blue-400 hover:text-blue-600"
-                                      >
-                                        Chọn
-                                      </Button>
-                                    )}
+                                  <div className="mb-3">
+                                    <h6 className="font-bold text-gray-900 mb-1">
+                                      {travelClass.travelClass?.className ||
+                                        `Hạng ${classIndex + 1}`}
+                                    </h6>
+                                    <p className="text-lg font-bold text-blue-600 mb-1">
+                                      {formatCurrencyVND(travelClass.price)}
+                                    </p>
+                                    <p className="text-xs text-gray-500">
+                                      cho chặng này
+                                    </p>
+                                    <p className="text-xs text-orange-600 mt-1">
+                                      Còn {travelClass.availableSeats} ghế
+                                    </p>
                                   </div>
-                                );
-                              }
+
+                                  <div className="space-y-1 mb-3">
+                                    <div className="flex items-center text-xs">
+                                      <CheckCircle className="w-3 h-3 text-green-500 mr-1" />
+                                      <span>Hành lý xách tay</span>
+                                    </div>
+                                    <div className="flex items-center text-xs">
+                                      {travelClass.travelClass?.benefits
+                                        ?.toLowerCase()
+                                        .includes("ký gửi") ? (
+                                        <CheckCircle className="w-3 h-3 text-green-500 mr-1" />
+                                      ) : (
+                                        <div className="w-3 h-3 rounded-full border border-gray-300 mr-1" />
+                                      )}
+                                      <span
+                                        className={
+                                          !travelClass.travelClass?.benefits
+                                            ?.toLowerCase()
+                                            .includes("ký gửi")
+                                            ? "text-gray-400 line-through"
+                                            : ""
+                                        }
+                                      >
+                                        Hành lý ký gửi
+                                      </span>
+                                    </div>
+                                  </div>
+
+                                  {_selectedFares.segmentFares?.[segmentIndex]
+                                    ?.travelClassId === travelClass.id ? (
+                                    <div className="w-full py-1 px-2 bg-green-100 border border-green-300 rounded text-center text-green-800 text-xs font-medium">
+                                      ✓ Đã chọn
+                                    </div>
+                                  ) : (
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      className="w-full text-xs border-gray-300 hover:border-blue-400 hover:text-blue-600"
+                                    >
+                                      Chọn
+                                    </Button>
+                                  )}
+                                </div>
+                              );
+                            }
+                          )}
+                        </div>
+                      ) : (
+                        <div className="text-center py-4 text-gray-500">
+                          <p className="text-sm">
+                            Không có hạng vé cho chặng này
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+
+                  {/* Multi-city summary and total */}
+                  {_selectedFares.segmentFares &&
+                    Object.keys(_selectedFares.segmentFares).length > 0 && (
+                      <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                        <h5 className="font-semibold text-green-800 mb-3">
+                          Tóm tắt lựa chọn
+                        </h5>
+                        <div className="space-y-2 mb-4">
+                          {Object.entries(_selectedFares.segmentFares).map(
+                            ([segmentIndex, fareInfo]) => {
+                              const leg =
+                                flightData.legs[parseInt(segmentIndex)];
+                              return (
+                                <div
+                                  key={segmentIndex}
+                                  className="flex justify-between items-center text-sm"
+                                >
+                                  <span>
+                                    Chặng {parseInt(segmentIndex) + 1}:{" "}
+                                    {leg?.departureAirport?.airportCode} →{" "}
+                                    {leg?.arrivalAirport?.airportCode}
+                                    <span className="ml-2 text-gray-600">
+                                      ({fareInfo.className})
+                                    </span>
+                                  </span>
+                                  <span className="font-semibold">
+                                    {formatCurrencyVND(fareInfo.price)}
+                                  </span>
+                                </div>
+                              );
+                            }
+                          )}
+                        </div>
+                        <div className="border-t border-green-300 pt-3 flex justify-between items-center">
+                          <span className="font-bold text-green-800">
+                            Tổng cộng:
+                          </span>
+                          <span className="text-xl font-bold text-green-600">
+                            {formatCurrencyVND(
+                              Object.values(_selectedFares.segmentFares).reduce(
+                                (sum, fare) => sum + fare.price,
+                                0
+                              )
                             )}
-                          </div>
-                        ) : (
-                          <div className="text-center py-4 text-gray-500">
-                            <p className="text-sm">
-                              Không có hạng vé cho chặng này
-                            </p>
-                          </div>
+                          </span>
+                        </div>
+
+                        {Object.keys(_selectedFares.segmentFares).length ===
+                          flightData.legs?.length && (
+                          <Button
+                            className="w-full mt-4 bg-green-600 hover:bg-green-700 text-white font-semibold"
+                            onClick={handleProceedToBooking}
+                          >
+                            Tiếp tục đặt vé Multi-City
+                            <ArrowRight className="w-4 h-4 ml-2" />
+                          </Button>
+                        )}
+                      </div>
+                    )}
+                </div>
+              ) : flightData?.isRoundTrip ? (
+                // Round-trip fare selection with stepper
+                <div className="space-y-6">
+                  {/* Stepper */}
+                  <div className="flex items-center justify-between">
+                    {roundTripSteps.map((step, index) => (
+                      <div key={index} className="flex items-center">
+                        <div
+                          className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
+                            (index === 0 && fareSelectionStep === "outbound") ||
+                            (index === 1 && fareSelectionStep === "return") ||
+                            (index === 2 && fareSelectionStep === "confirm")
+                              ? "bg-blue-600 text-white"
+                              : index === 0 && outboundFare
+                              ? "bg-green-600 text-white"
+                              : index === 1 && returnFare
+                              ? "bg-green-600 text-white"
+                              : "bg-gray-200 text-gray-600"
+                          }`}
+                        >
+                          {(index === 0 && outboundFare) ||
+                          (index === 1 && returnFare) ? (
+                            <Check className="w-4 h-4" />
+                          ) : (
+                            index + 1
+                          )}
+                        </div>
+                        <span className="ml-2 text-sm font-medium text-gray-700">
+                          {step.title}
+                        </span>
+                        {index < roundTripSteps.length - 1 && (
+                          <ChevronRight className="w-4 h-4 text-gray-400 ml-2" />
                         )}
                       </div>
                     ))}
-
-                    {/* Multi-city summary and total */}
-                    {_selectedFares.segmentFares &&
-                      Object.keys(_selectedFares.segmentFares).length > 0 && (
-                        <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                          <h5 className="font-semibold text-green-800 mb-3">
-                            Tóm tắt lựa chọn
-                          </h5>
-                          <div className="space-y-2 mb-4">
-                            {Object.entries(_selectedFares.segmentFares).map(
-                              ([segmentIndex, fareInfo]) => {
-                                const leg =
-                                  flightData.legs[parseInt(segmentIndex)];
-                                return (
-                                  <div
-                                    key={segmentIndex}
-                                    className="flex justify-between items-center text-sm"
-                                  >
-                                    <span>
-                                      Chặng {parseInt(segmentIndex) + 1}:{" "}
-                                      {leg?.departureAirport?.airportCode} →{" "}
-                                      {leg?.arrivalAirport?.airportCode}
-                                      <span className="ml-2 text-gray-600">
-                                        ({fareInfo.className})
-                                      </span>
-                                    </span>
-                                    <span className="font-semibold">
-                                      {formatCurrencyVND(fareInfo.price)}
-                                    </span>
-                                  </div>
-                                );
-                              }
-                            )}
-                          </div>
-                          <div className="border-t border-green-300 pt-3 flex justify-between items-center">
-                            <span className="font-bold text-green-800">
-                              Tổng cộng:
-                            </span>
-                            <span className="text-xl font-bold text-green-600">
-                              {formatCurrencyVND(
-                                Object.values(
-                                  _selectedFares.segmentFares
-                                ).reduce((sum, fare) => sum + fare.price, 0)
-                              )}
-                            </span>
-                          </div>
-
-                          {Object.keys(_selectedFares.segmentFares).length ===
-                            flightData.legs?.length && (
-                            <Button
-                              className="w-full mt-4 bg-green-600 hover:bg-green-700 text-white font-semibold"
-                              onClick={handleProceedToBooking}
-                            >
-                              Tiếp tục đặt vé Multi-City
-                              <ArrowRight className="w-4 h-4 ml-2" />
-                            </Button>
-                          )}
-                        </div>
-                      )}
                   </div>
-                ) : flightData?.isRoundTrip ? (
-                  // Round-trip fare selection with stepper
-                  <div className="space-y-6">
-                    {/* Stepper */}
-                    <div className="flex items-center justify-between">
-                      {roundTripSteps.map((step, index) => (
-                        <div key={index} className="flex items-center">
-                          <div
-                            className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
-                              (index === 0 &&
-                                fareSelectionStep === "outbound") ||
-                              (index === 1 && fareSelectionStep === "return") ||
-                              (index === 2 && fareSelectionStep === "confirm")
-                                ? "bg-blue-600 text-white"
-                                : index === 0 && outboundFare
-                                ? "bg-green-600 text-white"
-                                : index === 1 && returnFare
-                                ? "bg-green-600 text-white"
-                                : "bg-gray-200 text-gray-600"
-                            }`}
-                          >
-                            {(index === 0 && outboundFare) ||
-                            (index === 1 && returnFare) ? (
-                              <Check className="w-4 h-4" />
-                            ) : (
-                              index + 1
-                            )}
-                          </div>
-                          <span className="ml-2 text-sm font-medium text-gray-700">
-                            {step.title}
-                          </span>
-                          {index < roundTripSteps.length - 1 && (
-                            <ChevronRight className="w-4 h-4 text-gray-400 ml-2" />
-                          )}
-                        </div>
-                      ))}
-                    </div>
 
-                    {fareSelectionStep === "outbound" && (
-                      <div className="space-y-4">
-                        <h3 className="font-semibold text-blue-600">
+                  {fareSelectionStep === "outbound" && (
+                    <div className="space-y-6">
+                      <div className="text-center">
+                        <h3 className="text-xl font-bold text-gray-800 mb-2">
                           Chọn hạng vé cho chuyến đi
                         </h3>
-                        <div className="space-y-3">
-                          {flightData.outboundFlight?.flightTravelClasses?.map(
-                            (travelClass, index) => {
-                              const isRecommended = index === 0;
-                              return (
-                                <FareOption
-                                  key={travelClass.id}
-                                  fare={{
-                                    id: travelClass.id,
-                                    name:
-                                      travelClass.travelClass?.className ||
-                                      `Hạng ${index + 1}`,
-                                    price: travelClass.customPrice,
-                                    recommended: isRecommended,
-                                    features: [
-                                      {
-                                        included: true,
-                                        text: "Hành lý xách tay",
-                                      },
-                                      {
-                                        included:
-                                          travelClass.travelClass?.changeable ||
-                                          false,
-                                        text: "Đổi vé",
-                                      },
-                                      {
-                                        included:
-                                          travelClass.travelClass?.refundable ||
-                                          false,
-                                        text: "Hoàn tiền",
-                                      },
-                                    ],
-                                    availableSeats: travelClass.availableSeats,
-                                  }}
-                                  flight={flightData}
-                                  isSelected={outboundFare === travelClass.id}
-                                  onSelect={() =>
-                                    handleSelectFare(travelClass.id)
-                                  }
-                                  onProceedToBooking={() => {}}
-                                />
-                              );
-                            }
-                          )}
-                        </div>
+                        <p className="text-sm text-gray-600">
+                          Chọn hạng vé phù hợp với nhu cầu của bạn
+                        </p>
                       </div>
-                    )}
 
-                    {fareSelectionStep === "return" && (
-                      <div className="space-y-4">
-                        <h3 className="font-semibold text-green-600">
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        {flightData.outboundFlight?.flightTravelClasses?.map(
+                          (travelClass, index) => {
+                            const isRecommended = index === 1; // Business class recommended
+                            const isSelected = outboundFare === travelClass.id;
+
+                            return (
+                              <div
+                                key={travelClass.id}
+                                className={`relative cursor-pointer transition-all duration-300 hover:scale-105 ${
+                                  isSelected
+                                    ? "ring-3 ring-blue-500 shadow-lg"
+                                    : "hover:shadow-md"
+                                }`}
+                                onClick={() => handleSelectFare(travelClass.id)}
+                              >
+                                {isRecommended && (
+                                  <div className="absolute -top-3 left-1/2 transform -translate-x-1/2 z-10">
+                                    <span className="bg-gradient-to-r from-orange-400 to-red-500 text-white px-3 py-1 rounded-full text-xs font-semibold shadow-lg">
+                                      Khuyến nghị
+                                    </span>
+                                  </div>
+                                )}
+
+                                <div
+                                  className={`bg-white rounded-xl border-2 p-6 h-full ${
+                                    isSelected
+                                      ? "border-blue-500 bg-blue-50"
+                                      : "border-gray-200 hover:border-blue-300"
+                                  }`}
+                                >
+                                  {/* Header */}
+                                  <div className="text-center mb-4">
+                                    <h4 className="text-lg font-bold text-gray-800 mb-1">
+                                      {travelClass.travelClass?.className}
+                                    </h4>
+                                    <div className="text-2xl font-bold text-blue-600">
+                                      {formatCurrencyVND(travelClass.price)}
+                                    </div>
+                                    <p className="text-sm text-gray-500 mt-1">
+                                      {travelClass.capacity -
+                                        travelClass.bookedSeat}{" "}
+                                      ghế còn lại
+                                    </p>
+                                  </div>
+
+                                  {/* Features */}
+                                  <div className="space-y-2 mb-6">
+                                    <div className="flex items-center text-sm text-green-600">
+                                      <CheckCircle className="w-4 h-4 mr-2" />
+                                      <span>Hành lý xách tay</span>
+                                    </div>
+                                    <div
+                                      className={`flex items-center text-sm ${
+                                        travelClass.travelClass?.changeable
+                                          ? "text-green-600"
+                                          : "text-gray-400"
+                                      }`}
+                                    >
+                                      {travelClass.travelClass?.changeable ? (
+                                        <CheckCircle className="w-4 h-4 mr-2" />
+                                      ) : (
+                                        <div className="w-4 h-4 rounded-full border-2 border-gray-300 mr-2" />
+                                      )}
+                                      <span>Đổi vé</span>
+                                    </div>
+                                    <div
+                                      className={`flex items-center text-sm ${
+                                        travelClass.travelClass?.refundable
+                                          ? "text-green-600"
+                                          : "text-gray-400"
+                                      }`}
+                                    >
+                                      {travelClass.travelClass?.refundable ? (
+                                        <CheckCircle className="w-4 h-4 mr-2" />
+                                      ) : (
+                                        <div className="w-4 h-4 rounded-full border-2 border-gray-300 mr-2" />
+                                      )}
+                                      <span>Hoàn tiền</span>
+                                    </div>
+                                  </div>
+
+                                  {/* Benefits */}
+                                  {travelClass.travelClass?.benefits && (
+                                    <div className="mb-4">
+                                      <p className="text-xs text-gray-600 line-clamp-3">
+                                        {travelClass.travelClass.benefits}
+                                      </p>
+                                    </div>
+                                  )}
+
+                                  {/* Select Button */}
+                                  <button
+                                    className={`w-full py-2 px-4 rounded-lg font-medium transition-colors ${
+                                      isSelected
+                                        ? "bg-blue-600 text-white"
+                                        : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                                    }`}
+                                  >
+                                    {isSelected ? "Đã chọn" : "Chọn"}
+                                  </button>
+                                </div>
+                              </div>
+                            );
+                          }
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {fareSelectionStep === "return" && (
+                    <div className="space-y-6">
+                      <div className="text-center">
+                        <h3 className="text-xl font-bold text-gray-800 mb-2">
                           Chọn hạng vé cho chuyến về
                         </h3>
-                        <div className="space-y-3">
-                          {flightData.returnFlight?.flightTravelClasses?.map(
-                            (travelClass, index) => {
-                              const isRecommended = index === 0;
-                              return (
-                                <FareOption
-                                  key={travelClass.id}
-                                  fare={{
-                                    id: travelClass.id,
-                                    name:
-                                      travelClass.travelClass?.className ||
-                                      `Hạng ${index + 1}`,
-                                    price: travelClass.customPrice,
-                                    recommended: isRecommended,
-                                    features: [
-                                      {
-                                        included: true,
-                                        text: "Hành lý xách tay",
-                                      },
-                                      {
-                                        included:
-                                          travelClass.travelClass?.changeable ||
-                                          false,
-                                        text: "Đổi vé",
-                                      },
-                                      {
-                                        included:
-                                          travelClass.travelClass?.refundable ||
-                                          false,
-                                        text: "Hoàn tiền",
-                                      },
-                                    ],
-                                    availableSeats: travelClass.availableSeats,
-                                  }}
-                                  flight={flightData}
-                                  isSelected={returnFare === travelClass.id}
-                                  onSelect={() =>
-                                    handleSelectFare(travelClass.id)
-                                  }
-                                  onProceedToBooking={() => {}}
-                                />
-                              );
-                            }
-                          )}
-                        </div>
+                        <p className="text-sm text-gray-600">
+                          Chọn hạng vé phù hợp với nhu cầu của bạn
+                        </p>
                       </div>
-                    )}
 
-                    {fareSelectionStep === "confirm" &&
-                      outboundFare &&
-                      returnFare && (
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        {flightData.returnFlight?.flightTravelClasses?.map(
+                          (travelClass, index) => {
+                            const isRecommended = index === 1; // Business class recommended
+                            const isSelected = returnFare === travelClass.id;
+
+                            return (
+                              <div
+                                key={travelClass.id}
+                                className={`relative cursor-pointer transition-all duration-300 hover:scale-105 ${
+                                  isSelected
+                                    ? "ring-3 ring-blue-500 shadow-lg"
+                                    : "hover:shadow-md"
+                                }`}
+                                onClick={() => handleSelectFare(travelClass.id)}
+                              >
+                                {isRecommended && (
+                                  <div className="absolute -top-3 left-1/2 transform -translate-x-1/2 z-10">
+                                    <span className="bg-gradient-to-r from-orange-400 to-red-500 text-white px-3 py-1 rounded-full text-xs font-semibold shadow-lg">
+                                      Khuyến nghị
+                                    </span>
+                                  </div>
+                                )}
+
+                                <div
+                                  className={`bg-white rounded-xl border-2 p-6 h-full ${
+                                    isSelected
+                                      ? "border-blue-500 bg-blue-50"
+                                      : "border-gray-200 hover:border-blue-300"
+                                  }`}
+                                >
+                                  {/* Header */}
+                                  <div className="text-center mb-4">
+                                    <h4 className="text-lg font-bold text-gray-800 mb-1">
+                                      {travelClass.travelClass?.className}
+                                    </h4>
+                                    <div className="text-2xl font-bold text-blue-600">
+                                      {formatCurrencyVND(travelClass.price)}
+                                    </div>
+                                    <p className="text-sm text-gray-500 mt-1">
+                                      {travelClass.capacity -
+                                        travelClass.bookedSeat}{" "}
+                                      ghế còn lại
+                                    </p>
+                                  </div>
+
+                                  {/* Features */}
+                                  <div className="space-y-2 mb-6">
+                                    <div className="flex items-center text-sm text-green-600">
+                                      <CheckCircle className="w-4 h-4 mr-2" />
+                                      <span>Hành lý xách tay</span>
+                                    </div>
+                                    <div
+                                      className={`flex items-center text-sm ${
+                                        travelClass.travelClass?.changeable
+                                          ? "text-green-600"
+                                          : "text-gray-400"
+                                      }`}
+                                    >
+                                      {travelClass.travelClass?.changeable ? (
+                                        <CheckCircle className="w-4 h-4 mr-2" />
+                                      ) : (
+                                        <div className="w-4 h-4 rounded-full border-2 border-gray-300 mr-2" />
+                                      )}
+                                      <span>Đổi vé</span>
+                                    </div>
+                                    <div
+                                      className={`flex items-center text-sm ${
+                                        travelClass.travelClass?.refundable
+                                          ? "text-green-600"
+                                          : "text-gray-400"
+                                      }`}
+                                    >
+                                      {travelClass.travelClass?.refundable ? (
+                                        <CheckCircle className="w-4 h-4 mr-2" />
+                                      ) : (
+                                        <div className="w-4 h-4 rounded-full border-2 border-gray-300 mr-2" />
+                                      )}
+                                      <span>Hoàn tiền</span>
+                                    </div>
+                                  </div>
+
+                                  {/* Benefits */}
+                                  {travelClass.travelClass?.benefits && (
+                                    <div className="mb-4">
+                                      <p className="text-xs text-gray-600 line-clamp-3">
+                                        {travelClass.travelClass.benefits}
+                                      </p>
+                                    </div>
+                                  )}
+
+                                  {/* Select Button */}
+                                  <button
+                                    className={`w-full py-2 px-4 rounded-lg font-medium transition-colors ${
+                                      isSelected
+                                        ? "bg-blue-600 text-white"
+                                        : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                                    }`}
+                                  >
+                                    {isSelected ? "Đã chọn" : "Chọn"}
+                                  </button>
+                                </div>
+                              </div>
+                            );
+                          }
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {fareSelectionStep === "confirm" &&
+                    outboundFare &&
+                    returnFare && (
+                      <div className="space-y-4">
+                        <h3 className="font-semibold text-purple-600">
+                          Xác nhận lựa chọn
+                        </h3>
                         <div className="space-y-4">
-                          <h3 className="font-semibold text-purple-600">
-                            Xác nhận lựa chọn
-                          </h3>
-                          <div className="space-y-4">
-                            <div className="bg-blue-50 rounded-lg p-4">
-                              <h4 className="font-medium text-blue-800 mb-2">
-                                Chuyến đi
-                              </h4>
-                              <div className="text-sm space-y-1">
-                                <div className="flex justify-between">
-                                  <span>Hạng vé:</span>
-                                  <span className="font-medium">
-                                    {flightData.outboundFlight?.flightTravelClasses?.find(
-                                      (tc) => tc.id === outboundFare
-                                    )?.travelClass?.className || "N/A"}
-                                  </span>
-                                </div>
-                                <div className="flex justify-between">
-                                  <span>Giá:</span>
-                                  <span className="font-medium">
-                                    {formatCurrencyVND(
-                                      flightData.outboundFlight?.flightTravelClasses?.find(
-                                        (tc) => tc.id === outboundFare
-                                      )?.customPrice || 0
-                                    )}
-                                  </span>
-                                </div>
-                              </div>
-                            </div>
-                            <div className="bg-green-50 rounded-lg p-4">
-                              <h4 className="font-medium text-green-800 mb-2">
-                                Chuyến về
-                              </h4>
-                              <div className="text-sm space-y-1">
-                                <div className="flex justify-between">
-                                  <span>Hạng vé:</span>
-                                  <span className="font-medium">
-                                    {flightData.returnFlight?.flightTravelClasses?.find(
-                                      (tc) => tc.id === returnFare
-                                    )?.travelClass?.className || "N/A"}
-                                  </span>
-                                </div>
-                                <div className="flex justify-between">
-                                  <span>Giá:</span>
-                                  <span className="font-medium">
-                                    {formatCurrencyVND(
-                                      flightData.returnFlight?.flightTravelClasses?.find(
-                                        (tc) => tc.id === returnFare
-                                      )?.customPrice || 0
-                                    )}
-                                  </span>
-                                </div>
-                              </div>
-                            </div>
-                            <div className="border-t pt-4">
-                              <div className="flex justify-between items-center">
-                                <span className="font-semibold">
-                                  Tổng cộng:
+                          <div className="bg-blue-50 rounded-lg p-4">
+                            <h4 className="font-medium text-blue-800 mb-2">
+                              Chuyến đi
+                            </h4>
+                            <div className="text-sm space-y-1">
+                              <div className="flex justify-between">
+                                <span>Hạng vé:</span>
+                                <span className="font-medium">
+                                  {flightData.outboundFlight?.flightTravelClasses?.find(
+                                    (tc) => tc.id === outboundFare
+                                  )?.travelClass?.className || "N/A"}
                                 </span>
-                                <span className="text-xl font-bold text-blue-600">
+                              </div>
+                              <div className="flex justify-between">
+                                <span>Giá:</span>
+                                <span className="font-medium">
                                   {formatCurrencyVND(
-                                    (flightData.outboundFlight?.flightTravelClasses?.find(
+                                    flightData.outboundFlight?.flightTravelClasses?.find(
                                       (tc) => tc.id === outboundFare
-                                    )?.customPrice || 0) +
-                                      (flightData.returnFlight?.flightTravelClasses?.find(
-                                        (tc) => tc.id === returnFare
-                                      )?.customPrice || 0)
+                                    )?.price || 0
                                   )}
                                 </span>
                               </div>
                             </div>
-                            <Button
-                              className="w-full bg-purple-600 hover:bg-purple-700"
-                              onClick={() => handleProceedToBooking(flightData)}
-                            >
-                              Xác nhận và đặt vé
-                            </Button>
                           </div>
-                        </div>
-                      )}
-                  </div>
-                ) : (
-                  // One-way fare selection
-                  <div className="space-y-4">
-                    {flightData?.flightTravelClasses &&
-                    flightData.flightTravelClasses.length > 0 ? (
-                      flightData.flightTravelClasses.map(
-                        (travelClass, index) => {
-                          const isRecommended = index === 0;
-                          return (
-                            <FareOption
-                              key={travelClass.id}
-                              fare={{
-                                id: travelClass.id,
-                                name:
-                                  travelClass.travelClass?.className ||
-                                  `Hạng ${index + 1}`,
-                                price: travelClass.customPrice,
-                                recommended: isRecommended,
-                                features: [
-                                  { included: true, text: "Hành lý xách tay" },
-                                  {
-                                    included:
-                                      travelClass.travelClass?.benefits
-                                        ?.toLowerCase()
-                                        .includes("ký gửi") || false,
-                                    text: "Hành lý ký gửi",
-                                  },
-                                  {
-                                    included:
-                                      travelClass.travelClass?.benefits
-                                        ?.toLowerCase()
-                                        .includes("chỗ ngồi") || false,
-                                    text: "Chọn chỗ ngồi",
-                                  },
-                                  {
-                                    included:
-                                      travelClass.travelClass?.changeable ||
-                                      false,
-                                    text: "Đổi vé",
-                                  },
-                                  {
-                                    included:
-                                      travelClass.travelClass?.refundable ||
-                                      false,
-                                    text: "Hoàn tiền",
-                                  },
-                                ],
-                                availableSeats: travelClass.availableSeats,
-                              }}
-                              flight={flightData}
-                              isSelected={selectedFare === travelClass.id}
-                              onSelect={() => handleSelectFare(travelClass.id)}
-                              onProceedToBooking={() =>
-                                handleProceedToBooking(flightData, selectedFare)
-                              }
-                            />
-                          );
-                        }
-                      )
-                    ) : (
-                      <div className="text-center text-gray-500 py-8">
-                        <p>Không có thông tin hạng vé cho chuyến bay này</p>
-                        <p className="text-sm mt-2">
-                          Vui lòng liên hệ với hãng hàng không để biết thêm chi
-                          tiết
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* Fare Summary for Multi-city */}
-            {flightData?.isMultiCity &&
-              selectedFare &&
-              flightData?.flightTravelClasses && (
-                <Card className="bg-purple-50 border-purple-200">
-                  <CardHeader>
-                    <CardTitle className="text-purple-800">
-                      Tóm tắt đặt vé Multi-City
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4">
-                      <div className="flex justify-between items-center">
-                        <span className="font-medium">Loại hành trình:</span>
-                        <span>
-                          Multi-City ({flightData.legs?.length || 0} chặng)
-                        </span>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span className="font-medium">Hạng vé:</span>
-                        <span>
-                          {flightData.flightTravelClasses.find(
-                            (tc) => tc.id === selectedFare
-                          )?.travelClass?.className || "Hạng vé"}
-                        </span>
-                      </div>
-                      <div className="border-t pt-2">
-                        <div className="text-sm text-gray-600 space-y-1">
-                          <div className="font-medium mb-2">Các chặng bay:</div>
-                          {flightData.legs?.map((leg, index) => (
-                            <div
-                              key={index}
-                              className="flex justify-between text-xs"
-                            >
-                              <span>Chặng {index + 1}:</span>
-                              <span>
-                                {leg.departureAirport?.airportCode} →{" "}
-                                {leg.arrivalAirport?.airportCode}
+                          <div className="bg-green-50 rounded-lg p-4">
+                            <h4 className="font-medium text-green-800 mb-2">
+                              Chuyến về
+                            </h4>
+                            <div className="text-sm space-y-1">
+                              <div className="flex justify-between">
+                                <span>Hạng vé:</span>
+                                <span className="font-medium">
+                                  {flightData.returnFlight?.flightTravelClasses?.find(
+                                    (tc) => tc.id === returnFare
+                                  )?.travelClass?.className || "N/A"}
+                                </span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span>Giá:</span>
+                                <span className="font-medium">
+                                  {formatCurrencyVND(
+                                    flightData.returnFlight?.flightTravelClasses?.find(
+                                      (tc) => tc.id === returnFare
+                                    )?.price || 0
+                                  )}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                          <div className="border-t pt-4">
+                            <div className="flex justify-between items-center">
+                              <span className="font-semibold">Tổng cộng:</span>
+                              <span className="text-xl font-bold text-blue-600">
+                                {formatCurrencyVND(
+                                  (flightData.outboundFlight?.flightTravelClasses?.find(
+                                    (tc) => tc.id === outboundFare
+                                  )?.price || 0) +
+                                    (flightData.returnFlight?.flightTravelClasses?.find(
+                                      (tc) => tc.id === returnFare
+                                    )?.price || 0)
+                                )}
                               </span>
                             </div>
-                          ))}
+                          </div>
+                          <Button
+                            className="w-full bg-purple-600 hover:bg-purple-700"
+                            onClick={() => handleProceedToBooking(flightData)}
+                          >
+                            Xác nhận và đặt vé
+                          </Button>
                         </div>
                       </div>
-                      <div className="flex justify-between items-center border-t pt-2">
-                        <span className="font-medium">Tổng giá vé:</span>
-                        <span className="text-xl font-bold text-purple-600">
-                          {formatCurrencyVND(
-                            flightData.flightTravelClasses.find(
-                              (tc) => tc.id === selectedFare
-                            )?.customPrice || 0
-                          )}
-                        </span>
-                      </div>
-                      <Button
-                        className="w-full bg-purple-600 hover:bg-purple-700"
-                        onClick={() =>
-                          handleProceedToBooking(flightData, selectedFare)
-                        }
-                      >
-                        Xác nhận và đặt vé Multi-City
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
+                    )}
+                </div>
+              ) : (
+                // One-way fare selection - Horizontal Layout
+                <div className="space-y-6">
+                  <div className="text-center">
+                    <h3 className="text-xl font-bold text-gray-800 mb-2">
+                      Chọn hạng vé phù hợp
+                    </h3>
+                    <p className="text-sm text-gray-600">
+                      Chọn hạng vé và tùy chọn phù hợp với nhu cầu của bạn
+                    </p>
+                  </div>
 
-            {/* Fare Summary for One-way */}
-            {!flightData?.isRoundTrip &&
-              !flightData?.isMultiCity &&
-              selectedFare &&
-              flightData?.flightTravelClasses && (
-                <FareSummary
-                  fare={
-                    flightData.flightTravelClasses?.find(
-                      (tc) => tc.id === selectedFare
-                    )
-                      ? {
-                          id: flightData.flightTravelClasses.find(
-                            (tc) => tc.id === selectedFare
-                          ).id,
-                          name:
-                            flightData.flightTravelClasses.find(
-                              (tc) => tc.id === selectedFare
-                            ).travelClass?.className || "Hạng vé",
-                          price: flightData.flightTravelClasses.find(
-                            (tc) => tc.id === selectedFare
-                          ).customPrice,
+                  {flightData?.flightTravelClasses &&
+                  flightData.flightTravelClasses.length > 0 ? (
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      {flightData.flightTravelClasses.map(
+                        (travelClass, index) => {
+                          const isRecommended = index === 1; // Business class recommended
+                          const isSelected = selectedFare === travelClass.id;
+
+                          return (
+                            <div
+                              key={travelClass.id}
+                              className={`relative cursor-pointer transition-all duration-300 hover:scale-105 ${
+                                isSelected
+                                  ? "ring-3 ring-blue-500 shadow-lg rounded-2xl"
+                                  : "hover:shadow-md"
+                              }`}
+                              onClick={() => handleSelectFare(travelClass.id)}
+                            >
+                              {isRecommended && (
+                                <div className="absolute -top-3 left-1/2 transform -translate-x-1/2 z-10">
+                                  <span className="bg-gradient-to-r from-orange-400 to-red-500 text-white px-3 py-1 rounded-full text-xs font-semibold shadow-lg">
+                                    Khuyến nghị
+                                  </span>
+                                </div>
+                              )}
+
+                              <div
+                                className={`bg-white rounded-xl border-2 p-6 h-full ${
+                                  isSelected
+                                    ? "border-blue-500 bg-blue-50 rounded-2xl"
+                                    : "border-gray-200 hover:border-blue-300"
+                                }`}
+                              >
+                                {/* Header */}
+                                <div className="text-center mb-4">
+                                  <h4 className="text-lg font-bold text-gray-900 mb-1">
+                                    {travelClass.travelClass?.className ||
+                                      `Hạng ${index + 1}`}
+                                  </h4>
+                                  <div className="text-2xl font-bold text-blue-600">
+                                    {formatCurrencyVND(travelClass.price)}
+                                  </div>
+                                </div>
+
+                                {/* Features */}
+                                <div className="space-y-3 mb-6">
+                                  <div className="flex items-center">
+                                    <div className="w-4 h-4 rounded-full bg-green-500 mr-3 flex items-center justify-center">
+                                      <Check className="w-2 h-2 text-white" />
+                                    </div>
+                                    <span className="text-sm">
+                                      Hành lý xách tay
+                                    </span>
+                                  </div>
+                                  <div className="flex items-center">
+                                    {travelClass.travelClass?.benefits
+                                      ?.toLowerCase()
+                                      .includes("ký gửi") ? (
+                                      <div className="w-4 h-4 rounded-full bg-green-500 mr-3 flex items-center justify-center">
+                                        <Check className="w-2 h-2 text-white" />
+                                      </div>
+                                    ) : (
+                                      <div className="w-4 h-4 rounded-full border-2 border-gray-300 mr-3" />
+                                    )}
+                                    <span
+                                      className={`text-sm ${
+                                        !travelClass.travelClass?.benefits
+                                          ?.toLowerCase()
+                                          .includes("ký gửi")
+                                          ? "text-gray-400 line-through"
+                                          : ""
+                                      }`}
+                                    >
+                                      Hành lý ký gửi
+                                    </span>
+                                  </div>
+                                  <div className="flex items-center">
+                                    {travelClass.travelClass?.changeable ? (
+                                      <div className="w-4 h-4 rounded-full bg-green-500 mr-3 flex items-center justify-center">
+                                        <Check className="w-2 h-2 text-white" />
+                                      </div>
+                                    ) : (
+                                      <div className="w-4 h-4 rounded-full border-2 border-gray-300 mr-3" />
+                                    )}
+                                    <span
+                                      className={`text-sm ${
+                                        !travelClass.travelClass?.changeable
+                                          ? "text-gray-400 line-through"
+                                          : ""
+                                      }`}
+                                    >
+                                      Đổi vé
+                                    </span>
+                                  </div>
+                                  <div className="flex items-center">
+                                    {travelClass.travelClass?.refundable ? (
+                                      <div className="w-4 h-4 rounded-full bg-green-500 mr-3 flex items-center justify-center">
+                                        <Check className="w-2 h-2 text-white" />
+                                      </div>
+                                    ) : (
+                                      <div className="w-4 h-4 rounded-full border-2 border-gray-300 mr-3" />
+                                    )}
+                                    <span
+                                      className={`text-sm ${
+                                        !travelClass.travelClass?.refundable
+                                          ? "text-gray-400 line-through"
+                                          : ""
+                                      }`}
+                                    >
+                                      Hoàn tiền
+                                    </span>
+                                  </div>
+                                </div>
+
+                                {/* Available seats */}
+                                <div className="text-center mb-4">
+                                  <span className="text-xs text-gray-500">
+                                    Còn lại {travelClass.availableSeats || 0}{" "}
+                                    chỗ
+                                  </span>
+                                </div>
+
+                                {/* Select Button */}
+                                <button
+                                  className={`w-full py-3 px-4 rounded-lg font-medium transition-colors ${
+                                    isSelected
+                                      ? "bg-blue-600 text-white"
+                                      : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                                  }`}
+                                >
+                                  {isSelected ? "✓ Đã chọn" : "Chọn hạng vé"}
+                                </button>
+                              </div>
+                            </div>
+                          );
                         }
-                      : null
-                  }
-                  onProceedToBooking={() =>
-                    handleProceedToBooking(flightData, selectedFare)
-                  }
-                />
+                      )}
+                    </div>
+                  ) : (
+                    <div className="text-center text-gray-500 py-8">
+                      <p>Không có thông tin hạng vé cho chuyến bay này</p>
+                      <p className="text-sm mt-2">
+                        Vui lòng liên hệ với hãng hàng không để biết thêm chi
+                        tiết
+                      </p>
+                    </div>
+                  )}
+                </div>
               )}
-          </div>
+            </CardContent>
+          </Card>
+
+          {/* Fare Summary for Multi-city */}
+          {flightData?.isMultiCity &&
+            selectedFare &&
+            flightData?.flightTravelClasses && (
+              <Card className="bg-purple-50 border-purple-200">
+                <CardHeader>
+                  <CardTitle className="text-purple-800">
+                    Tóm tắt đặt vé Multi-City
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <div className="flex justify-between items-center">
+                      <span className="font-medium">Loại hành trình:</span>
+                      <span>
+                        Multi-City ({flightData.legs?.length || 0} chặng)
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="font-medium">Hạng vé:</span>
+                      <span>
+                        {flightData.flightTravelClasses.find(
+                          (tc) => tc.id === selectedFare
+                        )?.travelClass?.className || "Hạng vé"}
+                      </span>
+                    </div>
+                    <div className="border-t pt-2">
+                      <div className="text-sm text-gray-600 space-y-1">
+                        <div className="font-medium mb-2">Các chặng bay:</div>
+                        {flightData.legs?.map((leg, index) => (
+                          <div
+                            key={index}
+                            className="flex justify-between text-xs"
+                          >
+                            <span>Chặng {index + 1}:</span>
+                            <span>
+                              {leg.departureAirport?.airportCode} →{" "}
+                              {leg.arrivalAirport?.airportCode}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="flex justify-between items-center border-t pt-2">
+                      <span className="font-medium">Tổng giá vé:</span>
+                      <span className="text-xl font-bold text-purple-600">
+                        {formatCurrencyVND(
+                          flightData.flightTravelClasses.find(
+                            (tc) => tc.id === selectedFare
+                          )?.price || 0
+                        )}
+                      </span>
+                    </div>
+                    <Button
+                      className="w-full bg-purple-600 hover:bg-purple-700"
+                      onClick={() =>
+                        handleProceedToBooking(flightData, selectedFare)
+                      }
+                    >
+                      Xác nhận và đặt vé Multi-City
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+          {/* Fare Summary for One-way */}
+          {!flightData?.isRoundTrip &&
+            !flightData?.isMultiCity &&
+            selectedFare &&
+            flightData?.flightTravelClasses && (
+              <FareSummary
+                fare={
+                  flightData.flightTravelClasses?.find(
+                    (tc) => tc.id === selectedFare
+                  )
+                    ? {
+                        id: flightData.flightTravelClasses.find(
+                          (tc) => tc.id === selectedFare
+                        ).id,
+                        name:
+                          flightData.flightTravelClasses.find(
+                            (tc) => tc.id === selectedFare
+                          ).travelClass?.className || "Hạng vé",
+                        price: flightData.flightTravelClasses.find(
+                          (tc) => tc.id === selectedFare
+                        ).price,
+                      }
+                    : null
+                }
+                onProceedToBooking={() =>
+                  handleProceedToBooking(flightData, selectedFare)
+                }
+              />
+            )}
         </div>
       </div>
     </div>
