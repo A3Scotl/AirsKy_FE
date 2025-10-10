@@ -177,7 +177,7 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
   );
   console.log("=== END FLIGHT DATA STRUCTURE DEBUG ===");
 
-  const [paymentMethod, setPaymentMethod] = useState("CREDIT_CARD");
+  const [paymentMethod, setPaymentMethod] = useState("BANK_TRANSFER");
   const [cardDetails, setCardDetails] = useState({
     cardNumber: "",
     expiryDate: "",
@@ -617,7 +617,7 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
         })),
         flightSegments: [],
         ancillaryServices: [], // Will be populated below
-        paymentMethod: paymentMethod || "CREDIT_CARD",
+        paymentMethod: paymentMethod || "BANK_TRANSFER",
         checkInType: "ONLINE",
         ...(dealApplied && dealCode && { dealCode: dealCode }),
       };
@@ -1221,25 +1221,15 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
       const result = await bookingApi.createBooking(bookingData);
 
       // Debug: Log API response structure
-      console.log("Booking API Response:", {
-        success: result.success,
-        data: result.data,
-        fullResponse: result,
-      });
+      console.log("Booking API Response:" + result.data);
 
       if (result.success) {
-        // Extract booking data from API response
         const bookingResponse = result.data;
         const bookingId = bookingResponse.bookingId;
         const bookingCode = bookingResponse.bookingCode;
+        const approvalUrl = bookingResponse.payment?.paypalApprovalUrl;
+        const method = result.data?.payment?.paymentMethod;
 
-        console.log("Booking created successfully:", {
-          apiResponse: result,
-          bookingId: bookingId,
-          bookingCode: bookingCode,
-        });
-
-        // Store complete booking data from API for confirmation page
         localStorage.setItem(
           "bookingConfirmation",
           JSON.stringify({
@@ -1276,7 +1266,7 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
             paymentMethod:
               bookingResponse.payment?.paymentMethod ||
               paymentMethod ||
-              "CREDIT_CARD",
+              "PAYPAL",
             paymentStatus:
               bookingResponse.payment?.status || bookingResponse.status,
             bookingStatus: bookingResponse.status,
@@ -1298,11 +1288,25 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
           })
         );
 
-        const message = payLater
-          ? "Đặt vé thành công! Bạn có thể thanh toán sau."
-          : "Đặt vé và thanh toán thành công!";
-        toast.success(message);
-        navigate("/confirm-booking");
+        if (method === "PAYPAL") {
+          if (approvalUrl) {
+            toast.success(
+              "Bạn sẽ được chuyển hướng sang trang thanh toán Paypal."
+            );
+            window.location.href = approvalUrl;
+            return;
+          } else {
+            console.error("Missing PayPal approval URL.");
+          }
+        } else {
+          toast.success("Bạn sẽ được chuyển hướng sang trang QR thanh toán.");
+          navigate("/qr-pay", {
+            state: {
+              approvalUrl,
+              bookingCode,
+            },
+          });
+        }
       } else {
         console.error("Booking API Error:", result);
         toast.error(result.message || "Có lỗi xảy ra khi đặt vé");
@@ -2206,90 +2210,53 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
               <CardTitle>Phương Thức Thanh Toán</CardTitle>
             </CardHeader>
             <CardContent>
-              <Tabs
-                value={activeTab}
-                onValueChange={setActiveTab}
-                className="w-full"
-              >
-                <TabsList className="grid w-full grid-cols-2 mb-4">
-                  <TabsTrigger value="card">Thẻ Tín Dụng</TabsTrigger>
-                  <TabsTrigger value="paypal">PayPal</TabsTrigger>
-                </TabsList>
-
-                {/* Card Payment */}
-                <TabsContent value="card">
-                  <div className="space-y-4">
-                    <div className="flex space-x-2">
-                      <button className="flex-1 p-2 border rounded-md bg-blue-50 text-blue-600">
-                        Thẻ Tín Dụng/Ghi Nợ
-                      </button>
-                    </div>
-                    <Input
-                      type="text"
-                      placeholder="1234 5678 9012 3456"
-                      value={cardDetails.cardNumber}
-                      onChange={(e) =>
-                        handleCardChange("cardNumber", e.target.value)
-                      }
-                      className="w-full"
-                    />
-                    <div className="grid grid-cols-2 gap-4">
-                      <Input
-                        type="text"
-                        placeholder="Tên chủ thẻ"
-                        value={cardDetails.cardHolderName}
-                        onChange={(e) =>
-                          handleCardChange("cardHolderName", e.target.value)
-                        }
-                        className="w-full"
-                      />
-                      <Input
-                        type="text"
-                        placeholder="MM/YY"
-                        value={cardDetails.expiryDate}
-                        onChange={(e) =>
-                          handleCardChange("expiryDate", e.target.value)
-                        }
-                        className="w-full"
-                      />
-                    </div>
-                    <Input
-                      type="text"
-                      placeholder="CVV"
-                      value={cardDetails.cvv}
-                      onChange={(e) => handleCardChange("cvv", e.target.value)}
-                      className="w-1/4"
-                    />
-                    <div className="flex items-center space-x-2">
-                      <Checkbox
-                        id="save-card"
-                        checked={saveCard}
-                        onCheckedChange={setSaveCard}
-                      />
-                      <Label htmlFor="save-card">
-                        Lưu thẻ này cho các lần thanh toán sau
+              {/* Payment Method Selection */}
+              <div className="space-y-4">
+                <div className="flex items-center space-x-2 mb-4">
+                  <RadioGroup
+                    value={paymentMethod}
+                    onValueChange={setPaymentMethod}
+                    className="flex flex-col space-y-2"
+                  >
+                    <div className="flex items-center space-x-2 p-3 border rounded-md hover:border-blue-300">
+                      <RadioGroupItem value="BANK_TRANSFER" id="qr" />
+                      <Label htmlFor="qr" className="flex-1 cursor-pointer">
+                        <div className="flex items-center space-x-2">
+                          <Smartphone className="h-4 w-4" />
+                          <span>QR Code (Chuyển khoản ngân hàng)</span>
+                        </div>
                       </Label>
                     </div>
-                  </div>
-                </TabsContent>
-
-                {/* PayPal Payment */}
-                <TabsContent value="paypal">
-                  <div className="space-y-4">
-                    <div className="flex space-x-2">
-                      <button className="flex-1 p-2 border rounded-md bg-blue-500 text-white">
-                        PayPal
-                      </button>
+                    <div className="flex items-center space-x-2 p-3 border rounded-md hover:border-blue-300">
+                      <RadioGroupItem value="PAYPAL" id="paypal" />
+                      <Label htmlFor="paypal" className="flex-1 cursor-pointer">
+                        <div className="flex items-center space-x-2">
+                          <Wallet className="h-4 w-4" />
+                          <span>PayPal</span>
+                        </div>
+                      </Label>
                     </div>
-                    <p className="text-gray-600">
-                      Bạn sẽ được chuyển đến PayPal để hoàn tất thanh toán.
+                  </RadioGroup>
+                </div>
+
+                {/* Content based on selected method */}
+                {paymentMethod === "BANK_TRANSFER" && (
+                  <div className="p-4 bg-blue-50 rounded-lg">
+                    <p className="text-gray-600 text-center">
+                      Quét mã QR để hoàn tất thanh toán qua ứng dụng ngân hàng.
                     </p>
-                    <Button className="w-full bg-blue-500 text-white">
-                      Tiếp tục với PayPal
-                    </Button>
                   </div>
-                </TabsContent>
-              </Tabs>
+                )}
+
+                {paymentMethod === "PAYPAL" && (
+                  <div className="p-4 bg-green-50 rounded-lg">
+                    <p className="text-gray-600 text-center">
+                      Bạn sẽ được chuyển hướng đến PayPal để hoàn tất thanh toán
+                      an toàn.
+                    </p>
+                  </div>
+                )}
+              </div>
 
               <div className="mt-4 p-2 bg-green-50 text-green-700 rounded-md flex items-center">
                 <span className="mr-2">🛡️</span>
@@ -2350,7 +2317,7 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
                           services: Object.values(
                             extrasData?.additionalServices || {}
                           ).filter(Boolean).length,
-                          paymentMethod: "CREDIT_CARD",
+                          paymentMethod: paymentMethod, // Updated dynamically
                           status:
                             "Will be PENDING if pay later, CONFIRMED if pay now",
                         },
@@ -2371,7 +2338,7 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
                 >
                   {isProcessing
                     ? "Đang xử lý..."
-                    : `Thanh toán ngay - ${formatCurrencyVND(totalAmount)}`}
+                    : `Thanh toán ngay - ${formatCurrencyVND(finalAmount)}`}
                 </Button>
 
                 <Button
