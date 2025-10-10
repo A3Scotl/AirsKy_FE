@@ -135,6 +135,7 @@ const MyFlightsBookingDetails = ({ booking, onProceed, onBack }) => {
           toast.success("Đang chuyển hướng đến PayPal để thanh toán...");
           // Redirect to PayPal for approval
           window.location.href = payment.paypalApprovalUrl;
+          setIsProcessingPayment(false)
         } else if (paymentMethod === "CREDIT_CARD") {
           // For credit card, payment might be processed immediately
           toast.success("Thanh toán thành công!");
