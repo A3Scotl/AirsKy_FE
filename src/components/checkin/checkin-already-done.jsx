@@ -28,6 +28,11 @@ const CheckInAlreadyDone = ({
   const [emailSent, setEmailSent] = useState(false);
   const [downloadStarted, setDownloadStarted] = useState(false);
 
+  // Get passenger info
+  const currentPassenger =
+    booking.checkinEligiblePassengers?.[0] || booking.passengers?.[0];
+  const checkinData = booking.checkinId ? booking : null;
+
   const handleEmail = async () => {
     try {
       await onEmail();
@@ -41,15 +46,34 @@ const CheckInAlreadyDone = ({
   };
 
   const handleDownload = async () => {
+    if (downloadStarted) return;
+    setDownloadStarted(true);
+
     try {
-      setDownloadStarted(true);
-      await onDownload();
-      toast.success("Thẻ lên máy bay đã được tải xuống thành công!");
-      setTimeout(() => setDownloadStarted(false), 3000);
+      // Try to download from boarding pass URL if available
+      if (booking.boardingPassUrl) {
+        const link = document.createElement("a");
+        link.href = booking.boardingPassUrl;
+        link.download = `boarding-pass-${
+          booking.bookingCode || booking.code
+        }.png`;
+        link.target = "_blank";
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+
+        toast.success("Đã tải xuống thẻ lên máy bay thành công!");
+      } else if (onDownload) {
+        await onDownload();
+        toast.success("Thẻ lên máy bay đã được tải xuống thành công!");
+      } else {
+        toast.error("Không tìm thấy thẻ lên máy bay để tải xuống");
+      }
     } catch (error) {
       console.error("Failed to download:", error);
       toast.error("Có lỗi xảy ra khi tải xuống. Vui lòng thử lại.");
-      setDownloadStarted(false);
+    } finally {
+      setTimeout(() => setDownloadStarted(false), 1000);
     }
   };
 
@@ -115,19 +139,27 @@ const CheckInAlreadyDone = ({
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <p className="text-sm text-gray-600">Mã đặt chỗ</p>
-              <p className="font-semibold text-lg">{booking.code}</p>
+              <p className="font-semibold text-lg">{booking.bookingCode}</p>
             </div>
             <div>
               <p className="text-sm text-gray-600">Hành khách</p>
-              <p className="font-semibold">{booking.passenger}</p>
+              <p className="font-semibold">
+                {currentPassenger?.fullName ||
+                  booking.passenger ||
+                  `${currentPassenger?.firstName} ${currentPassenger?.lastName}`}
+              </p>
             </div>
             <div>
               <p className="text-sm text-gray-600">Chuyến bay</p>
-              <p className="font-semibold">{booking.flight}</p>
+              <p className="font-semibold">
+                {booking.flightSegments?.[0]?.flightNumber}
+              </p>
             </div>
             <div>
               <p className="text-sm text-gray-600">Chỗ ngồi</p>
-              <p className="font-semibold text-blue-600">{booking.seat}</p>
+              <p className="font-semibold text-blue-600">
+                {booking.checkinEligiblePassengers?.[0]?.seatNumber}
+              </p>
             </div>
           </div>
         </CardContent>
@@ -146,61 +178,13 @@ const CheckInAlreadyDone = ({
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {/* Flight Info */}
               <div className="space-y-4">
-                <div>
-                  <p className="text-green-100 text-sm">Mã đặt chỗ</p>
-                  <p className="text-xl font-bold">{booking.code}</p>
-                </div>
-
-                <div>
-                  <p className="text-green-100 text-sm">Hành khách</p>
-                  <p className="font-semibold">{booking.passenger}</p>
-                </div>
-
-                <div className="flex justify-between items-center">
-                  <div>
-                    <p className="text-green-100 text-sm">Từ</p>
-                    <p className="text-2xl font-bold">{booking.from}</p>
-                  </div>
-                  <Plane className="w-6 h-6" />
-                  <div>
-                    <p className="text-green-100 text-sm">Đến</p>
-                    <p className="text-2xl font-bold">{booking.to}</p>
-                  </div>
-                </div>
+                
               </div>
 
-              {/* QR Code */}
-              <div className="flex flex-col items-center justify-center">
-                <div className="bg-white p-4 rounded-lg mb-4">
-                  <QrCode className="w-24 h-24 text-gray-800" />
-                </div>
-                <p className="text-sm text-green-100 text-center">
-                  Mã QR đã kích hoạt
-                </p>
-              </div>
+           
             </div>
 
-            {/* Additional Info */}
-            <div className="mt-6 pt-4 border-t border-green-400">
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                <div>
-                  <p className="text-green-100">Ngày bay</p>
-                  <p className="font-medium">{flightDateTime.date}</p>
-                </div>
-                <div>
-                  <p className="text-green-100">Giờ khởi hành</p>
-                  <p className="font-medium">{flightDateTime.time}</p>
-                </div>
-                <div>
-                  <p className="text-green-100">Cửa ra máy bay</p>
-                  <p className="font-medium">{booking.gate}</p>
-                </div>
-                <div>
-                  <p className="text-green-100">Chỗ ngồi</p>
-                  <p className="font-medium text-yellow-300">{booking.seat}</p>
-                </div>
-              </div>
-            </div>
+           
           </div>
         </CardContent>
       </Card>
@@ -232,15 +216,34 @@ const CheckInAlreadyDone = ({
           <Alert>
             <MapPin className="h-4 w-4" />
             <AlertDescription>
-              <strong>Hành lý:</strong> {booking.baggage} - Kiểm tra kỹ trước
-              khi đi.
+              <strong>Hành lý:</strong>{" "}
+              {booking.baggage &&
+              Array.isArray(booking.baggage) &&
+              booking.baggage.length > 0
+                ? typeof booking.baggage[0] === "object"
+                  ? `${booking.baggage[0].type || "Hành lý"} - ${
+                      booking.baggage[0].purchasedPackage || "Gói cơ bản"
+                    }`
+                  : booking.baggage[0]
+                : "Hành lý cơ bản"}{" "}
+              - Kiểm tra kỹ trước khi đi.
             </AlertDescription>
           </Alert>
         </CardContent>
       </Card>
 
       {/* Action Buttons */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        {booking.boardingPassUrl && (
+          <Button
+            onClick={() => window.open(booking.boardingPassUrl, "_blank")}
+            className="flex items-center gap-2"
+          >
+            <QrCode className="w-4 h-4" />
+            Xem thẻ
+          </Button>
+        )}
+
         <Button
           onClick={handleDownload}
           disabled={downloadStarted}
@@ -248,7 +251,7 @@ const CheckInAlreadyDone = ({
           className="flex items-center gap-2"
         >
           <Download className="w-4 h-4" />
-          {downloadStarted ? "Đang tải..." : "Tải lại thẻ"}
+          {downloadStarted ? "Đang tải..." : "Tải xuống"}
         </Button>
 
         <Button
@@ -258,7 +261,7 @@ const CheckInAlreadyDone = ({
           className="flex items-center gap-2"
         >
           <Mail className="w-4 h-4" />
-          {emailSent ? "Đã gửi!" : "Gửi lại email"}
+          {emailSent ? "Đã gửi!" : "Gửi email"}
         </Button>
 
         <Button

@@ -467,7 +467,14 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
             `Mapped seat ${seatNumber} to ID:`,
             seatMapping[seatNumber]
           );
-          return seatMapping[seatNumber];
+          // Need to get seatType from the selected seat data
+          const selectedSeatData = allAvailableSeats.find(
+            (seat) => seat.seatNumber === seatNumber
+          );
+          return {
+            seatId: seatMapping[seatNumber],
+            seatType: selectedSeatData?.seatType || "STANDARD",
+          };
         }
 
         // If no seat selected or mapping failed, get random available seat from API
@@ -477,7 +484,10 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
         const randomSeat = await getRandomAvailableSeat(flightId, classId);
         if (randomSeat) {
           console.log(`Assigned random seat:`, randomSeat);
-          return randomSeat.seatId;
+          return {
+            seatId: randomSeat.seatId,
+            seatType: randomSeat.seatType,
+          };
         }
 
         console.error(
@@ -545,7 +555,7 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
               seatId: randomSeat.seatId || randomSeat.id,
               seatNumber: randomSeat.seatNumber,
               priceVND: randomSeat.priceVND || 0,
-              seatType: randomSeat.type,
+              seatType: randomSeat.seatType,
             };
           }
           return null;
@@ -602,6 +612,7 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
           phone: passenger.phone || null,
           gender: passenger.gender || "N/A",
           seatId: null, // Will be assigned below
+          seatType: null, // Will be assigned below based on selected seat
           baggagePackage: getBaggagePackage(passenger, index),
         })),
         flightSegments: [],
@@ -1081,19 +1092,23 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
             selectedSeat = extrasData.selectedSeats?.[passengerKey];
           }
 
-          const seatId = await getSeatIdFromMapping(
+          const seatResult = await getSeatIdFromMapping(
             selectedSeat,
             segment.flightId,
             segment.travelClassId || segment.classId
           );
+
+          const seatId = seatResult?.seatId || seatResult; // Handle both object and primitive return
+          const seatType = seatResult?.seatType || "STANDARD";
 
           passengerSeats.push({
             passengerId: passengerIndex + 1,
             seatId: seatId,
           });
 
-          // Also update passenger seatId
+          // Also update passenger seatId and seatType
           bookingData.passengers[passengerIndex].seatId = seatId;
+          bookingData.passengers[passengerIndex].seatType = seatType;
         }
 
         segment.passengerSeats = passengerSeats;

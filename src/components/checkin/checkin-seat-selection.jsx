@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -11,6 +11,8 @@ import {
   CheckCircle,
   Info,
 } from "lucide-react";
+import { flightApi } from "@/apis/flight-api";
+import { toast } from "sonner";
 
 const CheckInSeatSelection = ({
   booking,
@@ -20,96 +22,201 @@ const CheckInSeatSelection = ({
   selectedSeat,
 }) => {
   const [hoveredSeat, setHoveredSeat] = useState(null);
+  const [seatsData, setSeatsData] = useState([]);
+  const [loadingSeats, setLoadingSeats] = useState(false);
+  const [seatTypePricing, setSeatTypePricing] = useState({});
 
-  // Mock seat data - in real app, this would come from API
-  const seatMap = {
-    economy: {
-      rows: 25,
-      seatsPerRow: 6,
-      layout: ["A", "B", "C", "D", "E", "F"],
-      price: 0,
-    },
-    premium: {
-      rows: 8,
-      seatsPerRow: 4,
-      layout: ["A", "B", "C", "D"],
-      price: 50000,
-    },
-    business: {
-      rows: 4,
-      seatsPerRow: 4,
-      layout: ["A", "B", "C", "D"],
-      price: 150000,
-    },
+  // Get current passenger info
+  const currentPassenger =
+    booking.checkinEligiblePassengers?.[0] || booking.passengers?.[0];
+  const currentSeat = currentPassenger?.seatNumber;
+  const flightId = booking.flightSegments?.[0]?.flightId || booking.flightId;
+  const travelClassId =
+    currentPassenger?.travelClassId || booking.travelClassId;
+
+  // Load seat data from API
+  useEffect(() => {
+    const loadSeatsData = async () => {
+      // Try to get flight and travel class info from different sources
+      const finalFlightId =
+        flightId || booking.flightSegments?.[0]?.id || booking.flightId;
+      const finalTravelClassId =
+        travelClassId ||
+        currentPassenger?.travelClassId ||
+        booking.flightSegments?.[0]?.travelClassId;
+
+      console.log("🛩️ Attempting to load seats with:", {
+        finalFlightId,
+        finalTravelClassId,
+        booking,
+        currentPassenger,
+      });
+
+      // If we have available seats in booking data, use them as fallback
+      if (booking.availableSeats && Array.isArray(booking.availableSeats)) {
+        console.log(
+          "📋 Using available seats from booking data:",
+          booking.availableSeats
+        );
+        const fallbackSeats = booking.availableSeats.map(
+          (seatNumber, index) => ({
+            seatId: `fallback-${seatNumber}-${index}`,
+            seatNumber: seatNumber,
+            className: booking.travelClass || "Economy",
+            status: "AVAILABLE",
+            seatType: getSeatTypeFromPosition(seatNumber),
+            travelClassId: finalTravelClassId,
+          })
+        );
+        setSeatsData(fallbackSeats);
+
+        // Build seat type pricing
+        const pricing = {};
+        fallbackSeats.forEach((seat) => {
+          if (seat.seatType && !pricing[seat.seatType]) {
+            pricing[seat.seatType] = {
+              description: getSeatTypeDescription(seat.seatType),
+              sampleSeat: seat,
+            };
+          }
+        });
+        setSeatTypePricing(pricing);
+        return;
+      }
+
+      if (!finalFlightId || !finalTravelClassId) {
+        console.warn("Missing required data for API call:", {
+          finalFlightId,
+          finalTravelClassId,
+        });
+        return;
+      }
+
+      setLoadingSeats(true);
+      try {
+        console.log(
+          "🛩️ Loading seats from API for flight:",
+          finalFlightId,
+          "class:",
+          finalTravelClassId
+        );
+
+        const response =
+          await flightApi.getSeatsFlightByFlightIdAndTravelClassId(
+            finalFlightId,
+            finalTravelClassId
+          );
+
+        if (response.success && response.data) {
+          console.log("✅ Seats loaded successfully from API:", response.data);
+          setSeatsData(response.data);
+
+          // Build seat type pricing from API data
+          const pricing = {};
+          response.data.forEach((seat) => {
+            if (seat.seatType && !pricing[seat.seatType]) {
+              pricing[seat.seatType] = {
+                description: getSeatTypeDescription(seat.seatType),
+                sampleSeat: seat,
+              };
+            }
+          });
+          setSeatTypePricing(pricing);
+        } else {
+          console.error("❌ Failed to load seats from API:", response.message);
+          toast.error("Không thể tải thông tin ghế: " + response.message);
+        }
+      } catch (error) {
+        console.error("❌ Error loading seats from API:", error);
+        toast.error("Lỗi khi tải thông tin ghế");
+      } finally {
+        setLoadingSeats(false);
+      }
+    };
+
+    loadSeatsData();
+  }, [flightId, travelClassId, booking]);
+
+  // Helper function to get seat type description
+  const getSeatTypeDescription = (seatType) => {
+    const descriptions = {
+      STANDARD: "Ghế tiêu chuẩn",
+      EXTRA_LEGROOM: "Ghế thêm không gian chân",
+      EXIT_ROW: "Ghế lối thoát hiểm",
+      FRONT_ROW: "Ghế hàng đầu",
+      ACCESSIBLE: "Ghế cho người khuyết tật",
+    };
+    return descriptions[seatType] || "Ghế tiêu chuẩn";
   };
 
-  // Mock occupied seats - in real app, this would come from API
-  const occupiedSeats = ["12A", "12B", "15C", "15D", "18F", "22A", "22B"];
+  // Helper function to determine seat type from position
+  const getSeatTypeFromPosition = (seatNumber) => {
+    const row = parseInt(seatNumber.slice(0, -1));
+    const letter = seatNumber.slice(-1);
+
+    // Logic to determine seat type based on position
+    if (row === 1) return "FRONT_ROW";
+    if (row >= 10 && row <= 15 && (letter === "A" || letter === "F"))
+      return "EXIT_ROW";
+    if (row <= 5) return "EXTRA_LEGROOM";
+    if (letter === "A" && row >= 20) return "ACCESSIBLE";
+    return "STANDARD";
+  };
+
+  // Get available seats (AVAILABLE status) - Keep ALL seats as they have different className and seatType
+  const availableSeats = seatsData.filter(
+    (seat) => seat.status === "AVAILABLE"
+  );
+
+  // Get seat data from API data
+  const getSeatData = (seatNumber) => {
+    return seatsData.find((seat) => seat.seatNumber === seatNumber);
+  };
+
+  const getSeatType = (seatNumber) => {
+    const seatData = getSeatData(seatNumber);
+    return seatData?.seatType || "STANDARD";
+  };
+
+  const getSeatPrice = (seatNumber) => {
+    const seatData = getSeatData(seatNumber);
+    // Price should come from backend, for now return 0 as placeholder
+    // Backend will handle pricing during booking/checkin
+    return 0; // Price will be calculated by backend
+  };
+
+  const getSeatDescription = (seatNumber) => {
+    const seatType = getSeatType(seatNumber);
+    return getSeatTypeDescription(seatType);
+  };
+
+  const getSeatClassName = (seatNumber) => {
+    const seatType = getSeatType(seatNumber);
+    switch (seatType) {
+      case "FRONT_ROW":
+      case "EXTRA_LEGROOM":
+        return "premium";
+      case "EXIT_ROW":
+        return "business";
+      case "ACCESSIBLE":
+        return "accessible";
+      default:
+        return "economy";
+    }
+  };
 
   const getSeatClass = (seatNumber) => {
-    if (occupiedSeats.includes(seatNumber)) return "occupied";
-    if (selectedSeat === seatNumber) return "selected";
+    if (selectedSeat?.seatNumber === seatNumber) return "selected";
     if (hoveredSeat === seatNumber) return "hovered";
     return "available";
   };
 
-  const getSeatPrice = (seatNumber) => {
-    const row = parseInt(seatNumber.slice(0, -1));
-    if (row <= 4) return seatMap.business.price;
-    if (row <= 12) return seatMap.premium.price;
-    return seatMap.economy.price;
-  };
-
-  const getSeatClassName = (seatNumber) => {
-    const row = parseInt(seatNumber.slice(0, -1));
-    if (row <= 4) return "business";
-    if (row <= 12) return "premium";
-    return "economy";
-  };
-
-  const renderSeat = (seatNumber) => {
-    const seatClass = getSeatClass(seatNumber);
-    const isOccupied = seatClass === "occupied";
-    const isSelected = seatClass === "selected";
-
-    return (
-      <button
-        key={seatNumber}
-        className={`
-          w-8 h-8 rounded border-2 text-xs font-medium transition-all duration-200
-          ${
-            isOccupied
-              ? "bg-gray-300 border-gray-400 text-gray-500 cursor-not-allowed"
-              : isSelected
-              ? "bg-blue-600 border-blue-700 text-white"
-              : "bg-white border-gray-300 hover:border-blue-400 hover:bg-blue-50"
-          }
-        `}
-        onClick={() => !isOccupied && onSelectSeat(seatNumber)}
-        onMouseEnter={() => !isOccupied && setHoveredSeat(seatNumber)}
-        onMouseLeave={() => setHoveredSeat(null)}
-        disabled={isOccupied}
-      >
-        {seatNumber.slice(-1)}
-      </button>
-    );
-  };
-
-  const renderSeatRow = (rowNumber, layout) => {
-    return (
-      <div key={rowNumber} className="flex items-center gap-2 mb-2">
-        <span className="w-6 text-xs font-medium text-gray-600">
-          {rowNumber}
-        </span>
-        <div className="flex gap-1">
-          {layout.map((seat) => renderSeat(`${rowNumber}${seat}`))}
-        </div>
-      </div>
-    );
-  };
-
-  const selectedSeatPrice = selectedSeat ? getSeatPrice(selectedSeat) : 0;
-  const selectedSeatClass = selectedSeat ? getSeatClassName(selectedSeat) : "";
+  const selectedSeatPrice = selectedSeat
+    ? getSeatPrice(selectedSeat.seatNumber)
+    : 0;
+  const selectedSeatDescription = selectedSeat
+    ? getSeatDescription(selectedSeat.seatNumber)
+    : "";
 
   return (
     <div className="space-y-6">
@@ -118,19 +225,44 @@ const CheckInSeatSelection = ({
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Plane className="w-5 h-5 text-blue-500" />
-            Chọn chỗ ngồi - {booking.flight}
+            Chọn chỗ ngồi -{" "}
+            {booking.flightSegments?.[0]?.flightNumber || booking.flight}
           </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-2 gap-4 text-sm">
             <div>
               <p className="text-gray-600">Hành khách</p>
-              <p className="font-medium">{booking.passenger}</p>
+              <p className="font-medium">
+                {currentPassenger?.fullName ||
+                  currentPassenger?.firstName +
+                    " " +
+                    currentPassenger?.lastName}
+              </p>
             </div>
             <div>
               <p className="text-gray-600">Chuyến bay</p>
               <p className="font-medium">
-                {booking.flight} - {booking.from} → {booking.to}
+                {booking.flightSegments?.[0]?.flightNumber ||
+                  booking.flightNumber}{" "}
+                -{" "}
+                {booking.flightSegments?.[0]?.departureAirport?.airportCode ||
+                  booking.from}{" "}
+                →{" "}
+                {booking.flightSegments?.[0]?.arrivalAirport?.airportCode ||
+                  booking.to}
+              </p>
+            </div>
+            {currentSeat && (
+              <div>
+                <p className="text-gray-600">Ghế hiện tại</p>
+                <p className="font-medium text-blue-600">{currentSeat}</p>
+              </div>
+            )}
+            <div>
+              <p className="text-gray-600">Hạng ghế</p>
+              <p className="font-medium">
+                {booking.travelClass || currentPassenger?.className}
               </p>
             </div>
           </div>
@@ -157,82 +289,119 @@ const CheckInSeatSelection = ({
               <span className="text-sm">Đã chọn</span>
             </div>
             <div className="flex items-center gap-2">
-              <div className="w-4 h-4 bg-gray-300 border-2 border-gray-400 rounded"></div>
-              <span className="text-sm">Đã đặt</span>
+              <div className="w-4 h-4 bg-green-600 border-2 border-green-700 rounded"></div>
+              <span className="text-sm">Ghế hiện tại</span>
             </div>
           </div>
 
-          {/* Seat Classes */}
-          <div className="space-y-6">
-            {/* Business Class */}
-            <div>
-              <div className="flex items-center gap-2 mb-3">
-                <Badge
-                  variant="outline"
-                  className="bg-purple-50 text-purple-700 border-purple-200"
-                >
-                  Business Class
-                </Badge>
-                <span className="text-sm text-gray-600">
-                  +{seatMap.business.price.toLocaleString()} VND
-                </span>
-              </div>
-              <div className="bg-purple-50 p-4 rounded-lg">
-                <div className="flex flex-col items-center">
-                  {Array.from(
-                    { length: seatMap.business.rows },
-                    (_, i) => i + 1
-                  )
-                    .filter((row) => row <= 4)
-                    .map((row) => renderSeatRow(row, seatMap.business.layout))}
+          {/* Seat Type Legend */}
+          {Object.keys(seatTypePricing).length > 0 && (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6 text-xs">
+              {Object.entries(seatTypePricing).map(([type, info]) => (
+                <div key={type} className="flex items-center gap-2">
+                  <div
+                    className={`w-3 h-3 rounded border ${
+                      type === "FRONT_ROW" || type === "EXTRA_LEGROOM"
+                        ? "bg-blue-100 border-blue-300"
+                        : type === "EXIT_ROW"
+                        ? "bg-purple-100 border-purple-300"
+                        : type === "ACCESSIBLE"
+                        ? "bg-orange-100 border-orange-300"
+                        : "bg-green-100 border-green-300"
+                    }`}
+                  ></div>
+                  <span>{info.description}</span>
+                  <span className="font-medium text-gray-600">
+                    Giá được tính khi check-in
+                  </span>
                 </div>
-              </div>
+              ))}
             </div>
+          )}
 
-            {/* Premium Economy */}
-            <div>
-              <div className="flex items-center gap-2 mb-3">
-                <Badge
-                  variant="outline"
-                  className="bg-blue-50 text-blue-700 border-blue-200"
-                >
-                  Premium Economy
-                </Badge>
-                <span className="text-sm text-gray-600">
-                  +{seatMap.premium.price.toLocaleString()} VND
-                </span>
+          {/* Available Seats Display */}
+          <div className="bg-gray-50 p-4 rounded-lg">
+            {loadingSeats ? (
+              <div className="text-center py-8">
+                <div className="animate-spin w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full mx-auto mb-4"></div>
+                <p className="text-gray-600">Đang tải thông tin ghế...</p>
               </div>
-              <div className="bg-blue-50 p-4 rounded-lg">
-                <div className="flex flex-col items-center">
-                  {Array.from({ length: seatMap.premium.rows }, (_, i) => i + 5)
-                    .filter((row) => row <= 12)
-                    .map((row) => renderSeatRow(row, seatMap.premium.layout))}
-                </div>
-              </div>
-            </div>
+            ) : (
+              <>
+                <h4 className="text-sm font-medium mb-3">
+                  Ghế có sẵn ({availableSeats.length} ghế)
+                  {currentSeat && (
+                    <span className="ml-2 text-green-600">
+                      • Ghế hiện tại: {currentSeat}
+                    </span>
+                  )}
+                </h4>
+                <div className="grid grid-cols-6 sm:grid-cols-8 md:grid-cols-10 lg:grid-cols-12 gap-2">
+                  {availableSeats.map((seat, index) => {
+                    const seatNumber = seat.seatNumber;
+                    const seatClass = getSeatClass(seatNumber);
+                    const seatPrice = getSeatPrice(seatNumber);
+                    const seatDesc = getSeatDescription(seatNumber);
+                    const isSelected = selectedSeat?.seatNumber === seatNumber;
+                    const isCurrent = currentSeat === seatNumber;
+                    // Create unique key using seatId or combination of properties
+                    const uniqueKey =
+                      seat.seatId ||
+                      `${seatNumber}-${seat.className}-${seat.seatType}-${index}`;
 
-            {/* Economy Class */}
-            <div>
-              <div className="flex items-center gap-2 mb-3">
-                <Badge
-                  variant="outline"
-                  className="bg-green-50 text-green-700 border-green-200"
-                >
-                  Economy Class
-                </Badge>
-                <span className="text-sm text-gray-600">Miễn phí</span>
-              </div>
-              <div className="bg-green-50 p-4 rounded-lg">
-                <div className="flex flex-col items-center">
-                  {Array.from(
-                    { length: seatMap.economy.rows },
-                    (_, i) => i + 13
-                  )
-                    .filter((row) => row <= 25)
-                    .map((row) => renderSeatRow(row, seatMap.economy.layout))}
+                    return (
+                      <button
+                        key={uniqueKey}
+                        className={`
+                      relative p-2 rounded border-2 text-xs font-medium transition-all duration-200 min-h-[60px]
+                      ${
+                        isSelected
+                          ? "bg-blue-600 border-blue-700 text-white"
+                          : isCurrent
+                          ? "bg-green-600 border-green-700 text-white"
+                          : getSeatClassName(seatNumber) === "premium"
+                          ? "bg-blue-50 border-blue-200 hover:border-blue-400 hover:bg-blue-100"
+                          : getSeatClassName(seatNumber) === "business"
+                          ? "bg-purple-50 border-purple-200 hover:border-purple-400 hover:bg-purple-100"
+                          : getSeatClassName(seatNumber) === "accessible"
+                          ? "bg-orange-50 border-orange-200 hover:border-orange-400 hover:bg-orange-100"
+                          : "bg-green-50 border-green-200 hover:border-green-400 hover:bg-green-100"
+                      }
+                    `}
+                        onClick={() => onSelectSeat(seatNumber, seat.seatType)}
+                        onMouseEnter={() => setHoveredSeat(seatNumber)}
+                        onMouseLeave={() => setHoveredSeat(null)}
+                        title={`${seatNumber} - ${
+                          seat.className
+                        } - ${seatDesc} - ${
+                          seatPrice > 0
+                            ? `+${seatPrice.toLocaleString()}₫`
+                            : "Miễn phí"
+                        }`}
+                      >
+                        <div className="font-bold">{seatNumber}</div>
+                        <div className="text-[8px] leading-none">
+                          {seat.className}
+                        </div>
+                        <div className="text-[8px] leading-none">
+                          {seat.seatType}
+                        </div>
+                        {seatPrice > 0 && (
+                          <div className="text-[10px] leading-none mt-1">
+                            +{seatPrice.toLocaleString()}₫
+                          </div>
+                        )}
+                        {isCurrent && (
+                          <div className="text-[10px] leading-none mt-1">
+                            Hiện tại
+                          </div>
+                        )}
+                      </button>
+                    );
+                  })}
                 </div>
-              </div>
-            </div>
+              </>
+            )}
           </div>
         </CardContent>
       </Card>
@@ -246,24 +415,56 @@ const CheckInSeatSelection = ({
                 <CheckCircle className="w-6 h-6 text-blue-600" />
                 <div>
                   <p className="font-semibold text-blue-800">
-                    Chỗ ngồi đã chọn: {selectedSeat}
+                    Chỗ ngồi đã chọn:{" "}
+                    {typeof selectedSeat === "string"
+                      ? selectedSeat
+                      : selectedSeat?.seatNumber || "N/A"}
                   </p>
                   <p className="text-sm text-blue-700">
-                    Hạng:{" "}
-                    {selectedSeatClass === "business"
-                      ? "Business Class"
-                      : selectedSeatClass === "premium"
-                      ? "Premium Economy"
-                      : "Economy Class"}
+                    Loại ghế:{" "}
+                    {typeof selectedSeat === "string"
+                      ? getSeatTypeDescription(
+                          getSeatTypeFromPosition(selectedSeat)
+                        )
+                      : getSeatTypeDescription(
+                          selectedSeat?.seatType || "STANDARD"
+                        )}
                   </p>
+                  {currentSeat &&
+                    (typeof selectedSeat === "string"
+                      ? selectedSeat
+                      : selectedSeat?.seatNumber) !== currentSeat && (
+                      <p className="text-xs text-blue-600">
+                        Thay đổi từ ghế {currentSeat}
+                      </p>
+                    )}
                 </div>
               </div>
               <div className="text-right">
                 <p className="text-lg font-bold text-blue-800">
-                  {selectedSeatPrice > 0
-                    ? `+${selectedSeatPrice.toLocaleString()} VND`
-                    : "Miễn phí"}
+                  {(() => {
+                    const seatForPrice =
+                      typeof selectedSeat === "string"
+                        ? selectedSeat
+                        : selectedSeat?.seatNumber;
+                    const price = seatForPrice ? getSeatPrice(seatForPrice) : 0;
+                    return price > 0
+                      ? `+${price.toLocaleString()} VND`
+                      : "Miễn phí";
+                  })()}
                 </p>
+                {(() => {
+                  const seatForPrice =
+                    typeof selectedSeat === "string"
+                      ? selectedSeat
+                      : selectedSeat?.seatNumber;
+                  const price = seatForPrice ? getSeatPrice(seatForPrice) : 0;
+                  return (
+                    price > 0 && (
+                      <p className="text-xs text-blue-600">Phụ phí</p>
+                    )
+                  );
+                })()}
               </div>
             </div>
           </CardContent>
@@ -274,8 +475,11 @@ const CheckInSeatSelection = ({
       <Alert>
         <Info className="h-4 w-4" />
         <AlertDescription>
-          <strong>Lưu ý:</strong> Việc chọn chỗ ngồi có thể áp dụng phụ phí. Chỗ
-          ngồi đã chọn sẽ được xác nhận sau khi hoàn tất check-in.
+          <strong>Lưu ý:</strong>{" "}
+          {currentSeat
+            ? `Bạn hiện đang có ghế ${currentSeat}. Việc chọn ghế mới có thể áp dụng phụ phí.`
+            : "Việc chọn chỗ ngồi có thể áp dụng phụ phí."}{" "}
+          Chỗ ngồi đã chọn sẽ được xác nhận sau khi hoàn tất check-in.
         </AlertDescription>
       </Alert>
 
@@ -284,8 +488,16 @@ const CheckInSeatSelection = ({
         <Button variant="outline" onClick={onBack} className="flex-1">
           Quay lại
         </Button>
-        <Button onClick={onConfirm} disabled={!selectedSeat} className="flex-1">
-          Xác nhận check-in
+        <Button
+          onClick={onConfirm}
+          disabled={!selectedSeat && !currentSeat}
+          className="flex-1"
+        >
+          {selectedSeat
+            ? "Xác nhận check-in"
+            : currentSeat
+            ? "Giữ ghế hiện tại"
+            : "Chọn ghế"}
         </Button>
       </div>
     </div>

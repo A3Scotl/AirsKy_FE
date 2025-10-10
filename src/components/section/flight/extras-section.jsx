@@ -24,43 +24,49 @@ import PropTypes from "prop-types";
 import { toast } from "sonner";
 import { formatCurrencyVND } from "@/utils/currency-utils";
 
-// Constants - Pricing by Seat Type
-const SEAT_TYPE_PRICING = {
+// Constants - Seat Type Labels (Pricing will come from backend)
+const SEAT_TYPE_LABELS = {
   ACCESSIBLE: {
-    priceVND: 0,
-    priceUSD: 0,
     label: "Ghế dành cho người khuyết tật",
     shortLabel: "AC",
     color: "bg-orange-500",
   },
   EXIT_ROW: {
-    priceVND: 120000,
-    priceUSD: 5,
     label: "Ghế hàng thoát hiểm",
     shortLabel: "ER",
     color: "bg-red-500",
   },
   EXTRA_LEGROOM: {
-    priceVND: 96000,
-    priceUSD: 4,
     label: "Chỗ để chân rộng",
     shortLabel: "EL",
     color: "bg-blue-500",
   },
   FRONT_ROW: {
-    priceVND: 48000,
-    priceUSD: 2,
     label: "Hàng đầu",
     shortLabel: "FR",
     color: "bg-purple-500",
   },
   STANDARD: {
-    priceVND: 24000,
-    priceUSD: 1,
     label: "Tiêu chuẩn",
     shortLabel: "ST",
     color: "bg-green-500",
   },
+};
+
+// Helper function to get seat type pricing from API data
+const getSeatTypePricingFromApi = (seatData) => {
+  const pricing = {};
+  seatData.forEach((seat) => {
+    if (seat.seatType && !pricing[seat.seatType]) {
+      pricing[seat.seatType] = {
+        ...SEAT_TYPE_LABELS[seat.seatType],
+        // Price should come from backend API, not hardcoded
+        price: "Giá được tính khi đặt",
+        description: SEAT_TYPE_LABELS[seat.seatType]?.label || "Ghế tiêu chuẩn",
+      };
+    }
+  });
+  return pricing;
 };
 
 // Seat Status Pricing (for backward compatibility)
@@ -741,8 +747,7 @@ const renderSeatButton = (
               </span>
               {seat.seatType && (
                 <span className="text-[8px] opacity-80">
-                  {SEAT_TYPE_PRICING[seat.seatType]?.shortLabel ||
-                    seat.seatType}
+                  {SEAT_TYPE_LABELS[seat.seatType]?.shortLabel || seat.seatType}
                 </span>
               )}
             </div>
@@ -755,16 +760,15 @@ const renderSeatButton = (
             {seat.seatType && (
               <p className="text-sm">
                 Loại ghế:{" "}
-                {SEAT_TYPE_PRICING[seat.seatType]?.label || seat.seatType}
+                {SEAT_TYPE_LABELS[seat.seatType]?.label || seat.seatType}
               </p>
             )}
             <p className="text-sm">
               Trạng thái: {SEAT_PRICING[seat.status]?.label || "Có sẵn"}
             </p>
-            {seat.seatType && SEAT_TYPE_PRICING[seat.seatType] && (
-              <p className="text-sm font-medium text-green-600">
-                Phí:{" "}
-                {formatCurrencyVND(SEAT_TYPE_PRICING[seat.seatType].priceVND)}
+            {seat.seatType && SEAT_TYPE_LABELS[seat.seatType] && (
+              <p className="text-sm font-medium text-blue-600">
+                Phí: Được tính khi đặt vé
               </p>
             )}
             {isDisabledByClass && (
@@ -915,7 +919,7 @@ const MultiCitySeatSelectionCard = ({
       console.log(
         `✅ Using API seatType for segment seat ${seatNumber}: ${seatType}`
       );
-      const seatTypePrice = SEAT_TYPE_PRICING[seatType]?.priceVND || 0;
+      const seatTypePrice = 0; // Price comes from API, not hardcoded
       console.log(
         `💰 Final pricing for ${seatNumber}: base=${baseSeatPrice} + type=${seatTypePrice} = ${
           baseSeatPrice + seatTypePrice
@@ -1137,7 +1141,7 @@ const SeatSelectionCard = ({
         console.log(`✅ Using API seatType for ${seatNumber}: ${seatType}`);
       }
 
-      const seatTypePrice = SEAT_TYPE_PRICING[seatType]?.priceVND || 0;
+      const seatTypePrice = 0; // Price comes from API, not hardcoded
       console.log(
         `💰 Final pricing for ${seatNumber}: base=${baseSeatPrice} + type=${seatTypePrice} = ${
           baseSeatPrice + seatTypePrice
@@ -2476,7 +2480,7 @@ const Extras = ({ flight, fare, formData, setExtrasData }) => {
                 flightId: seat.flightId,
                 travelClassId: seat.travelClassId,
                 bookedById: seat.bookedById,
-                priceVND: 0, // Base price from API (if needed) or 0 - we use SEAT_TYPE_PRICING
+                priceVND: 0, // Base price from API (if needed) or 0 - pricing handled by backend
               }));
 
               setMultiCitySeatData((prev) => ({
@@ -2539,7 +2543,7 @@ const Extras = ({ flight, fare, formData, setExtrasData }) => {
                 flightId: seat.flightId,
                 travelClassId: seat.travelClassId,
                 bookedById: seat.bookedById,
-                priceVND: 0, // Base price from API or 0 - we use SEAT_TYPE_PRICING
+                priceVND: 0, // Base price from API or 0 - pricing handled by backend
               }))
             );
           },
@@ -2599,12 +2603,12 @@ const Extras = ({ flight, fare, formData, setExtrasData }) => {
     })
   );
 
-  const seatTypeLegend = Object.entries(SEAT_TYPE_PRICING).map(
+  const seatTypeLegend = Object.entries(SEAT_TYPE_LABELS).map(
     ([seatType, config]) => ({
       status: seatType,
       color: "bg-gray-100 border-gray-300",
       label: config.label,
-      price: formatCurrencyVND(config.priceVND),
+      price: "Giá được tính khi đặt",
       shortLabel: config.shortLabel,
       type: "seatType",
     })
@@ -2651,7 +2655,7 @@ const Extras = ({ flight, fare, formData, setExtrasData }) => {
         console.log(
           `✅ Using API seatType for multi-city seat ${seatNumber}: ${seatType}`
         );
-        const seatTypePrice = SEAT_TYPE_PRICING[seatType]?.priceVND || 0;
+        const seatTypePrice = 0; // Price comes from API, not hardcoded
         console.log(
           `💰 Final pricing for multi-city seat ${seatNumber}: base=${baseSeatPrice} + type=${seatTypePrice} = ${
             baseSeatPrice + seatTypePrice
@@ -2711,7 +2715,7 @@ const Extras = ({ flight, fare, formData, setExtrasData }) => {
       }
 
       console.log(`✅ Using API seatType for ${seatNumber}: ${seatType}`);
-      const seatTypePrice = SEAT_TYPE_PRICING[seatType]?.priceVND || 0;
+      const seatTypePrice = 0; // Price comes from API, not hardcoded
 
       console.log(`💺 Seat ${seatNumber} pricing:`, {
         found: !!seat,
@@ -2763,7 +2767,7 @@ const Extras = ({ flight, fare, formData, setExtrasData }) => {
       console.log(
         `✅ Using API seatType for return seat ${seatNumber}: ${seatType}`
       );
-      const seatTypePrice = SEAT_TYPE_PRICING[seatType]?.priceVND || 0;
+      const seatTypePrice = 0; // Price comes from API, not hardcoded
       console.log(
         `💰 Final pricing for return seat ${seatNumber}: base=${baseSeatPrice} + type=${seatTypePrice} = ${
           baseSeatPrice + seatTypePrice

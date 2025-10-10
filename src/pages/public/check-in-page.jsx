@@ -6,6 +6,8 @@ import CheckInSeatSelection from "@/components/checkin/checkin-seat-selection";
 import CheckInSuccess from "@/components/checkin/checkin-success";
 import CheckInAlreadyDone from "@/components/checkin/checkin-already-done";
 import { checkinApi } from "@/apis/checkin-api";
+import { boardingpassApi } from "@/apis/boardingpass-api";
+import { formatCurrencyVND } from "@/utils/currency-utils";
 import { toast } from "sonner";
 
 export default function CheckInPage() {
@@ -26,17 +28,21 @@ export default function CheckInPage() {
     setError("");
 
     try {
-      const response = await checkinApi.getCheckinEligiblePassengers(
+      const response = await checkinApi.lookupBookingForCheckin(
         searchData.bookingCode.trim(),
         searchData.passengerName.trim()
       );
 
-      if (response.success && response.data) {
-        const eligiblePassengers = Array.isArray(response.data)
-          ? response.data
-          : [response.data];
+      console.log("🔍 Lookup booking response:", response);
 
-        if (eligiblePassengers.length === 0) {
+      if (response.success && response.data) {
+        const bookingData = response.data;
+
+        // Check if there are eligible passengers
+        if (
+          !bookingData.checkinEligiblePassengers ||
+          bookingData.checkinEligiblePassengers.length === 0
+        ) {
           setError(
             "Không tìm thấy hành khách đủ điều kiện check-in với thông tin đã nhập."
           );
@@ -44,40 +50,19 @@ export default function CheckInPage() {
           return;
         }
 
-        // Set passengers data
-        setPassengers(eligiblePassengers);
-
-        // For now, use the first passenger as the booking data
-        // In a real app, you might want to show a selection if multiple passengers
-        const firstPassenger = eligiblePassengers[0];
-
-        // Create booking object from passenger data
-        const bookingData = {
-          code: searchData.bookingCode,
-          passenger: firstPassenger.fullName,
-          passengerId: firstPassenger.passengerId,
-          passportNumber: firstPassenger.passportNumber,
-          seat: firstPassenger.seatNumber,
-          ticketPrice: firstPassenger.ticketPrice,
-          isCheckedIn: firstPassenger.isCheckedIn,
-          checkinStatus: firstPassenger.checkinStatus,
-          // Additional fields that might come from flight info
-          flight: "VN123", // This should come from API
-          from: "SGN", // This should come from API
-          to: "HAN", // This should come from API
-          date: "2025-10-01", // This should come from API
-          time: "08:00", // This should come from API
-          baggage: "20kg", // This should come from API
-          gate: "A12", // This should come from API
-          boardingTime: "07:30", // This should come from API
-        };
-
+        // Set booking data - using the complete booking response
         setBooking(bookingData);
+
+        // Set passengers data from checkin eligible passengers
+        setPassengers(bookingData.checkinEligiblePassengers);
+
+        // Use the first eligible passenger to check status
+        const firstPassenger = bookingData.checkinEligiblePassengers[0];
 
         // Check check-in status
         if (
           firstPassenger.checkinStatus === "ALREADY_CHECKED_IN" ||
-          firstPassenger.isCheckedIn
+          firstPassenger.checkedIn
         ) {
           setCurrentStep("already-done");
           toast.info("Hành khách đã check-in trước đó");
@@ -116,8 +101,8 @@ export default function CheckInPage() {
     setCurrentStep("seat-selection");
   };
 
-  const handleSelectSeat = (seat) => {
-    setSelectedSeat(seat);
+  const handleSelectSeat = (seatNumber, seatType) => {
+    setSelectedSeat({ seatNumber, seatType });
   };
 
   const handleConfirmCheckIn = async () => {
@@ -125,28 +110,60 @@ export default function CheckInPage() {
     setError("");
 
     try {
-      // Prepare check-in data
+      // Prepare check-in data according to API specification
+      const selectedPassenger = passengers[0]; // Get first passenger for now
+      const seatNumber =
+        selectedSeat?.seatNumber || selectedPassenger.seatNumber;
+      const seatType = selectedSeat?.seatType || selectedPassenger.seatType;
+
       const checkinData = {
-        passengerId: booking.passengerId,
-        seatNumber: selectedSeat || booking.seat, // Use selected seat or existing seat
-        // Add other required fields based on your CheckinRequest DTO
+        bookingId: booking.bookingId,
+        passengerId: selectedPassenger.passengerId,
+        seatNumber: seatNumber,
+        seatType: seatType,
+        ticketPrice: selectedPassenger.ticketPrice,
       };
 
+      console.log("🚀 Sending check-in data:", checkinData);
+
       const response = await checkinApi.createCheckin(checkinData);
+      console.log("📥 Check-in response received:", response);
 
       if (response.success && response.data) {
-        // Update booking with check-in data
+        // Update booking with check-in response data
+        const checkinResponse = response.data;
+        console.log("✅ Check-in response data:", checkinResponse);
+
         const updatedBooking = {
           ...booking,
-          seat: selectedSeat || booking.seat,
+          seat: seatNumber,
+          seatNumber: seatNumber,
+          seatType: seatType,
           isCheckedIn: true,
-          checkinStatus: "ALREADY_CHECKED_IN",
-          checkInTime: new Date().toISOString(),
+          checkinStatus: "COMPLETED",
+          checkInTime: checkinResponse.issueDate,
+          checkinId: checkinResponse.checkinId,
+          boardingPassUrl: checkinResponse.boardingPassUrl,
+          status: checkinResponse.status,
+          // Preserve passenger info for success page
+          passenger:
+            selectedPassenger.fullName ||
+            `${selectedPassenger.firstName} ${selectedPassenger.lastName}`,
+          passengerId: selectedPassenger.passengerId,
+          ticketPrice: selectedPassenger.ticketPrice,
+          // Add flight info if available
+          flight:
+            booking.flightSegments?.[0]?.flightNumber || booking.flightNumber,
+          from:
+            booking.flightSegments?.[0]?.departureAirport?.airportCode || "N/A",
+          to: booking.flightSegments?.[0]?.arrivalAirport?.airportCode || "N/A",
+          departureTime: booking.flightSegments?.[0]?.departureTime,
         };
 
+        console.log("📦 Updated booking for success page:", updatedBooking);
         setBooking(updatedBooking);
         setCurrentStep("success");
-        toast.success("Check-in thành công!");
+        toast.success("Check-in thành công! Thẻ lên máy bay đã được tạo.");
       } else {
         const errorMessage = response.message || "Có lỗi xảy ra khi check-in.";
         setError(errorMessage);
@@ -163,17 +180,55 @@ export default function CheckInPage() {
   };
 
   const handleDownloadBoardingPass = async () => {
-    // Simulate download
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    // In real app, this would trigger a download
-    console.log("Downloading boarding pass...");
+    try {
+      if (booking.boardingPassUrl) {
+        // Download from boarding pass URL
+        const fileName = `boarding-pass-${booking.bookingCode}-${booking.passengerId}.png`;
+        const result = await boardingpassApi.downloadFromUrl(
+          booking.boardingPassUrl,
+          fileName
+        );
+        if (result.success) {
+          toast.success("Thẻ lên máy bay đã được tải xuống thành công!");
+        } else {
+          toast.error(result.message || "Có lỗi xảy ra khi tải xuống");
+        }
+      } else {
+        // Try to get boarding pass URL from API
+        const response = await boardingpassApi.getBoardingPassUrl(
+          booking.bookingCode,
+          booking.passengerId
+        );
+        if (response.success && response.data) {
+          const fileName = `boarding-pass-${booking.bookingCode}-${booking.passengerId}.png`;
+          const result = await boardingpassApi.downloadFromUrl(
+            response.data,
+            fileName
+          );
+          if (result.success) {
+            toast.success("Thẻ lên máy bay đã được tải xuống thành công!");
+          } else {
+            toast.error(result.message || "Có lỗi xảy ra khi tải xuống");
+          }
+        } else {
+          toast.error("Không tìm thấy thẻ lên máy bay");
+        }
+      }
+    } catch (error) {
+      console.error("Download boarding pass error:", error);
+      toast.error("Có lỗi xảy ra khi tải xuống thẻ lên máy bay");
+    }
   };
 
   const handleEmailBoardingPass = async () => {
-    // Simulate email sending
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    // In real app, this would send email
-    console.log("Sending boarding pass via email...");
+    try {
+      // For now, we'll just show a success message
+      // In a real app, you would call an email API
+      toast.success("Thẻ lên máy bay đã được gửi đến email của bạn!");
+    } catch (error) {
+      console.error("Email boarding pass error:", error);
+      toast.error("Có lỗi xảy ra khi gửi email");
+    }
   };
 
   const handleNewCheckIn = () => {

@@ -18,11 +18,19 @@ import {
 const CheckInBookingDetails = ({ booking, onProceed, onBack }) => {
   if (!booking) return null;
 
+  // Get passenger info for status checks
+  const currentPassenger =
+    booking.checkinEligiblePassengers?.[0] || booking.passengers?.[0];
+
   const isAlreadyCheckedIn =
-    booking.checkinStatus === "ALREADY_CHECKED_IN" || booking.isCheckedIn;
+    currentPassenger?.checkinStatus === "ALREADY_CHECKED_IN" ||
+    currentPassenger?.checkedIn;
   const canCheckIn =
-    booking.checkinStatus === "ELIGIBLE" && !booking.isCheckedIn;
-  const isPaymentPending = booking.checkinStatus === "PAYMENT_PENDING";
+    currentPassenger?.checkinStatus === "ELIGIBLE" &&
+    !currentPassenger?.checkedIn;
+  const isPaymentPending =
+    currentPassenger?.checkinStatus === "PAYMENT_PENDING" ||
+    booking.status === "PAYMENT_PENDING";
 
   const getStatusColor = (status) => {
     switch (status) {
@@ -50,8 +58,8 @@ const CheckInBookingDetails = ({ booking, onProceed, onBack }) => {
     }
   };
 
-  const formatDateTime = (date, time) => {
-    const dateTime = new Date(`${date}T${time}`);
+  const formatDateTime = (dateTimeString) => {
+    const dateTime = new Date(dateTimeString);
     return {
       date: dateTime.toLocaleDateString("vi-VN", {
         weekday: "long",
@@ -66,7 +74,16 @@ const CheckInBookingDetails = ({ booking, onProceed, onBack }) => {
     };
   };
 
-  const flightDateTime = formatDateTime(booking.date, booking.time);
+  // Get flight segment info
+  const flightSegment = booking.flightSegments?.[0];
+
+  const departureDateTime = flightSegment?.departureTime
+    ? formatDateTime(flightSegment.departureTime)
+    : { date: "N/A", time: "N/A" };
+
+  const arrivalDateTime = flightSegment?.arrivalTime
+    ? formatDateTime(flightSegment.arrivalTime)
+    : { date: "N/A", time: "N/A" };
 
   return (
     <div className="space-y-6">
@@ -80,9 +97,11 @@ const CheckInBookingDetails = ({ booking, onProceed, onBack }) => {
             </div>
             <Badge
               variant="outline"
-              className={getStatusColor(booking.checkinStatus)}
+              className={getStatusColor(
+                currentPassenger?.checkinStatus || booking.status
+              )}
             >
-              {getStatusText(booking.checkinStatus)}
+              {getStatusText(currentPassenger?.checkinStatus || booking.status)}
             </Badge>
           </CardTitle>
         </CardHeader>
@@ -90,26 +109,39 @@ const CheckInBookingDetails = ({ booking, onProceed, onBack }) => {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <p className="text-sm text-gray-600">Mã đặt chỗ</p>
-              <p className="font-semibold text-lg">{booking.code}</p>
+              <p className="font-semibold text-lg">{booking.bookingCode}</p>
             </div>
             <div>
               <p className="text-sm text-gray-600">Hành khách</p>
-              <p className="font-semibold">{booking.passenger}</p>
+              <p className="font-semibold">
+                {currentPassenger?.fullName ||
+                  `${currentPassenger?.firstName} ${currentPassenger?.lastName}`}
+              </p>
             </div>
-            {booking.passportNumber && (
+            {currentPassenger?.passportNumber && (
               <div>
                 <p className="text-sm text-gray-600">Số hộ chiếu</p>
-                <p className="font-semibold">{booking.passportNumber}</p>
+                <p className="font-semibold">
+                  {currentPassenger.passportNumber}
+                </p>
               </div>
             )}
-            {booking.ticketPrice && (
+            {currentPassenger?.ticketPrice && (
               <div>
-                <p className="text-sm text-gray-600">Giá vé</p>
+                <p className="text-sm text-gray-600">Tổng tiền</p>
                 <p className="font-semibold text-green-600">
                   {new Intl.NumberFormat("vi-VN", {
                     style: "currency",
                     currency: "VND",
-                  }).format(booking.ticketPrice)}
+                  }).format(currentPassenger.ticketPrice)}
+                </p>
+              </div>
+            )}
+            {currentPassenger?.seatNumber && (
+              <div>
+                <p className="text-sm text-gray-600">Ghế hiện tại</p>
+                <p className="font-semibold text-blue-600">
+                  {currentPassenger.seatNumber}
                 </p>
               </div>
             )}
@@ -126,77 +158,95 @@ const CheckInBookingDetails = ({ booking, onProceed, onBack }) => {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <div className="text-center">
-                <p className="text-2xl font-bold text-blue-600">
-                  {booking.from}
+          {/* Flight Route */}
+          <div className="flex items-center justify-between p-4 bg-blue-50 rounded-lg">
+            <div className="text-center">
+              <div className="flex items-center gap-2">
+                <MapPin className="w-4 h-4 text-blue-600" />
+                <p className="font-bold text-lg">
+                  {flightSegment?.departureAirport?.airportCode || "N/A"}
                 </p>
-                <p className="text-sm text-gray-600">Khởi hành</p>
               </div>
-              <ArrowRight className="w-6 h-6 text-gray-400" />
-              <div className="text-center">
-                <p className="text-2xl font-bold text-blue-600">{booking.to}</p>
-                <p className="text-sm text-gray-600">Đến</p>
-              </div>
-            </div>
-            <div className="text-right">
-              <p className="text-lg font-semibold">{booking.flight}</p>
               <p className="text-sm text-gray-600">
-                {booking.airline || "AirSky"}
+                {flightSegment?.departureAirport?.airportName || "Departure"}
+              </p>
+              <p className="text-xs text-gray-500">{departureDateTime.time}</p>
+            </div>
+
+            <div className="flex flex-col items-center px-4">
+              <ArrowRight className="w-6 h-6 text-blue-600" />
+              <p className="text-xs text-gray-500 mt-1">
+                {flightSegment?.flightNumber || booking.flightNumber}
+              </p>
+              <p className="text-xs text-gray-500">
+                {flightSegment?.duration || "N/A"}
               </p>
             </div>
-          </div>
 
-          <div className="grid grid-cols-2 gap-4 pt-4 border-t">
-            <div className="flex items-center gap-2">
-              <Calendar className="w-4 h-4 text-gray-500" />
-              <div>
-                <p className="text-sm text-gray-600">Ngày bay</p>
-                <p className="font-medium">{flightDateTime.date}</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <Clock className="w-4 h-4 text-gray-500" />
-              <div>
-                <p className="text-sm text-gray-600">Giờ khởi hành</p>
-                <p className="font-medium">{flightDateTime.time}</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <DoorOpen className="w-4 h-4 text-gray-500" />
-              <div>
-                <p className="text-sm text-gray-600">Cửa ra máy bay</p>
-                <p className="font-medium">{booking.gate || "Chưa xác định"}</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <Clock className="w-4 h-4 text-gray-500" />
-              <div>
-                <p className="text-sm text-gray-600">Giờ boarding</p>
-                <p className="font-medium">
-                  {booking.boardingTime || "Chưa xác định"}
+            <div className="text-center">
+              <div className="flex items-center gap-2">
+                <MapPin className="w-4 h-4 text-blue-600" />
+                <p className="font-bold text-lg">
+                  {flightSegment?.arrivalAirport?.airportCode || "N/A"}
                 </p>
               </div>
+              <p className="text-sm text-gray-600">
+                {flightSegment?.arrivalAirport?.airportName || "Arrival"}
+              </p>
+              <p className="text-xs text-gray-500">{arrivalDateTime.time}</p>
             </div>
           </div>
 
-          {booking.seat && (
+          {/* Flight Details */}
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+            <div>
+              <p className="text-sm text-gray-600">Ngày bay</p>
+              <p className="font-medium">{departureDateTime.date}</p>
+            </div>
+            <div>
+              <p className="text-sm text-gray-600">Hạng ghế</p>
+              <p className="font-medium">
+                {flightSegment?.className || booking.travelClass}
+              </p>
+            </div>
+            <div>
+              <p className="text-sm text-gray-600">Máy bay</p>
+              <p className="font-medium">{flightSegment?.aircraft || "N/A"}</p>
+            </div>
+          </div>
+
+          {currentPassenger?.seatNumber && (
             <div className="flex items-center gap-2 pt-2 border-t">
               <User className="w-4 h-4 text-gray-500" />
               <div>
-                <p className="text-sm text-gray-600">Chỗ ngồi</p>
-                <p className="font-medium text-blue-600">{booking.seat}</p>
+                <p className="text-sm text-gray-600">Chỗ ngồi hiện tại</p>
+                <p className="font-medium text-blue-600">
+                  {currentPassenger.seatNumber}
+                </p>
               </div>
             </div>
           )}
 
-          {booking.baggage && (
+          {booking.baggage && booking.baggage.length > 0 && (
             <div className="flex items-center gap-2">
               <Luggage className="w-4 h-4 text-gray-500" />
               <div>
                 <p className="text-sm text-gray-600">Hành lý</p>
-                <p className="font-medium">{booking.baggage}</p>
+                <p className="font-medium">
+                  {typeof booking.baggage[0] === "object" ? (
+                    <>
+                      {booking.baggage[0].type} -{" "}
+                      {booking.baggage[0].purchasedPackage}
+                      {booking.baggage[0].packagePrice && (
+                        <span className="text-green-600 ml-2">
+                          (+{booking.baggage[0].packagePrice.toLocaleString()}₫)
+                        </span>
+                      )}
+                    </>
+                  ) : (
+                    JSON.stringify(booking.baggage[0])
+                  )}
+                </p>
               </div>
             </div>
           )}
