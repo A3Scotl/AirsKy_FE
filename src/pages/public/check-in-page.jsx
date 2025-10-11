@@ -35,6 +35,20 @@ export default function CheckInPage() {
 
       console.log("🔍 Lookup booking response:", response);
 
+      // Check for specific check-in not available error
+      if (
+        response.message &&
+        response.message.includes(
+          "Check-in not available for this flight at this time"
+        )
+      ) {
+        const errorMessage =
+          "Bạn chưa được phép checkin lúc này. Hãy chú ý giờ khởi hành từ đơn đặt của bạn và thử lại sau.";
+        setError(errorMessage);
+        toast.error(errorMessage);
+        return;
+      }
+
       if (response.success && response.data) {
         const bookingData = response.data;
 
@@ -58,6 +72,15 @@ export default function CheckInPage() {
 
         // Use the first eligible passenger to check status
         const firstPassenger = bookingData.checkinEligiblePassengers[0];
+
+        // Check for NOT_AVAILABLE status
+        if (firstPassenger.checkinStatus === "NOT_AVAILABLE") {
+          const errorMessage =
+            "Bạn chưa được phép checkin lúc này. Hãy chú ý giờ khởi hành từ đơn đặt của bạn và thử lại sau.";
+          setError(errorMessage);
+          toast.error(errorMessage);
+          return;
+        }
 
         // Check check-in status
         if (

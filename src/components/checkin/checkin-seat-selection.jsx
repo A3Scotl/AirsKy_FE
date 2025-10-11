@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Plane,
   Users,
@@ -10,9 +11,19 @@ import {
   AlertTriangle,
   CheckCircle,
   Info,
+  DollarSign,
+  Wifi,
+  Utensils,
+  CreditCard,
+  ShoppingCart,
 } from "lucide-react";
 import { flightApi } from "@/apis/flight-api";
+import {
+  ancillaryServiceApi,
+  getServiceTypeInfo,
+} from "@/apis/ancillary-service-api";
 import { toast } from "sonner";
+import { formatCurrencyVND } from "@/utils/currency-utils";
 
 const CheckInSeatSelection = ({
   booking,
@@ -20,11 +31,15 @@ const CheckInSeatSelection = ({
   onConfirm,
   onBack,
   selectedSeat,
+  onProceedToPayment,
 }) => {
   const [hoveredSeat, setHoveredSeat] = useState(null);
   const [seatsData, setSeatsData] = useState([]);
   const [loadingSeats, setLoadingSeats] = useState(false);
   const [seatTypePricing, setSeatTypePricing] = useState({});
+  const [ancillaryServices, setAncillaryServices] = useState([]);
+  const [selectedServices, setSelectedServices] = useState({});
+  const [loadingServices, setLoadingServices] = useState(false);
 
   // Get current passenger info
   const currentPassenger =
@@ -33,6 +48,42 @@ const CheckInSeatSelection = ({
   const flightId = booking.flightSegments?.[0]?.flightId || booking.flightId;
   const travelClassId =
     currentPassenger?.travelClassId || booking.travelClassId;
+
+  // Helper function to get seat type pricing from booking data
+  const getSeatTypePricing = () => {
+    if (booking.seatTypeDetails && booking.seatTypeDetails.length > 0) {
+      const pricing = {};
+      booking.seatTypeDetails.forEach((detail) => {
+        pricing[detail.seatType] = {
+          description: detail.seatTypeDescription,
+          price: detail.additionalPrice || 0,
+          seatNumber: detail.seatNumber,
+          passengerName: detail.passengerName,
+        };
+      });
+      return pricing;
+    }
+    return {};
+  };
+
+  // Helper function to get service type icon
+  const getServiceTypeIcon = (serviceType) => {
+    switch (serviceType) {
+      case "MEAL":
+        return "🍽️";
+      case "WIFI":
+        return "📶";
+      case "ENTERTAINMENT":
+        return "🎬";
+      case "BAGGAGE":
+        return "🧳";
+      default:
+        return "🛎️";
+    }
+  };
+
+  // Get current seat type pricing
+  const currentSeatPricing = getSeatTypePricing();
 
   // Load seat data from API
   useEffect(() => {
@@ -137,6 +188,34 @@ const CheckInSeatSelection = ({
     loadSeatsData();
   }, [flightId, travelClassId, booking]);
 
+  // Load ancillary services
+  useEffect(() => {
+    const loadAncillaryServices = async () => {
+      try {
+        setLoadingServices(true);
+        const response = await ancillaryServiceApi.getAllActiveServices();
+        setAncillaryServices(response.data || []);
+      } catch (error) {
+        console.error("Error loading ancillary services:", error);
+      } finally {
+        setLoadingServices(false);
+      }
+    };
+
+    loadAncillaryServices();
+  }, []);
+
+  // Initialize selected services from booking data
+  useEffect(() => {
+    if (booking?.ancillaryServices && ancillaryServices.length > 0) {
+      const initialSelected = {};
+      booking.ancillaryServices.forEach((service) => {
+        initialSelected[service.id] = true;
+      });
+      setSelectedServices(initialSelected);
+    }
+  }, [booking?.ancillaryServices, ancillaryServices]);
+
   // Helper function to get seat type description
   const getSeatTypeDescription = (seatType) => {
     const descriptions = {
@@ -173,6 +252,41 @@ const CheckInSeatSelection = ({
     return seatsData.find((seat) => seat.seatNumber === seatNumber);
   };
 
+  // Handle service selection
+  const handleServiceSelection = (serviceId, checked) => {
+    setSelectedServices((prev) => ({
+      ...prev,
+      [serviceId]: checked,
+    }));
+  };
+
+  // Calculate total additional costs
+  const calculateTotalAdditionalCost = () => {
+    let total = 0;
+
+    // Add seat change cost if different from original
+    if (selectedSeat && currentSeat && selectedSeat !== currentSeat) {
+      const selectedSeatData = getSeatData(selectedSeat);
+      if (selectedSeatData && seatTypePricing[selectedSeatData.seatType]) {
+        total += seatTypePricing[selectedSeatData.seatType].price || 0;
+      }
+    }
+
+    // Add selected services cost
+    ancillaryServices.forEach((service) => {
+      if (selectedServices[service.id]) {
+        total += service.price || 0;
+      }
+    });
+
+    return total;
+  };
+
+  // Get selected services list
+  const getSelectedServices = () => {
+    return ancillaryServices.filter((service) => selectedServices[service.id]);
+  };
+
   const getSeatType = (seatNumber) => {
     const seatData = getSeatData(seatNumber);
     return seatData?.seatType || "STANDARD";
@@ -180,9 +294,25 @@ const CheckInSeatSelection = ({
 
   const getSeatPrice = (seatNumber) => {
     const seatData = getSeatData(seatNumber);
-    // Price should come from backend, for now return 0 as placeholder
-    // Backend will handle pricing during booking/checkin
-    return 0; // Price will be calculated by backend
+    // First check if we have pricing from booking data
+    if (seatData?.seatType && currentSeatPricing[seatData.seatType]) {
+      return currentSeatPricing[seatData.seatType].price;
+    }
+    // Fallback to API data or default pricing logic
+    // For now, return sample prices based on seat type
+    const seatType = seatData?.seatType || getSeatTypeFromPosition(seatNumber);
+    switch (seatType) {
+      case "FRONT_ROW":
+        return 75000;
+      case "EXTRA_LEGROOM":
+        return 50000;
+      case "EXIT_ROW":
+        return 100000;
+      case "ACCESSIBLE":
+        return 25000;
+      default:
+        return 0; // Standard seats are free
+    }
   };
 
   const getSeatDescription = (seatNumber) => {
@@ -269,6 +399,136 @@ const CheckInSeatSelection = ({
         </CardContent>
       </Card>
 
+      {/* Current Seat and Services Information */}
+      {(booking.seatTypeDetails?.length > 0 ||
+        booking.ancillaryServices?.length > 0) && (
+        <Card className="border-blue-200 bg-blue-50">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-blue-800">
+              <Info className="w-5 h-5" />
+              Thông Tin Đã Chọn Trước Đó
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {/* Current Seat Information */}
+            {booking.seatTypeDetails?.length > 0 && (
+              <div>
+                <h4 className="font-semibold text-blue-800 mb-2 flex items-center gap-2">
+                  <Plane className="w-4 h-4" />
+                  Ghế Đã Chọn
+                </h4>
+                <div className="space-y-2">
+                  {booking.seatTypeDetails.map((seatDetail, index) => (
+                    <div
+                      key={index}
+                      className="flex justify-between items-center p-3 bg-white rounded-lg border"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                          <span className="text-sm font-bold text-blue-600">
+                            {seatDetail.seatNumber}
+                          </span>
+                        </div>
+                        <div>
+                          <p className="font-medium text-gray-800">
+                            {seatDetail.passengerName}
+                          </p>
+                          <p className="text-sm text-gray-600">
+                            {seatDetail.seatTypeDescription}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-bold text-blue-600">
+                          {seatDetail.additionalPrice > 0
+                            ? `+${formatCurrencyVND(
+                                seatDetail.additionalPrice
+                              )}`
+                            : "Miễn phí"}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div className="mt-3 p-3 bg-blue-100 rounded-lg">
+                  <div className="flex justify-between items-center">
+                    <span className="font-medium text-blue-800">
+                      Tổng phí ghế:
+                    </span>
+                    <span className="font-bold text-blue-600">
+                      {formatCurrencyVND(booking.seatTypeAmount || 0)}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Ancillary Services Information */}
+            {booking.ancillaryServices?.length > 0 && (
+              <div>
+                <h4 className="font-semibold text-blue-800 mb-2 flex items-center gap-2">
+                  <CheckCircle className="w-4 h-4" />
+                  Dịch Vụ Đi Kèm Đã Chọn
+                </h4>
+                <div className="space-y-2">
+                  {booking.ancillaryServices.map((service, index) => (
+                    <div
+                      key={service.bookingServiceId || index}
+                      className="flex justify-between items-center p-3 bg-white rounded-lg border"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center text-lg">
+                          {getServiceTypeIcon(service.serviceType)}
+                        </div>
+                        <div>
+                          <p className="font-medium text-gray-800">
+                            {service.serviceName}
+                          </p>
+                          <p className="text-sm text-gray-600">
+                            {service.serviceTypeDisplayName}
+                          </p>
+                          {service.passengerName && (
+                            <p className="text-xs text-gray-500">
+                              Cho: {service.passengerName}
+                            </p>
+                          )}
+                          {service.notes && (
+                            <p className="text-xs text-gray-500 italic">
+                              "{service.notes}"
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-bold text-green-600">
+                          {formatCurrencyVND(service.totalPrice)}
+                        </p>
+                        {service.quantity > 1 && (
+                          <p className="text-xs text-gray-500">
+                            SL: {service.quantity} ×{" "}
+                            {formatCurrencyVND(service.unitPrice)}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div className="mt-3 p-3 bg-green-100 rounded-lg">
+                  <div className="flex justify-between items-center">
+                    <span className="font-medium text-green-800">
+                      Tổng phí dịch vụ:
+                    </span>
+                    <span className="font-bold text-green-600">
+                      {formatCurrencyVND(booking.ancillaryServicesAmount || 0)}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
       {/* Seat Map */}
       <Card>
         <CardHeader>
@@ -312,7 +572,13 @@ const CheckInSeatSelection = ({
                   ></div>
                   <span>{info.description}</span>
                   <span className="font-medium text-gray-600">
-                    Giá được tính khi check-in
+                    {currentSeatPricing[type]
+                      ? formatCurrencyVND(currentSeatPricing[type].price)
+                      : getSeatPrice(info.sampleSeat?.seatNumber) > 0
+                      ? formatCurrencyVND(
+                          getSeatPrice(info.sampleSeat?.seatNumber)
+                        )
+                      : "Miễn phí"}
                   </span>
                 </div>
               ))}
@@ -375,7 +641,7 @@ const CheckInSeatSelection = ({
                           seat.className
                         } - ${seatDesc} - ${
                           seatPrice > 0
-                            ? `+${seatPrice.toLocaleString()}₫`
+                            ? `+${formatCurrencyVND(seatPrice)}`
                             : "Miễn phí"
                         }`}
                       >
@@ -388,7 +654,7 @@ const CheckInSeatSelection = ({
                         </div>
                         {seatPrice > 0 && (
                           <div className="text-[10px] leading-none mt-1">
-                            +{seatPrice.toLocaleString()}₫
+                            +{formatCurrencyVND(seatPrice)}
                           </div>
                         )}
                         {isCurrent && (
@@ -449,7 +715,7 @@ const CheckInSeatSelection = ({
                         : selectedSeat?.seatNumber;
                     const price = seatForPrice ? getSeatPrice(seatForPrice) : 0;
                     return price > 0
-                      ? `+${price.toLocaleString()} VND`
+                      ? `+${formatCurrencyVND(price)}`
                       : "Miễn phí";
                   })()}
                 </p>
@@ -465,6 +731,94 @@ const CheckInSeatSelection = ({
                     )
                   );
                 })()}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Ancillary Services */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <ShoppingCart className="w-5 h-5" />
+            Dịch vụ bổ sung
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {loadingServices ? (
+            <div className="text-center py-4">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+              <p className="text-sm text-gray-600 mt-2">Đang tải dịch vụ...</p>
+            </div>
+          ) : ancillaryServices.length > 0 ? (
+            <div className="space-y-3">
+              {ancillaryServices.map((service) => (
+                <div
+                  key={service.id}
+                  className="flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50"
+                >
+                  <div className="flex items-center gap-3">
+                    <Checkbox
+                      id={`service-${service.id}`}
+                      checked={selectedServices[service.id] || false}
+                      onCheckedChange={(checked) =>
+                        handleServiceSelection(service.id, checked)
+                      }
+                    />
+                    <div className="flex items-center gap-2">
+                      <span className="text-lg">
+                        {getServiceTypeIcon(service.serviceType)}
+                      </span>
+                      <div>
+                        <label
+                          htmlFor={`service-${service.id}`}
+                          className="font-medium cursor-pointer"
+                        >
+                          {service.name}
+                        </label>
+                        <p className="text-sm text-gray-600">
+                          {service.description}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="font-semibold text-green-600">
+                      {formatCurrencyVND(service.price || 0)}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-center text-gray-500 py-4">
+              Không có dịch vụ bổ sung nào khả dụng
+            </p>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Cost Summary */}
+      {calculateTotalAdditionalCost() > 0 && (
+        <Card className="border-orange-200 bg-orange-50">
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <DollarSign className="w-6 h-6 text-orange-600" />
+                <div>
+                  <p className="font-semibold text-orange-800">
+                    Tổng phụ phí thêm
+                  </p>
+                  <p className="text-sm text-orange-700">
+                    Bao gồm thay đổi ghế và dịch vụ bổ sung
+                  </p>
+                </div>
+              </div>
+              <div className="text-right">
+                <p className="text-xl font-bold text-orange-800">
+                  {formatCurrencyVND(calculateTotalAdditionalCost())}
+                </p>
               </div>
             </div>
           </CardContent>
@@ -488,17 +842,27 @@ const CheckInSeatSelection = ({
         <Button variant="outline" onClick={onBack} className="flex-1">
           Quay lại
         </Button>
-        <Button
-          onClick={onConfirm}
-          disabled={!selectedSeat && !currentSeat}
-          className="flex-1"
-        >
-          {selectedSeat
-            ? "Xác nhận check-in"
-            : currentSeat
-            ? "Giữ ghế hiện tại"
-            : "Chọn ghế"}
-        </Button>
+        {calculateTotalAdditionalCost() > 0 ? (
+          <Button
+            onClick={onProceedToPayment}
+            className="flex-1 bg-orange-600 hover:bg-orange-700"
+          >
+            <CreditCard className="w-4 h-4 mr-2" />
+            Tiếp tục thanh toán
+          </Button>
+        ) : (
+          <Button
+            onClick={onConfirm}
+            disabled={!selectedSeat && !currentSeat}
+            className="flex-1"
+          >
+            {selectedSeat
+              ? "Xác nhận check-in"
+              : currentSeat
+              ? "Giữ ghế hiện tại"
+              : "Chọn ghế"}
+          </Button>
+        )}
       </div>
     </div>
   );

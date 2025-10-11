@@ -125,14 +125,6 @@ const CheckInSuccess = ({ booking, onNewCheckIn, onDownload, onEmail }) => {
                   onLoad={() => setImageLoadError(false)}
                 />
               </div>
-              <p className="text-center text-sm text-gray-600">
-                Thẻ lên máy bay điện tử của bạn
-              </p>
-              {booking.checkinId && (
-                <div className="text-center text-xs text-gray-500">
-                  Mã check-in: {booking.checkinId}
-                </div>
-              )}
             </div>
           ) : (
             <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white p-6 rounded-lg">
