@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -21,6 +22,7 @@ import { paymentApi } from "@/apis/payment-api";
 import { toast } from "sonner";
 
 const MyFlightsBookingDetails = ({ booking, onProceed, onBack }) => {
+  const navigate = useNavigate();
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
   const [paymentError, setPaymentError] = useState(null);
 
@@ -108,24 +110,7 @@ const MyFlightsBookingDetails = ({ booking, onProceed, onBack }) => {
         totalAmount: formattedAmount + "", // Force string concatenation
       };
 
-      // Log payment data for debugging
-      console.log("Payment Data being sent to backend:", paymentData);
-      console.log("Raw amount from booking:", rawAmount);
-      console.log("Formatted amount:", formattedAmount);
-      console.log("Amount type:", typeof formattedAmount);
-      console.log('Force string with +"":', formattedAmount + "");
-      console.log("Force string type:", typeof (formattedAmount + ""));
-      console.log("Booking details for payment:", {
-        bookingId: booking.bookingId,
-        totalAmount: booking.totalAmount,
-        paymentStatus: booking.payment?.status,
-        bookingStatus: booking.status,
-      });
-
       const response = await paymentApi.createPayment(paymentData);
-
-      // Log response for debugging
-      console.log("Payment API response:", response);
 
       if (response.success && response.data) {
         const payment = response.data;
@@ -135,14 +120,16 @@ const MyFlightsBookingDetails = ({ booking, onProceed, onBack }) => {
           toast.success("Đang chuyển hướng đến PayPal để thanh toán...");
           // Redirect to PayPal for approval
           window.location.href = payment.paypalApprovalUrl;
-          setIsProcessingPayment(false)
-        } else if (paymentMethod === "CREDIT_CARD") {
-          // For credit card, payment might be processed immediately
-          toast.success("Thanh toán thành công!");
-          // Refresh the booking data or redirect to success page
-          setTimeout(() => {
-            window.location.reload();
-          }, 2000);
+        } else if (paymentMethod === "BANK_TRANSFER") {
+          // For bank transfer and credit card, redirect to QR pay page
+          toast.success("Đang chuyển hướng đến trang thanh toán QR...");
+          // Navigate to QR pay page with state (same as payment-section.jsx)
+          navigate("/qr-pay", {
+            state: {
+              approvalUrl: payment.qrCodeUrl || payment.paypalApprovalUrl,
+              bookingCode: booking.bookingCode,
+            },
+          });
         }
       } else {
         const errorMessage = response.message || "Có lỗi xảy ra khi thanh toán";
@@ -505,9 +492,11 @@ const MyFlightsBookingDetails = ({ booking, onProceed, onBack }) => {
                   <p className="font-semibold text-yellow-800">
                     Chưa thanh toán
                   </p>
-                  <p className="text-sm text-yellow-700">
-                    Vui lòng hoàn tất thanh toán để có thể check-in
-                  </p>
+                  {!isCancelled ? (
+                    <p className="text-sm text-yellow-700">
+                      Vui lòng hoàn tất thanh toán để có thể check-in
+                    </p>
+                  ) : null}
                 </div>
               </div>
 
@@ -533,7 +522,7 @@ const MyFlightsBookingDetails = ({ booking, onProceed, onBack }) => {
                       : "Thanh toán bằng PayPal"}
                   </Button>
                   <Button
-                    onClick={() => handlePayment("CREDIT_CARD")}
+                    onClick={() => handlePayment("BANK_TRANSFER")}
                     disabled={isProcessingPayment}
                     variant="outline"
                     className="flex items-center gap-2"
@@ -554,9 +543,11 @@ const MyFlightsBookingDetails = ({ booking, onProceed, onBack }) => {
               <AlertTriangle className="w-6 h-6 text-gray-400" />
               <div>
                 <p className="font-semibold text-gray-800">Chưa thanh toán</p>
-                <p className="text-sm text-gray-600">
-                  Vui lòng hoàn tất thanh toán để có thể check-in
-                </p>
+                {!isCancelled ? (
+                  <p className="text-sm text-yellow-700">
+                    Vui lòng hoàn tất thanh toán để có thể check-in
+                  </p>
+                ) : null}
               </div>
             </div>
           )}
@@ -659,23 +650,69 @@ const MyFlightsBookingDetails = ({ booking, onProceed, onBack }) => {
         </CardContent>
       </Card>
 
-      {/* Action Buttons */}
-      <div className="flex gap-3">
-        <Button variant="outline" onClick={onBack} className="flex-1">
-          Quay lại
-        </Button>
-        {isPaid && booking.status === "CONFIRMED" && (
-          <Button onClick={onProceed} className="flex-1">
-            <CheckCircle className="w-4 h-4 mr-2" />
-            Tiếp tục đến Check-in
-          </Button>
-        )}
-        {booking.status === "PENDING" && !isPaid && (
-          <div className="flex-1 text-center text-sm text-gray-600">
-            Vui lòng hoàn tất thanh toán ở trên để tiếp tục
-          </div>
-        )}
-      </div>
+      {/* Payment Methods */}
+      {canProceedToPayment && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <CreditCard className="w-5 h-5 text-blue-500" />
+              Chọn phương thức thanh toán
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* PayPal Payment */}
+              <Button
+                onClick={() => handlePayment("PAYPAL")}
+                disabled={isProcessingPayment}
+                className="h-auto p-4 flex flex-col items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white"
+              >
+                {isProcessingPayment ? (
+                  <div className="animate-spin w-6 h-6 border-2 border-white border-t-transparent rounded-full" />
+                ) : (
+                  <>
+                    <div className="text-2xl">🅿️</div>
+                    <div className="text-center">
+                      <p className="font-semibold">PayPal</p>
+                      <p className="text-sm opacity-90">
+                        Thanh toán qua PayPal
+                      </p>
+                    </div>
+                  </>
+                )}
+              </Button>
+
+              {/* Bank Transfer Payment */}
+              <Button
+                onClick={() => handlePayment("BANK_TRANSFER")}
+                disabled={isProcessingPayment}
+                variant="outline"
+                className="h-auto p-4 flex flex-col items-center gap-2 border-2 border-blue-200 hover:border-blue-300"
+              >
+                {isProcessingPayment ? (
+                  <div className="animate-spin w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full" />
+                ) : (
+                  <>
+                    <div className="text-2xl">🏦</div>
+                    <div className="text-center">
+                      <p className="font-semibold">Chuyển khoản</p>
+                      <p className="text-sm text-gray-600">
+                        QR Code thanh toán
+                      </p>
+                    </div>
+                  </>
+                )}
+              </Button>
+            </div>
+
+            {paymentError && (
+              <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+                <p className="text-red-800 text-sm">{paymentError}</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 };

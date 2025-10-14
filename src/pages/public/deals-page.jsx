@@ -44,8 +44,8 @@ import "swiper/css";
 
 const DealsPage = () => {
   const [searchTerm, setSearchTerm] = useState("");
-  const [filterType, setFilterType] = useState("all"); // Có thể mở rộng nếu API có category
-  const [sortBy, setSortBy] = useState("discount"); // Các tùy chọn: discount, expiry, usage
+  const [filterType, setFilterType] = useState("all");
+  const [sortBy, setSortBy] = useState("discount");
   const [currentPage, setCurrentPage] = useState(1);
 
   const [flightDeals, setFlightDeals] = useState([]);
@@ -84,7 +84,6 @@ const DealsPage = () => {
   }, []);
 
   useEffect(() => {
-    // Áp dụng filter và sort cho toàn bộ deals
     let filtered = flightDeals.filter((deal) => {
       const searchLower = searchTerm.toLowerCase();
       return (
@@ -540,10 +539,14 @@ const DealsPage = () => {
                           </div>
                         </div>
 
-                        {/* Action Button */}
-                        <Button className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm py-2">
-                          Đặt ngay với giá ưu đãi
-                        </Button>
+                        <div className="w-full ">
+                          <Link
+                            to="/flights"
+                            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm py-2 p-6 flex items-center justify-center"
+                          >
+                            Đặt ngay với giá ưu đãi
+                          </Link>
+                        </div>
                       </div>
                     </div>
                   </Card>

@@ -904,360 +904,684 @@ const MapToggleControls = ({
 const FlightRouteMap = ({
   searchData,
   flightInfo,
-  // support both old prop names and new prop-prefixed names
-  processedSearchData,
-  legs,
-  coordsMap,
-  propProcessedSearchData,
-  propLegs,
-  propCoordsMap,
+  legs: propLegs,
+  coordsMap: propCoordsMap,
+  processedSearchData: propProcessedSearchData,
   className = "",
-  height = "600px",
+  height = "400px",
   showFlightPath = true,
   showAirportInfo = true,
 }) => {
   const mapRef = useRef(null);
-  const [mapLegs, setMapLegs] = useState([]);
-  const [mapCoordsMap, setMapCoordsMap] = useState({});
+  const [legs, setLegs] = useState([]);
+  const [coordsMap, setCoordsMap] = useState({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [showFlightInfo, setShowFlightInfo] = useState(true);
   const [showLegend, setShowLegend] = useState(true);
 
-  // Normalize incoming props - accept either plain or prop-prefixed names
-  const _processedSearchDataProp =
-    propProcessedSearchData ?? processedSearchData ?? null;
-  const _legsProp = propLegs ?? legs ?? null;
-  const _coordsMapProp = propCoordsMap ?? coordsMap ?? null;
-
   // Debug logging
-  console.log("FlightRouteMap Props:", {
+  console.log("🗺️ FlightRouteMap Props:", {
     searchData,
     flightInfo,
-    propProcessedSearchData: _processedSearchDataProp,
-    propLegs: _legsProp,
-    propCoordsMap: _coordsMapProp,
+    propLegs,
+    propCoordsMap,
+    propProcessedSearchData,
   });
 
-  // Compute a single processed search data object from either searchData, flightInfo or the provided processed search data prop
-  const finalProcessedSearchData = useMemo(() => {
-    console.log("FlightRouteMap received data (memo):", {
+  const processedSearchData = useMemo(() => {
+    console.log("FlightRouteMap received data:", {
       searchData,
       flightInfo,
-      providedProcessedSearchData: _processedSearchDataProp,
+      propProcessedSearchData,
     });
-    if (_processedSearchDataProp) {
-      console.log(
-        "Using provided processedSearchData:",
-        _processedSearchDataProp
-      );
-      return _processedSearchDataProp;
-    }
-    const data =
-      searchData ||
-      (flightInfo && {
-        tripType: "one_way",
-        oneWayFlights: { content: [flightInfo] },
-      }) ||
-      null;
-    console.log("Final processed search data (computed):", data);
-    return data;
-  }, [searchData, flightInfo, _processedSearchDataProp]);
 
+    // Priority: propProcessedSearchData > searchData > flightInfo
+    if (propProcessedSearchData) {
+      console.log("Using prop processedSearchData:", propProcessedSearchData);
+      return propProcessedSearchData;
+    }
+
+    if (searchData) {
+      console.log("Using searchData:", searchData);
+      return searchData;
+    }
+
+    // Fallback to flightInfo for single flight display
+    if (flightInfo) {
+      console.log("Using flightInfo for single flight:", flightInfo);
+      return {
+        tripType: flightInfo?.isRoundTrip ? "round_trip" :
+                 flightInfo?.isMultiCity ? "multi_city" : "one_way",
+        flight: flightInfo,
+      };
+    }
+
+    console.log("No valid data provided to FlightRouteMap");
+    return null;
+  }, [searchData, flightInfo, propProcessedSearchData]);
+
+  // Enhanced data parsing with better error handling
   useEffect(() => {
     const parseLegs = async () => {
       setLoading(true);
       setError(null);
 
-      // Debug log all props first (using normalized props)
-      console.log("FlightRouteMap Props (normalized):", {
-        legs: _legsProp,
-        coordsMap: _coordsMapProp,
-        processedSearchData: finalProcessedSearchData,
-        hasLegs: !!_legsProp,
-        hasCoordsMap: !!_coordsMapProp,
-        hasProcessedSearchData: !!finalProcessedSearchData,
-      });
-
-      // If we have props data, use it but resolve coordinates
-      if (_legsProp && _coordsMapProp && finalProcessedSearchData) {
-        console.log("🎯 Using props data with coordinate resolution:", {
-          legs: _legsProp,
-          coordsMap: _coordsMapProp,
-          processedSearchData: finalProcessedSearchData,
-        });
-
-        // Check if legs has the expected structure or needs transformation
-        let processedLegs = _legsProp;
-
-        // If legs is an array of raw flight objects (like multi-city legs), transform them
-        if (
-          Array.isArray(_legsProp) &&
-          _legsProp.length > 0 &&
-          _legsProp[0].flightNumber &&
-          !_legsProp[0].flight
-        ) {
-          console.log("🔄 Transforming raw flight legs to expected structure");
-          processedLegs = _legsProp.map((rawLeg, index) => {
-            // Try to extract departure and arrival info from the raw leg
-            const depCode =
-              rawLeg.departureAirportCode ||
-              rawLeg.from ||
-              rawLeg.departure?.code;
-            const arrCode =
-              rawLeg.arrivalAirportCode || rawLeg.to || rawLeg.arrival?.code;
-
-            return {
-              flight: {
-                ...rawLeg,
-                flightNumber: rawLeg.flightNumber,
-                airlineName: rawLeg.airlineName || rawLeg.airline,
-                duration: rawLeg.duration,
-                departureTime: rawLeg.departureTime,
-                arrivalTime: rawLeg.arrivalTime,
-                aircraft: rawLeg.aircraft || {
-                  aircraftName: rawLeg.aircraftName || "Unknown",
-                },
-                airline: {
-                  airlineName: rawLeg.airlineName || rawLeg.airline,
-                  airlineLogo: rawLeg.airlineLogo,
-                },
-              },
-              dep: _coordsMapProp?.[depCode] || {
-                code: depCode,
-                airportName:
-                  rawLeg.departureAirportName || `Airport ${depCode}`,
-                cityNames: [rawLeg.departureCity || depCode],
-                airportCode: depCode,
-              },
-              arr: _coordsMapProp?.[arrCode] || {
-                code: arrCode,
-                airportName: rawLeg.arrivalAirportName || `Airport ${arrCode}`,
-                cityNames: [rawLeg.arrivalCity || arrCode],
-                airportCode: arrCode,
-              },
-              stops: Array.isArray(rawLeg.stops) ? rawLeg.stops : [],
-              direction:
-                finalProcessedSearchData?.tripType === "multi_city"
-                  ? `Chặng ${index + 1}`
-                  : rawLeg.direction || "Outbound",
-              segments: [],
-            };
+      try {
+        // If we have props data, use it directly (most reliable)
+        if (propLegs && propCoordsMap && propProcessedSearchData) {
+          console.log("🎯 Using props data with coordinate resolution:", {
+            propLegs,
+            propCoordsMap,
+            propProcessedSearchData,
           });
-          console.log("✅ Transformed legs:", processedLegs);
-        }
 
-        // Resolve coordinates for all airports in coordsMap
-        const resolveCoordsPromises = Object.entries(_coordsMapProp).map(
-          async ([code, airport]) => {
-            console.log(`🔍 Resolving coordinates for ${code}:`, airport);
+          // Process props data and resolve coordinates
+          let processedLegs = propLegs;
+          const resolvedCoordsMap = { ...propCoordsMap };
 
-            // If airport already has valid coordinates, use them
-            if (
-              airport.lat &&
-              airport.lon &&
-              airport.lat !== 0 &&
-              airport.lon !== 0
-            ) {
-              console.log(`✅ ${code} already has valid coordinates:`, airport);
-              return { code, coords: airport };
-            }
-
-            // Otherwise, resolve coordinates using airport code
-            try {
-              console.log(`🌐 Calling getAirportCoords for ${code} with:`, {
-                code: code,
-                airportName: airport.name,
-                airportCode: code,
-              });
-              const resolvedCoords = await getAirportCoords({
-                code: code,
-                airportName: airport.name,
-                airportCode: code,
-              });
-              console.log(`✅ ${code} resolved coordinates:`, resolvedCoords);
-              return { code, coords: resolvedCoords };
-            } catch (error) {
-              console.error(
-                `❌ Failed to resolve coordinates for ${code}:`,
-                error
-              );
-              // Fallback to original coordinates
-              return { code, coords: airport };
-            }
-          }
-        );
-
-        console.log(
-          "⏳ Starting Promise.allSettled for coordinate resolution..."
-        );
-        try {
-          const resolvedCoordsResults = await Promise.allSettled(
-            resolveCoordsPromises
-          );
-          console.log(
-            "✅ Promise.allSettled completed:",
-            resolvedCoordsResults
-          );
-
-          const resolvedCoordsMap = {};
-
-          resolvedCoordsResults.forEach((result, index) => {
-            console.log(`📊 Processing result ${index}:`, result);
-            if (result.status === "fulfilled") {
-              const { code, coords } = result.value;
-              resolvedCoordsMap[code] = coords;
-              console.log(`✅ Added ${code} to resolvedCoordsMap:`, coords);
-            } else {
-              console.error(`❌ Result ${index} rejected:`, result.reason);
+          // Ensure all airports have coordinates
+          const coordPromises = Object.entries(propCoordsMap).map(async ([code, data]) => {
+            if (!data.lat || !data.lon) {
+              try {
+                const coords = await getAirportCoords(data);
+                resolvedCoordsMap[code] = { ...data, ...coords };
+              } catch (error) {
+                console.warn(`Failed to resolve coordinates for ${code}:`, error);
+                resolvedCoordsMap[code] = { ...data, lat: 0, lon: 0 };
+              }
             }
           });
+
+          await Promise.allSettled(coordPromises);
 
           console.log("🎯 Final resolved coordinates map:", resolvedCoordsMap);
 
-          setMapLegs(processedLegs);
-          setMapCoordsMap(resolvedCoordsMap);
+          setLegs(processedLegs);
+          setCoordsMap(resolvedCoordsMap);
           setLoading(false);
-        } catch (error) {
-          console.error("❌ Error in Promise.allSettled:", error);
-          // Fallback to original data
-          setMapLegs(processedLegs);
-          setMapCoordsMap(_coordsMapProp);
-          setLoading(false);
+          return;
         }
 
-        return;
-      }
+        // If no processed data, try to parse from searchData or flightInfo
+        if (!processedSearchData) {
+          console.log("No processed search data available");
+          setLoading(false);
+          return;
+        }
 
-      if (!finalProcessedSearchData) {
-        setLoading(false);
-        return;
-      }
+        console.log("🔄 Parsing legs from processedSearchData:", processedSearchData);
 
-      try {
-        const tripType = finalProcessedSearchData.tripType;
+        const tripType = processedSearchData.tripType || processedSearchData.type;
         let parsedLegs = [];
         const allAirports = new Set();
 
-        if (tripType === "one_way") {
-          const flights = finalProcessedSearchData.oneWayFlights?.content || [];
-          parsedLegs = flights
-            .filter(
-              (flight) =>
-                flight && flight.departureAirport && flight.arrivalAirport
-            )
-            .map((flight) => ({
-              flight,
-              dep: flight.departureAirport,
+        // Enhanced parsing logic for different flight types
+        if (tripType === "one_way" || (!tripType && processedSearchData.flight)) {
+          console.log("Processing ONE-WAY flight");
+          const flight = processedSearchData.flight || processedSearchData;
+
+          parsedLegs = [{
+            flight,
+            dep: flight.departureAirport || {
+              code: flight.from || flight.departure?.code,
+              airportName: flight.departure?.airportName || `Airport ${flight.from}`,
+              cityNames: [flight.departure?.city || flight.from],
+            },
+            arr: flight.arrivalAirport || {
+              code: flight.to || flight.arrival?.code,
+              airportName: flight.arrival?.airportName || `Airport ${flight.to}`,
+              cityNames: [flight.arrival?.city || flight.to],
+            },
+            stops: Array.isArray(flight.stopsList) ? flight.stopsList : [],
+            direction: "Outbound",
+            segments: [],
+          }];
+        }
+        else if (tripType === "round_trip" || tripType === "ROUND_TRIP") {
+          console.log("Processing ROUND-TRIP flight");
+
+          // Handle different round-trip data structures
+          if (processedSearchData.outboundFlight && processedSearchData.returnFlight) {
+            // Direct structure
+            parsedLegs = [
+              {
+                flight: processedSearchData.outboundFlight,
+                dep: processedSearchData.outboundFlight.departureAirport || {
+                  code: processedSearchData.from,
+                  airportName: processedSearchData.outboundFlight.departure?.airportName || `Airport ${processedSearchData.from}`,
+                  cityNames: [processedSearchData.outboundFlight.departure?.city || processedSearchData.from],
+                },
+                arr: processedSearchData.outboundFlight.arrivalAirport || {
+                  code: processedSearchData.to,
+                  airportName: processedSearchData.outboundFlight.arrival?.airportName || `Airport ${processedSearchData.to}`,
+                  cityNames: [processedSearchData.outboundFlight.arrival?.city || processedSearchData.to],
+                },
+                stops: Array.isArray(processedSearchData.outboundFlight.stopsList) ? processedSearchData.outboundFlight.stopsList : [],
+                direction: "Outbound",
+                segments: [],
+              },
+              {
+                flight: processedSearchData.returnFlight,
+                dep: processedSearchData.returnFlight.departureAirport || {
+                  code: processedSearchData.to,
+                  airportName: processedSearchData.returnFlight.departure?.airportName || `Airport ${processedSearchData.to}`,
+                  cityNames: [processedSearchData.returnFlight.departure?.city || processedSearchData.to],
+                },
+                arr: processedSearchData.returnFlight.arrivalAirport || {
+                  code: processedSearchData.from,
+                  airportName: processedSearchData.returnFlight.arrival?.airportName || `Airport ${processedSearchData.from}`,
+                  cityNames: [processedSearchData.returnFlight.arrival?.city || processedSearchData.from],
+                },
+                stops: Array.isArray(processedSearchData.returnFlight.stopsList) ? processedSearchData.returnFlight.stopsList : [],
+                direction: "Return",
+                segments: [],
+              }
+            ];
+          }
+          else if (processedSearchData.roundTripPairs) {
+            // Legacy structure
+            const pairs = processedSearchData.roundTripPairs;
+            parsedLegs = pairs.flatMap(pair => [
+              {
+                flight: pair.outbound,
+                dep: pair.outbound.departureAirport,
+                arr: pair.outbound.arrivalAirport,
+                stops: Array.isArray(pair.outbound.stopsList) ? pair.outbound.stopsList : [],
+                direction: "Outbound",
+                segments: [],
+              },
+              {
+                flight: pair.return,
+                dep: pair.return.departureAirport,
+                arr: pair.return.arrivalAirport,
+                stops: Array.isArray(pair.return.stopsList) ? pair.return.stopsList : [],
+                direction: "Return",
+                segments: [],
+              }
+            ]);
+          }
+        }
+        else if (tripType === "multi_city" || tripType === "MULTI_CITY" || processedSearchData.legs) {
+          console.log("Processing MULTI-CITY flight");
+
+          if (processedSearchData.legs) {
+            // Direct legs structure (from flight detail page)
+            parsedLegs = processedSearchData.legs.map((leg, index) => ({
+              flight: leg,
+              dep: leg.departureAirport || {
+                code: leg.from || leg.departure?.code,
+                airportName: leg.departure?.airportName || `Airport ${leg.from}`,
+                cityNames: [leg.departure?.city || leg.from],
+              },
+              arr: leg.arrivalAirport || {
+                code: leg.to || leg.arrival?.code,
+                airportName: leg.arrival?.airportName || `Airport ${leg.to}`,
+                cityNames: [leg.arrival?.city || leg.to],
+              },
+              stops: Array.isArray(leg.stops) ? leg.stops : [],
+              direction: `Chặng ${index + 1}`,
+              segments: [],
+            }));
+          }
+          else if (processedSearchData.multiCityFlights) {
+            // Legacy multi-city structure
+            const multiCityFlights = processedSearchData.multiCityFlights;
+            parsedLegs = multiCityFlights.flatMap((seg, segIndex) =>
+              (seg.content || []).map((flight, index) => ({
+                flight,
+                dep: flight.departureAirport,
+                arr: flight.arrivalAirport,
+                stops: Array.isArray(flight.stopsList) ? flight.stopsList : [],
+                direction: `Chặng ${segIndex + 1}`,
+                segments: [],
+              }))
+            );
+          }
+        }
+
+        console.log("📋 Parsed legs:", parsedLegs);
+
+        // Process segments and collect airports
+        parsedLegs.forEach((leg, legIndex) => {
+          console.log(`Processing leg ${legIndex}:`, leg);
+
+          // Add departure and arrival airports
+          if (leg.dep) allAirports.add(JSON.stringify(leg.dep));
+          if (leg.arr) allAirports.add(JSON.stringify(leg.arr));
+
+          // Process stops
+          const stopsArray = Array.isArray(leg.stops) ? leg.stops : [];
+          stopsArray.forEach(stop => {
+            if (stop && typeof stop === 'object') {
+              allAirports.add(JSON.stringify({
+                code: stop.airportCode || stop.code,
+                airportName: stop.airportName || stop.name,
+                cityNames: [stop.city || stop.cityName],
+              }));
+            }
+          });
+
+          // Create segments
+          let current = leg.dep;
+          leg.segments = stopsArray.map((stop) => {
+            const segment = {
+              from: current,
+              to: {
+                code: stop.airportCode || stop.code,
+                airportName: stop.airportName || stop.name,
+                cityNames: [stop.city || stop.cityName],
+                timeFrom: stop.departureTime,
+                timeTo: stop.arrivalTime,
+              },
+            };
+            current = {
+              code: stop.airportCode || stop.code,
+              airportName: stop.airportName || stop.name,
+              cityNames: [stop.city || stop.cityName],
+            };
+            return segment;
+          });
+
+          // Add final segment to destination
+          if (current && leg.arr) {
+            leg.segments.push({
+              from: current,
+              to: leg.arr,
+            });
+          }
+        });
+
+        console.log("🛫 All airports to resolve:", Array.from(allAirports));
+
+        // Resolve coordinates for all airports
+        const coordsPromises = Array.from(allAirports).map(async (airportStr) => {
+          try {
+            const airport = JSON.parse(airportStr);
+            const coords = await getAirportCoords(airport);
+            return { airport, coords };
+          } catch (error) {
+            console.error("Error resolving coordinates for airport:", airportStr, error);
+            const airport = JSON.parse(airportStr);
+            return {
+              airport,
+              coords: { lat: 0, lon: 0, name: airport.airportName || airport.code }
+            };
+          }
+        });
+
+        const coordResults = await Promise.allSettled(coordsPromises);
+        const finalCoordsMap = {};
+
+        coordResults.forEach(result => {
+          if (result.status === 'fulfilled') {
+            const { airport, coords } = result.value;
+            finalCoordsMap[airport.code] = { ...airport, ...coords };
+          } else {
+            console.error("Failed to resolve coordinates:", result.reason);
+          }
+        });
+
+        console.log("✅ Final coordinates map:", finalCoordsMap);
+
+        setLegs(parsedLegs);
+        setCoordsMap(finalCoordsMap);
+        setLoading(false);
+
+      } catch (error) {
+        console.error("❌ Error parsing flight data:", error);
+        setError("Không thể tải dữ liệu chuyến bay. Vui lòng thử lại.");
+        setLoading(false);
+      }
+    };
+
+    parseLegs();
+  }, [processedSearchData, propLegs, propCoordsMap, propProcessedSearchData]);
+
+  // Enhanced renderMarkers with better error handling
+  const renderMarkers = useMemo(() => {
+    console.log("🗺️ renderMarkers called with legs:", legs.length, "coords:", Object.keys(coordsMap).length);
+
+    if (legs.length === 0 || Object.keys(coordsMap).length === 0) {
+      console.log("⚠️ No legs or coordinates available for rendering");
+      return null;
+    }
+
+    const airportData = new Map();
+
+    legs.forEach((leg, legIndex) => {
+      console.log(`Processing leg ${legIndex}:`, {
+        direction: leg.direction,
+        dep: leg.dep?.code,
+        arr: leg.arr?.code,
+        stopsCount: Array.isArray(leg.stops) ? leg.stops.length : 0,
+      });
+
+      // Add departure airport
+      if (leg.dep?.code) {
+        airportData.set(leg.dep.code, { ...leg.dep, type: "departure" });
+      }
+
+      // Add stop airports
+      const stopsArray = Array.isArray(leg.stops) ? leg.stops : [];
+      stopsArray.forEach((stop) => {
+        if (stop?.airportCode || stop?.code) {
+          const code = stop.airportCode || stop.code;
+          const existing = airportData.get(code) || {};
+          airportData.set(code, {
+            ...stop,
+            code,
+            airportName: stop.airportName || stop.name,
+            cityNames: [stop.city || stop.cityName],
+            type: existing.type === "departure" ? "connection" : "stop",
+          });
+        }
+      });
+
+      // Add arrival airport
+      if (leg.arr?.code) {
+        const existing = airportData.get(leg.arr.code) || {};
+        airportData.set(leg.arr.code, {
+          ...leg.arr,
+          type: existing.type === "departure" ? "connection" : "arrival",
+        });
+      }
+    });
+
+    console.log("📍 Final airport data for rendering:", Array.from(airportData.entries()));
+
+    return Array.from(airportData.entries())
+      .map(([code, data]) => {
+        const coords = coordsMap[code];
+        if (!coords?.lat || !coords?.lon || isNaN(coords.lat) || isNaN(coords.lon)) {
+          console.warn(`⚠️ Invalid coordinates for airport ${code}:`, coords);
+          return null;
+        }
+
+        const icon = data.type === "departure" ? departureIcon :
+                    data.type === "arrival" ? arrivalIcon : stopIcon;
+
+        return (
+          <Marker
+            key={`${code}-${data.type}-${Math.random()}`}
+            position={[coords.lat, coords.lon]}
+            icon={icon}
+          >
+            <Popup>
+              <div className="p-4 min-w-[280px]">
+                <div className="flex items-center space-x-2 mb-3">
+                  <div className={`w-4 h-4 rounded-full ${
+                    data.type === "departure" ? "bg-green-500" :
+                    data.type === "arrival" ? "bg-red-500" :
+                    data.type === "connection" ? "bg-blue-500" : "bg-yellow-500"
+                  }`}></div>
+                  <div className="text-lg font-bold text-gray-800">{code}</div>
+                </div>
+                <div className="text-sm text-gray-600 mb-3 font-medium">
+                  {coords.name || data.airportName || "Unknown Airport"}
+                </div>
+                <div className={`text-xs px-2 py-1 rounded text-center font-medium mb-3 ${
+                  data.type === "departure" ? "text-green-700 bg-green-50" :
+                  data.type === "arrival" ? "text-red-700 bg-red-50" :
+                  data.type === "connection" ? "text-blue-700 bg-blue-50" :
+                  "text-yellow-700 bg-yellow-50"
+                }`}>
+                  {data.type === "departure" ? "✈️ Khởi hành" :
+                   data.type === "arrival" ? "🎯 Đến" :
+                   data.type === "connection" ? "🔄 Trung chuyển" : "⏸️ Dừng"}
+                </div>
+                <div className="space-y-2 text-xs">
+                  <div className="flex items-center space-x-2">
+                    <MapPin className="w-3 h-3 text-gray-500" />
+                    <span className="text-gray-600">Vị trí:</span>
+                    <span className="font-mono text-gray-800">
+                      {coords.lat?.toFixed(4)}, {coords.lon?.toFixed(4)}
+                    </span>
+                  </div>
+                  {data.cityNames && data.cityNames.length > 0 && (
+                    <div className="flex items-center space-x-2">
+                      <span className="text-gray-600">Thành phố:</span>
+                      <span className="font-medium text-gray-800">
+                        {data.cityNames[0]}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </Popup>
+            <Tooltip direction="top" offset={[0, -10]} opacity={0.95}>
+              <div className="bg-white px-3 py-2 rounded-lg shadow-md border border-gray-200 max-w-xs">
+                <div className="font-semibold text-gray-800 mb-1">{code}</div>
+                <div className="text-xs text-gray-600 mb-1">
+                  {coords.name || data.airportName || "Unknown"}
+                </div>
+                <div className="text-xs text-gray-500 mb-1">
+                  📍 {coords.lat?.toFixed(3)}, {coords.lon?.toFixed(3)}
+                </div>
+                <div className="text-xs mt-1 text-blue-600 font-medium">
+                  {data.type === "departure" ? "Khởi hành" :
+                   data.type === "arrival" ? "Đến" :
+                   data.type === "connection" ? "Trung chuyển" : "Dừng"}
+                </div>
+              </div>
+            </Tooltip>
+          </Marker>
+        );
+      })
+      .filter(Boolean);
+  }, [legs, coordsMap]);
+
+  // Enhanced flight path rendering with better error handling
+  useEffect(() => {
+    if (!mapRef.current || legs.length === 0 || Object.keys(coordsMap).length === 0) {
+      console.log("⚠️ Cannot render flight paths - missing map, legs, or coordinates");
+      return;
+    }
+
+    const map = mapRef.current;
+    const cleanup = [];
+
+    console.log("�️ Rendering flight paths for", legs.length, "legs");
+
+    legs.forEach((leg, legIndex) => {
+      console.log(`Processing leg ${legIndex} for flight paths:`, leg.direction);
+
+      const segments = Array.isArray(leg.segments) ? leg.segments : [];
+      if (segments.length === 0) {
+        console.log(`No segments for leg ${legIndex}, creating direct path`);
+
+        // Create direct path if no segments
+        const fromCoords = coordsMap[leg.dep?.code];
+        const toCoords = coordsMap[leg.arr?.code];
+
+        if (fromCoords?.lat && fromCoords?.lon && toCoords?.lat && toCoords?.lon) {
+          const path = createCurvedPath(fromCoords, toCoords, 100, leg.direction);
+          if (path.length > 0) {
+            const color = leg.direction === "Return" || leg.direction === "Inbound" ? "#10b981" : "#2563eb";
+            const line = L.polyline(path, {
+              weight: 3,
+              opacity: 0.8,
+              color,
+              className: "flight-path",
+              lineCap: "round",
+              lineJoin: "round",
+            }).addTo(map);
+
+            cleanup.push(() => map.removeLayer(line));
+          }
+        }
+      } else {
+        // Render segmented paths
+        segments.forEach((seg, segIndex) => {
+          const fromCoords = coordsMap[seg.from?.code];
+          const toCoords = coordsMap[seg.to?.code];
+
+          if (fromCoords?.lat && fromCoords?.lon && toCoords?.lat && toCoords?.lon &&
+              seg.from?.code !== seg.to?.code) {
+
+            console.log(`Creating path from ${seg.from.code} to ${seg.to.code}`);
+            const segPath = createCurvedPath(fromCoords, toCoords, 100, leg.direction);
+
+            if (segPath.length > 0) {
+              const color = leg.direction === "Return" || leg.direction === "Inbound" ? "#10b981" : "#2563eb";
+              const line = L.polyline(segPath, {
+                weight: 3,
+                opacity: 0.8,
+                color,
+                className: "flight-path",
+                lineCap: "round",
+                lineJoin: "round",
+              }).addTo(map);
+
+              cleanup.push(() => map.removeLayer(line));
+            }
+          }
+        });
+      }
+    });
+
+    return () => cleanup.forEach(fn => fn());
+  }, [legs, coordsMap]);
+
+  // Trip type detection
+  const getTripType = () => {
+    if (!processedSearchData) return "one_way";
+
+    const tripType = processedSearchData.tripType || processedSearchData.type;
+    if (tripType === "round_trip" || tripType === "ROUND_TRIP") return "round_trip";
+    if (tripType === "multi_city" || tripType === "MULTI_CITY" || legs.length > 2) return "multi_city";
+    return "one_way";
+  };
+
+  const tripType = getTripType();
+
+  // Map Toggle Controls Component
+  const MapToggleControls = ({ showFlightInfo, setShowFlightInfo, showLegend, setShowLegend }) => {
+    return (
+      <div className="absolute top-4 right-4 z-[1000] flex flex-col space-y-2">
+        <button
+          onClick={() => setShowFlightInfo(!showFlightInfo)}
+          className={`p-3 rounded-xl shadow-lg border border-white/20 backdrop-blur-md transition-all duration-200 ${
+            showFlightInfo
+              ? "bg-blue-500 text-white shadow-blue-500/25"
+              : "bg-white/90 text-gray-700 hover:bg-white"
+          }`}
+          title={showFlightInfo ? "Ẩn thông tin chuyến bay" : "Hiển thị thông tin chuyến bay"}
+        >
+          <Info className={`w-5 h-5 ${showFlightInfo ? "text-white" : "text-blue-500"}`} />
+        </button>
+        <button
+          onClick={() => setShowLegend(!showLegend)}
+          className={`p-3 rounded-xl shadow-lg border border-white/20 backdrop-blur-md transition-all duration-200 ${
+            showLegend
+              ? "bg-purple-500 text-white shadow-purple-500/25"
+              : "bg-white/90 text-gray-700 hover:bg-white"
+          }`}
+          title={showLegend ? "Ẩn chú thích" : "Hiển thị chú thích"}
+        >
+          <Layers className={`w-5 h-5 ${showLegend ? "text-white" : "text-purple-500"}`} />
+        </button>
+      </div>
+    );
+  };
               arr: flight.arrivalAirport,
               stops: Array.isArray(flight.stopsList) ? flight.stopsList : [],
               direction: "Outbound",
               segments: [],
             }));
         } else if (tripType === "round_trip") {
-          console.log("Processing round-trip data:", finalProcessedSearchData);
-          const pairs = finalProcessedSearchData.roundTripPairs || [];
+          console.log("Processing round-trip data:", processedSearchData);
+          const pairs = processedSearchData.roundTripPairs || [];
 
           // Handle direct outboundFlight and returnFlight structure
           if (
-            finalProcessedSearchData.outboundFlight &&
-            finalProcessedSearchData.returnFlight
+            processedSearchData.outboundFlight &&
+            processedSearchData.returnFlight
           ) {
             console.log(
               "Using direct outboundFlight and returnFlight structure"
             );
             parsedLegs = [
               {
-                flight: finalProcessedSearchData.outboundFlight,
-                dep: finalProcessedSearchData.outboundFlight
-                  ?.departureAirport || {
-                  code: finalProcessedSearchData.from,
+                flight: processedSearchData.outboundFlight,
+                dep: processedSearchData.outboundFlight?.departureAirport || {
+                  code: processedSearchData.from,
                   airportName:
-                    finalProcessedSearchData.outboundFlight?.departure
+                    processedSearchData.outboundFlight?.departure
                       ?.airportName ||
-                    finalProcessedSearchData.outboundFlight?.departureAirport
+                    processedSearchData.outboundFlight?.departureAirport
                       ?.airportName ||
-                    `Airport ${finalProcessedSearchData.from}`,
+                    `Airport ${processedSearchData.from}`,
                   cityNames: [
-                    finalProcessedSearchData.outboundFlight?.departure?.city ||
-                      finalProcessedSearchData.outboundFlight?.departureAirport
+                    processedSearchData.outboundFlight?.departure?.city ||
+                      processedSearchData.outboundFlight?.departureAirport
                         ?.city ||
-                      finalProcessedSearchData.from,
+                      processedSearchData.from,
                   ],
                 },
-                arr: finalProcessedSearchData.outboundFlight
-                  ?.arrivalAirport || {
-                  code: finalProcessedSearchData.to,
+                arr: processedSearchData.outboundFlight?.arrivalAirport || {
+                  code: processedSearchData.to,
                   airportName:
-                    finalProcessedSearchData.outboundFlight?.arrival
+                    processedSearchData.outboundFlight?.arrival?.airportName ||
+                    processedSearchData.outboundFlight?.arrivalAirport
                       ?.airportName ||
-                    finalProcessedSearchData.outboundFlight?.arrivalAirport
-                      ?.airportName ||
-                    `Airport ${finalProcessedSearchData.to}`,
+                    `Airport ${processedSearchData.to}`,
                   cityNames: [
-                    finalProcessedSearchData.outboundFlight?.arrival?.city ||
-                      finalProcessedSearchData.outboundFlight?.arrivalAirport
+                    processedSearchData.outboundFlight?.arrival?.city ||
+                      processedSearchData.outboundFlight?.arrivalAirport
                         ?.city ||
-                      finalProcessedSearchData.to,
+                      processedSearchData.to,
                   ],
                 },
                 stops: Array.isArray(
-                  finalProcessedSearchData.outboundFlight?.stopsList
+                  processedSearchData.outboundFlight?.stopsList
                 )
-                  ? finalProcessedSearchData.outboundFlight.stopsList
+                  ? processedSearchData.outboundFlight.stopsList
                   : [],
                 direction: "Outbound",
                 segments: [],
               },
               {
-                flight: finalProcessedSearchData.returnFlight,
-                dep: finalProcessedSearchData.returnFlight
-                  ?.departureAirport || {
+                flight: processedSearchData.returnFlight,
+                dep: processedSearchData.returnFlight?.departureAirport || {
                   code:
-                    finalProcessedSearchData.returnFrom ||
-                    finalProcessedSearchData.to,
+                    processedSearchData.returnFrom || processedSearchData.to,
                   airportName:
-                    finalProcessedSearchData.returnFlight?.departure
-                      ?.airportName ||
-                    finalProcessedSearchData.returnFlight?.departureAirport
+                    processedSearchData.returnFlight?.departure?.airportName ||
+                    processedSearchData.returnFlight?.departureAirport
                       ?.airportName ||
                     `Airport ${
-                      finalProcessedSearchData.returnFrom ||
-                      finalProcessedSearchData.to
+                      processedSearchData.returnFrom || processedSearchData.to
                     }`,
                   cityNames: [
-                    finalProcessedSearchData.returnFlight?.departure?.city ||
-                      finalProcessedSearchData.returnFlight?.departureAirport
+                    processedSearchData.returnFlight?.departure?.city ||
+                      processedSearchData.returnFlight?.departureAirport
                         ?.city ||
-                      finalProcessedSearchData.returnFrom ||
-                      finalProcessedSearchData.to,
+                      processedSearchData.returnFrom ||
+                      processedSearchData.to,
                   ],
                 },
-                arr: finalProcessedSearchData.returnFlight?.arrivalAirport || {
+                arr: processedSearchData.returnFlight?.arrivalAirport || {
                   code:
-                    finalProcessedSearchData.returnTo ||
-                    finalProcessedSearchData.from,
+                    processedSearchData.returnTo || processedSearchData.from,
                   airportName:
-                    finalProcessedSearchData.returnFlight?.arrival
-                      ?.airportName ||
-                    finalProcessedSearchData.returnFlight?.arrivalAirport
+                    processedSearchData.returnFlight?.arrival?.airportName ||
+                    processedSearchData.returnFlight?.arrivalAirport
                       ?.airportName ||
                     `Airport ${
-                      finalProcessedSearchData.returnTo ||
-                      finalProcessedSearchData.from
+                      processedSearchData.returnTo || processedSearchData.from
                     }`,
                   cityNames: [
-                    finalProcessedSearchData.returnFlight?.arrival?.city ||
-                      finalProcessedSearchData.returnFlight?.arrivalAirport
-                        ?.city ||
-                      finalProcessedSearchData.returnTo ||
-                      finalProcessedSearchData.from,
+                    processedSearchData.returnFlight?.arrival?.city ||
+                      processedSearchData.returnFlight?.arrivalAirport?.city ||
+                      processedSearchData.returnTo ||
+                      processedSearchData.from,
                   ],
                 },
                 stops: Array.isArray(
-                  finalProcessedSearchData.returnFlight?.stopsList
+                  processedSearchData.returnFlight?.stopsList
                 )
-                  ? finalProcessedSearchData.returnFlight.stopsList
+                  ? processedSearchData.returnFlight.stopsList
                   : [],
                 direction: "Inbound",
                 segments: [],
@@ -1319,13 +1643,13 @@ const FlightRouteMap = ({
             console.log("No valid round-trip data found");
           }
         } else if (tripType === "multi_city") {
-          // Check if we have direct legs for multi-city
-          if (_legsProp && Array.isArray(_legsProp) && _legsProp.length > 0) {
-            console.log("Using legs for multi-city:", _legsProp);
-            parsedLegs = _legsProp.map((leg, index) => ({
+          // Check if we have direct propLegs for multi-city
+          if (propLegs && Array.isArray(propLegs) && propLegs.length > 0) {
+            console.log("Using propLegs for multi-city:", propLegs);
+            parsedLegs = propLegs.map((leg, index) => ({
               flight: leg,
               dep: leg.departureAirport ||
-                _coordsMapProp?.[leg.departureAirportCode || leg.from] || {
+                propCoordsMap[leg.departureAirportCode || leg.from] || {
                   code: leg.departureAirportCode || leg.from,
                   airportName:
                     leg.departureAirportName ||
@@ -1336,7 +1660,7 @@ const FlightRouteMap = ({
                   airportCode: leg.departureAirportCode || leg.from,
                 },
               arr: leg.arrivalAirport ||
-                _coordsMapProp?.[leg.arrivalAirportCode || leg.to] || {
+                propCoordsMap[leg.arrivalAirportCode || leg.to] || {
                   code: leg.arrivalAirportCode || leg.to,
                   airportName:
                     leg.arrivalAirportName ||
@@ -1435,7 +1759,7 @@ const FlightRouteMap = ({
         });
 
         setCoordsMap(newCoordsMap);
-        setMapLegs(parsedLegs);
+        setLegs(parsedLegs);
 
         console.log("Final parsed legs:", parsedLegs);
         console.log("Total legs parsed:", parsedLegs.length);
@@ -1448,8 +1772,8 @@ const FlightRouteMap = ({
         setLoading(false);
       }
     };
-    if (finalProcessedSearchData) parseLegs();
-  }, [finalProcessedSearchData, _legsProp, _coordsMapProp]);
+    if (processedSearchData) parseLegs();
+  }, [processedSearchData]);
 
   useEffect(() => {
     if (mapRef.current && Object.keys(coordsMap).length > 0) {
@@ -1469,17 +1793,17 @@ const FlightRouteMap = ({
     console.log("Flight path rendering useEffect triggered:", {
       hasMap: !!mapRef.current,
       showFlightPath,
-      legsCount: mapLegs.length,
-      coordsCount: Object.keys(mapCoordsMap).length,
+      legsCount: legs.length,
+      coordsCount: Object.keys(coordsMap).length,
       loading,
-      processedSearchData: finalProcessedSearchData?.tripType,
+      processedSearchData: processedSearchData?.tripType,
     });
 
     if (
       !mapRef.current ||
       !showFlightPath ||
-      mapLegs.length === 0 ||
-      Object.keys(mapCoordsMap).length === 0 ||
+      legs.length === 0 ||
+      Object.keys(coordsMap).length === 0 ||
       loading
     ) {
       console.log("Skipping flight path rendering due to conditions not met");
@@ -1489,9 +1813,9 @@ const FlightRouteMap = ({
     const map = mapRef.current;
     const cleanup = [];
 
-    console.log("Starting to render flight paths for", mapLegs.length, "legs");
+    console.log("Starting to render flight paths for", legs.length, "legs");
 
-    mapLegs.forEach((leg, legIndex) => {
+    legs.forEach((leg, legIndex) => {
       console.log(`Rendering leg ${legIndex}:`, {
         direction: leg.direction,
         segmentsCount: Array.isArray(leg.segments)
@@ -1538,8 +1862,8 @@ const FlightRouteMap = ({
         const midPoint = segmentsArray[Math.floor(segmentsArray.length / 2)];
         if (
           midPoint &&
-          mapCoordsMap[midPoint.from.code]?.lat &&
-          mapCoordsMap[midPoint.from.code]?.lon
+          coordsMap[midPoint.from.code]?.lat &&
+          coordsMap[midPoint.from.code]?.lon
         ) {
           const directionLabel =
             tripType === "round_trip"
@@ -1555,8 +1879,8 @@ const FlightRouteMap = ({
           });
           const routeLabel = L.marker(
             [
-              mapCoordsMap[midPoint.from.code].lat,
-              mapCoordsMap[midPoint.from.code].lon,
+              coordsMap[midPoint.from.code].lat,
+              coordsMap[midPoint.from.code].lon,
             ],
             { icon: label }
           ).addTo(map);
@@ -1574,14 +1898,14 @@ const FlightRouteMap = ({
         console.log(`Processing segment ${segIndex} for leg ${legIndex}:`, {
           from: seg.from?.code,
           to: seg.to?.code,
-          hasFromCoords: !!mapCoordsMap[seg.from?.code],
-          hasToCoords: !!mapCoordsMap[seg.to?.code],
-          fromCoords: mapCoordsMap[seg.from?.code],
-          toCoords: mapCoordsMap[seg.to?.code],
+          hasFromCoords: !!coordsMap[seg.from?.code],
+          hasToCoords: !!coordsMap[seg.to?.code],
+          fromCoords: coordsMap[seg.from?.code],
+          toCoords: coordsMap[seg.to?.code],
         });
 
-        const fromCoords = mapCoordsMap[seg.from.code];
-        const toCoords = mapCoordsMap[seg.to.code];
+        const fromCoords = coordsMap[seg.from.code];
+        const toCoords = coordsMap[seg.to.code];
         if (fromCoords && toCoords && fromCoords !== toCoords) {
           console.log(`Creating path from ${seg.from.code} to ${seg.to.code}`);
           const segPath = createCurvedPath(
@@ -1699,27 +2023,19 @@ const FlightRouteMap = ({
     });
 
     return () => cleanup.forEach((fn) => fn());
-  }, [
-    mapRef,
-    mapLegs,
-    mapCoordsMap,
-    finalProcessedSearchData,
-    showFlightPath,
-    loading,
-  ]);
+  }, [mapRef, legs, coordsMap, processedSearchData, showFlightPath, loading]);
 
   const renderMarkers = useMemo(() => {
     console.log(
       "renderMarkers called with legs:",
-      mapLegs.length,
+      legs.length,
       "coords:",
-      Object.keys(mapCoordsMap).length
+      Object.keys(coordsMap).length
     );
-    if (mapLegs.length === 0 || Object.keys(mapCoordsMap).length === 0)
-      return null;
+    if (legs.length === 0 || Object.keys(coordsMap).length === 0) return null;
 
     const airportData = new Map();
-    mapLegs.forEach((leg, legIndex) => {
+    legs.forEach((leg, legIndex) => {
       console.log(`Processing leg ${legIndex}:`, {
         direction: leg.direction,
         stopsType: typeof leg.stops,
@@ -1758,7 +2074,7 @@ const FlightRouteMap = ({
 
     return Array.from(airportData.entries())
       .map(([code, data]) => {
-        const coords = mapCoordsMap[code];
+        const coords = coordsMap[code];
         if (
           !coords?.lat ||
           !coords?.lon ||

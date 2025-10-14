@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/auth-context";
 import { Button } from "@/components/ui/button";
@@ -14,8 +14,11 @@ import { Separator } from "@/components/ui/separator";
 import { CreditCard, Smartphone, Wallet } from "lucide-react";
 import { bookingApi } from "@/apis/booking-api";
 import { flightApi } from "@/apis/flight-api";
+import { dealApi } from "@/apis/deal-api";
+import { handleFetch } from "@/utils/fetch-helper";
 import { toast } from "sonner";
 import PropTypes from "prop-types";
+import { processExtrasDataForBooking } from "@/components/section/flight/extras-section";
 import { formatCurrencyVND, formatDateTimeVN } from "@/utils/currency-utils";
 
 // Helper functions
@@ -105,6 +108,13 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
   const navigate = useNavigate();
   const { user } = useAuth(); // Get authenticated user
 
+  // Determine if this is an international flight
+  const isInternationalFlight =
+    flight?.type === "INTERNATIONAL" ||
+    flight?.flightType === "INTERNATIONAL" ||
+    fare?.flightType === "INTERNATIONAL" ||
+    false;
+
   // Helper function to convert time to ISO format for backend
   const formatTimeForBackend = (time, date = null) => {
     if (!time) return null;
@@ -132,51 +142,6 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
     return time;
   };
 
-  // Debug: Log flight data structure
-  console.log("=== PAYMENT COMPONENT DEBUG - FLIGHT DATA STRUCTURE ===");
-  console.log("Payment - Flight data:", flight);
-  console.log("Payment - Flight.type:", flight?.type);
-  console.log("Payment - Flight.isRoundTrip:", flight?.isRoundTrip);
-  console.log("Payment - Flight.isMultiCity:", flight?.isMultiCity);
-  console.log("Payment - Flight.outboundFlight:", flight?.outboundFlight);
-  console.log("Payment - Flight.returnFlight:", flight?.returnFlight);
-  console.log("Payment - Flight.legs:", flight?.legs);
-  console.log("Payment - Fare data:", fare);
-  console.log("Payment - Flight.departureAirport:", flight?.departureAirport);
-  console.log("Payment - Flight.arrivalAirport:", flight?.arrivalAirport);
-  console.log("Payment - Flight.aircraft:", flight?.aircraft);
-
-  // Debug localStorage selectedFlight
-  const selectedFlightDebug = JSON.parse(
-    localStorage.getItem("selectedFlight") || "{}"
-  );
-  console.log("Payment - localStorage selectedFlight:", selectedFlightDebug);
-  console.log(
-    "Payment - localStorage flight.outboundFlight:",
-    selectedFlightDebug?.flight?.outboundFlight
-  );
-  console.log(
-    "Payment - localStorage flight.returnFlight:",
-    selectedFlightDebug?.flight?.returnFlight
-  );
-  console.log(
-    "Payment - localStorage outbound:",
-    selectedFlightDebug?.outbound
-  );
-  console.log("Payment - localStorage return:", selectedFlightDebug?.return);
-  console.log("Payment - localStorage type:", selectedFlightDebug?.type);
-  console.log("Payment - outbound.id:", selectedFlightDebug?.outbound?.id);
-  console.log(
-    "Payment - outbound.flightId:",
-    selectedFlightDebug?.outbound?.flightId
-  );
-  console.log("Payment - return.id:", selectedFlightDebug?.return?.id);
-  console.log(
-    "Payment - return.flightId:",
-    selectedFlightDebug?.return?.flightId
-  );
-  console.log("=== END FLIGHT DATA STRUCTURE DEBUG ===");
-
   const [paymentMethod, setPaymentMethod] = useState("BANK_TRANSFER");
   const [cardDetails, setCardDetails] = useState({
     cardNumber: "",
@@ -198,7 +163,9 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
   const [paymentStatus, setPaymentStatus] = useState("IMMEDIATE"); // IMMEDIATE or LATER
   const [showOutboundDetails, setShowOutboundDetails] = useState(true);
   const [showReturnDetails, setShowReturnDetails] = useState(true);
+  const [allAvailableSeats, setAllAvailableSeats] = useState([]);
   const [autoAssignedSeats, setAutoAssignedSeats] = useState({});
+  const [seatDetails, setSeatDetails] = useState({}); // Store seat details with price info
 
   // Deal code states
   const [dealCode, setDealCode] = useState("");
@@ -206,6 +173,49 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
   const [dealApplied, setDealApplied] = useState(false);
   const [dealError, setDealError] = useState("");
   const [applyingDeal, setApplyingDeal] = useState(false);
+  const [appliedDealInfo, setAppliedDealInfo] = useState(null); // Store deal details
+
+  // Load available seats on component mount
+  useEffect(() => {
+    const loadAvailableSeats = async () => {
+      try {
+        // Get flight data from localStorage if available
+        const selectedFlight = JSON.parse(
+          localStorage.getItem("selectedFlight") || "{}"
+        );
+        const flightData = selectedFlight.flight || flight;
+
+        const flightId =
+          flightData.id || flightData.flightId || flight.id || flight.flightId;
+        const classId =
+          flightData.selectedClass?.id || fare?.travelClass?.classId;
+
+        if (!flightId || !classId) {
+          console.warn("Missing flight ID or travel class ID for seat loading");
+          return;
+        }
+
+        // Get available seats from API
+        const seatsResponse =
+          await flightApi.getSeatsFlightByFlightIdAndTravelClassId(
+            flightId,
+            classId
+          );
+
+        if (seatsResponse.success) {
+          // Filter only available seats
+          const availableSeats = seatsResponse.data.filter(
+            (seat) => seat.status === "AVAILABLE"
+          );
+          setAllAvailableSeats(availableSeats);
+        }
+      } catch (error) {
+        console.error("Error loading available seats:", error);
+      }
+    };
+
+    loadAvailableSeats();
+  }, [flight, fare]);
 
   // Calculate totals from real data
   const calculatePassengerTotal = () => {
@@ -227,8 +237,47 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
     }, 0);
   };
 
-  // Total amount - extrasData.total already includes passenger costs
-  const totalAmount = extrasData?.total || calculatePassengerTotal();
+  // Calculate total amount by summing all components
+  const totalAmount = () => {
+    // Base passenger price
+    let passengerTotal = 0;
+    if (flight?.isRoundTrip || flight?.type === "ROUND_TRIP") {
+      passengerTotal = flight.totalPrice || 0;
+    } else {
+      const basePrice = fare?.price || fare?.basePrice || 0;
+      passengerTotal = formData.passengers.reduce((total, p) => {
+        const discountedPrice =
+          p.type === "CHILD"
+            ? basePrice * 0.75
+            : p.type === "INFANT"
+            ? basePrice * 0.1
+            : basePrice;
+        return total + discountedPrice;
+      }, 0);
+    }
+
+    // Add extras
+    const seatTotal = extrasData?.seatTotal || 0;
+    const returnSeatTotal =
+      flight?.isRoundTrip || flight?.type === "ROUND_TRIP"
+        ? extrasData?.returnSeatTotal || 0
+        : 0;
+    const baggageTotal = extrasData?.baggageTotal || 0;
+    const servicesTotal = extrasData?.servicesTotal || 0;
+    const ancillaryServicesTotal = extrasData?.ancillaryServicesTotal || 0;
+
+    return (
+      passengerTotal +
+      seatTotal +
+      returnSeatTotal +
+      baggageTotal +
+      servicesTotal +
+      ancillaryServicesTotal
+    );
+  };
+
+  // Get the total amount (call as function since it's now a function)
+  const currentTotalAmount = totalAmount();
 
   const handleCardChange = (field, value) => {
     setCardDetails((prev) => ({
@@ -255,37 +304,128 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
     setDealError("");
 
     try {
-      // Simulate API call to validate deal code
-      // Replace this with actual API call
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      console.log("🔍 Checking deal code:", dealCode);
 
-      // Mock deal validation - replace with actual API
-      const validDeals = {
-        STUDENT10: { discount: 10, type: "percentage" },
-        SAVE20: { discount: 20, type: "percentage" },
-        FIRST50: { discount: 50000, type: "fixed" },
-      };
+      // First, get deal info by code
+      const dealResponse = await dealApi.getDealByCode(dealCode.trim());
 
-      const deal = validDeals[dealCode.toUpperCase()];
-      if (deal) {
-        const baseAmount = extrasData?.total || calculatePassengerTotal();
-        const discountAmount =
-          deal.type === "percentage"
-            ? (baseAmount * deal.discount) / 100
-            : Math.min(deal.discount, baseAmount);
-
-        setDealDiscount(discountAmount);
-        setDealApplied(true);
-        setDealError("");
-      } else {
-        setDealError("Mã giảm giá không hợp lệ hoặc đã hết hạn");
+      if (!dealResponse.success) {
+        setDealError("Mã giảm giá không tồn tại");
         setDealDiscount(0);
         setDealApplied(false);
+        setAppliedDealInfo(null);
+        return;
       }
+
+      const dealData = dealResponse.data;
+      console.log("📋 Deal data:", dealData);
+
+      // Check if deal is active
+      if (!dealData.isActive) {
+        setDealError("Mã giảm giá đã ngừng hoạt động");
+        setDealDiscount(0);
+        setDealApplied(false);
+        setAppliedDealInfo(null);
+        return;
+      }
+
+      // Check validity dates
+      const now = new Date();
+      const validFrom = new Date(dealData.validFrom);
+      const validTo = new Date(dealData.validTo);
+
+      if (now < validFrom || now > validTo) {
+        setDealError("Mã giảm giá đã hết hạn hoặc chưa có hiệu lực");
+        setDealDiscount(0);
+        setDealApplied(false);
+        setAppliedDealInfo(null);
+        return;
+      }
+
+      // Check usage limit
+      if (
+        dealData.totalUsageLimit &&
+        dealData.usedCount >= dealData.totalUsageLimit
+      ) {
+        setDealError("Mã giảm giá đã hết lượt sử dụng");
+        setDealDiscount(0);
+        setDealApplied(false);
+        setAppliedDealInfo(null);
+        return;
+      }
+
+      // Check if user can use this deal (if logged in)
+      if (user) {
+        try {
+          const canUseResponse = await dealApi.canUserUseDeal(dealCode.trim());
+          if (!canUseResponse.success) {
+            setDealError(
+              canUseResponse.message || "Bạn không thể sử dụng mã giảm giá này"
+            );
+            setDealDiscount(0);
+            setDealApplied(false);
+            setAppliedDealInfo(null);
+            return;
+          }
+        } catch (error) {
+          console.warn("Could not check user eligibility for deal:", error);
+          // Continue if API call fails (maybe user not logged in)
+        }
+      }
+
+      // Calculate discount
+      const baseAmount = extrasData?.total || calculatePassengerTotal();
+
+      // Check minimum order amount
+      if (
+        dealData.minimumOrderAmount &&
+        baseAmount < dealData.minimumOrderAmount
+      ) {
+        setDealError(
+          `Đơn hàng phải tối thiểu ${formatCurrencyVND(
+            dealData.minimumOrderAmount
+          )} để sử dụng mã này`
+        );
+        setDealDiscount(0);
+        setDealApplied(false);
+        setAppliedDealInfo(null);
+        return;
+      }
+
+      // Calculate discount amount
+      let discountAmount = (baseAmount * dealData.discountPercentage) / 100;
+
+      // Apply maximum discount limit if set
+      if (dealData.maxDiscountAmount) {
+        discountAmount = Math.min(discountAmount, dealData.maxDiscountAmount);
+      }
+
+      // Ensure discount doesn't exceed base amount
+      discountAmount = Math.min(discountAmount, baseAmount);
+
+      console.log("💰 Discount calculation:", {
+        baseAmount,
+        discountPercentage: dealData.discountPercentage,
+        calculatedDiscount: discountAmount,
+        maxDiscountAmount: dealData.maxDiscountAmount,
+      });
+
+      setDealDiscount(discountAmount);
+      setDealApplied(true);
+      setDealError("");
+      setAppliedDealInfo(dealData);
+
+      toast.success(
+        `Đã áp dụng mã giảm giá ${dealCode} - Giảm ${formatCurrencyVND(
+          discountAmount
+        )}`
+      );
     } catch (error) {
-      setDealError("Có lỗi xảy ra khi áp dụng mã giảm giá");
+      console.error("Error applying deal:", error);
+      setDealError("Có lỗi xảy ra khi kiểm tra mã giảm giá");
       setDealDiscount(0);
       setDealApplied(false);
+      setAppliedDealInfo(null);
     } finally {
       setApplyingDeal(false);
     }
@@ -296,67 +436,138 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
     setDealDiscount(0);
     setDealApplied(false);
     setDealError("");
+    setAppliedDealInfo(null);
+    toast.info("Đã hủy áp dụng mã giảm giá");
   };
 
   // Calculate final amount with deal discount
-  const finalAmount = Math.max(0, totalAmount - dealDiscount);
+  const finalAmount = Math.max(0, currentTotalAmount - dealDiscount);
 
-  // Function to auto-assign available seats from API
+  // Auto-assignment is now handled in extras-section automatically
   const autoAssignSeats = async () => {
+    console.log("🎲 Starting auto-assignment process");
     try {
       // Get flight data from localStorage if available
       const selectedFlight = JSON.parse(
         localStorage.getItem("selectedFlight") || "{}"
       );
+
+      // Check if this is round-trip or multi-city
+      const isRoundTripFlight =
+        selectedFlight.return !== undefined ||
+        selectedFlight.type === "ROUND_TRIP";
+      const isMultiCityFlight = selectedFlight.type === "MULTI_CITY";
+
+      console.log("🛩️ Flight type detection:", {
+        isRoundTripFlight,
+        isMultiCityFlight,
+        selectedFlightType: selectedFlight.type,
+        hasReturnProperty: !!selectedFlight.return,
+        selectedFlight: selectedFlight,
+      });
+
+      // For round-trip, we need to handle multiple flights
+      if (isRoundTripFlight) {
+        return await autoAssignSeatsForRoundTrip(selectedFlight);
+      }
+
+      // Original logic for one-way flights
       const flightData = selectedFlight.flight || flight;
 
       const flightId =
         flightData.id || flightData.flightId || flight.id || flight.flightId;
-      const classId =
-        flightData.selectedClass?.id || fare?.travelClass?.classId;
 
-      console.log("Auto-assign seats - Flight data:", {
-        flightId: flightId,
-        classId: classId,
-        flightIdType: typeof flightId,
-        classIdType: typeof classId,
-        selectedFlight: selectedFlight,
-        flightData: flightData,
+      // ✅ FIX: Use travelClassId instead of classId for seat fetching
+      const travelClassId =
+        flightData.selectedClass?.travelClass?.id ||
+        fare?.travelClass?.id ||
+        fare?.travelClass?.classId ||
+        1;
+
+      console.log("autoAssignSeats - flight data sources:", {
+        selectedFlight,
+        flightData,
+        flight,
+        flightId,
+        travelClassId,
+        fare,
+        fareId: fare?.id,
+        fareTravelClassId: fare?.travelClass?.id,
+        fareTravelClassClassId: fare?.travelClass?.classId,
+        flightDataSelectedClassTravelClassId:
+          flightData?.selectedClass?.travelClass?.id,
       });
 
-      if (!flightId || !classId) {
+      if (!flightId || !travelClassId) {
         console.warn(
-          "Missing flight ID or travel class ID for seat assignment",
-          {
-            flightId: flightId,
-            classId: classId,
-            flightObject: flight,
-            fareObject: fare,
-          }
+          "Missing flight ID or travel class ID for seat assignment"
         );
-        return { seats: {}, seatMapping: {}, availableSeatsData: [] };
+        return {
+          seats: {},
+          seatMapping: {},
+          availableSeatsData: [],
+          flightId,
+          travelClassId,
+        };
       }
 
-      // Get available seats from API
+      // Get available seats from API using travelClassId
       const seatsResponse =
         await flightApi.getSeatsFlightByFlightIdAndTravelClassId(
           flightId,
-          classId
+          travelClassId
         );
 
       if (!seatsResponse.success) {
         console.error("Failed to fetch seats:", seatsResponse.message);
-        return { seats: {}, seatMapping: {}, availableSeatsData: [] };
+        return {
+          seats: {},
+          seatMapping: {},
+          availableSeatsData: [],
+          flightId,
+          travelClassId,
+        };
       }
+
+      // Debug seats API response
+      console.log("🛩️ Seats API Response:", {
+        success: seatsResponse.success,
+        totalSeats: seatsResponse.data?.length || 0,
+        flightId,
+        travelClassId,
+        sampleSeats: seatsResponse.data?.slice(0, 3) || [],
+        allStatuses: [
+          ...new Set((seatsResponse.data || []).map((s) => s.status)),
+        ],
+        allSeatTypes: [
+          ...new Set((seatsResponse.data || []).map((s) => s.seatType)),
+        ],
+        allClassIds: [
+          ...new Set((seatsResponse.data || []).map((s) => s.classId)),
+        ],
+      });
 
       // Filter only available seats
       const availableSeats = seatsResponse.data.filter(
         (seat) => seat.status === "AVAILABLE"
       );
 
+      console.log("✅ Available seats after filtering:", {
+        availableCount: availableSeats.length,
+        totalFromAPI: seatsResponse.data?.length || 0,
+        sampleAvailable: availableSeats.slice(0, 3),
+      });
+
       if (availableSeats.length === 0) {
+        console.warn("⚠️ No available seats found");
         toast.warning("Không có ghế trống. Vui lòng chọn ghế thủ công.");
-        return { seats: {}, seatMapping: {}, availableSeatsData: [] };
+        return {
+          seats: {},
+          seatMapping: {},
+          availableSeatsData: [],
+          flightId,
+          travelClassId,
+        };
       }
 
       const assignedSeats = {};
@@ -393,11 +604,291 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
         seats: assignedSeats,
         seatMapping,
         availableSeatsData: availableSeats,
+        flightId,
+        travelClassId,
       };
     } catch (error) {
       console.error("Error auto-assigning seats:", error);
       toast.error("Lỗi khi tự động gán ghế");
-      return { seats: {}, seatMapping: {}, availableSeatsData: [] };
+      return {
+        seats: {},
+        seatMapping: {},
+        availableSeatsData: [],
+        flightId: null,
+        travelClassId: null,
+      };
+    }
+  };
+
+  const autoAssignSeatsForRoundTrip = async (selectedFlight) => {
+    console.log("🔄 Auto-assigning seats for round-trip flights");
+    console.log("🔍 Debug selectedFlight structure:", {
+      selectedFlight,
+      keys: Object.keys(selectedFlight),
+      hasFlight: !!selectedFlight.flight,
+      hasReturn: !!selectedFlight.return,
+      hasOutbound: !!selectedFlight.outbound,
+      type: selectedFlight.type,
+    });
+
+    try {
+      // Handle different selectedFlight structures
+      const outboundFlight = selectedFlight.flight || selectedFlight.outbound;
+      const returnFlight = selectedFlight.return;
+
+      console.log("✈️ Flight objects extracted:", {
+        outboundFlight,
+        returnFlight,
+        outboundExists: !!outboundFlight,
+        returnExists: !!returnFlight,
+      });
+
+      // Try alternative ways to get return flight data
+      if (!returnFlight) {
+        console.log(
+          "🔍 Searching for return flight in alternative locations..."
+        );
+
+        // Check if flights are stored differently in localStorage
+        const localStorageKeys = [
+          "outboundFlight",
+          "returnFlight",
+          "selectedFlights",
+          "searchResults",
+        ];
+        for (const key of localStorageKeys) {
+          const stored = JSON.parse(localStorage.getItem(key) || "null");
+          if (stored) {
+            console.log(`📂 Found data in localStorage.${key}:`, stored);
+          }
+        }
+
+        // Try to extract flights from flightObject structure
+        // From debug logs: flightObject has outboundData/returnData
+        if (flight && flight.outboundData && flight.returnData) {
+          console.log(
+            "✅ Found round-trip flights in flight.outboundData/returnData"
+          );
+          return await processRoundTripSeats(
+            flight.outboundData,
+            flight.returnData,
+            flight.outboundData.id || flight.outboundData.flightId,
+            flight.returnData.id || flight.returnData.flightId
+          );
+        }
+
+        // Check if return flight is in selectedFlight.returnFlight
+        const altReturnFlight = selectedFlight.returnFlight;
+        if (altReturnFlight) {
+          console.log(
+            "✅ Found return flight in selectedFlight.returnFlight:",
+            altReturnFlight
+          );
+          return await processRoundTripSeats(
+            outboundFlight,
+            altReturnFlight,
+            null,
+            null
+          );
+        }
+      }
+
+      if (!outboundFlight || !returnFlight) {
+        console.warn(
+          "⚠️ Missing outbound or return flight data for round-trip auto-assignment"
+        );
+        return {
+          seats: {},
+          seatMapping: {},
+          availableSeatsData: [],
+          flightId: null,
+          travelClassId: null,
+          isRoundTrip: true,
+        };
+      }
+
+      // Process the round-trip seats with available flight data
+      return await processRoundTripSeats(
+        outboundFlight,
+        returnFlight,
+        null,
+        null
+      );
+    } catch (error) {
+      console.error("❌ Error auto-assigning round-trip seats:", error);
+      return {
+        seats: {},
+        seatMapping: {},
+        availableSeatsData: [],
+        flightId: null,
+        travelClassId: null,
+        isRoundTrip: true,
+      };
+    }
+  };
+
+  const processRoundTripSeats = async (
+    outboundFlight,
+    returnFlight,
+    overrideOutboundId,
+    overrideReturnId
+  ) => {
+    try {
+      const outboundFlightId =
+        overrideOutboundId || outboundFlight.id || outboundFlight.flightId;
+      const returnFlightId =
+        overrideReturnId || returnFlight.id || returnFlight.flightId;
+
+      const outboundTravelClassId =
+        outboundFlight.selectedClass?.travelClass?.id ||
+        fare?.travelClass?.id ||
+        1;
+      const returnTravelClassId =
+        returnFlight.selectedClass?.travelClass?.id ||
+        fare?.travelClass?.id ||
+        1;
+
+      console.log("🛩️ Round-trip flight IDs:", {
+        outboundFlightId,
+        returnFlightId,
+        outboundTravelClassId,
+        returnTravelClassId,
+      });
+
+      // Fetch seats for both flights
+      const [outboundSeatsResponse, returnSeatsResponse] = await Promise.all([
+        flightApi.getSeatsFlightByFlightIdAndTravelClassId(
+          outboundFlightId,
+          outboundTravelClassId
+        ),
+        flightApi.getSeatsFlightByFlightIdAndTravelClassId(
+          returnFlightId,
+          returnTravelClassId
+        ),
+      ]);
+
+      console.log("🎫 Round-trip seats API responses:", {
+        outbound: {
+          success: outboundSeatsResponse.success,
+          totalSeats: outboundSeatsResponse.data?.length || 0,
+        },
+        return: {
+          success: returnSeatsResponse.success,
+          totalSeats: returnSeatsResponse.data?.length || 0,
+        },
+      });
+
+      // Process available seats for both flights
+      const outboundAvailableSeats = outboundSeatsResponse.success
+        ? outboundSeatsResponse.data.filter(
+            (seat) => seat.status === "AVAILABLE"
+          )
+        : [];
+      const returnAvailableSeats = returnSeatsResponse.success
+        ? returnSeatsResponse.data.filter((seat) => seat.status === "AVAILABLE")
+        : [];
+
+      console.log("✈️ Available seats for round-trip:", {
+        outboundAvailable: outboundAvailableSeats.length,
+        returnAvailable: returnAvailableSeats.length,
+      });
+
+      // Create seat mapping for both flights
+      const seatMapping = {};
+      const combinedAvailableSeats = [];
+
+      // Add outbound seats with segment info
+      outboundAvailableSeats.forEach((seat) => {
+        seatMapping[`${seat.seatNumber}_segment1`] = seat.seatId;
+        combinedAvailableSeats.push({
+          ...seat,
+          segmentOrder: 1,
+          flightId: outboundFlightId,
+        });
+      });
+
+      // Add return seats with segment info
+      returnAvailableSeats.forEach((seat) => {
+        seatMapping[`${seat.seatNumber}_segment2`] = seat.seatId;
+        combinedAvailableSeats.push({
+          ...seat,
+          segmentOrder: 2,
+          flightId: returnFlightId,
+        });
+      });
+
+      // Auto-assign seats for passengers (both segments)
+      const assignedSeats = {};
+
+      formData.passengers.forEach((_, passengerIndex) => {
+        const passengerKey = `passenger${passengerIndex + 1}`;
+
+        // Don't auto-assign if manual selection exists
+        if (extrasData?.selectedSeats?.[passengerKey]) {
+          return;
+        }
+
+        // Try to assign outbound seat - ONLY STANDARD seats for auto-assignment
+        const outboundStandardSeats = outboundAvailableSeats.filter(
+          (seat) => seat.seatType === "STANDARD" && seat.status === "AVAILABLE"
+        );
+
+        // Try to assign return seat - ONLY STANDARD seats for auto-assignment
+        const returnStandardSeats = returnAvailableSeats.filter(
+          (seat) => seat.seatType === "STANDARD" && seat.status === "AVAILABLE"
+        );
+
+        console.log(`🎯 Auto-assignment filtering for ${passengerKey}:`, {
+          outboundTotal: outboundAvailableSeats.length,
+          outboundStandard: outboundStandardSeats.length,
+          returnTotal: returnAvailableSeats.length,
+          returnStandard: returnStandardSeats.length,
+          outboundSeatTypes: [
+            ...new Set(outboundAvailableSeats.map((s) => s.seatType)),
+          ],
+          returnSeatTypes: [
+            ...new Set(returnAvailableSeats.map((s) => s.seatType)),
+          ],
+        });
+
+        if (
+          outboundStandardSeats.length > 0 &&
+          returnStandardSeats.length > 0
+        ) {
+          const outboundSeat =
+            outboundStandardSeats[
+              Math.floor(Math.random() * outboundStandardSeats.length)
+            ];
+          const returnSeat =
+            returnStandardSeats[
+              Math.floor(Math.random() * returnStandardSeats.length)
+            ];
+
+          assignedSeats[`${passengerKey}_segment1`] = outboundSeat.seatNumber;
+          assignedSeats[`${passengerKey}_segment2`] = returnSeat.seatNumber;
+        }
+      });
+
+      console.log("🎲 Round-trip auto-assigned seats:", assignedSeats);
+
+      return {
+        seats: assignedSeats,
+        seatMapping: seatMapping,
+        availableSeatsData: combinedAvailableSeats,
+        flightId: outboundFlightId, // Primary flight ID
+        travelClassId: outboundTravelClassId,
+        isRoundTrip: true,
+      };
+    } catch (error) {
+      console.error("❌ Error auto-assigning round-trip seats:", error);
+      return {
+        seats: {},
+        seatMapping: {},
+        availableSeatsData: [],
+        flightId: null,
+        travelClassId: null,
+        isRoundTrip: true,
+      };
     }
   };
 
@@ -412,6 +903,22 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
     setIsProcessing(true);
 
     try {
+      // Debug: Check extrasData at start of handleSubmit
+      console.log("🚀 HANDLE SUBMIT START - extrasData:", {
+        selectedSeats: extrasData?.selectedSeats,
+        selectedReturnSeats: extrasData?.selectedReturnSeats,
+        multiCitySeats: extrasData?.multiCitySeats,
+        baggage: extrasData?.baggage,
+        hasSelectedSeats: !!(
+          extrasData?.selectedSeats &&
+          Object.keys(extrasData.selectedSeats).length > 0
+        ),
+        flightObject: flight,
+        fareObject: fare,
+      });
+
+      // Set payment method for pay later
+      const currentPaymentMethod = payLater ? "PAYPAL" : paymentMethod;
       // Auto assign seats from API only if no seats are selected from extras
       let autoAssignResult = {
         seats: {},
@@ -422,45 +929,178 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
         extrasData?.selectedSeats &&
         Object.keys(extrasData.selectedSeats).length > 0;
 
-      if (!hasSelectedSeats) {
-        // Only auto-assign if no seats were selected in extras
-        autoAssignResult = await autoAssignSeats();
-      }
+      console.log("🔍 Payment Section Debug - Extras Data:", {
+        selectedSeats: extrasData?.selectedSeats,
+        hasSelectedSeats,
+        selectedSeatsCount: Object.keys(extrasData?.selectedSeats || {}).length,
+        passengersCount: formData.passengers?.length || 0,
+      });
 
+      // Process extras data to ensure seat assignments are in correct format
+      const processedExtrasData = processExtrasDataForBooking(
+        extrasData,
+        flight,
+        formData.passengers
+      );
+      console.log("📋 Processed Extras Data:", processedExtrasData);
+
+      // Update hasSelectedSeats based on processed data
+      const updatedHasSelectedSeats =
+        processedExtrasData?.seatAssignments &&
+        processedExtrasData.seatAssignments.length > 0;
+
+      console.log("🔄 Updated seat selection status:", {
+        originalHasSelectedSeats: hasSelectedSeats,
+        updatedHasSelectedSeats,
+        seatAssignmentsCount: processedExtrasData?.seatAssignments?.length || 0,
+      });
+
+      // Always get available seats data for mapping, but only auto-assign if no seats selected
+      autoAssignResult = await autoAssignSeats();
+
+      // Store the flightId and travelClassId used for seat fetching
+      const seatFetchFlightId = autoAssignResult.flightId;
+      const seatFetchTravelClassId = autoAssignResult.travelClassId;
+
+      console.log("handleSubmit - seat fetch IDs:", {
+        seatFetchFlightId,
+        seatFetchTravelClassId,
+        autoAssignResult,
+      });
+
+      // Always prioritize manual selections from extrasData, fallback to auto-assignment if needed
       const finalSelectedSeats = {
-        ...extrasData?.selectedSeats,
-        ...autoAssignResult.seats,
+        ...autoAssignResult.seats, // Auto-assigned seats as base
+        ...(extrasData?.selectedSeats || {}), // Manual selections override auto-assigned
       };
+
+      console.log("🎯 Final Selected Seats for processing:", {
+        hasManualSelections:
+          Object.keys(extrasData?.selectedSeats || {}).length > 0,
+        hasAutoAssigned: Object.keys(autoAssignResult.seats || {}).length > 0,
+        finalSeats: finalSelectedSeats,
+      });
 
       // Get seat mapping from API (seatNumber -> seatId)
       const seatMapping = autoAssignResult.seatMapping;
       const allAvailableSeats = autoAssignResult.availableSeatsData;
 
+      console.log("=== FULL BOOKING DATA DEBUG ===");
+      console.log("Selected seats from extrasData:", extrasData?.selectedSeats);
+      console.log("Final selected seats object:", finalSelectedSeats);
+      console.log(
+        "Available seats data length:",
+        allAvailableSeats?.length || 0
+      );
+      console.log("Seat mapping object:", seatMapping);
+
+      if (!hasSelectedSeats) {
+        // Only auto-assign if no seats were selected in extras
+        // autoAssignResult is already set above
+      }
+
+      // Update state for seat price calculations
+      setAllAvailableSeats(allAvailableSeats);
+
       // Helper function to get real seatId from API mapping or random assignment
-      const getSeatIdFromMapping = async (seatNumber, flightId, classId) => {
+      const getSeatIdFromMapping = async (
+        selectedSeatData,
+        flightId,
+        travelClassId
+      ) => {
+        // Extract seat number from selectedSeatData (handle both object and string formats)
+        const seatNumber =
+          typeof selectedSeatData === "object" && selectedSeatData?.seatNumber
+            ? selectedSeatData.seatNumber
+            : selectedSeatData;
+
         console.log(`getSeatIdFromMapping called with:`, {
-          seatNumber: seatNumber,
+          selectedSeatData: selectedSeatData,
+          extractedSeatNumber: seatNumber,
           flightId: flightId,
-          classId: classId,
+          travelClassId: travelClassId,
           flightIdType: typeof flightId,
-          classIdType: typeof classId,
+          travelClassIdType: typeof travelClassId,
         });
 
         // Validate parameters first
         if (
           !flightId ||
-          !classId ||
+          !travelClassId ||
           flightId === "undefined" ||
-          classId === "undefined"
+          travelClassId === "undefined"
         ) {
           console.error(`Invalid parameters for getSeatIdFromMapping:`, {
-            seatNumber: seatNumber,
+            selectedSeatData: selectedSeatData,
+            extractedSeatNumber: seatNumber,
             flightId: flightId,
-            classId: classId,
+            travelClassId: travelClassId,
           });
           return null;
         }
 
+        // If no seat selected, return null for auto-assignment
+        if (!seatNumber) {
+          console.log(
+            `No seat selected, will auto-assign for flight ${flightId}, class ${travelClassId}`
+          );
+          return null;
+        }
+
+        // First try to find seat using direct API call (more reliable for round-trip)
+        if (seatNumber) {
+          console.log(
+            `🔍 Direct API search for seat ${seatNumber} on flight ${flightId}, class ${travelClassId}`
+          );
+          try {
+            const apiResponse =
+              await flightApi.getSeatsFlightByFlightIdAndTravelClassId(
+                flightId,
+                travelClassId
+              );
+            const apiSeats = apiResponse.success
+              ? apiResponse.data
+              : apiResponse;
+
+            if (Array.isArray(apiSeats)) {
+              const foundSeat = apiSeats.find(
+                (seat) => seat.seatNumber === seatNumber
+              );
+              if (foundSeat) {
+                console.log(
+                  `✅ Found seat ${seatNumber} via direct API:`,
+                  foundSeat
+                );
+                const seatInfo = {
+                  seatId: foundSeat.seatId || foundSeat.id,
+                  seatNumber: foundSeat.seatNumber,
+                  seatType: foundSeat.seatType || "STANDARD",
+                  priceVND: foundSeat.priceVND || 0,
+                };
+
+                // Store seat details for display
+                setSeatDetails((prev) => ({
+                  ...prev,
+                  [seatNumber]: seatInfo,
+                }));
+
+                return seatInfo;
+              } else {
+                console.log(
+                  `❌ Seat ${seatNumber} not found in API. Available seats:`,
+                  apiSeats.map((s) => s.seatNumber).slice(0, 10)
+                );
+              }
+            }
+          } catch (error) {
+            console.error(
+              `❌ Direct API call failed for seat ${seatNumber}:`,
+              error
+            );
+          }
+        }
+
+        // Fallback to mapping if direct API fails
         if (seatNumber && seatMapping && seatMapping[seatNumber]) {
           // Return mapped seat ID if available
           console.log(
@@ -471,29 +1111,249 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
           const selectedSeatData = allAvailableSeats.find(
             (seat) => seat.seatNumber === seatNumber
           );
-          return {
+          const seatInfo = {
             seatId: seatMapping[seatNumber],
+            seatNumber: seatNumber,
             seatType: selectedSeatData?.seatType || "STANDARD",
+            priceVND: selectedSeatData?.priceVND || 0,
           };
+
+          // Store seat details for display
+          setSeatDetails((prev) => ({
+            ...prev,
+            [seatNumber]: seatInfo,
+          }));
+
+          return seatInfo;
         }
 
-        // If no seat selected or mapping failed, get random available seat from API
+        // If seatNumber is from selectedSeats but not in mapping, try to find it in availableSeatsData
+        if (seatNumber && allAvailableSeats && allAvailableSeats.length > 0) {
+          console.log(
+            `🔍 Searching for seat ${seatNumber} in available seats:`,
+            {
+              totalSeats: allAvailableSeats.length,
+              sampleSeats: allAvailableSeats.slice(0, 5).map((s) => ({
+                seatNumber: s.seatNumber,
+                seatId: s.seatId,
+                flightId: s.flightId,
+                travelClassId: s.travelClassId,
+                status: s.status,
+              })),
+              searchCriteria: {
+                lookingFor: seatNumber,
+                flightId: flightId,
+                travelClassId: travelClassId,
+              },
+            }
+          );
+
+          const selectedSeatData = allAvailableSeats.find(
+            (seat) => seat.seatNumber === seatNumber
+          );
+
+          if (selectedSeatData) {
+            console.log(
+              `✅ Found selected seat ${seatNumber} in available seats:`,
+              selectedSeatData
+            );
+            const seatInfo = {
+              seatId: selectedSeatData.seatId || selectedSeatData.id,
+              seatNumber: selectedSeatData.seatNumber,
+              seatType: selectedSeatData.seatType || "STANDARD",
+              priceVND: selectedSeatData.priceVND || 0,
+            };
+
+            // Store seat details for display
+            setSeatDetails((prev) => ({
+              ...prev,
+              [seatNumber]: seatInfo,
+            }));
+
+            return seatInfo;
+          } else {
+            console.log(
+              `❌ Seat ${seatNumber} NOT found in available seats. Available seat numbers:`,
+              allAvailableSeats.map((s) => s.seatNumber).slice(0, 20)
+            );
+
+            // Try alternative API call without classId filter (same as extras-section)
+            console.log(
+              `🔄 Trying alternative API call without classId filter...`
+            );
+            try {
+              const alternativeSeatsResponse = await flightApi.getSeatsByFlight(
+                flightId
+              );
+              const alternativeSeats = alternativeSeatsResponse.success
+                ? alternativeSeatsResponse.data
+                : alternativeSeatsResponse;
+
+              console.log(`🔍 Alternative API response:`, {
+                success: alternativeSeatsResponse.success,
+                totalSeats: Array.isArray(alternativeSeats)
+                  ? alternativeSeats.length
+                  : 0,
+                sampleSeats: Array.isArray(alternativeSeats)
+                  ? alternativeSeats.slice(0, 5).map((s) => ({
+                      seatNumber: s.seatNumber,
+                      seatId: s.seatId,
+                      flightId: s.flightId,
+                      travelClassId: s.travelClassId,
+                      status: s.status,
+                    }))
+                  : "Not an array",
+              });
+
+              if (
+                Array.isArray(alternativeSeats) &&
+                alternativeSeats.length > 0
+              ) {
+                const altSelectedSeatData = alternativeSeats.find(
+                  (seat) => seat.seatNumber === seatNumber
+                );
+
+                if (altSelectedSeatData) {
+                  console.log(
+                    `✅ Found seat ${seatNumber} using alternative API:`,
+                    altSelectedSeatData
+                  );
+                  return {
+                    seatId:
+                      altSelectedSeatData.seatId || altSelectedSeatData.id,
+                    seatType: altSelectedSeatData.seatType || "STANDARD",
+                    priceVND: altSelectedSeatData.priceVND || 0,
+                  };
+                } else {
+                  console.log(
+                    `❌ Seat ${seatNumber} still NOT found in alternative API. Available:`,
+                    alternativeSeats.map((s) => s.seatNumber).slice(0, 20)
+                  );
+                }
+              }
+            } catch (altError) {
+              console.error(`❌ Alternative API call failed:`, altError);
+            }
+          }
+        }
+
+        // If seat "26C" not found, let's check if it exists in a fresh API call
+        if (seatNumber === "26C") {
+          console.log(
+            `🚀 Making fresh API call to check seat ${seatNumber} availability for flightId: ${flightId}, travelClassId: ${travelClassId}`
+          );
+          try {
+            const freshSeatsResponse =
+              await flightApi.getSeatsFlightByFlightIdAndTravelClassId(
+                flightId,
+                travelClassId
+              );
+            const freshSeats = freshSeatsResponse.success
+              ? freshSeatsResponse.data
+              : freshSeatsResponse;
+            console.log(`🔍 Fresh API response for seat search:`, {
+              totalSeats: freshSeats?.length || 0,
+              seatNumbers: freshSeats?.map((s) => s.seatNumber) || [],
+              hasRequestedSeat:
+                freshSeats?.some((s) => s.seatNumber === seatNumber) || false,
+              sampleData: freshSeats?.slice(0, 3) || [],
+            });
+          } catch (error) {
+            console.error("Error making fresh API call:", error);
+          }
+        }
+
+        // CRITICAL: Selected seat not found - try to find ANY available seat with same type/preferences
         console.log(
-          `Getting random seat for flight ${flightId}, class ${classId}`
+          `🔄 SELECTED SEAT ${seatNumber} NOT FOUND - Attempting smart fallback for flight ${flightId}, travelClass ${travelClassId}`
         );
-        const randomSeat = await getRandomAvailableSeat(flightId, classId);
-        if (randomSeat) {
-          console.log(`Assigned random seat:`, randomSeat);
-          return {
-            seatId: randomSeat.seatId,
-            seatType: randomSeat.seatType,
-          };
+
+        try {
+          // Try to get all available seats for this flight/class
+          const availableSeatsResponse =
+            await flightApi.getSeatsFlightByFlightIdAndTravelClassId(
+              flightId,
+              travelClassId
+            );
+          const availableSeats = availableSeatsResponse.success
+            ? availableSeatsResponse.data
+            : availableSeatsResponse;
+
+          if (Array.isArray(availableSeats) && availableSeats.length > 0) {
+            // Filter for available seats only
+            const availableOnly = availableSeats.filter(
+              (seat) => seat.status === "AVAILABLE" || !seat.status
+            );
+
+            console.log(`📊 Available seats for smart fallback:`, {
+              totalAvailable: availableOnly.length,
+              seatNumbers: availableOnly.map((s) => s.seatNumber),
+              seatTypes: [...new Set(availableOnly.map((s) => s.seatType))],
+            });
+
+            // If we have seat type preference from selected seat data, try to find similar seat
+            if (allAvailableSeats && allAvailableSeats.length > 0) {
+              const originalSeatData = allAvailableSeats.find(
+                (seat) => seat.seatNumber === seatNumber
+              );
+
+              if (originalSeatData && originalSeatData.seatType) {
+                // Try to find an available seat with the same type
+                const sameTypeSeat = availableOnly.find(
+                  (seat) => seat.seatType === originalSeatData.seatType
+                );
+
+                if (sameTypeSeat) {
+                  console.log(
+                    `✅ Found alternative seat with same type (${originalSeatData.seatType}):`,
+                    sameTypeSeat
+                  );
+                  return {
+                    seatId: sameTypeSeat.seatId || sameTypeSeat.id,
+                    seatNumber: sameTypeSeat.seatNumber,
+                    seatType: sameTypeSeat.seatType || "STANDARD",
+                    priceVND: sameTypeSeat.priceVND || 0,
+                  };
+                }
+              }
+            }
+
+            // If no same-type seat found, take the first available seat
+            if (availableOnly.length > 0) {
+              const fallbackSeat = availableOnly[0];
+              console.log(
+                `⚠️ Using first available seat as fallback:`,
+                fallbackSeat
+              );
+              return {
+                seatId: fallbackSeat.seatId || fallbackSeat.id,
+                seatNumber: fallbackSeat.seatNumber,
+                seatType: fallbackSeat.seatType || "STANDARD",
+                priceVND: fallbackSeat.priceVND || 0,
+              };
+            }
+          }
+        } catch (fallbackError) {
+          console.error(`❌ Smart fallback failed:`, fallbackError);
         }
 
-        console.error(
-          `No available seats found for flight ${flightId}, class ${classId}`
+        // Final fallback to random assignment
+        console.log(
+          `🔄 FALLING BACK TO RANDOM ASSIGNMENT for flight ${flightId}, travelClass ${travelClassId}`
         );
-        return null; // Return null instead of hardcoded fallback
+        const randomSeat = await getRandomAvailableSeat(
+          flightId,
+          travelClassId
+        );
+        if (randomSeat) {
+          console.log(`✅ Assigned random seat:`, randomSeat);
+          return randomSeat;
+        } else {
+          console.error(
+            `❌ No seats available for flight ${flightId}, class ${travelClassId}`
+          );
+          return null;
+        }
       };
 
       // Prepare booking data for new API format
@@ -586,53 +1446,25 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
       };
 
       const bookingData = {
-        userId: user?.id || null, // Get from authenticated user or null if not logged in
-        totalAmount: finalAmount, // Use final amount with deal discount
-        status: payLater ? "PENDING" : "PENDING", // Always PENDING initially
-        passengers: formData.passengers.map((passenger, index) => ({
-          firstName:
-            passenger.firstName ||
-            passenger.fullName?.split(" ")[0] ||
-            passenger.fullName,
-          lastName:
-            passenger.lastName ||
-            passenger.fullName?.split(" ").slice(1).join(" ") ||
-            "",
-          dateOfBirth: passenger.dob
-            ? new Date(passenger.dob).toISOString().split("T")[0]
-            : null,
-          passportNumber:
-            passenger.passportNumber ||
-            (typeof passenger.passport === "string"
-              ? passenger.passport
-              : passenger.passport?.number) ||
-            "",
-          type: passenger.type,
-          email: passenger.email || null,
-          phone: passenger.phone || null,
-          gender: passenger.gender || "N/A",
-          seatId: null, // Will be assigned below
-          seatType: null, // Will be assigned below based on selected seat
-          baggagePackage: getBaggagePackage(passenger, index),
-        })),
-        flightSegments: [],
-        ancillaryServices: [], // Will be populated below
-        paymentMethod: paymentMethod || "BANK_TRANSFER",
-        checkInType: "ONLINE",
         ...(dealApplied && dealCode && { dealCode: dealCode }),
+        userId: user?.id || null,
+        totalAmount: finalAmount,
+        passengers: [], // Will be populated with seatAssignments
+        flightSegments: [],
+        ancillaryServices: [],
+        paymentMethod: currentPaymentMethod,
+        checkInType: "ONLINE",
       };
 
       // Build flight segments based on flight type
       if (isMultiCity && flight.legs) {
         // Multi-city flights
         bookingData.flightSegments = flight.legs.map((leg, index) => {
-          const classId =
-            leg.selectedClass?.id || leg.flightTravelClasses?.[0]?.id || 1;
           const travelClassId = leg.selectedClass?.travelClass?.id || 1;
           return {
             segmentOrder: index + 1,
             flightId: leg.id || leg.flightId,
-            classId: classId,
+            classId: travelClassId, // Use travelClassId instead of selectedClass.id
             travelClassId: travelClassId,
             departure: {
               code: leg.departureAirport?.airportCode || leg.from || "N/A",
@@ -688,7 +1520,6 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
             duration: leg.duration
               ? `${Math.floor(leg.duration / 60)}h ${leg.duration % 60}m`
               : "2h 0m",
-            passengerSeats: [], // Will be populated later with proper API call
           };
         });
       } else if (
@@ -726,9 +1557,9 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
             segmentOrder: 1,
             flightId: parseInt(outboundData?.id || outboundData?.flightId || 0),
             classId:
-              flight.selectedOutboundFare?.id ||
-              outboundData?.selectedClass?.id ||
-              fare.id ||
+              flight.selectedOutboundFare?.travelClass?.id ||
+              outboundData?.selectedClass?.travelClass?.id ||
+              fare.travelClass?.id ||
               1,
             travelClassId:
               flight.selectedOutboundFare?.travelClass?.id ||
@@ -809,16 +1640,15 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
                   outboundData.duration % 60
                 }m`
               : "N/A",
-            passengerSeats: [], // Will be populated later with proper API call
           },
           // Return segment
           {
             segmentOrder: 2,
             flightId: parseInt(returnData?.id || returnData?.flightId || 0),
             classId:
-              flight.selectedReturnFare?.id ||
-              returnData?.selectedClass?.id ||
-              fare.id ||
+              flight.selectedReturnFare?.travelClass?.id ||
+              returnData?.selectedClass?.travelClass?.id ||
+              fare.travelClass?.id ||
               1,
             travelClassId:
               flight.selectedReturnFare?.travelClass?.id ||
@@ -899,7 +1729,6 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
                   returnData.duration % 60
                 }m`
               : "N/A",
-            passengerSeats: [], // Will be populated later with proper API call
           },
         ];
       } else {
@@ -934,7 +1763,10 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
                 selectedFlight.outbound?.flightId ||
                 0
             ),
-            classId: flightData.selectedClass?.id || fare.id || 1,
+            classId:
+              flightData.selectedClass?.travelClass?.id ||
+              fare.travelClass?.id ||
+              1,
             travelClassId:
               flightData.selectedClass?.travelClass?.id ||
               fare.travelClass?.id ||
@@ -1034,22 +1866,32 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
                   flightData.departureTime || flight.departureTime,
                   flightData.arrivalTime || flight.arrivalTime
                 ) || "2h 0m",
-            passengerSeats: [], // Will be populated with async seat assignment below
           },
         ];
       }
 
-      // Debug: Log segment data before seat assignment
+      // Create passengers with seat assignments according to new API format
+      bookingData.passengers = formData.passengers.map((passenger, index) => ({
+        firstName:
+          passenger.firstName || passenger.fullName?.split(" ")[0] || "",
+        lastName:
+          passenger.lastName ||
+          passenger.fullName?.split(" ").slice(1).join(" ") ||
+          "",
+        gender: passenger.gender || "MALE",
+        dateOfBirth: passenger.dateOfBirth || passenger.dob || null,
+        passportNumber: passenger.passportNumber || passenger.passport || "",
+        type: passenger.type || "ADULT",
+        frequentFlyer: passenger.frequentFlyer || "",
+        phoneNumber: passenger.phoneNumber || formData.contact?.phone || "",
+        email: passenger.email || formData.contact?.email || "",
+        baggagePackage: getBaggagePackage(passenger, index),
+        seatAssignments: [], // Will be populated below for each flight segment
+      }));
+
       console.log(
-        "Flight segments before seat assignment:",
-        bookingData.flightSegments.map((s) => ({
-          segmentOrder: s.segmentOrder,
-          flightId: s.flightId,
-          classId: s.classId,
-          travelClassId: s.travelClassId,
-          flightIdType: typeof s.flightId,
-          classIdType: typeof s.classId,
-        }))
+        "Created passengers array with seatAssignments structure:",
+        bookingData.passengers
       );
 
       // Assign seats for all passengers and segments
@@ -1062,17 +1904,12 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
 
         // Validate segment data
         if (!segment.flightId || !segment.classId) {
-          console.error(`Invalid segment data at index ${segmentIndex}:`, {
-            flightId: segment.flightId,
-            classId: segment.classId,
-            segment: segment,
-          });
+          console.error(`Invalid segment data at index ${segmentIndex}`);
           toast.error(`Lỗi dữ liệu chuyến bay tại segment ${segmentIndex + 1}`);
           continue;
         }
 
-        const passengerSeats = [];
-
+        // Process seat assignments for each passenger in this segment
         for (
           let passengerIndex = 0;
           passengerIndex < formData.passengers.length;
@@ -1081,37 +1918,332 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
           const passengerKey = `passenger${passengerIndex + 1}`;
           let selectedSeat;
 
+          // Prioritize manual selections from extrasData first
           if (isMultiCity) {
             selectedSeat =
               extrasData.multiCitySeats?.[`segment${segmentIndex}`]?.[
                 passengerKey
               ];
           } else if (isRoundTrip && segmentIndex === 1) {
-            selectedSeat = extrasData.selectedReturnSeats?.[passengerKey];
+            // For return flights, try both passengerKey and return_passengerKey formats
+            selectedSeat =
+              extrasData.selectedReturnSeats?.[`return_${passengerKey}`] ||
+              extrasData.selectedReturnSeats?.[passengerKey];
           } else {
             selectedSeat = extrasData.selectedSeats?.[passengerKey];
           }
 
-          const seatResult = await getSeatIdFromMapping(
-            selectedSeat,
-            segment.flightId,
-            segment.travelClassId || segment.classId
+          // If no manual selection, check auto-assigned seats for round-trip
+          if (!selectedSeat && autoAssignResult?.isRoundTrip) {
+            const autoSeatKey = `${passengerKey}_segment${segmentIndex + 1}`;
+            const autoSeatNumber = finalSelectedSeats[autoSeatKey];
+
+            if (autoSeatNumber) {
+              // Get seatId from seat mapping
+              const roundTripSeatKey = `${autoSeatNumber}_segment${
+                segmentIndex + 1
+              }`;
+              const mappedSeatId =
+                autoAssignResult.seatMapping[roundTripSeatKey];
+
+              // Mark this as auto-assigned with STANDARD type and seatId
+              selectedSeat = {
+                seatId: mappedSeatId,
+                seatNumber: autoSeatNumber,
+                seatType: "STANDARD", // Force STANDARD for auto-assigned seats
+                autoAssigned: true,
+                priceVND: 0,
+              };
+
+              console.log(
+                `🎲 Using auto-assigned STANDARD seat for ${passengerKey} segment ${
+                  segmentIndex + 1
+                }:`,
+                {
+                  autoSeatNumber,
+                  roundTripSeatKey,
+                  mappedSeatId,
+                  selectedSeat,
+                }
+              );
+            }
+          }
+
+          // If no manual selection, check processed seat assignments
+          if (!selectedSeat) {
+            const segmentAssignment =
+              processedExtrasData?.seatAssignments?.find(
+                (assignment) =>
+                  assignment.passengerIndex === passengerIndex &&
+                  assignment.flightId === segment.flightId
+              );
+
+            if (segmentAssignment) {
+              selectedSeat = {
+                seatId: segmentAssignment.seatId,
+                seatNumber: segmentAssignment.seatNumber,
+                seatType: "STANDARD", // Default for processed assignments
+                autoAssigned: true,
+              };
+              console.log(
+                `✅ Using processed seat assignment for ${passengerKey}:`,
+                selectedSeat
+              );
+            } else {
+              console.log(
+                `🔄 No seat found for ${passengerKey}, will attempt auto-assignment`
+              );
+            }
+          } else {
+            console.log(
+              `✅ Using manual seat selection for ${passengerKey}:`,
+              selectedSeat
+            );
+          }
+
+          console.log(
+            `Seat selection debug for ${passengerKey} segment ${segmentIndex}:`,
+            {
+              isMultiCity,
+              isRoundTrip,
+              segmentIndex,
+              selectedSeat,
+              availableOutboundSeats: extrasData.selectedSeats,
+              availableReturnSeats: extrasData.selectedReturnSeats,
+            }
           );
 
-          const seatId = seatResult?.seatId || seatResult; // Handle both object and primitive return
-          const seatType = seatResult?.seatType || "STANDARD";
+          // Use segment's own flightId and travelClassId for accurate seat lookup
+          const actualFlightId = segment.flightId;
+          const actualTravelClassId = segment.travelClassId;
 
-          passengerSeats.push({
-            passengerId: passengerIndex + 1,
-            seatId: seatId,
+          // Get available seats for this segment (for seatId lookup)
+          const availableSeatsResult =
+            autoAssignResult?.availableSeatsData || [];
+          const segmentSpecificSeats = autoAssignResult?.isRoundTrip
+            ? availableSeatsResult.filter(
+                (seat) => seat.segmentOrder === segmentIndex + 1
+              )
+            : availableSeatsResult;
+
+          let seatId, seatType, seatNumber, seatPriceVND;
+
+          // Check if selectedSeat already has complete data (from extras section)
+          if (
+            selectedSeat &&
+            typeof selectedSeat === "object" &&
+            selectedSeat.seatNumber
+          ) {
+            // Use data directly from extras section (manual selection or auto-assignment)
+            seatId = selectedSeat.seatId;
+            // For auto-assigned seats, force STANDARD type regardless of actual seat type
+            seatType = selectedSeat.autoAssigned
+              ? "STANDARD"
+              : selectedSeat.seatType || "STANDARD";
+            seatNumber = selectedSeat.seatNumber;
+            seatPriceVND = selectedSeat.priceVND || 0;
+
+            console.log(
+              `✅ Using direct seat data from extras for ${passengerKey}:`,
+              {
+                seatId,
+                seatType,
+                seatNumber,
+                seatPriceVND,
+                originalSelectedSeat: selectedSeat,
+              }
+            );
+          } else if (selectedSeat && typeof selectedSeat === "string") {
+            // Handle legacy string format (seatNumber only)
+            const seatResult = await getSeatIdFromMapping(
+              selectedSeat,
+              actualFlightId,
+              actualTravelClassId
+            );
+
+            console.log(
+              `Legacy seat format for ${passengerKey} in segment ${segment.segmentOrder}:`,
+              {
+                selectedSeat,
+                seatResult,
+              }
+            );
+
+            seatId = seatResult?.seatId || seatResult; // Handle both object and primitive return
+            // For auto-assigned seats (string format), always force STANDARD type
+            seatType = "STANDARD"; // Auto-assigned seats are always STANDARD
+            seatNumber = seatResult?.seatNumber || selectedSeat;
+            seatPriceVND = 0; // Auto-assigned seats are free
+
+            // For round-trip auto-assigned seats, try to get seatId from mapping with segment key
+            if (
+              !seatId &&
+              autoAssignResult?.isRoundTrip &&
+              autoAssignResult?.seatMapping
+            ) {
+              const roundTripSeatKey = `${selectedSeat}_segment${
+                segmentIndex + 1
+              }`;
+              seatId =
+                autoAssignResult.seatMapping[roundTripSeatKey] ||
+                autoAssignResult.seatMapping[selectedSeat];
+
+              console.log(`🔄 Round-trip seat mapping for ${selectedSeat}:`, {
+                roundTripSeatKey,
+                mappedSeatId: seatId,
+                availableMappingKeys: Object.keys(
+                  autoAssignResult.seatMapping
+                ).slice(0, 5),
+              });
+            }
+
+            // If still no seatId, try to find it in segmentSpecificSeats for this flight
+            if (
+              !seatId &&
+              segmentSpecificSeats &&
+              segmentSpecificSeats.length > 0
+            ) {
+              const foundSeat = segmentSpecificSeats.find(
+                (seat) =>
+                  seat.seatNumber === selectedSeat &&
+                  seat.seatType === "STANDARD" &&
+                  seat.status === "AVAILABLE"
+              );
+
+              if (foundSeat) {
+                seatId = foundSeat.seatId || foundSeat.id;
+                console.log(
+                  `🎯 Found seatId in segmentSpecificSeats for ${selectedSeat}:`,
+                  {
+                    foundSeat,
+                    seatId,
+                  }
+                );
+              }
+            }
+          } else {
+            // No seat selected - try to auto-assign from available seats
+            console.log(
+              `⚡ No seat selected for ${passengerKey}, attempting auto-assignment`
+            );
+
+            // segmentSpecificSeats already defined above
+
+            console.log("🔍 Available seats for auto-assignment:", {
+              totalAvailable: availableSeatsResult.length,
+              segmentSpecificCount: segmentSpecificSeats.length,
+              isRoundTrip: autoAssignResult?.isRoundTrip,
+              currentSegment: segmentIndex + 1,
+              actualTravelClassId,
+              availableSeats: segmentSpecificSeats.slice(0, 3), // Show first 3 for debugging
+              seatTypes: [
+                ...new Set(segmentSpecificSeats.map((s) => s.seatType)),
+              ],
+              statuses: [...new Set(segmentSpecificSeats.map((s) => s.status))],
+              classIds: [
+                ...new Set(segmentSpecificSeats.map((s) => s.classId)),
+              ],
+            });
+
+            const standardSeats = segmentSpecificSeats.filter(
+              (seat) =>
+                seat.seatType === "STANDARD" &&
+                seat.status === "AVAILABLE" &&
+                (seat.travelClassId === actualTravelClassId ||
+                  seat.classId === actualTravelClassId)
+            );
+
+            console.log("🎯 Filtered STANDARD seats:", {
+              filteredCount: standardSeats.length,
+              filter: {
+                seatType: "STANDARD",
+                status: "AVAILABLE",
+                classId: actualTravelClassId,
+              },
+              sampleSeats: standardSeats.slice(0, 2),
+              availableStandardSeatsOnly: availableSeatsResult
+                .filter((s) => s.seatType === "STANDARD")
+                .slice(0, 3),
+              allSeatTypesInResult: [
+                ...new Set(availableSeatsResult.map((s) => s.seatType)),
+              ],
+            });
+
+            if (standardSeats.length > 0) {
+              // Pick a random available STANDARD seat
+              const randomSeat =
+                standardSeats[Math.floor(Math.random() * standardSeats.length)];
+              seatId = randomSeat.seatId || randomSeat.id;
+              seatType = "STANDARD";
+              seatNumber = randomSeat.seatNumber;
+              seatPriceVND = 0; // STANDARD seats are free
+
+              console.log(
+                `🎲 Auto-assigned STANDARD seat for ${passengerKey}:`,
+                {
+                  seatId,
+                  seatType,
+                  seatNumber,
+                  randomSeat,
+                  randomSeatStructure: {
+                    seatId: randomSeat.seatId,
+                    id: randomSeat.id,
+                    seatNumber: randomSeat.seatNumber,
+                    seatType: randomSeat.seatType,
+                    status: randomSeat.status,
+                  },
+                }
+              );
+            } else {
+              console.warn(
+                `⚠️ No STANDARD seats available for auto-assignment for ${passengerKey}`
+              );
+              seatId = null;
+              seatType = null;
+              seatNumber = null;
+              seatPriceVND = 0;
+            }
+          }
+
+          // Add seat assignment to passenger's seatAssignments array (NEW API FORMAT)
+          // Backend only needs segmentOrder, seatId, and seatType
+          console.log(`🔍 Pre-assignment validation for ${passengerKey}:`, {
+            seatId,
+            seatNumber,
+            seatType,
+            hasValidSeatId: !!seatId,
+            hasValidSeatNumber: !!seatNumber,
+            willAddAssignment: !!(seatId && seatNumber),
           });
 
-          // Also update passenger seatId and seatType
-          bookingData.passengers[passengerIndex].seatId = seatId;
-          bookingData.passengers[passengerIndex].seatType = seatType;
-        }
+          if (seatId && seatNumber) {
+            const seatAssignment = {
+              segmentOrder: segment.segmentOrder,
+              seatId: seatId,
+              seatType: seatType,
+            };
 
-        segment.passengerSeats = passengerSeats;
+            bookingData.passengers[passengerIndex].seatAssignments.push(
+              seatAssignment
+            );
+
+            console.log(`✅ Added seat assignment for ${passengerKey}:`, {
+              passengerName: `${formData.passengers[passengerIndex]?.firstName} ${formData.passengers[passengerIndex]?.lastName}`,
+              seatNumber,
+              seatType,
+              seatId,
+              segmentOrder: segment.segmentOrder,
+              seatAssignment,
+            });
+          } else {
+            console.error(
+              `❌ Failed to assign seat for passenger ${
+                passengerIndex + 1
+              } in segment ${segment.segmentOrder}:`,
+              { seatId, seatNumber, seatType, selectedSeat }
+            );
+          }
+        }
       }
 
       // Build ancillary services from extrasData
@@ -1120,7 +2252,10 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
           extrasData.selectedAncillaryServices
         ).map((serviceSelection) => ({
           serviceId: serviceSelection.serviceId,
-          passengerId: serviceSelection.passengerId, // null for booking-wide services
+          passengerId:
+            serviceSelection.passengerId !== null
+              ? serviceSelection.passengerId - 1
+              : null, // Convert to 0-based indexing
           quantity: serviceSelection.quantity || 1,
           notes: serviceSelection.notes || "",
         }));
@@ -1153,7 +2288,7 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
         );
         console.log(
           "Original Amount:",
-          totalAmount,
+          currentTotalAmount,
           "Final Amount:",
           finalAmount
         );
@@ -1163,27 +2298,30 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
           multiCity: extrasData.multiCitySeats || {},
         });
         console.log(
-          "Seat Assignment Results:",
+          "Seat Assignment Results (NEW API FORMAT):",
           bookingData.passengers.map((p) => ({
             passenger: p.firstName + " " + p.lastName,
-            seatId: p.seatId,
+            seatAssignments: p.seatAssignments,
             baggagePackage: p.baggagePackage,
           }))
         );
         console.log(
-          "Final Seat ID assignment:",
-          formData.passengers.map((_, index) => ({
-            passenger: index + 1,
-            seatNumber:
-              finalSelectedSeats[`passenger${index + 1}`] || "auto-random",
-            realSeatId: getSeatIdFromMapping(
-              finalSelectedSeats[`passenger${index + 1}`]
-            ),
-            source: finalSelectedSeats[`passenger${index + 1}`]
-              ? "manual/auto-assigned"
-              : "fallback-random",
+          "Final Seat Assignments per Passenger:",
+          bookingData.passengers.map((passenger, index) => ({
+            passengerName: passenger.firstName + " " + passenger.lastName,
+            totalSegments: bookingData.flightSegments.length,
+            assignedSegments: passenger.seatAssignments.length,
+            seatAssignments: passenger.seatAssignments.map((assignment) => ({
+              segmentOrder: assignment.segmentOrder,
+              seatId: assignment.seatId,
+              seatType: assignment.seatType,
+            })),
           }))
         );
+
+        // Add full booking data log before API call
+        console.log("=== FULL BOOKING DATA BEFORE API CALL ===");
+        console.log("Full Booking Data:", JSON.stringify(bookingData, null, 2));
         console.log(
           "Flight Segments Details:",
           bookingData.flightSegments.map((segment) => ({
@@ -1193,16 +2331,28 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
             from: `${segment.departure.code} (${segment.departure.city})`,
             to: `${segment.arrival.code} (${segment.arrival.city})`,
             price: segment.price,
-            passengerSeats: segment.passengerSeats.length,
           }))
         );
         console.log(
-          "Passenger Details:",
+          "🪑 Seat Assignments Summary:",
+          bookingData.passengers.map((passenger, index) => ({
+            passengerIndex: index,
+            name: `${passenger.firstName} ${passenger.lastName}`,
+            seatAssignmentsCount: passenger.seatAssignments.length,
+            seats: passenger.seatAssignments.map((assignment) => ({
+              segmentOrder: assignment.segmentOrder,
+              seatId: assignment.seatId,
+              seatType: assignment.seatType,
+            })),
+          }))
+        );
+        console.log(
+          "Passenger Details (NEW API FORMAT):",
           bookingData.passengers.map((p) => ({
             name: `${p.firstName} ${p.lastName}`,
             type: p.type,
             passport: p.passportNumber,
-            seatId: p.seatId,
+            seatAssignments: p.seatAssignments,
             baggage: p.baggagePackage,
           }))
         );
@@ -1218,10 +2368,13 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
         );
       }
 
-      const result = await bookingApi.createBooking(bookingData);
+      // Debug: Log booking data being sent to backend
+      console.log("=== BOOKING DATA SENT TO BACKEND ===");
+      console.log("Payment Method:", currentPaymentMethod);
+      console.log("Pay Later:", payLater);
+      console.log("Full Booking Data:", JSON.stringify(bookingData, null, 2));
 
-      // Debug: Log API response structure
-      console.log("Booking API Response:" + result.data);
+      const result = await bookingApi.createBooking(bookingData);
 
       if (result.success) {
         const bookingResponse = result.data;
@@ -1230,24 +2383,16 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
         const approvalUrl = bookingResponse.payment?.paypalApprovalUrl;
         const method = result.data?.payment?.paymentMethod;
 
+        // Clear localStorage after successful booking
+        localStorage.removeItem("selectedFlight");
+        localStorage.removeItem("extrasData");
+        localStorage.removeItem("searchCriteria");
+
+        // Store booking confirmation (simplified)
         localStorage.setItem(
           "bookingConfirmation",
           JSON.stringify({
-            // New API Response Data
-            bookingId: bookingResponse.bookingId,
-            bookingCode: bookingResponse.bookingCode,
-            userEmail: bookingResponse.userEmail,
-            bookingDate: bookingResponse.bookingDate,
-            totalAmount: bookingResponse.totalAmount,
-            status: bookingResponse.status,
-            passengers: bookingResponse.passengers || [],
-            flightSegments: bookingResponse.flightSegments || [],
-            payment: bookingResponse.payment,
-            createdAt: bookingResponse.createdAt,
-            updatedAt: bookingResponse.updatedAt,
-            baggage: bookingResponse.baggage,
-            dealCode: bookingResponse.dealCode,
-            // Flight type information
+            ...bookingResponse,
             flightType:
               flight?.type ||
               (isMultiCity
@@ -1255,56 +2400,43 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
                 : isRoundTrip
                 ? "ROUND_TRIP"
                 : "ONE_WAY"),
-            isMultiCity: isMultiCity,
-            isRoundTrip: isRoundTrip,
-            // Original data for backward compatibility
+            isMultiCity,
+            isRoundTrip,
             flight,
             fare,
             formData,
             extrasData: { ...extrasData, selectedSeats: finalSelectedSeats },
-            reference: bookingCode, // Use bookingCode as reference
-            paymentMethod:
-              bookingResponse.payment?.paymentMethod ||
-              paymentMethod ||
-              "PAYPAL",
-            paymentStatus:
-              bookingResponse.payment?.status || bookingResponse.status,
-            bookingStatus: bookingResponse.status,
             assignedSeats: finalSelectedSeats,
-            // Deal information
             appliedDeal: dealApplied
               ? {
                   code: dealCode,
                   discount: dealDiscount,
-                  originalAmount: totalAmount,
+                  originalAmount: currentTotalAmount,
                   finalAmount: finalAmount,
                 }
               : null,
-            // Ancillary services information
-            selectedAncillaryServices:
-              extrasData?.selectedAncillaryServices || {},
-            availableAncillaryServices:
-              extrasData?.availableAncillaryServices || [],
           })
         );
 
-        if (method === "PAYPAL") {
+        // Handle different payment flows
+        if (payLater) {
+          toast.success(
+            `🎉 Đặt chỗ thành công! Mã đặt chỗ: ${bookingCode}. Bạn có 1 giờ để hoàn tất thanh toán.`
+          );
+          navigate("/confirm-booking");
+        } else if (method === "PAYPAL") {
           if (approvalUrl) {
             toast.success(
-              "Bạn sẽ được chuyển hướng sang trang thanh toán Paypal."
+              "Bạn sẽ được chuyển hướng sang trang thanh toán PayPal."
             );
             window.location.href = approvalUrl;
-            return;
           } else {
-            console.error("Missing PayPal approval URL.");
+            toast.error("Không thể tạo liên kết thanh toán PayPal");
           }
         } else {
           toast.success("Bạn sẽ được chuyển hướng sang trang QR thanh toán.");
           navigate("/qr-pay", {
-            state: {
-              approvalUrl,
-              bookingCode,
-            },
+            state: { approvalUrl, bookingCode },
           });
         }
       } else {
@@ -1324,7 +2456,7 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
     seatSelection: extrasData?.seatTotal || 0,
     extraBaggage: extrasData?.baggageTotal || 0,
     services: extrasData?.servicesTotal || 0,
-    total: totalAmount,
+    total: currentTotalAmount,
   };
 
   // Optimized payment handler
@@ -1341,19 +2473,25 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
   };
 
   return (
-    <div className="max-w-7xl mx-auto py-8">
-      <h2 className="text-2xl font-bold mb-4">Xem Lại & Thanh Toán</h2>
-      <p className="text-gray-600 mb-6 dark:text-gray-300">
-        Vui lòng xem lại thông tin đặt vé và hoàn tất thanh toán
-      </p>
+    <div className="max-w-7xl mx-auto py-4 px-4 sm:py-8">
+      <div className="mb-6">
+        <h2 className="text-xl sm:text-2xl font-bold mb-2">
+          Xem Lại & Thanh Toán
+        </h2>
+        <p className="text-gray-600 text-sm sm:text-base dark:text-gray-300">
+          Vui lòng xem lại thông tin đặt vé và hoàn tất thanh toán
+        </p>
+      </div>
 
-      {/* Booking Summary Info */}
-      <div className="mb-6 p-4 bg-blue-50 rounded-lg">
-        <h3 className="font-semibold text-blue-800 mb-2">📋 Tóm tắt đặt vé</h3>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-          <div>
-            <span className="text-gray-600">Chuyến bay:</span>
-            <p className="font-medium">
+      {/* Booking Summary Info - Responsive Grid */}
+      <div className="mb-6 p-3 sm:p-4 bg-blue-50 rounded-lg">
+        <h3 className="font-semibold text-blue-800 mb-3 text-sm sm:text-base">
+          📋 Tóm tắt đặt vé
+        </h3>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 text-xs sm:text-sm">
+          <div className="space-y-1">
+            <span className="text-gray-600 block">Chuyến bay:</span>
+            <p className="font-medium text-gray-900 break-words">
               {flight?.type === "MULTI_CITY"
                 ? flight?.flightNumber ||
                   `Multi-City (${flight?.legs?.length || 0} chặng)`
@@ -1362,9 +2500,9 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
                 : flight?.flightNumber || "N/A"}
             </p>
           </div>
-          <div>
-            <span className="text-gray-600">Loại vé:</span>
-            <p className="font-medium">
+          <div className="space-y-1">
+            <span className="text-gray-600 block">Loại vé:</span>
+            <p className="font-medium text-gray-900">
               {flight?.type === "MULTI_CITY"
                 ? `Đa thành phố (${flight?.legs?.length || 0} chặng)`
                 : flight?.isRoundTrip || flight?.type === "ROUND_TRIP"
@@ -1372,13 +2510,15 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
                 : "Một chiều"}
             </p>
           </div>
-          <div>
-            <span className="text-gray-600">Hành khách:</span>
-            <p className="font-medium">{formData.passengers.length} người</p>
+          <div className="space-y-1">
+            <span className="text-gray-600 block">Hành khách:</span>
+            <p className="font-medium text-gray-900">
+              {formData.passengers.length} người
+            </p>
           </div>
-          <div>
-            <span className="text-gray-600">Ghế đã chọn:</span>
-            <p className="font-medium">
+          <div className="space-y-1">
+            <span className="text-gray-600 block">Ghế đã chọn:</span>
+            <p className="font-medium text-gray-900">
               {(() => {
                 const selectedSeatsCount =
                   Object.keys(extrasData?.selectedSeats || {}).length +
@@ -1390,25 +2530,23 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
                     : flight?.isRoundTrip || flight?.type === "ROUND_TRIP"
                     ? 2
                     : 1);
-                return (
-                  <>
-                    {selectedSeatsCount}/{totalSeatsNeeded}
-                  </>
-                );
+                return `${selectedSeatsCount}/${totalSeatsNeeded}`;
               })()}
             </p>
           </div>
         </div>
       </div>
 
-      <div className="flex flex-col md:flex-row gap-6">
+      <div className="flex flex-col xl:flex-row gap-4 sm:gap-6">
         {/* Left Section: Flight and Passenger Details */}
-        <div className="w-full md:w-1/2 space-y-6">
+        <div className="w-full xl:w-2/3 space-y-4 sm:space-y-6">
           <Card>
-            <CardHeader>
-              <CardTitle>Chi Tiết Chuyến Bay</CardTitle>
+            <CardHeader className="pb-3 sm:pb-6">
+              <CardTitle className="text-lg sm:text-xl">
+                Chi Tiết Chuyến Bay
+              </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-3 sm:space-y-4 text-sm sm:text-base">
               {/* Multi-City Flight */}
               {flight?.type === "MULTI_CITY" && flight?.legs ? (
                 <div className="space-y-4">
@@ -1726,21 +2864,67 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
                   </h5>
                   {/* Ghế đã chọn thủ công */}
                   {Object.entries(extrasData?.selectedSeats || {}).map(
-                    ([passengerKey, seatNumber]) => {
+                    ([passengerKey, seatInfo]) => {
                       const passengerIndex =
                         parseInt(passengerKey.replace("passenger", "")) - 1;
                       const passenger = formData.passengers[passengerIndex];
+
+                      // Handle both new format (object) and old format (string)
+                      let seatNumber, seatPrice, seatType;
+
+                      if (typeof seatInfo === "object" && seatInfo.seatNumber) {
+                        // New format - seat info already stored with complete details
+                        seatNumber = seatInfo.seatNumber;
+                        seatPrice = seatInfo.priceVND || 0;
+                        seatType = seatInfo.seatType || "STANDARD";
+                      } else if (typeof seatInfo === "string") {
+                        // Old format - just seat number, need to get details from seatDetails or fallback
+                        seatNumber = seatInfo;
+                        const seatDetail =
+                          seatDetails[seatNumber] ||
+                          allAvailableSeats?.find(
+                            (seat) => seat.seatNumber === seatNumber
+                          );
+                        seatPrice = seatDetail?.priceVND || 0;
+                        seatType = seatDetail?.seatType || "STANDARD";
+                      }
+
+                      // Get seat type label
+                      const getSeatTypeLabel = (type) => {
+                        const labels = {
+                          STANDARD: "Tiêu chuẩn",
+                          EXTRA_LEGROOM: "Chỗ để chân rộng",
+                          EXIT_ROW: "Hàng thoát hiểm",
+                          FRONT_ROW: "Hàng đầu",
+                          ACCESSIBLE: "Khuyết tật",
+                        };
+                        return labels[type] || "Tiêu chuẩn";
+                      };
+
                       return (
                         <div
                           key={passengerKey}
-                          className="flex justify-between text-sm"
+                          className="flex justify-between text-sm border-b pb-2 mb-2"
                         >
-                          <span>
-                            {passenger?.firstName} {passenger?.lastName}:
-                          </span>
-                          <span className="text-blue-600 font-medium">
-                            {seatNumber}
-                          </span>
+                          <div>
+                            <span className="font-medium">
+                              {passenger?.firstName} {passenger?.lastName}:
+                            </span>
+                            <div className="text-xs text-gray-500 mt-1">
+                              Ghế {seatNumber} - {getSeatTypeLabel(seatType)}
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            {seatPrice > 0 ? (
+                              <div className="text-blue-600 font-medium">
+                                +{formatCurrencyVND(seatPrice)}
+                              </div>
+                            ) : (
+                              <div className="text-green-600 font-medium">
+                                Miễn phí
+                              </div>
+                            )}
+                          </div>
                         </div>
                       );
                     }
@@ -1748,27 +2932,72 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
 
                   {/* Ghế tự động gán */}
                   {Object.entries(autoAssignedSeats).map(
-                    ([passengerKey, seatNumber]) => {
+                    ([passengerKey, seatInfo]) => {
                       const passengerIndex =
                         parseInt(passengerKey.replace("passenger", "")) - 1;
                       const passenger = formData.passengers[passengerIndex];
+
+                      // Handle both new format (object) and old format (string)
+                      let seatNumber, seatPrice, seatType;
+
+                      if (typeof seatInfo === "object" && seatInfo.seatNumber) {
+                        // New format - seat info already stored with complete details
+                        seatNumber = seatInfo.seatNumber;
+                        seatPrice = seatInfo.priceVND || 0;
+                        seatType = seatInfo.seatType || "STANDARD";
+                      } else if (typeof seatInfo === "string") {
+                        // Old format - just seat number, need to get details from seatDetails or fallback
+                        seatNumber = seatInfo;
+                        const seatDetail =
+                          seatDetails[seatNumber] ||
+                          allAvailableSeats?.find(
+                            (seat) => seat.seatNumber === seatNumber
+                          );
+                        seatPrice = seatDetail?.priceVND || 0;
+                        seatType = seatDetail?.seatType || "STANDARD";
+                      }
+
+                      // Get seat type label
+                      const getSeatTypeLabel = (type) => {
+                        const labels = {
+                          STANDARD: "Tiêu chuẩn",
+                          EXTRA_LEGROOM: "Chỗ để chân rộng",
+                          EXIT_ROW: "Hàng thoát hiểm",
+                          FRONT_ROW: "Hàng đầu",
+                          ACCESSIBLE: "Khuyết tật",
+                        };
+                        return labels[type] || "Tiêu chuẩn";
+                      };
+
                       // Chỉ hiển thị nếu chưa có ghế thủ công
                       if (extrasData?.selectedSeats?.[passengerKey])
                         return null;
+
                       return (
                         <div
                           key={passengerKey}
-                          className="flex justify-between text-sm"
+                          className="flex justify-between text-sm border-b pb-2 mb-2 bg-gray-50 p-2 rounded"
                         >
-                          <span>
-                            {passenger?.firstName} {passenger?.lastName}:
-                          </span>
-                          <span className="text-green-600 font-medium">
-                            {seatNumber}{" "}
-                            <span className="text-xs text-gray-500">
-                              (tự động)
+                          <div>
+                            <span className="font-medium">
+                              {passenger?.firstName} {passenger?.lastName}:
                             </span>
-                          </span>
+                            <div className="text-xs text-gray-500 mt-1">
+                              Ghế {seatNumber} - {getSeatTypeLabel(seatType)}{" "}
+                              (tự động gán)
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            {seatPrice > 0 ? (
+                              <div className="text-orange-600 font-medium">
+                                +{formatCurrencyVND(seatPrice)}
+                              </div>
+                            ) : (
+                              <div className="text-green-600 font-medium">
+                                Miễn phí
+                              </div>
+                            )}
+                          </div>
                         </div>
                       );
                     }
@@ -1778,26 +3007,82 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
                   {(flight?.isRoundTrip || flight?.type === "ROUND_TRIP") &&
                     Object.keys(extrasData?.selectedReturnSeats || {}).length >
                       0 && (
-                      <div className="mt-2">
-                        <p className="text-sm text-gray-600 mb-1">Chiều về:</p>
+                      <div className="mt-4 pt-4 border-t">
+                        <p className="text-sm font-medium text-gray-700 mb-2">
+                          Chiều về:
+                        </p>
                         {Object.entries(extrasData.selectedReturnSeats).map(
-                          ([passengerKey, seatNumber]) => {
+                          ([passengerKey, seatInfo]) => {
                             const passengerIndex =
-                              parseInt(passengerKey.replace("passenger", "")) -
-                              1;
+                              parseInt(
+                                passengerKey
+                                  .replace("return_passenger", "")
+                                  .replace("passenger", "")
+                              ) - 1;
                             const passenger =
                               formData.passengers[passengerIndex];
+
+                            // Handle both new format (object) and old format (string)
+                            let seatNumber, seatPrice, seatType;
+
+                            if (
+                              typeof seatInfo === "object" &&
+                              seatInfo.seatNumber
+                            ) {
+                              // New format - seat info already stored with complete details
+                              seatNumber = seatInfo.seatNumber;
+                              seatPrice = seatInfo.priceVND || 0;
+                              seatType = seatInfo.seatType || "STANDARD";
+                            } else if (typeof seatInfo === "string") {
+                              // Old format - just seat number, need to get details from seatDetails or fallback
+                              seatNumber = seatInfo;
+                              const seatDetail =
+                                seatDetails[seatNumber] ||
+                                allAvailableSeats?.find(
+                                  (seat) => seat.seatNumber === seatNumber
+                                );
+                              seatPrice = seatDetail?.priceVND || 0;
+                              seatType = seatDetail?.seatType || "STANDARD";
+                            }
+
+                            // Get seat type label
+                            const getSeatTypeLabel = (type) => {
+                              const labels = {
+                                STANDARD: "Tiêu chuẩn",
+                                EXTRA_LEGROOM: "Chỗ để chân rộng",
+                                EXIT_ROW: "Hàng thoát hiểm",
+                                FRONT_ROW: "Hàng đầu",
+                                ACCESSIBLE: "Khuyết tật",
+                              };
+                              return labels[type] || "Tiêu chuẩn";
+                            };
+
                             return (
                               <div
                                 key={passengerKey}
-                                className="flex justify-between text-sm"
+                                className="flex justify-between text-sm border-b pb-2 mb-2"
                               >
-                                <span>
-                                  {passenger?.firstName} {passenger?.lastName}:
-                                </span>
-                                <span className="text-blue-600 font-medium">
-                                  {seatNumber}
-                                </span>
+                                <div>
+                                  <span className="font-medium">
+                                    {passenger?.firstName} {passenger?.lastName}
+                                    :
+                                  </span>
+                                  <div className="text-xs text-gray-500 mt-1">
+                                    Ghế {seatNumber} -{" "}
+                                    {getSeatTypeLabel(seatType)}
+                                  </div>
+                                </div>
+                                <div className="text-right">
+                                  {seatPrice > 0 ? (
+                                    <div className="text-blue-600 font-medium">
+                                      +{formatCurrencyVND(seatPrice)}
+                                    </div>
+                                  ) : (
+                                    <div className="text-green-600 font-medium">
+                                      Miễn phí
+                                    </div>
+                                  )}
+                                </div>
                               </div>
                             );
                           }
@@ -1875,30 +3160,54 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
                           const passengerName = service.passengerId
                             ? `${
                                 formData.passengers[service.passengerId - 1]
-                                  ?.firstName
+                                  ?.firstName || ""
                               } ${
                                 formData.passengers[service.passengerId - 1]
-                                  ?.lastName
-                              }`
+                                  ?.lastName || ""
+                              }`.trim()
                             : "Toàn booking";
+
+                          const totalPrice =
+                            (serviceInfo?.price || 0) * (service.quantity || 1);
 
                           return (
                             <div
                               key={index}
-                              className="flex justify-between text-sm"
+                              className="mb-2 p-2 bg-purple-50 rounded-md"
                             >
-                              <div>
-                                <span>
-                                  {serviceInfo?.serviceName ||
-                                    `Dịch vụ ${service.serviceId}`}
-                                </span>
-                                <span className="text-gray-500 ml-2">
-                                  ({passengerName})
-                                </span>
+                              <div className="flex justify-between items-start">
+                                <div className="flex-1">
+                                  <div className="font-medium text-gray-800">
+                                    {serviceInfo?.serviceName ||
+                                      `Dịch vụ ${service.serviceId}`}
+                                  </div>
+                                  <div className="text-sm text-gray-600">
+                                    Hành khách: {passengerName}
+                                  </div>
+                                  <div className="text-sm text-gray-600">
+                                    Số lượng: {service.quantity || 1}
+                                  </div>
+                                  {service.notes && (
+                                    <div className="text-sm text-gray-600 italic">
+                                      Ghi chú: {service.notes}
+                                    </div>
+                                  )}
+                                </div>
+                                <div className="text-right">
+                                  <div className="text-purple-600 font-medium">
+                                    {formatCurrencyVND(totalPrice)}
+                                  </div>
+                                  {(service.quantity || 1) > 1 && (
+                                    <div className="text-xs text-gray-500">
+                                      (
+                                      {formatCurrencyVND(
+                                        serviceInfo?.price || 0
+                                      )}{" "}
+                                      × {service.quantity || 1})
+                                    </div>
+                                  )}
+                                </div>
                               </div>
-                              <span className="text-purple-600 font-medium">
-                                {formatCurrencyVND(serviceInfo?.price || 0)}
-                              </span>
                             </div>
                           );
                         }
@@ -1977,14 +3286,66 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
                       )
                     </span>
                     <div className="text-right">
-                      <span className="text-gray-500 text-xs block">
-                        Ghế:{" "}
-                        {extrasData?.selectedSeats?.[`passenger${index + 1}`] ||
-                          autoAssignedSeats?.[`passenger${index + 1}`] ||
-                          "Tự động"}
-                      </span>
+                      <div className="space-y-1">
+                        {/* Outbound Seat */}
+                        <span className="text-gray-500 text-xs block">
+                          Ghế đi:{" "}
+                          {(() => {
+                            const selectedSeat =
+                              extrasData?.selectedSeats?.[
+                                `passenger${index + 1}`
+                              ];
+                            const autoSeat =
+                              autoAssignedSeats?.[`passenger${index + 1}`];
+
+                            if (selectedSeat) {
+                              return typeof selectedSeat === "object"
+                                ? selectedSeat.seatNumber
+                                : selectedSeat;
+                            }
+                            if (autoSeat) {
+                              return typeof autoSeat === "object"
+                                ? autoSeat.seatNumber
+                                : autoSeat;
+                            }
+                            return "Tự động";
+                          })()}
+                        </span>
+
+                        {/* Return Seat for Round Trip */}
+                        {(flight?.isRoundTrip ||
+                          flight?.type === "ROUND_TRIP") && (
+                          <span className="text-gray-500 text-xs block">
+                            Ghế về:{" "}
+                            {(() => {
+                              const selectedReturnSeat =
+                                extrasData?.selectedReturnSeats?.[
+                                  `return_passenger${index + 1}`
+                                ] ||
+                                extrasData?.selectedReturnSeats?.[
+                                  `passenger${index + 1}`
+                                ];
+
+                              if (selectedReturnSeat) {
+                                return typeof selectedReturnSeat === "object"
+                                  ? selectedReturnSeat.seatNumber
+                                  : selectedReturnSeat;
+                              }
+                              return "Tự động";
+                            })()}
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Aircraft and Seat Layout Info */}
                       {(extrasData?.selectedSeats?.[`passenger${index + 1}`] ||
-                        autoAssignedSeats?.[`passenger${index + 1}`]) && (
+                        autoAssignedSeats?.[`passenger${index + 1}`] ||
+                        extrasData?.selectedReturnSeats?.[
+                          `return_passenger${index + 1}`
+                        ] ||
+                        extrasData?.selectedReturnSeats?.[
+                          `passenger${index + 1}`
+                        ]) && (
                         <span className="text-xs text-blue-500">
                           {flight?.aircraft ||
                             flight?.outbound?.aircraft ||
@@ -2046,10 +3407,45 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
 
               {/* Passengers */}
               {flight?.isRoundTrip || flight?.type === "ROUND_TRIP" ? (
-                // Round-trip pricing from flight.totalPrice
-                <div className="flex justify-between text-sm mb-2">
-                  <span>{formData.passengers.length} hành khách (Khứ hồi)</span>
-                  <span>{formatCurrencyVND(flight.totalPrice || 0)}</span>
+                // Round-trip pricing - try to break down by segment if available
+                <div className="space-y-1 mb-2">
+                  {flight.outboundFlight && flight.returnFlight ? (
+                    // If we have separate flight data, show breakdown
+                    <>
+                      <div className="flex justify-between text-sm">
+                        <span>
+                          {formData.passengers.length} hành khách (Chiều đi)
+                        </span>
+                        <span>
+                          {formatCurrencyVND(
+                            flight.outboundFlight.totalPrice ||
+                              flight.totalPrice / 2 ||
+                              0
+                          )}
+                        </span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span>
+                          {formData.passengers.length} hành khách (Chiều về)
+                        </span>
+                        <span>
+                          {formatCurrencyVND(
+                            flight.returnFlight.totalPrice ||
+                              flight.totalPrice / 2 ||
+                              0
+                          )}
+                        </span>
+                      </div>
+                    </>
+                  ) : (
+                    // Fallback to total price
+                    <div className="flex justify-between text-sm">
+                      <span>
+                        {formData.passengers.length} hành khách (Khứ hồi)
+                      </span>
+                      <span>{formatCurrencyVND(flight.totalPrice || 0)}</span>
+                    </div>
+                  )}
                 </div>
               ) : (
                 // One-way pricing calculated per passenger
@@ -2084,7 +3480,14 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
                 Object.keys(extrasData.selectedSeats).length > 0 && (
                   <div className="flex justify-between text-sm mb-2">
                     <span>Chỗ ngồi</span>
-                    <span>{formatCurrencyVND(extrasData.seatTotal || 0)}</span>
+                    <span>
+                      {formatCurrencyVND(
+                        (extrasData.seatTotal || 0) +
+                          (flight?.isRoundTrip || flight?.type === "ROUND_TRIP"
+                            ? extrasData?.returnSeatTotal || 0
+                            : 0)
+                      )}
+                    </span>
                   </div>
                 )}
 
@@ -2113,24 +3516,154 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
                           extrasData.availableAncillaryServices?.find(
                             (s) => s.serviceId === service.serviceId
                           );
+                        const passengerName = service.passengerId
+                          ? `${
+                              formData.passengers[service.passengerId - 1]
+                                ?.firstName || ""
+                            } ${
+                              formData.passengers[service.passengerId - 1]
+                                ?.lastName || ""
+                            }`.trim()
+                          : "Toàn booking";
+
+                        const totalPrice =
+                          (serviceInfo?.price || 0) * (service.quantity || 1);
+
                         return (
-                          <div
-                            key={index}
-                            className="flex justify-between text-sm ml-4"
-                          >
-                            <span className="text-gray-600">
-                              {serviceInfo?.serviceName ||
-                                `Dịch vụ ${service.serviceId}`}
-                            </span>
-                            <span>
-                              {formatCurrencyVND(serviceInfo?.price || 0)}
-                            </span>
+                          <div key={index} className="ml-4 space-y-1">
+                            <div className="flex justify-between text-sm">
+                              <span className="text-gray-600">
+                                {serviceInfo?.serviceName ||
+                                  `Dịch vụ ${service.serviceId}`}
+                                {service.quantity > 1 &&
+                                  ` (x${service.quantity})`}
+                              </span>
+                              <span className="font-medium">
+                                {formatCurrencyVND(totalPrice)}
+                              </span>
+                            </div>
+                            <div className="text-xs text-gray-500 ml-2">
+                              {passengerName}
+                              {service.notes && ` - ${service.notes}`}
+                            </div>
                           </div>
                         );
                       }
                     )}
                   </div>
                 )}
+
+              <Separator className="my-4" />
+
+              {/* Seat Charges */}
+              {(extrasData?.seatTotal || 0) +
+                (flight?.isRoundTrip || flight?.type === "ROUND_TRIP"
+                  ? extrasData?.returnSeatTotal || 0
+                  : 0) >
+                0 && (
+                <div className="space-y-1 mb-2">
+                  <span className="text-sm font-medium">
+                    💺 Phụ phí ghế ngồi:
+                  </span>
+                  {/* Outbound seats */}
+                  {Object.keys(extrasData?.selectedSeats || {}).length > 0 && (
+                    <div className="ml-4 text-sm text-gray-600">
+                      Chiều đi:{" "}
+                      {formatCurrencyVND(
+                        Object.entries(extrasData.selectedSeats).reduce(
+                          (total, [passengerKey, seatInfo]) => {
+                            // Handle both new format (object) and old format (string)
+                            if (
+                              typeof seatInfo === "object" &&
+                              seatInfo.priceVND !== undefined
+                            ) {
+                              return total + (seatInfo.priceVND || 0);
+                            } else if (typeof seatInfo === "string") {
+                              const seatDetail =
+                                seatDetails[seatInfo] ||
+                                allAvailableSeats?.find(
+                                  (seat) => seat.seatNumber === seatInfo
+                                );
+                              return total + (seatDetail?.priceVND || 0);
+                            }
+                            return total;
+                          },
+                          0
+                        )
+                      )}
+                    </div>
+                  )}
+                  {/* Return seats for round-trip */}
+                  {(flight?.isRoundTrip || flight?.type === "ROUND_TRIP") &&
+                    Object.keys(extrasData?.selectedReturnSeats || {}).length >
+                      0 && (
+                      <div className="ml-4 text-sm text-gray-600">
+                        Chiều về:{" "}
+                        {formatCurrencyVND(
+                          Object.entries(extrasData.selectedReturnSeats).reduce(
+                            (total, [passengerKey, seatInfo]) => {
+                              // Handle both new format (object) and old format (string)
+                              if (
+                                typeof seatInfo === "object" &&
+                                seatInfo.priceVND !== undefined
+                              ) {
+                                return total + (seatInfo.priceVND || 0);
+                              } else if (typeof seatInfo === "string") {
+                                const seatDetail =
+                                  seatDetails[seatInfo] ||
+                                  allAvailableSeats?.find(
+                                    (seat) => seat.seatNumber === seatInfo
+                                  );
+                                return total + (seatDetail?.priceVND || 0);
+                              }
+                              return total;
+                            },
+                            0
+                          )
+                        )}
+                      </div>
+                    )}
+                  {/* Auto-assigned seats */}
+                  {Object.keys(autoAssignedSeats).length > 0 && (
+                    <div className="ml-4 text-sm text-gray-600">
+                      Ghế tự động:{" "}
+                      {formatCurrencyVND(
+                        Object.entries(autoAssignedSeats).reduce(
+                          (total, [passengerKey, seatInfo]) => {
+                            // Handle both new format (object) and old format (string)
+                            if (
+                              typeof seatInfo === "object" &&
+                              seatInfo.priceVND !== undefined
+                            ) {
+                              return total + (seatInfo.priceVND || 0);
+                            } else if (typeof seatInfo === "string") {
+                              const seatDetail =
+                                seatDetails[seatInfo] ||
+                                allAvailableSeats?.find(
+                                  (seat) => seat.seatNumber === seatInfo
+                                );
+                              return total + (seatDetail?.priceVND || 0);
+                            }
+                            return total;
+                          },
+                          0
+                        )
+                      )}
+                    </div>
+                  )}
+                  <div className="flex justify-between text-sm ml-4 font-medium border-t pt-1 mt-1">
+                    <span>Tổng phụ phí ghế:</span>
+                    <span>
+                      {formatCurrencyVND(
+                        (extrasData?.seatTotal || 0) +
+                          (flight?.isRoundTrip || flight?.type === "ROUND_TRIP"
+                            ? extrasData?.returnSeatTotal || 0
+                            : 0)
+                      )}
+                    </span>
+                  </div>
+                </div>
+              )}
 
               <Separator className="my-4" />
 
@@ -2167,11 +3700,35 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
                   <p className="text-red-500 text-sm">{dealError}</p>
                 )}
 
-                {dealApplied && (
+                {dealApplied && appliedDealInfo && (
                   <div className="bg-green-50 p-3 rounded-lg border border-green-200">
-                    <div className="flex justify-between text-sm text-green-800">
+                    <div className="flex justify-between text-sm text-green-800 mb-2">
                       <span>✓ Mã giảm giá "{dealCode}" đã áp dụng</span>
-                      <span>-{formatCurrencyVND(dealDiscount)}</span>
+                      <span className="font-bold">
+                        -{formatCurrencyVND(dealDiscount)}
+                      </span>
+                    </div>
+                    <div className="text-xs text-gray-600 space-y-1">
+                      <p>
+                        <strong>{appliedDealInfo.title}</strong>
+                      </p>
+                      <p>{appliedDealInfo.description}</p>
+                      <div className="flex justify-between">
+                        <span>Giảm {appliedDealInfo.discountPercentage}%</span>
+                        {appliedDealInfo.maxDiscountAmount && (
+                          <span>
+                            Tối đa{" "}
+                            {formatCurrencyVND(
+                              appliedDealInfo.maxDiscountAmount
+                            )}
+                          </span>
+                        )}
+                      </div>
+                      {appliedDealInfo.remainingUsage && (
+                        <p className="text-orange-600">
+                          Còn lại {appliedDealInfo.remainingUsage} lượt sử dụng
+                        </p>
+                      )}
                     </div>
                   </div>
                 )}
@@ -2182,7 +3739,7 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
               {dealApplied && (
                 <div className="flex justify-between text-sm mb-2">
                   <span>Tạm tính</span>
-                  <span>{formatCurrencyVND(totalAmount)}</span>
+                  <span>{formatCurrencyVND(currentTotalAmount)}</span>
                 </div>
               )}
 
@@ -2204,53 +3761,57 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
         </div>
 
         {/* Right Section: Payment Method */}
-        <div className="w-full md:w-1/2 space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Phương Thức Thanh Toán</CardTitle>
+        <div className="w-full xl:w-1/3 space-y-4 sm:space-y-6">
+          <Card className="sticky top-4">
+            <CardHeader className="pb-3 sm:pb-6">
+              <CardTitle className="text-lg sm:text-xl">
+                Phương Thức Thanh Toán
+              </CardTitle>
             </CardHeader>
-            <CardContent>
-              {/* Payment Method Selection */}
-              <div className="space-y-4">
-                <div className="flex items-center space-x-2 mb-4">
-                  <RadioGroup
-                    value={paymentMethod}
-                    onValueChange={setPaymentMethod}
-                    className="flex flex-col space-y-2"
-                  >
-                    <div className="flex items-center space-x-2 p-3 border rounded-md hover:border-blue-300">
-                      <RadioGroupItem value="BANK_TRANSFER" id="qr" />
-                      <Label htmlFor="qr" className="flex-1 cursor-pointer">
-                        <div className="flex items-center space-x-2">
-                          <Smartphone className="h-4 w-4" />
-                          <span>QR Code (Chuyển khoản ngân hàng)</span>
-                        </div>
-                      </Label>
-                    </div>
-                    <div className="flex items-center space-x-2 p-3 border rounded-md hover:border-blue-300">
-                      <RadioGroupItem value="PAYPAL" id="paypal" />
-                      <Label htmlFor="paypal" className="flex-1 cursor-pointer">
-                        <div className="flex items-center space-x-2">
-                          <Wallet className="h-4 w-4" />
-                          <span>PayPal</span>
-                        </div>
-                      </Label>
-                    </div>
-                  </RadioGroup>
-                </div>
+            <CardContent className="space-y-4">
+              {/* Payment Method Selection - Responsive */}
+              <div className="space-y-3 sm:space-y-4">
+                <RadioGroup
+                  value={paymentMethod}
+                  onValueChange={setPaymentMethod}
+                  className="space-y-2"
+                >
+                  <div className="flex items-center space-x-3 p-3 border rounded-lg hover:border-blue-300 hover:bg-blue-50 transition-colors">
+                    <RadioGroupItem value="BANK_TRANSFER" id="qr" />
+                    <Label htmlFor="qr" className="flex-1 cursor-pointer">
+                      <div className="flex items-center space-x-2">
+                        <Smartphone className="h-4 w-4 text-blue-600" />
+                        <span className="text-sm sm:text-base font-medium">
+                          QR Code (Chuyển khoản ngân hàng)
+                        </span>
+                      </div>
+                    </Label>
+                  </div>
+                  <div className="flex items-center space-x-3 p-3 border rounded-lg hover:border-blue-300 hover:bg-blue-50 transition-colors">
+                    <RadioGroupItem value="PAYPAL" id="paypal" />
+                    <Label htmlFor="paypal" className="flex-1 cursor-pointer">
+                      <div className="flex items-center space-x-2">
+                        <Wallet className="h-4 w-4 text-blue-600" />
+                        <span className="text-sm sm:text-base font-medium">
+                          PayPal
+                        </span>
+                      </div>
+                    </Label>
+                  </div>
+                </RadioGroup>
 
                 {/* Content based on selected method */}
                 {paymentMethod === "BANK_TRANSFER" && (
-                  <div className="p-4 bg-blue-50 rounded-lg">
-                    <p className="text-gray-600 text-center">
+                  <div className="p-3 sm:p-4 bg-blue-50 rounded-lg">
+                    <p className="text-gray-700 text-center text-sm sm:text-base">
                       Quét mã QR để hoàn tất thanh toán qua ứng dụng ngân hàng.
                     </p>
                   </div>
                 )}
 
                 {paymentMethod === "PAYPAL" && (
-                  <div className="p-4 bg-green-50 rounded-lg">
-                    <p className="text-gray-600 text-center">
+                  <div className="p-3 sm:p-4 bg-green-50 rounded-lg">
+                    <p className="text-gray-700 text-center text-sm sm:text-base">
                       Bạn sẽ được chuyển hướng đến PayPal để hoàn tất thanh toán
                       an toàn.
                     </p>
@@ -2258,23 +3819,35 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
                 )}
               </div>
 
-              <div className="mt-4 p-2 bg-green-50 text-green-700 rounded-md flex items-center">
-                <span className="mr-2">🛡️</span>
-                <span>
-                  Thanh toán bảo mật: Thông tin thanh toán của bạn được mã hóa
-                  và bảo mật
+              {/* Security Notice */}
+              <div className="p-3 bg-green-50 text-green-700 rounded-lg flex items-start">
+                <span className="mr-2 text-lg">🛡️</span>
+                <span className="text-sm sm:text-base">
+                  <strong>Thanh toán bảo mật:</strong> Thông tin thanh toán của
+                  bạn được mã hóa và bảo mật
                 </span>
               </div>
 
-              <div className="flex items-center space-x-2 mt-4">
+              {/* Terms Agreement */}
+              <div className="flex items-start space-x-2">
                 <Checkbox
                   id="terms"
                   checked={agreeTerms}
                   onCheckedChange={setAgreeTerms}
+                  className="mt-1"
                 />
-                <Label htmlFor="terms">
-                  Tôi đồng ý với Điều khoản và Điều kiện cũng như Quy định giá
-                  vé
+                <Label
+                  htmlFor="terms"
+                  className="text-sm sm:text-base leading-relaxed"
+                >
+                  Tôi đồng ý với{" "}
+                  <span className="text-blue-600 underline cursor-pointer">
+                    Điều khoản và Điều kiện
+                  </span>{" "}
+                  cũng như{" "}
+                  <span className="text-blue-600 underline cursor-pointer">
+                    Quy định giá vé
+                  </span>
                 </Label>
               </div>
 
@@ -2298,8 +3871,8 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
                         {
                           flightId: flight.id,
                           classId: fare?.travelClass?.classId,
-                          totalAmount: totalAmount,
-                          totalAmountUSD: totalAmount.toFixed(2),
+                          totalAmount: currentTotalAmount,
+                          totalAmountUSD: currentTotalAmount.toFixed(2),
                           passengers: formData.passengers.length,
                           selectedSeats: Object.keys(
                             extrasData?.selectedSeats || {}
@@ -2329,32 +3902,39 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
                 )}
               </div>
 
-              {/* Payment Buttons */}
-              <div className="space-y-3 mt-4">
+              {/* Payment Buttons - Responsive */}
+              <div className="space-y-3">
                 <Button
-                  className="w-full bg-blue-600 text-white"
+                  className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 text-sm sm:text-base font-semibold"
                   disabled={!agreeTerms || isProcessing}
                   onClick={(e) => handleSubmit(e, false)}
                 >
-                  {isProcessing
-                    ? "Đang xử lý..."
-                    : `Thanh toán ngay - ${formatCurrencyVND(finalAmount)}`}
+                  {isProcessing ? (
+                    <div className="flex items-center justify-center">
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
+                      Đang xử lý...
+                    </div>
+                  ) : (
+                    <>💳 Thanh toán ngay - {formatCurrencyVND(finalAmount)}</>
+                  )}
                 </Button>
 
                 <Button
                   variant="outline"
-                  className="w-full border-orange-500 text-orange-600 hover:bg-orange-50"
+                  className="w-full border-2 border-orange-500 text-orange-600 hover:bg-orange-50 hover:border-orange-600 py-3 text-sm sm:text-base font-semibold"
                   disabled={!agreeTerms || isProcessing}
                   onClick={(e) => handleSubmit(e, true)}
                 >
                   <span className="mr-2">⏰</span>
-                  Thanh toán sau
+                  Thanh toán sau (1 giờ)
                 </Button>
 
-                <p className="text-xs text-gray-500 text-center">
-                  Thanh toán sau: Bạn có 1 giờ để hoàn tất thanh toán trước khi
-                  mã đặt chỗ sẽ tự động hủy trên hệ thống
-                </p>
+                <div className="bg-orange-50 p-3 rounded-lg border-l-4 border-orange-400">
+                  <p className="text-xs sm:text-sm text-orange-800">
+                    <strong>Lưu ý:</strong> Thanh toán sau sẽ giữ chỗ trong 1
+                    giờ. Sau thời gian này, mã đặt chỗ sẽ tự động hủy.
+                  </p>
+                </div>
               </div>
             </CardContent>
           </Card>

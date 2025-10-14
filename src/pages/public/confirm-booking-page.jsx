@@ -147,7 +147,22 @@ const BookingConfirmation = () => {
     ),
     passengers: bookingData.passengers || [],
     baggage: bookingData.baggage || [],
-    ancillaryServices: bookingData.selectedAncillaryServices
+    ancillaryServices: bookingData.ancillaryServices
+      ? bookingData.ancillaryServices.map((service) => ({
+          serviceName: service.serviceName || "Unknown Service",
+          serviceType: service.serviceType || "UNKNOWN",
+          serviceTypeDisplayName:
+            service.serviceTypeDisplayName || service.serviceType || "Dịch vụ",
+          price: service.unitPrice || service.totalPrice || 0,
+          totalPrice:
+            service.totalPrice || service.unitPrice * service.quantity || 0,
+          unitPrice: service.unitPrice || service.totalPrice || 0,
+          quantity: service.quantity || 1,
+          notes: service.notes || "",
+          passengerName: service.passengerName || null,
+          passengerId: service.passengerId || null,
+        }))
+      : bookingData.selectedAncillaryServices
       ? Object.values(bookingData.selectedAncillaryServices).map((service) => ({
           name:
             bookingData.availableAncillaryServices?.find(
@@ -160,12 +175,32 @@ const BookingConfirmation = () => {
           quantity: service.quantity || 1,
           notes: service.notes || "",
         }))
-      : bookingData.ancillaryServices || [],
+      : [],
     assignedSeats:
       bookingData.assignedSeats || bookingData.extrasData?.selectedSeats || {},
-    appliedDeal: bookingData.appliedDeal,
+    seatTypeDetails: bookingData.seatTypeDetails || [],
+    appliedDeal: bookingData.appliedDeal
+      ? {
+          code: bookingData.appliedDeal.code || bookingData.appliedDealCode,
+          name: bookingData.appliedDeal.code || bookingData.appliedDealCode,
+          discount:
+            bookingData.appliedDeal.discount || bookingData.discountAmount,
+          discountAmount:
+            bookingData.appliedDeal.discount || bookingData.discountAmount,
+          discountType: bookingData.discountPercentage ? "PERCENTAGE" : "FIXED",
+          discountValue:
+            bookingData.discountPercentage || bookingData.appliedDeal.discount,
+          originalAmount:
+            bookingData.appliedDeal.originalAmount || bookingData.totalAmount,
+          finalAmount:
+            bookingData.appliedDeal.finalAmount || bookingData.totalAmount,
+          description: `Giảm ${bookingData.discountPercentage || 0}%`,
+        }
+      : null,
     price: {
       subtotal:
+        bookingData.fare?.price ||
+        bookingData.total ||
         bookingData.flight?.totalPrice ||
         bookingData.totalAmount ||
         bookingData.totalPrice ||
@@ -175,17 +210,22 @@ const BookingConfirmation = () => {
         bookingData.totalAmount ||
         bookingData.totalPrice ||
         bookingData.price?.total ||
+        bookingData.appliedDeal?.finalAmount ||
         0,
     },
     payment: {
-      method: bookingData.payment?.paymentMethod || "N/A",
+      method:
+        bookingData.payment?.paymentMethod ||
+        bookingData.payment?.method ||
+        "N/A",
       status:
-        bookingData.payment?.paymentStatus ||
-        bookingData.paymentStatus ||
-        "PENDING",
-      transactionId: bookingData.payment?.reference || bookingData.bookingCode,
+        bookingData.payment?.status || bookingData.paymentStatus || "PENDING",
+      transactionId:
+        bookingData.payment?.transactionId ||
+        bookingData.payment?.reference ||
+        bookingData.bookingCode,
       amount: bookingData.payment?.amount || bookingData.totalAmount,
-      paidAt: bookingData.payment?.paymentDate,
+      paidAt: bookingData.payment?.paidAt || bookingData.payment?.paymentDate,
     },
   };
 
@@ -298,7 +338,7 @@ const BookingConfirmation = () => {
                               <p className="text-sm text-gray-600 dark:text-gray-400">
                                 {segment.departure.airport}
                               </p>
-                              
+
                               <p className="text-lg font-bold dark:text-gray-200 mt-2">
                                 {segment.departure.time}
                               </p>
@@ -335,7 +375,7 @@ const BookingConfirmation = () => {
                               <p className="text-sm text-gray-600 dark:text-gray-400">
                                 {segment.arrival.airport}
                               </p>
-                             
+
                               <p className="text-lg font-bold dark:text-gray-200 mt-2">
                                 {segment.arrival.time}
                               </p>
@@ -393,58 +433,373 @@ const BookingConfirmation = () => {
                 </CardContent>
               </Card>
 
-              {/* Assigned Seats */}
-              {Object.keys(bookingDetails.assignedSeats).length > 0 && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <CheckSquare className="w-5 h-5" />
-                      Ghế Đã Chọn
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-3">
-                      {Object.entries(bookingDetails.assignedSeats).map(
-                        ([flightId, seatsData]) => (
-                          <div
-                            key={flightId}
-                            className="border rounded-lg p-3 bg-gray-50 dark:bg-gray-800"
-                          >
-                            <h4 className="font-medium mb-2 dark:text-gray-200">
-                              Chuyến bay {flightId}:
+              {/* Selected Seats */}
+              {bookingDetails.seatTypeDetails &&
+                bookingDetails.seatTypeDetails.length > 0 && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <CheckSquare className="w-5 h-5" />
+                        Ghế Đã Chọn
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-4">
+                        {/* Group seats by flight segment (for round-trip) */}
+                        {(() => {
+                          // Group seat details by segment (0 = outbound, 1 = return)
+                          const groupedSeats =
+                            bookingDetails.seatTypeDetails.reduce(
+                              (acc, seatDetail) => {
+                                // For now, we'll assume all seats are outbound unless we have segment info
+                                // This can be enhanced when segment info is available in API
+                                const segmentKey =
+                                  seatDetail.segmentOrder === 1
+                                    ? "return"
+                                    : "outbound";
+                                if (!acc[segmentKey]) acc[segmentKey] = [];
+                                acc[segmentKey].push(seatDetail);
+                                return acc;
+                              },
+                              { outbound: [], return: [] }
+                            );
+
+                          return (
+                            <>
+                              {/* Outbound Seats */}
+                              {groupedSeats.outbound.length > 0 && (
+                                <div>
+                                  <h4 className="font-medium mb-3 text-blue-600 dark:text-blue-400">
+                                    Chuyến đi
+                                  </h4>
+                                  <div className="space-y-2">
+                                    {groupedSeats.outbound.map(
+                                      (seatDetail, index) => (
+                                        <div
+                                          key={`outbound-seat-${index}`}
+                                          className="flex justify-between items-center p-3 bg-gray-50 dark:bg-gray-800 rounded-lg"
+                                        >
+                                          <div className="flex-1">
+                                            <span className="font-medium dark:text-gray-200">
+                                              {seatDetail.passengerName ||
+                                                `Hành khách ${index + 1}`}
+                                            </span>
+                                            <div className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                                              <div className="flex items-center gap-2">
+                                                <span>
+                                                  Ghế:{" "}
+                                                  <strong>
+                                                    {seatDetail.seatNumber}
+                                                  </strong>
+                                                </span>
+                                                <span>•</span>
+                                                <span>
+                                                  {seatDetail.seatTypeDescription ||
+                                                    (() => {
+                                                      const seatTypeLabels = {
+                                                        STANDARD: "Tiêu chuẩn",
+                                                        EXTRA_LEGROOM:
+                                                          "Chỗ để chân rộng",
+                                                        EXIT_ROW:
+                                                          "Hàng thoát hiểm",
+                                                        FRONT_ROW: "Hàng đầu",
+                                                        ACCESSIBLE:
+                                                          "Khuyết tật",
+                                                      };
+                                                      return (
+                                                        seatTypeLabels[
+                                                          seatDetail.seatType
+                                                        ] || seatDetail.seatType
+                                                      );
+                                                    })()}
+                                                </span>
+                                              </div>
+                                            </div>
+                                          </div>
+                                          <div className="text-right">
+                                            {seatDetail.additionalPrice > 0 ? (
+                                              <div className="font-medium text-blue-600">
+                                                +
+                                                {formatCurrencyVND(
+                                                  seatDetail.additionalPrice
+                                                )}
+                                              </div>
+                                            ) : (
+                                              <div className="text-sm text-green-600">
+                                                Miễn phí
+                                              </div>
+                                            )}
+                                          </div>
+                                        </div>
+                                      )
+                                    )}
+                                  </div>
+                                </div>
+                              )}
+
+                              {/* Return Seats */}
+                              {groupedSeats.return.length > 0 && (
+                                <div>
+                                  <h4 className="font-medium mb-3 text-green-600 dark:text-green-400">
+                                    Chuyến về
+                                  </h4>
+                                  <div className="space-y-2">
+                                    {groupedSeats.return.map(
+                                      (seatDetail, index) => (
+                                        <div
+                                          key={`return-seat-${index}`}
+                                          className="flex justify-between items-center p-3 bg-gray-50 dark:bg-gray-800 rounded-lg"
+                                        >
+                                          <div className="flex-1">
+                                            <span className="font-medium dark:text-gray-200">
+                                              {seatDetail.passengerName ||
+                                                `Hành khách ${index + 1}`}
+                                            </span>
+                                            <div className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                                              <div className="flex items-center gap-2">
+                                                <span>
+                                                  Ghế:{" "}
+                                                  <strong>
+                                                    {seatDetail.seatNumber}
+                                                  </strong>
+                                                </span>
+                                                <span>•</span>
+                                                <span>
+                                                  {seatDetail.seatTypeDescription ||
+                                                    (() => {
+                                                      const seatTypeLabels = {
+                                                        STANDARD: "Tiêu chuẩn",
+                                                        EXTRA_LEGROOM:
+                                                          "Chỗ để chân rộng",
+                                                        EXIT_ROW:
+                                                          "Hàng thoát hiểm",
+                                                        FRONT_ROW: "Hàng đầu",
+                                                        ACCESSIBLE:
+                                                          "Khuyết tật",
+                                                      };
+                                                      return (
+                                                        seatTypeLabels[
+                                                          seatDetail.seatType
+                                                        ] || seatDetail.seatType
+                                                      );
+                                                    })()}
+                                                </span>
+                                              </div>
+                                            </div>
+                                          </div>
+                                          <div className="text-right">
+                                            {seatDetail.additionalPrice > 0 ? (
+                                              <div className="font-medium text-blue-600">
+                                                +
+                                                {formatCurrencyVND(
+                                                  seatDetail.additionalPrice
+                                                )}
+                                              </div>
+                                            ) : (
+                                              <div className="text-sm text-green-600">
+                                                Miễn phí
+                                              </div>
+                                            )}
+                                          </div>
+                                        </div>
+                                      )
+                                    )}
+                                  </div>
+                                </div>
+                              )}
+                            </>
+                          );
+                        })()}
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+
+              {/* Fallback: Show seats from extrasData if seatTypeDetails not available */}
+              {!bookingDetails.seatTypeDetails?.length &&
+                bookingData.extrasData &&
+                (Object.keys(bookingData.extrasData.selectedSeats || {})
+                  .length > 0 ||
+                  Object.keys(bookingData.extrasData.selectedReturnSeats || {})
+                    .length > 0) && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <CheckSquare className="w-5 h-5" />
+                        Ghế Đã Chọn
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-4">
+                        {/* Outbound Seats */}
+                        {Object.keys(bookingData.extrasData.selectedSeats || {})
+                          .length > 0 && (
+                          <div>
+                            <h4 className="font-medium mb-3 text-blue-600 dark:text-blue-400">
+                              Chuyến đi
                             </h4>
                             <div className="space-y-2">
-                              {Object.entries(seatsData).map(
-                                ([passengerId, seatInfo]) => (
+                              {Object.entries(
+                                bookingData.extrasData.selectedSeats
+                              ).map(([passengerId, seatInfo]) => {
+                                const passengerIndex =
+                                  parseInt(
+                                    passengerId.replace("passenger", "")
+                                  ) - 1;
+                                const passenger =
+                                  bookingDetails.passengers[passengerIndex];
+                                const passengerName = passenger
+                                  ? `${passenger.firstName} ${passenger.lastName}`
+                                  : `Hành khách ${passengerIndex + 1}`;
+
+                                return (
                                   <div
-                                    key={passengerId}
-                                    className="flex justify-between items-center p-2 bg-white dark:bg-gray-700 rounded"
+                                    key={`outbound-${passengerId}`}
+                                    className="flex justify-between items-center p-3 bg-gray-50 dark:bg-gray-800 rounded-lg"
                                   >
-                                    <span className="dark:text-gray-200">
-                                      Hành khách {passengerId}: Ghế{" "}
-                                      {seatInfo.seatNumber}
-                                    </span>
-                                    <div className="text-right">
-                                      <span className="text-sm text-gray-600 dark:text-gray-400">
-                                        {seatInfo.seatClass}
+                                    <div className="flex-1">
+                                      <span className="font-medium dark:text-gray-200">
+                                        {passengerName}
                                       </span>
-                                      {seatInfo.price > 0 && (
+                                      <div className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                                        <div className="flex items-center gap-2">
+                                          <span>
+                                            Ghế:{" "}
+                                            <strong>
+                                              {seatInfo.seatNumber}
+                                            </strong>
+                                          </span>
+                                          <span>•</span>
+                                          <span>
+                                            {(() => {
+                                              // Convert seatType to Vietnamese label
+                                              const seatTypeLabels = {
+                                                STANDARD: "Tiêu chuẩn",
+                                                EXTRA_LEGROOM:
+                                                  "Chỗ để chân rộng",
+                                                EXIT_ROW: "Hàng thoát hiểm",
+                                                FRONT_ROW: "Hàng đầu",
+                                                ACCESSIBLE: "Khuyết tật",
+                                              };
+                                              return (
+                                                seatTypeLabels[
+                                                  seatInfo.seatType
+                                                ] ||
+                                                seatInfo.seatType ||
+                                                "Tiêu chuẩn"
+                                              );
+                                            })()}
+                                          </span>
+                                        </div>
+                                      </div>
+                                    </div>
+                                    <div className="text-right">
+                                      {seatInfo.priceVND > 0 ? (
                                         <div className="font-medium text-blue-600">
-                                          {formatCurrencyVND(seatInfo.price)}
+                                          +
+                                          {formatCurrencyVND(seatInfo.priceVND)}
+                                        </div>
+                                      ) : (
+                                        <div className="text-sm text-green-600">
+                                          Miễn phí
                                         </div>
                                       )}
                                     </div>
                                   </div>
-                                )
-                              )}
+                                );
+                              })}
                             </div>
                           </div>
-                        )
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
+                        )}
+
+                        {/* Return Seats */}
+                        {bookingData.extrasData.isRoundTrip &&
+                          Object.keys(
+                            bookingData.extrasData.selectedReturnSeats || {}
+                          ).length > 0 && (
+                            <div>
+                              <h4 className="font-medium mb-3 text-green-600 dark:text-green-400">
+                                Chuyến về
+                              </h4>
+                              <div className="space-y-2">
+                                {Object.entries(
+                                  bookingData.extrasData.selectedReturnSeats
+                                ).map(([passengerId, seatInfo]) => {
+                                  const passengerIndex =
+                                    parseInt(
+                                      passengerId.replace("passenger", "")
+                                    ) - 1;
+                                  const passenger =
+                                    bookingDetails.passengers[passengerIndex];
+                                  const passengerName = passenger
+                                    ? `${passenger.firstName} ${passenger.lastName}`
+                                    : `Hành khách ${passengerIndex + 1}`;
+
+                                  return (
+                                    <div
+                                      key={`return-${passengerId}`}
+                                      className="flex justify-between items-center p-3 bg-gray-50 dark:bg-gray-800 rounded-lg"
+                                    >
+                                      <div className="flex-1">
+                                        <span className="font-medium dark:text-gray-200">
+                                          {passengerName}
+                                        </span>
+                                        <div className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                                          <div className="flex items-center gap-2">
+                                            <span>
+                                              Ghế:{" "}
+                                              <strong>
+                                                {seatInfo.seatNumber}
+                                              </strong>
+                                            </span>
+                                            <span>•</span>
+                                            <span>
+                                              {(() => {
+                                                // Convert seatType to Vietnamese label
+                                                const seatTypeLabels = {
+                                                  STANDARD: "Tiêu chuẩn",
+                                                  EXTRA_LEGROOM:
+                                                    "Chỗ để chân rộng",
+                                                  EXIT_ROW: "Hàng thoát hiểm",
+                                                  FRONT_ROW: "Hàng đầu",
+                                                  ACCESSIBLE: "Khuyết tật",
+                                                };
+                                                return (
+                                                  seatTypeLabels[
+                                                    seatInfo.seatType
+                                                  ] ||
+                                                  seatInfo.seatType ||
+                                                  "Tiêu chuẩn"
+                                                );
+                                              })()}
+                                            </span>
+                                          </div>
+                                        </div>
+                                      </div>
+                                      <div className="text-right">
+                                        {seatInfo.priceVND > 0 ? (
+                                          <div className="font-medium text-blue-600">
+                                            +
+                                            {formatCurrencyVND(
+                                              seatInfo.priceVND
+                                            )}
+                                          </div>
+                                        ) : (
+                                          <div className="text-sm text-green-600">
+                                            Miễn phí
+                                          </div>
+                                        )}
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
 
               {/* Baggage & Services */}
               <Card>
@@ -472,13 +827,16 @@ const BookingConfirmation = () => {
                                     : "Hành lý xách tay"}
                                 </p>
                                 <p className="text-sm text-gray-600 dark:text-gray-400">
-                                  Gói: {bag.purchasedPackage || bag.weight}
+                                  Gói:{" "}
+                                  {bag.purchasedPackage ||
+                                    bag.weight ||
+                                    bag.packageName}
                                 </p>
                               </div>
                               <div className="text-right">
                                 <p className="font-medium text-blue-600">
                                   {formatCurrencyVND(
-                                    bag.packagePrice || bag.price
+                                    bag.packagePrice || bag.price || 0
                                   )}
                                 </p>
                                 <p className="text-xs text-gray-500">
@@ -506,11 +864,17 @@ const BookingConfirmation = () => {
                               >
                                 <div className="flex-1">
                                   <p className="font-medium dark:text-gray-200">
-                                    {service.name}
+                                    {service.serviceName}
                                   </p>
                                   <p className="text-sm text-gray-600 dark:text-gray-400">
-                                    Số lượng: {service.quantity || 1}
+                                    {service.serviceTypeDisplayName} • Số lượng:{" "}
+                                    {service.quantity}
                                   </p>
+                                  {service.passengerName && (
+                                    <p className="text-sm text-blue-600 dark:text-blue-400">
+                                      Hành khách: {service.passengerName}
+                                    </p>
+                                  )}
                                   {service.notes && (
                                     <p className="text-xs text-gray-500">
                                       Ghi chú: {service.notes}
@@ -519,13 +883,11 @@ const BookingConfirmation = () => {
                                 </div>
                                 <div className="text-right">
                                   <p className="font-medium text-blue-600">
-                                    {formatCurrencyVND(
-                                      service.price * (service.quantity || 1)
-                                    )}
+                                    {formatCurrencyVND(service.totalPrice)}
                                   </p>
                                   {service.quantity > 1 && (
                                     <p className="text-xs text-gray-500">
-                                      {formatCurrencyVND(service.price)} x{" "}
+                                      {formatCurrencyVND(service.unitPrice)} x{" "}
                                       {service.quantity}
                                     </p>
                                   )}
@@ -564,14 +926,14 @@ const BookingConfirmation = () => {
                       <div className="flex justify-between items-center">
                         <span className="font-medium text-green-800 dark:text-green-300">
                           {bookingDetails.appliedDeal.name ||
-                            bookingDetails.appliedDeal.title}
+                            bookingDetails.appliedDeal.code}
                         </span>
                         <Badge variant="success">
                           {bookingDetails.appliedDeal.discountType ===
                           "PERCENTAGE"
                             ? `${bookingDetails.appliedDeal.discountValue}%`
                             : formatCurrencyVND(
-                                bookingDetails.appliedDeal.discountValue
+                                bookingDetails.appliedDeal.discount
                               )}
                         </Badge>
                       </div>
@@ -585,10 +947,18 @@ const BookingConfirmation = () => {
                         <span>
                           -
                           {formatCurrencyVND(
-                            bookingDetails.appliedDeal.discountAmount || 0
+                            bookingDetails.appliedDeal.discountAmount
                           )}
                         </span>
                       </div>
+                      {bookingDetails.appliedDeal.originalAmount && (
+                        <div className="text-xs text-green-600 dark:text-green-500">
+                          Giá gốc:{" "}
+                          {formatCurrencyVND(
+                            bookingDetails.appliedDeal.originalAmount
+                          )}
+                        </div>
+                      )}
                     </div>
                   </CardContent>
                 </Card>
@@ -607,68 +977,68 @@ const BookingConfirmation = () => {
                       </span>
                     </div>
 
-                    {/* Seat charges */}
-                    {Object.keys(bookingDetails.assignedSeats).length > 0 &&
-                      Object.entries(bookingDetails.assignedSeats).map(
-                        ([flightId, seatsData]) =>
-                          Object.entries(seatsData).map(
-                            ([passengerId, seatInfo]) =>
-                              seatInfo.price > 0 && (
-                                <div
-                                  key={`${flightId}-${passengerId}`}
-                                  className="flex justify-between text-sm"
-                                >
-                                  <span>Ghế {seatInfo.seatNumber}</span>
-                                  <span>
-                                    {formatCurrencyVND(seatInfo.price)}
-                                  </span>
-                                </div>
-                              )
-                          )
-                      )}
-
-                    {/* Baggage charges */}
-                    {bookingDetails.baggage.map(
-                      (bag, index) =>
-                        bag.packagePrice > 0 && (
-                          <div
-                            key={index}
-                            className="flex justify-between text-sm"
-                          >
-                            <span>Hành lý {bag.purchasedPackage}</span>
-                            <span>{formatCurrencyVND(bag.packagePrice)}</span>
-                          </div>
-                        )
-                    )}
-
-                    {/* Service charges */}
-                    {bookingDetails.ancillaryServices.map((service, index) => (
-                      <div key={index} className="flex justify-between text-sm">
-                        <span>
-                          {service.name}{" "}
-                          {service.quantity > 1 && `(x${service.quantity})`}
-                        </span>
+                    {/* Ancillary Services charges */}
+                    {bookingDetails.ancillaryServices.length > 0 && (
+                      <div className="flex justify-between text-sm">
+                        <span>Dịch vụ bổ sung</span>
                         <span>
                           {formatCurrencyVND(
-                            service.price * (service.quantity || 1)
+                            bookingDetails.ancillaryServices.reduce(
+                              (total, service) => total + service.totalPrice,
+                              0
+                            )
                           )}
                         </span>
                       </div>
-                    ))}
+                    )}
+
+                    {/* Baggage charges */}
+                    {bookingDetails.baggage.length > 0 && (
+                      <div className="flex justify-between text-sm">
+                        <span>Hành lý</span>
+                        <span>
+                          {formatCurrencyVND(
+                            bookingData.baggageTotal ||
+                              bookingDetails.baggage.reduce(
+                                (total, bag) =>
+                                  total + (bag.packagePrice || bag.price || 0),
+                                0
+                              ) ||
+                              0
+                          )}
+                        </span>
+                      </div>
+                    )}
+
+                    {/* Seat charges */}
+                    {(bookingData.seatTotal > 0 ||
+                      bookingData.seatTypeAmount > 0) && (
+                      <div className="flex justify-between text-sm">
+                        <span>Phụ phí ghế</span>
+                        <span>
+                          {formatCurrencyVND(
+                            bookingData.seatTotal ||
+                              bookingData.seatTypeAmount ||
+                              0
+                          )}
+                        </span>
+                      </div>
+                    )}
 
                     {bookingDetails.appliedDeal && (
                       <div className="flex justify-between text-green-600">
                         <span>
-                          Giảm giá ({bookingDetails.appliedDeal.name})
+                          Giảm giá ({bookingDetails.appliedDeal.code})
                         </span>
                         <span>
                           -
                           {formatCurrencyVND(
-                            bookingDetails.appliedDeal.discountAmount || 0
+                            bookingDetails.appliedDeal.discountAmount
                           )}
                         </span>
                       </div>
                     )}
+
                     {bookingDetails.price.taxes > 0 && (
                       <div className="flex justify-between">
                         <span>Thuế và phí</span>
@@ -677,6 +1047,7 @@ const BookingConfirmation = () => {
                         </span>
                       </div>
                     )}
+
                     <Separator />
                     <div className="flex justify-between font-bold text-lg">
                       <span>Tổng cộng</span>
@@ -700,62 +1071,83 @@ const BookingConfirmation = () => {
                     </CardHeader>
                     <CardContent>
                       <div className="space-y-3">
-                        {bookingDetails.payment.method && (
-                          <div className="flex justify-between">
-                            <span>Phương thức:</span>
-                            <span className="font-medium">
-                              {bookingDetails.payment.method === "CARD"
-                                ? "Thẻ tín dụng/Ghi nợ"
-                                : bookingDetails.payment.method ===
-                                  "BANK_TRANSFER"
-                                ? "Chuyển khoản ngân hàng"
-                                : bookingDetails.payment.method === "E_WALLET"
-                                ? "Ví điện tử"
-                                : bookingDetails.payment.method}
-                            </span>
+                        {bookingDetails.payment.method === "PAY_LATER" ||
+                        bookingDetails.payment.status === "PENDING" ? (
+                          <div className="text-center py-4">
+                            <div className="text-yellow-600 font-medium">
+                              ⏳ Chưa thanh toán
+                            </div>
+                            <p className="text-sm text-gray-600 mt-1">
+                              Bạn có 1 giờ để hoàn tất thanh toán
+                            </p>
                           </div>
-                        )}
-                        {bookingDetails.payment.transactionId && (
-                          <div className="flex justify-between">
-                            <span>Mã giao dịch:</span>
-                            <span className="font-mono text-sm">
-                              {bookingDetails.payment.transactionId}
-                            </span>
-                          </div>
-                        )}
-                        {bookingDetails.payment.status && (
-                          <div className="flex justify-between">
-                            <span>Trạng thái:</span>
-                            <Badge
-                              variant={
-                                bookingDetails.payment.status === "COMPLETED" ||
-                                bookingDetails.payment.status === "SUCCESS"
-                                  ? "success"
-                                  : bookingDetails.payment.status === "PENDING"
-                                  ? "secondary"
-                                  : "destructive"
-                              }
-                            >
-                              {bookingDetails.payment.status === "COMPLETED" ||
-                              bookingDetails.payment.status === "SUCCESS"
-                                ? "Thành công"
-                                : bookingDetails.payment.status === "PENDING"
-                                ? "Đang xử lý"
-                                : bookingDetails.payment.status === "FAILED"
-                                ? "Thất bại"
-                                : bookingDetails.payment.status}
-                            </Badge>
-                          </div>
-                        )}
-                        {bookingDetails.payment.paidAt && (
-                          <div className="flex justify-between">
-                            <span>Thời gian thanh toán:</span>
-                            <span className="text-sm">
-                              {new Date(
-                                bookingDetails.payment.paidAt
-                              ).toLocaleString("vi-VN")}
-                            </span>
-                          </div>
+                        ) : (
+                          <>
+                            {bookingDetails.payment.method && (
+                              <div className="flex justify-between">
+                                <span>Phương thức:</span>
+                                <span className="font-medium">
+                                  {bookingDetails.payment.method === "CARD"
+                                    ? "Thẻ tín dụng/Ghi nợ"
+                                    : bookingDetails.payment.method ===
+                                      "BANK_TRANSFER"
+                                    ? "Chuyển khoản ngân hàng"
+                                    : bookingDetails.payment.method ===
+                                      "E_WALLET"
+                                    ? "Ví điện tử"
+                                    : bookingDetails.payment.method === "PAYPAL"
+                                    ? "PayPal"
+                                    : bookingDetails.payment.method}
+                                </span>
+                              </div>
+                            )}
+                            {bookingDetails.payment.transactionId && (
+                              <div className="flex justify-between">
+                                <span>Mã giao dịch:</span>
+                                <span className="font-mono text-sm">
+                                  {bookingDetails.payment.transactionId}
+                                </span>
+                              </div>
+                            )}
+                            {bookingDetails.payment.status && (
+                              <div className="flex justify-between">
+                                <span>Trạng thái:</span>
+                                <Badge
+                                  variant={
+                                    bookingDetails.payment.status ===
+                                      "COMPLETED" ||
+                                    bookingDetails.payment.status === "SUCCESS"
+                                      ? "success"
+                                      : bookingDetails.payment.status ===
+                                        "PENDING"
+                                      ? "secondary"
+                                      : "destructive"
+                                  }
+                                >
+                                  {bookingDetails.payment.status ===
+                                    "COMPLETED" ||
+                                  bookingDetails.payment.status === "SUCCESS"
+                                    ? "Thành công"
+                                    : bookingDetails.payment.status ===
+                                      "PENDING"
+                                    ? "Đang xử lý"
+                                    : bookingDetails.payment.status === "FAILED"
+                                    ? "Thất bại"
+                                    : bookingDetails.payment.status}
+                                </Badge>
+                              </div>
+                            )}
+                            {bookingDetails.payment.paidAt && (
+                              <div className="flex justify-between">
+                                <span>Thời gian thanh toán:</span>
+                                <span className="text-sm">
+                                  {new Date(
+                                    bookingDetails.payment.paidAt
+                                  ).toLocaleString("vi-VN")}
+                                </span>
+                              </div>
+                            )}
+                          </>
                         )}
                       </div>
                     </CardContent>
@@ -782,9 +1174,9 @@ const BookingConfirmation = () => {
                   <Button
                     variant="outline"
                     className="w-full"
-                    onClick={() => navigate("/my-bookings")}
+                    onClick={() => navigate("/my-flights")}
                   >
-                    Quản Lý Booking
+                    Tìm Đặt Chỗ Của Tôi
                   </Button>
                 </div>
               </CardContent>

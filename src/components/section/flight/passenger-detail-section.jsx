@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -10,7 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { CalendarIcon } from "lucide-react";
+import { CalendarIcon, Edit3Icon } from "lucide-react";
 import {
   Popover,
   PopoverContent,
@@ -20,6 +21,177 @@ import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
 import PropTypes from "prop-types";
 import { formatDateVN } from "@/utils/currency-utils";
+
+// Custom Date Input Component with toggle between calendar and text input
+const DateInput = ({
+  value,
+  onChange,
+  placeholder = "dd/mm/yyyy",
+  className = "",
+  error = false,
+  id,
+}) => {
+  const [inputMode, setInputMode] = useState(false);
+  const [inputValue, setInputValue] = useState("");
+
+  // Convert Date to dd/mm/yyyy string
+  const formatDateToString = (date) => {
+    if (!date) return "";
+    const day = date.getDate().toString().padStart(2, "0");
+    const month = (date.getMonth() + 1).toString().padStart(2, "0");
+    const year = date.getFullYear();
+    return `${day}/${month}/${year}`;
+  };
+
+  // Parse dd/mm/yyyy string to Date
+  const parseDateFromString = (dateString) => {
+    if (!dateString || !dateString.trim()) return null;
+
+    const parts = dateString.split("/");
+    if (parts.length !== 3) return null;
+
+    const day = parseInt(parts[0], 10);
+    const month = parseInt(parts[1], 10) - 1; // Month is 0-based
+    const year = parseInt(parts[2], 10);
+
+    // Basic validation
+    if (isNaN(day) || isNaN(month) || isNaN(year)) return null;
+    if (
+      day < 1 ||
+      day > 31 ||
+      month < 0 ||
+      month > 11 ||
+      year < 1900 ||
+      year > new Date().getFullYear()
+    )
+      return null;
+
+    const date = new Date(year, month, day);
+    // Check if the date is valid (e.g., not Feb 30th)
+    if (
+      date.getDate() !== day ||
+      date.getMonth() !== month ||
+      date.getFullYear() !== year
+    )
+      return null;
+
+    return date;
+  };
+
+  // Initialize input value when value changes
+  useState(() => {
+    if (value && !inputMode) {
+      setInputValue(formatDateToString(value));
+    }
+  }, [value, inputMode]);
+
+  const handleInputChange = (e) => {
+    const newValue = e.target.value;
+    setInputValue(newValue);
+
+    // Try to parse and update the date
+    const parsedDate = parseDateFromString(newValue);
+    if (parsedDate) {
+      onChange(parsedDate);
+    }
+  };
+
+  const handleCalendarSelect = (date) => {
+    onChange(date);
+    setInputValue(formatDateToString(date));
+  };
+
+  const toggleInputMode = () => {
+    setInputMode(!inputMode);
+    if (!inputMode) {
+      // Switching to input mode, set current value
+      setInputValue(value ? formatDateToString(value) : "");
+    }
+  };
+
+  if (inputMode) {
+    return (
+      <div className="flex gap-2">
+        <Input
+          id={id}
+          type="text"
+          placeholder={placeholder}
+          value={inputValue}
+          onChange={handleInputChange}
+          className={cn(
+            "text-sm dark:bg-[#171717] flex-1",
+            error && "border-red-500 focus:border-red-500"
+          )}
+          pattern="(0[1-9]|[12][0-9]|3[01])/(0[1-9]|1[012])/(19|20)\d\d"
+          maxLength={10}
+        />
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={toggleInputMode}
+          className="px-2"
+          title="Chuyển về chọn lịch"
+        >
+          <CalendarIcon className="h-4 w-4" />
+        </Button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex gap-2">
+      <div className="flex-1">
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button
+              variant="outline"
+              className={cn(
+                "w-full justify-start text-left font-normal text-sm dark:bg-[#171717]",
+                !value && "text-muted-foreground",
+                error && "border-red-500"
+              )}
+            >
+              <CalendarIcon className="mr-2 h-4 w-4" />
+              {value ? (
+                formatDateVN(value, "short")
+              ) : (
+                <span>{placeholder}</span>
+              )}
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-auto p-0">
+            <Calendar
+              mode="single"
+              selected={value}
+              onSelect={handleCalendarSelect}
+              initialFocus
+            />
+          </PopoverContent>
+        </Popover>
+      </div>
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        onClick={toggleInputMode}
+        className="px-2"
+        title="Nhập ngày tháng năm"
+      >
+        <Edit3Icon className="h-4 w-4" />
+      </Button>
+    </div>
+  );
+};
+
+DateInput.propTypes = {
+  value: PropTypes.instanceOf(Date),
+  onChange: PropTypes.func.isRequired,
+  placeholder: PropTypes.string,
+  className: PropTypes.string,
+  error: PropTypes.bool,
+  id: PropTypes.string,
+};
 
 const PassengerDetails = ({
   formData,
@@ -207,34 +379,13 @@ const PassengerDetails = ({
                 <Label htmlFor={`p${index}-dob`} className="text-sm">
                   Ngày sinh *
                 </Label>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      className={cn(
-                        "w-full justify-start text-left font-normal text-sm dark:bg-[#171717]",
-                        !passenger.dob && "text-muted-foreground",
-                        validationErrors[`passenger_${index}`]?.dateOfBirth &&
-                          "border-red-500"
-                      )}
-                    >
-                      <CalendarIcon className="mr-2 h-4 w-4" />
-                      {passenger.dob ? (
-                        formatDateVN(passenger.dob, "short")
-                      ) : (
-                        <span>dd/mm/yyyy</span>
-                      )}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0">
-                    <Calendar
-                      mode="single"
-                      selected={passenger.dob}
-                      onSelect={(date) => updatePassenger(index, "dob", date)}
-                      initialFocus
-                    />
-                  </PopoverContent>
-                </Popover>
+                <DateInput
+                  id={`p${index}-dob`}
+                  value={passenger.dob}
+                  onChange={(date) => updatePassenger(index, "dob", date)}
+                  placeholder="dd/mm/yyyy"
+                  error={!!validationErrors[`passenger_${index}`]?.dateOfBirth}
+                />
                 {validationErrors[`passenger_${index}`]?.dateOfBirth && (
                   <p className="mt-1 text-xs text-red-500">
                     {validationErrors[`passenger_${index}`].dateOfBirth}

@@ -3,8 +3,7 @@ import CheckInTermsModal from "@/components/checkin/checkin-terms-modal";
 import CheckInSearchForm from "@/components/checkin/checkin-search-form";
 import CheckInBookingDetails from "@/components/checkin/checkin-booking-details";
 import CheckInSeatSelection from "@/components/checkin/checkin-seat-selection";
-import CheckInSuccess from "@/components/checkin/checkin-success";
-import CheckInAlreadyDone from "@/components/checkin/checkin-already-done";
+import CheckInCompletion from "@/components/checkin/checkin-completion";
 import { checkinApi } from "@/apis/checkin-api";
 import { boardingpassApi } from "@/apis/boardingpass-api";
 import { formatCurrencyVND } from "@/utils/currency-utils";
@@ -18,6 +17,8 @@ export default function CheckInPage() {
   const [selectedSeat, setSelectedSeat] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
+  const [additionalCost, setAdditionalCost] = useState(0);
+  const [selectedServices, setSelectedServices] = useState([]);
 
   const handleShowTerms = () => {
     setShowTermsModal(true);
@@ -202,6 +203,19 @@ export default function CheckInPage() {
     }
   };
 
+  const handleProceedToPayment = (cost, services, seat) => {
+    setAdditionalCost(cost);
+    setSelectedServices(services);
+    setSelectedSeat(seat);
+    setCurrentStep("success"); // Go to completion page with payment
+  };
+
+  const handlePaymentSuccess = (paymentData) => {
+    // Handle successful payment - could update booking status or navigate
+    toast.success("Thanh toán thành công!");
+    // Optionally navigate to a confirmation page or update booking
+  };
+
   const handleDownloadBoardingPass = async () => {
     try {
       if (booking.boardingPassUrl) {
@@ -304,27 +318,24 @@ export default function CheckInPage() {
             onConfirm={handleConfirmCheckIn}
             onBack={handleBack}
             selectedSeat={selectedSeat}
+            onProceedToPayment={handleProceedToPayment}
           />
         );
 
       case "success":
-        return (
-          <CheckInSuccess
-            booking={booking}
-            onNewCheckIn={handleNewCheckIn}
-            onDownload={handleDownloadBoardingPass}
-            onEmail={handleEmailBoardingPass}
-          />
-        );
-
       case "already-done":
         return (
-          <CheckInAlreadyDone
+          <CheckInCompletion
             booking={booking}
             onNewCheckIn={handleNewCheckIn}
             onDownload={handleDownloadBoardingPass}
             onEmail={handleEmailBoardingPass}
             onRefresh={handleRefresh}
+            isAlreadyCheckedIn={currentStep === "already-done"}
+            additionalCost={additionalCost}
+            selectedServices={selectedServices}
+            selectedSeat={selectedSeat}
+            onPaymentSuccess={handlePaymentSuccess}
           />
         );
 

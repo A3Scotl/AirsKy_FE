@@ -12,9 +12,14 @@ import {
 import { Search, Plane, FileText, AlertCircle } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
-const MyFlightsSearchForm = ({ onSearch, isLoading, error }) => {
+const MyFlightsSearchForm = ({
+  onSearch,
+  isLoading,
+  error,
+  initialBookingCode = "",
+}) => {
   const [formData, setFormData] = useState({
-    bookingCode: "",
+    bookingCode: initialBookingCode,
     passengerName: "",
   });
 
@@ -69,6 +74,7 @@ const MyFlightsSearchForm = ({ onSearch, isLoading, error }) => {
               onChange={(e) => handleChange("bookingCode", e.target.value)}
               required
               className="text-sm"
+              autoFocus={initialBookingCode ? false : true}
             />
             <p className="text-xs text-gray-500">
               Mã đặt chỗ gồm 8 ký tự được gửi qua email hoặc SMS

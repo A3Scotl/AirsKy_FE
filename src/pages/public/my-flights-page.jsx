@@ -1,16 +1,42 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { useLocation } from "react-router-dom";
 import MyFlightsSearchForm from "@/components/my-flights/my-flights-search-form";
 import MyFlightsBookingDetails from "@/components/my-flights/my-flights-booking-details";
-import MyFlightsPayment from "@/components/my-flights/my-flights-payment";
 import MyFlightsSuccess from "@/components/my-flights/my-flights-success";
 import { bookingApi } from "@/apis/booking-api";
 import { toast } from "sonner";
+import { Card, CardContent } from "@/components/ui/card";
+import { CheckCircle, Clock } from "lucide-react";
 
 export default function MyFlightsPage() {
-  const [currentStep, setCurrentStep] = useState("search"); // search, details, payment, success
+  const location = useLocation();
+  const [currentStep, setCurrentStep] = useState("search"); // search, details, success
   const [booking, setBooking] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
+  const [autoSearched, setAutoSearched] = useState(false);
+
+  // Handle automatic search when coming from "Pay Later" booking
+  useEffect(() => {
+    const state = location.state;
+
+    if (state && state.shouldSearch && state.bookingCode && !autoSearched) {
+      // Show success message from booking
+      if (state.message) {
+        toast.success(state.message, { duration: 5000 });
+      }
+
+      setAutoSearched(true);
+
+      // For Pay Later bookings, show guidance message instead of auto-searching
+      if (state.paymentPending) {
+        toast.info(
+          "Nhập mã đặt chỗ và tên để tiến hành thanh toán trong vòng 1 giờ.",
+          { duration: 8000 }
+        );
+      }
+    }
+  }, [location.state, autoSearched]);
 
   const handleSearchBooking = async (searchData) => {
     setIsLoading(true);
@@ -44,37 +70,7 @@ export default function MyFlightsPage() {
   };
 
   const handleProceedToPayment = () => {
-    setCurrentStep("payment");
-  };
-
-  const handlePaymentSuccess = async (paymentData) => {
-    setIsLoading(true);
-
-    try {
-      // Simulate payment processing
-      await new Promise((resolve) => setTimeout(resolve, 2000));
-
-      // Update booking with payment info
-      const updatedBooking = {
-        ...booking,
-        payment: {
-          paymentId: Date.now(),
-          amount: booking.totalAmount,
-          paymentMethod: paymentData.paymentMethod,
-          status: "COMPLETED",
-          paymentDate: new Date().toISOString(),
-          transactionId: `TXN_${Date.now()}`,
-          ...paymentData,
-        },
-      };
-
-      setBooking(updatedBooking);
-      setCurrentStep("success");
-    } catch (err) {
-      setError("Có lỗi xảy ra khi xử lý thanh toán. Vui lòng thử lại.");
-    } finally {
-      setIsLoading(false);
-    }
+    setCurrentStep("success");
   };
 
   const handleNewSearch = () => {
@@ -92,14 +88,44 @@ export default function MyFlightsPage() {
   };
 
   const renderCurrentStep = () => {
+    const state = location.state;
+
     switch (currentStep) {
       case "search":
         return (
-          <MyFlightsSearchForm
-            onSearch={handleSearchBooking}
-            isLoading={isLoading}
-            error={error}
-          />
+          <div className="w-full space-y-4">
+            {/* Show success message for Pay Later bookings */}
+            {state?.paymentPending && state?.bookingCode && (
+              <Card className="border-green-200 bg-green-50">
+                <CardContent className="p-4">
+                  <div className="flex items-center space-x-2">
+                    <CheckCircle className="h-5 w-5 text-green-600" />
+                    <div className="flex-1">
+                      <p className="font-medium text-green-800">
+                        🎉 Đặt chỗ thành công!
+                      </p>
+                      <p className="text-sm text-green-700">
+                        Mã đặt chỗ: <strong>{state.bookingCode}</strong>
+                      </p>
+                    </div>
+                  </div>
+                  <div className="mt-2 flex items-center space-x-2">
+                    <Clock className="h-4 w-4 text-orange-600" />
+                    <p className="text-sm text-orange-700">
+                      Bạn có <strong>1 giờ</strong> để hoàn tất thanh toán
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            <MyFlightsSearchForm
+              onSearch={handleSearchBooking}
+              isLoading={isLoading}
+              error={error}
+              initialBookingCode={state?.bookingCode || ""}
+            />
+          </div>
         );
 
       case "details":
@@ -108,17 +134,6 @@ export default function MyFlightsPage() {
             booking={booking}
             onProceed={handleProceedToPayment}
             onBack={handleBack}
-          />
-        );
-
-      case "payment":
-        return (
-          <MyFlightsPayment
-            booking={booking}
-            onPaymentSuccess={handlePaymentSuccess}
-            onBack={handleBack}
-            isLoading={isLoading}
-            error={error}
           />
         );
 

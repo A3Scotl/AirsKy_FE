@@ -29,17 +29,15 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { formatCurrencyVND } from "@/utils/currency-utils";
 
-// Helper function to combine travel classes from round trip flights
 const combineRoundTripClasses = (outboundClasses, inboundClasses) => {
   if (!outboundClasses && !inboundClasses) return [];
   if (!outboundClasses) return inboundClasses;
   if (!inboundClasses) return outboundClasses;
 
-  // Create an object to store classes by classId for easy lookup
   const combinedClasses = {};
 
-  // Add outbound classes
   outboundClasses.forEach((cls) => {
     const key = cls.travelClass?.classId || cls.travelClass?.className;
     combinedClasses[key] = {
@@ -49,13 +47,11 @@ const combineRoundTripClasses = (outboundClasses, inboundClasses) => {
     };
   });
 
-  // Add or merge inbound classes
   inboundClasses.forEach((cls) => {
     const key = cls.travelClass?.classId || cls.travelClass?.className;
     const existing = combinedClasses[key];
 
     if (existing) {
-      // If class exists in both directions, combine prices
       existing.combinedPrice =
         (existing.customPrice || 0) + (cls.customPrice || 0);
       existing.inboundPrice = cls.customPrice;
@@ -64,7 +60,6 @@ const combineRoundTripClasses = (outboundClasses, inboundClasses) => {
         cls.availableSeats
       );
     } else {
-      // If class only exists in inbound, add it
       combinedClasses[key] = {
         ...cls,
         direction: "inbound",
@@ -76,7 +71,6 @@ const combineRoundTripClasses = (outboundClasses, inboundClasses) => {
   return Object.values(combinedClasses);
 };
 
-// Helper function to get the lowest price from flight travel classes
 const getLowestPriceFromClasses = (flightTravelClasses) => {
   if (!flightTravelClasses || flightTravelClasses.length === 0) {
     return null;
@@ -94,8 +88,7 @@ export function FlightCard({
   onSelect,
   selected = false,
   showSelectButton = true,
-  compact = false, // New prop for compact mode (for chatbot)
-  // Fare selection props
+  compact = false,
   expandedFlights,
   selectedFares,
   onToggleDetails,
@@ -103,57 +96,34 @@ export function FlightCard({
   onProceedToBooking,
 }) {
   const navigate = useNavigate();
-  const [showMultiCityModal, setShowMultiCityModal] = useState(false);
-  const [fareSelectionStep, setFareSelectionStep] = useState("outbound"); // 'outbound' or 'return'
+  const [fareSelectionStep, setFareSelectionStep] = useState("outbound");
 
-  // Debug log for multi-city flights
-  if (flight?.tripType === "MULTI_CITY") {
-    console.log("FlightCard received MULTI_CITY flight:", {
-      tripType: flight.tripType,
-      isMultiCityDisplay: flight.isMultiCityDisplay,
-      legsCount: flight.legs?.length,
-      allLegsCount: flight.allLegs?.length,
-      segments: flight.segments,
-      flight: flight,
-    });
-  }
-
-  // Helper function to safely parse date
   const parseDate = (dateString) => {
     if (!dateString) return null;
 
     try {
-      // If it's already a Date object
       if (dateString instanceof Date) {
         return isNaN(dateString.getTime()) ? null : dateString;
       }
 
-      // If it's a string
       if (typeof dateString === "string") {
         let date;
 
-        // Handle different formats
         if (dateString.includes("T") && dateString.includes("Z")) {
-          // ISO string with Z timezone
           date = new Date(dateString);
         } else if (dateString.includes("T") && dateString.includes("+")) {
-          // ISO string with timezone offset
           date = new Date(dateString);
         } else if (
           dateString.includes("T") &&
           !dateString.includes("Z") &&
           !dateString.includes("+")
         ) {
-          // ISO string without timezone (assume local time)
           date = new Date(dateString);
         } else if (dateString.match(/^\d{4}-\d{2}-\d{2}$/)) {
-          // Date only
           date = new Date(dateString + "T00:00:00Z");
         } else if (dateString.match(/^\d{2}:\d{2}$/)) {
-          // Time only - can't create date
           return null;
         } else {
-          // Try parsing as is
           date = new Date(dateString);
         }
 
@@ -166,49 +136,22 @@ export function FlightCard({
     }
   };
 
-  // Support both detailed and simple flight structures
-  // Check if this is an itinerary object (from result-section) or direct flight object
   const isItinerary = flight.tripType && flight.legs;
 
   let flightData;
 
   if (isItinerary) {
-    // Handle itinerary object from result-section
     const itinerary = flight;
-    const primaryLeg = itinerary.legs[0]; // First leg for basic info
-
-    // Normalize tripType to uppercase for consistent comparison
+    const primaryLeg = itinerary.legs[0];
     const normalizedTripType = (itinerary.tripType || "").toUpperCase();
 
-    // Debug log for multi-city
-    if (normalizedTripType === "MULTI_CITY") {
-      console.log("FlightCard processing MULTI_CITY:", {
-        tripType: normalizedTripType,
-        legsCount: itinerary.legs.length,
-        itineraryId: itinerary.itineraryId,
-        isMultiCityDisplay: itinerary.isMultiCityDisplay,
-        legs: itinerary.legs.map((leg) => ({
-          flightNumber: leg.flightNumber,
-          route: `${leg.departureAirport?.airportCode} → ${leg.arrivalAirport?.airportCode}`,
-        })),
-      });
-    }
-
     if (normalizedTripType === "MULTI_CITY" && itinerary.legs.length >= 2) {
-      console.log(
-        "FlightCard entering MULTI_CITY branch with",
-        itinerary.legs.length,
-        "legs"
-      );
-      // MULTI_CITY: Use first leg for primary info, show full route
       const firstLeg = itinerary.legs[0];
       const lastLeg = itinerary.legs[itinerary.legs.length - 1];
 
       flightData = {
         flightNumber: itinerary.legs.map((leg) => leg.flightNumber).join(" → "),
         flightId: itinerary.itineraryId,
-
-        // Airline info - use first leg's airline
         airline: firstLeg.airline?.airlineName || "Multi Airlines",
         airlineName: firstLeg.airline?.airlineName || "Multi Airlines",
         airlineCode: firstLeg.airline?.airlineCode || "",
@@ -216,27 +159,18 @@ export function FlightCard({
           firstLeg.airline?.thumbnail ||
           "https://via.placeholder.com/40x40?text=Multi",
         thumbnail: firstLeg.airline?.thumbnail,
-
-        // Route info - show full multi-city route
         from: firstLeg.departureAirport?.cityNames?.[0] || "Unknown",
         fromCode: firstLeg.departureAirport?.airportCode || "UNK",
         to: lastLeg.arrivalAirport?.cityNames?.[0] || "Unknown",
         toCode: lastLeg.arrivalAirport?.airportCode || "UNK",
-
-        // Airport details
         departureAirport: firstLeg.departureAirport,
         arrivalAirport: lastLeg.arrivalAirport,
-
-        // Time info - use first leg departure and last leg arrival
         departureTime: firstLeg.departureTime,
         arrivalTime: lastLeg.arrivalTime,
-
-        // Multi-city specific data
         segments: itinerary.legs.length,
         routeInfo: itinerary.routeInfo,
         allLegs: itinerary.legs.map((leg, index) => ({
           ...leg,
-          // Ensure each leg has proper aircraft info structure
           aircraftInfo: leg.aircraftInfo || leg.aircraft || null,
           seatLayout:
             leg.aircraft?.seatLayout ||
@@ -257,49 +191,31 @@ export function FlightCard({
             leg.aircraftName ||
             leg.aircraftInfo?.aircraftName ||
             "N/A",
-          // Add leg index for identification
           legIndex: index,
         })),
-
-        // Flight details - sum up values
         duration: itinerary.totalDuration,
         totalPrice: itinerary.totalPrice,
         totalStops: itinerary.totalStops,
-
-        // Status and type
         status: "ON_TIME",
         tripType: itinerary.tripType,
-
-        // Display flags
         isMultiCityDisplay: true,
         isRoundTripDisplay: false,
-
-        // Pricing info
         price: itinerary.totalPrice || 0,
         priceNumeric: itinerary.totalPrice || 0,
-
-        // Contact info from first leg
         contact: firstLeg.airline?.contact,
-
-        // Itinerary ID
         itineraryId: itinerary.itineraryId,
-
-        // Travel classes - use first leg's classes
         flightTravelClasses: firstLeg.flightTravelClasses || [],
       };
     } else if (
       normalizedTripType === "ROUND_TRIP" &&
       itinerary.legs.length >= 2
     ) {
-      // ROUND_TRIP: Use outbound flight for primary info
       const outbound = itinerary.legs[0];
       const inbound = itinerary.legs[1];
 
       flightData = {
         flightNumber: `${outbound.flightNumber} / ${inbound.flightNumber}`,
         flightId: outbound.flightId || itinerary.itineraryId,
-
-        // Airline info
         airline: outbound.airline?.airlineName || "Unknown Airline",
         airlineName: outbound.airline?.airlineName || "Unknown Airline",
         airlineCode: outbound.airline?.airlineCode || "",
@@ -307,29 +223,19 @@ export function FlightCard({
           outbound.airline?.thumbnail ||
           "https://via.placeholder.com/40x40?text=Logo",
         thumbnail: outbound.airline?.thumbnail,
-
-        // Route info - for round trip, show outbound route
         from: outbound.departureAirport?.cityNames?.[0] || "Unknown",
         fromCode: outbound.departureAirport?.airportCode || "UNK",
         to: outbound.arrivalAirport?.cityNames?.[0] || "Unknown",
         toCode: outbound.arrivalAirport?.airportCode || "UNK",
-
-        // Airport details
         departureAirport: outbound.departureAirport,
         arrivalAirport: outbound.arrivalAirport,
-
-        // Time info - use outbound times
         departureTime: outbound.departureTime,
         arrivalTime: outbound.arrivalTime,
-
-        // Flight details
         duration: outbound.duration,
         type: outbound.type,
         status: outbound.status,
         aircraft:
           outbound.aircraft?.aircraftName || outbound.aircraft || "Boeing 737",
-
-        // Aircraft info - preserve the full aircraft object from outbound
         aircraftInfo:
           typeof outbound.aircraft === "object" && outbound.aircraft !== null
             ? outbound.aircraft
@@ -343,8 +249,6 @@ export function FlightCard({
           outbound.aircraft?.aircraftId ||
           outbound.aircraftId ||
           outbound.aircraftInfo?.aircraftId,
-
-        // Pricing - use lowest combined price from travel classes if available
         priceNumeric:
           getLowestPriceFromClasses(
             combineRoundTripClasses(
@@ -359,8 +263,6 @@ export function FlightCard({
               inbound.flightTravelClasses
             )
           ) || itinerary.totalPrice,
-
-        // Capacity - use minimum of both flights
         availableSeats: Math.min(
           outbound.availableSeats || 0,
           inbound.availableSeats || 0
@@ -375,8 +277,6 @@ export function FlightCard({
             inbound.aircraftInfo?.totalSeats ||
             0
         ),
-
-        // Additional info
         stops: outbound.stops,
         stopsList: outbound.stopsList || [],
         gate: outbound.gate,
@@ -384,12 +284,9 @@ export function FlightCard({
         businessName: outbound.businessName,
         tripType: itinerary.tripType,
         roundTripGroupId: outbound.roundTripGroupId,
-
-        // Round-trip specific data
         isRoundTripDisplay: true,
         outboundFlight: {
           ...outbound,
-          // Ensure aircraft info is properly structured for outbound
           aircraftInfo: outbound.aircraftInfo || outbound.aircraft || null,
           seatLayout:
             outbound.aircraft?.seatLayout ||
@@ -408,7 +305,6 @@ export function FlightCard({
         },
         returnFlight: {
           ...inbound,
-          // Ensure aircraft info is properly structured for return/inbound
           aircraftInfo: inbound.aircraftInfo || inbound.aircraft || null,
           seatLayout:
             inbound.aircraft?.seatLayout ||
@@ -426,29 +322,20 @@ export function FlightCard({
             inbound.aircraftInfo?.aircraftId,
         },
         combinedPrice: itinerary.totalPrice,
-
-        // Contact info
         contact: outbound.airline?.contact,
-
-        // Itinerary ID
         itineraryId: itinerary.itineraryId,
-
-        // Travel classes - combine both directions, prefer common classes
         flightTravelClasses: combineRoundTripClasses(
           outbound.flightTravelClasses,
           inbound.flightTravelClasses
         ),
       };
     } else {
-      // ONE_WAY or default: Use single leg
       const singleFlight = itinerary.legs[0];
 
       flightData = {
         flightNumber:
           singleFlight.flightNumber || singleFlight.flightId || "N/A",
         flightId: itinerary.itineraryId,
-
-        // Airline info
         airline: singleFlight.airline?.airlineName || "Unknown Airline",
         airlineName: singleFlight.airline?.airlineName || "Unknown Airline",
         airlineCode: singleFlight.airline?.airlineCode || "",
@@ -456,29 +343,19 @@ export function FlightCard({
           singleFlight.airline?.thumbnail ||
           "https://via.placeholder.com/40x40?text=Logo",
         thumbnail: singleFlight.airline?.thumbnail,
-
-        // Route info
         from: singleFlight.departureAirport?.cityNames?.[0] || "Unknown",
         fromCode: singleFlight.departureAirport?.airportCode || "UNK",
         to: singleFlight.arrivalAirport?.cityNames?.[0] || "Unknown",
         toCode: singleFlight.arrivalAirport?.airportCode || "UNK",
-
-        // Airport details
         departureAirport: singleFlight.departureAirport,
         arrivalAirport: singleFlight.arrivalAirport,
-
-        // Time info
         departureTime: singleFlight.departureTime,
         arrivalTime: singleFlight.arrivalTime,
-
-        // Flight details
         duration: singleFlight.duration,
         type: singleFlight.type,
         status: singleFlight.status,
         aircraft:
           singleFlight.aircraft?.aircraftName || singleFlight.aircraft || "N/A",
-
-        // Aircraft info - preserve the full aircraft object
         aircraftInfo:
           typeof singleFlight.aircraft === "object" &&
           singleFlight.aircraft !== null
@@ -493,8 +370,6 @@ export function FlightCard({
           singleFlight.aircraft?.aircraftId ||
           singleFlight.aircraftId ||
           singleFlight.aircraftInfo?.aircraftId,
-
-        // Pricing - use lowest price from travel classes if available
         priceNumeric:
           getLowestPriceFromClasses(singleFlight.flightTravelClasses) ||
           singleFlight.basePrice ||
@@ -505,41 +380,28 @@ export function FlightCard({
           singleFlight.basePrice ||
           singleFlight.priceNumeric ||
           0,
-
-        // Capacity
         availableSeats: singleFlight.availableSeats,
         totalSeats:
           singleFlight.aircraft?.totalSeats ||
           singleFlight.totalSeats ||
           singleFlight.aircraftInfo?.totalSeats,
-
-        // Additional info
         stops: singleFlight.stops,
         stopsList: singleFlight.stopsList || [],
         gate: singleFlight.gate,
         terminal: singleFlight.terminal,
         businessName: singleFlight.businessName,
         tripType: singleFlight.tripType || singleFlight.type || "ONE_WAY",
-
-        // Contact info
         contact: singleFlight.airline?.contact,
-
-        // Itinerary ID
         itineraryId: singleFlight.flightId || `oneway-${Date.now()}`,
-
-        // Travel classes
         flightTravelClasses: singleFlight.flightTravelClasses,
       };
     }
   }
 
-  // Handle direct flight object (legacy support) - separate from itinerary handling
   if (!isItinerary) {
     flightData = {
       flightNumber: flight.flightNumber || "N/A",
       flightId: flight.flightId,
-
-      // Airline info - ensure we always get strings for navigation
       airline:
         typeof flight.airline === "object" && flight.airline !== null
           ? flight.airline.airlineName || "Unknown Airline"
@@ -565,14 +427,10 @@ export function FlightCard({
               .replace(/[^a-zA-Z0-9]/g, "")}.com`
           : "https://via.placeholder.com/40x40?text=Logo"),
       thumbnail: flight.thumbnail || flight.airline?.thumbnail,
-
-      // Route info
       from: flight.from || "Unknown",
       fromCode: flight.fromCode || "UNK",
       to: flight.to || "Unknown",
       toCode: flight.toCode || "UNK",
-
-      // Airport details
       departureAirport: flight.departureAirport || {
         airportCode: flight.fromCode || "UNK",
         airportName: flight.from || "Unknown",
@@ -583,12 +441,8 @@ export function FlightCard({
         airportName: flight.to || "Unknown",
         cityNames: [flight.to || "Unknown"],
       },
-
-      // Time info - keep original values for formatting functions
       departureTime: flight.departureTime,
       arrivalTime: flight.arrivalTime,
-
-      // Flight details
       duration: flight.duration || 0,
       type: flight.type || "ONE_WAY",
       status: flight.status || "ON_TIME",
@@ -596,8 +450,6 @@ export function FlightCard({
         typeof flight.aircraft === "object" && flight.aircraft !== null
           ? flight.aircraft.aircraftName || "Boeing 737"
           : flight.aircraft || "Boeing 737",
-
-      // Aircraft info - preserve the full aircraft object
       aircraftInfo:
         typeof flight.aircraft === "object" && flight.aircraft !== null
           ? flight.aircraft
@@ -611,8 +463,6 @@ export function FlightCard({
         flight.aircraft?.aircraftId ||
         flight.aircraftId ||
         flight.aircraftInfo?.aircraftId,
-
-      // Pricing - calculate from flightTravelClasses instead of using basePrice
       priceNumeric:
         getLowestPriceFromClasses(flight.flightTravelClasses) ||
         flight.priceNumeric ||
@@ -621,16 +471,12 @@ export function FlightCard({
         getLowestPriceFromClasses(flight.flightTravelClasses) ||
         flight.priceNumeric ||
         0,
-
-      // Capacity
       availableSeats: flight.availableSeats || 100,
       totalSeats:
         flight.aircraft?.totalSeats ||
         flight.totalSeats ||
         flight.aircraftInfo?.totalSeats ||
         "N/A",
-
-      // Additional info
       stops: flight.stops || [],
       stopsList: flight.stopsList || [],
       gate: flight.gate,
@@ -638,36 +484,25 @@ export function FlightCard({
       businessName: flight.businessName || "Economy",
       tripType: flight.tripType || flight.type,
       roundTripGroupId: flight.roundTripGroupId,
-
-      // Round-trip specific data
-      isRoundTripDisplay: false, // Only set to true when roundTripPairs is present
+      isRoundTripDisplay: false,
       outboundFlight: flight.outboundFlight,
       returnFlight: flight.returnFlight,
       combinedPrice: flight.combinedPrice || flight.priceNumeric,
-
-      // Contact info
       contact: flight.contact,
-
-      // Itinerary ID
       itineraryId:
         flight.flightId || flight.itineraryId || `direct-${Date.now()}`,
-
-      // Travel classes
       flightTravelClasses: flight.flightTravelClasses,
     };
   }
 
-  // Format thời gian
   const formatTime = (dateString) => {
     if (!dateString) return "--:--";
 
     try {
-      // Check if it's already in HH:MM format
       if (typeof dateString === "string" && dateString.match(/^\d{2}:\d{2}$/)) {
         return dateString;
       }
 
-      // Try to extract time directly from ISO string format "2025-09-29T08:00:00"
       if (typeof dateString === "string" && dateString.includes("T")) {
         const timeMatch = dateString.match(/T(\d{2}:\d{2})/);
         if (timeMatch) {
@@ -692,7 +527,6 @@ export function FlightCard({
     }
   };
 
-  // Format ngày
   const formatDate = (dateString) => {
     if (!dateString) return "N/A";
 
@@ -703,7 +537,6 @@ export function FlightCard({
       }
 
       const formatted = date.toLocaleDateString("vi-VN", {
-        // weekday: "short",
         day: "numeric",
         month: "short",
         year: "numeric",
@@ -715,22 +548,12 @@ export function FlightCard({
     }
   };
 
-  // Tính thời gian bay
   const formatDuration = (minutes) => {
     const hours = Math.floor(minutes / 60);
     const mins = minutes % 60;
     return `${hours}h ${mins}m`;
   };
 
-  // Format giá
-  const formatPrice = (price) => {
-    return new Intl.NumberFormat("vi-VN", {
-      style: "currency",
-      currency: "VND",
-    }).format(price);
-  };
-
-  // Type badge
   const getTypeBadge = (type) => {
     switch (type) {
       case "DOMESTIC":
@@ -750,7 +573,6 @@ export function FlightCard({
     }
   };
 
-  // Trip type badge
   const getTripTypeBadge = () => {
     if (flightData.isRoundTripDisplay) {
       return (
@@ -785,43 +607,6 @@ export function FlightCard({
     );
   };
 
-  // Debug aircraft info after processing
-  console.log("🔍 FlightCard processed data:", {
-    originalFlight: flight,
-    processedFlightData: flightData,
-    aircraftInfo: flightData.aircraftInfo,
-    seatLayout: flightData.seatLayout,
-    totalSeats: flightData.totalSeats,
-    aircraft: flightData.aircraft,
-    // Round-trip specific debug
-    isRoundTrip: flightData.isRoundTripDisplay,
-    outboundAircraft: flightData.outboundFlight
-      ? {
-          aircraftInfo: flightData.outboundFlight.aircraftInfo,
-          seatLayout: flightData.outboundFlight.seatLayout,
-          totalSeats: flightData.outboundFlight.totalSeats,
-        }
-      : null,
-    returnAircraft: flightData.returnFlight
-      ? {
-          aircraftInfo: flightData.returnFlight.aircraftInfo,
-          seatLayout: flightData.returnFlight.seatLayout,
-          totalSeats: flightData.returnFlight.totalSeats,
-        }
-      : null,
-    // Multi-city specific debug
-    isMultiCity: flightData.isMultiCityDisplay,
-    allLegsAircraft:
-      flightData.allLegs?.map((leg, index) => ({
-        legIndex: index,
-        flightNumber: leg.flightNumber,
-        aircraftInfo: leg.aircraftInfo,
-        seatLayout: leg.seatLayout,
-        totalSeats: leg.totalSeats,
-        aircraftName: leg.aircraftName,
-      })) || null,
-  });
-
   return (
     <Card
       className={`w-full transition-all duration-200 hover:shadow-lg ${
@@ -830,55 +615,47 @@ export function FlightCard({
           : "hover:shadow-md"
       }`}
     >
-      <CardContent className="p-6">
+      <CardContent className="p-3 sm:p-4 md:p-6">
         {/* Header với thông tin cơ bản */}
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-3">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 mb-4">
+          <div className="flex items-center gap-2 sm:gap-3">
             <img
               src={flightData.thumbnail || flightData.airlineLogo}
               alt={flightData.airlineName}
-              className="w-8 h-8 rounded object-contain border-2"
+              className="w-6 h-6 sm:w-8 sm:h-8 rounded object-contain border-2"
             />
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-medium">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 min-w-0 flex-1">
+              <span className="text-sm font-medium truncate">
                 {flightData.airlineName}
               </span>
               {!compact && (
-                <span className="text-xs text-gray-500">
+                <span className="text-xs text-gray-500 hidden sm:inline">
                   ({flightData.airlineCode})
                 </span>
               )}
 
-              {/* Trip type badge */}
-              <div className="ml-2">{getTripTypeBadge()}</div>
-              {/* Hiển thị thông tin combination nếu có */}
-              {flight.combination && (
-                <Badge variant="outline" className="text-xs ml-2">
-                  {flight.combination.route}
-                </Badge>
-              )}
-              {/* Hiển thị route info nếu có */}
-              {flight.routeInfo && (
-                <Badge variant="secondary" className="text-xs ml-2">
-                  {flight.routeInfo}
-                </Badge>
-              )}
+              <div className="flex items-center gap-1 sm:gap-2">
+                <div className="hidden sm:block">{getTripTypeBadge()}</div>
+                <div className="flex items-center gap-1">
+                  {!compact && (
+                    <Plane className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600" />
+                  )}
+                  <span className="font-semibold text-sm sm:text-base md:text-lg">
+                    {flightData.flightNumber}
+                  </span>
+                </div>
+                {!compact && (
+                  <div className="hidden sm:flex sm:gap-2">
+                    {getTypeBadge(flightData.type)}
+                  </div>
+                )}
+              </div>
             </div>
-            <div className="flex items-center gap-2">
-              {!compact && <Plane className="w-5 h-5 text-blue-600" />}
-              <span className="font-semibold text-lg">
-                {flightData.flightNumber}
-              </span>
-            </div>
-
-            {!compact && (
-              <div className="flex gap-2">{getTypeBadge(flightData.type)}</div>
-            )}
           </div>
 
-          <div className="text-right">
-            <div className="text-2xl font-bold text-blue-600">
-              {formatPrice(
+          <div className="flex items-center justify-between sm:flex-col sm:items-end sm:justify-center gap-2">
+            <div className="text-lg sm:text-xl md:text-2xl font-bold text-blue-600">
+              {formatCurrencyVND(
                 flightData.isMultiCityDisplay
                   ? flightData.totalPrice || flightData.price
                   : flightData.isRoundTripDisplay
@@ -886,7 +663,7 @@ export function FlightCard({
                   : flightData.basePrice
               )}
             </div>
-            <div className="text-sm text-gray-500">
+            <div className="text-xs sm:text-sm text-gray-500">
               {flightData.isMultiCityDisplay
                 ? `/toàn bộ hành trình`
                 : flightData.isRoundTripDisplay
@@ -896,34 +673,31 @@ export function FlightCard({
           </div>
         </div>
 
+        {/* Mobile-only trip type badge */}
+        <div className="sm:hidden mb-3">{getTripTypeBadge()}</div>
+
         {/* Thông tin chuyến bay */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 md:gap-6 mb-4">
           {/* Điểm khởi hành */}
           <div className="text-center">
             <div className="flex items-center justify-center mb-2">
-              <PlaneTakeoff className="w-5 h-5 text-green-600 mr-2" />
-              <span className="font-semibold text-lg">
+              <PlaneTakeoff className="w-4 h-4 sm:w-5 sm:h-5 text-green-600 mr-2" />
+              <span className="font-semibold text-sm sm:text-base md:text-lg">
                 {formatTime(flightData.departureTime)}
                 {!compact && <> ({formatDate(flightData.departureTime)})</>}
               </span>
             </div>
 
-            <div className="font-medium">
+            <div className="font-medium text-sm sm:text-base">
               {flightData.departureAirport?.airportCode}
             </div>
-            {/* <div className="text-sm text-gray-600">
-              {flightData.departureAirport?.airportName}
-              {!compact && (
-                <> ({flightData.departureAirport?.cityNames?.[0] || ""})</>
-              )}
-            </div> */}
           </div>
 
           {/* Thông tin chuyến bay */}
           <div className="text-center flex flex-col items-center justify-center">
             <div className="flex items-center mb-2">
-              <Clock className="w-4 h-4 text-gray-500 mr-1" />
-              <span className="text-sm font-medium">
+              <Clock className="w-3 h-3 sm:w-4 sm:h-4 text-gray-500 mr-1" />
+              <span className="text-xs sm:text-sm font-medium">
                 {formatDuration(flightData.duration)}
               </span>
             </div>
@@ -931,13 +705,13 @@ export function FlightCard({
             <div className="relative w-full max-w-xs">
               <div className="border-t border-gray-300 relative">
                 <div className="absolute left-0 top-1/2 transform -translate-y-1/2">
-                  <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
+                  <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-gray-400 rounded-full"></div>
                 </div>
                 <div className="absolute right-0 top-1/2 transform -translate-y-1/2">
-                  <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
+                  <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-gray-400 rounded-full"></div>
                 </div>
                 <div className="absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2">
-                  <Plane className="w-4 h-4 text-blue-600" />
+                  <Plane className="w-3 h-3 sm:w-4 sm:h-4 text-blue-600" />
                 </div>
               </div>
             </div>
@@ -958,35 +732,30 @@ export function FlightCard({
           {/* Điểm đến */}
           <div className="text-center">
             <div className="flex items-center justify-center mb-2">
-              <PlaneLanding className="w-5 h-5 text-red-600 mr-2" />
-              <span className="font-semibold text-lg">
+              <PlaneLanding className="w-4 h-4 sm:w-5 sm:h-5 text-red-600 mr-2" />
+              <span className="font-semibold text-sm sm:text-base md:text-lg">
                 {formatTime(flightData.arrivalTime)}
                 {!compact && <> ({formatDate(flightData.arrivalTime)})</>}
               </span>
             </div>
 
-            <div className="font-medium">
+            <div className="font-medium text-sm sm:text-base">
               {flightData.arrivalAirport?.airportCode}
             </div>
-            {/* <div className="text-sm text-gray-600">
-              {flightData.arrivalAirport?.airportName}
-              {!compact && (
-                <> ({flightData.arrivalAirport?.cityNames?.[0] || ""})</>
-              )}
-            </div> */}
           </div>
         </div>
 
         {/* Multi-city segments display */}
         {flightData.isMultiCityDisplay && flightData.allLegs && (
-          <div className="mb-4 bg-gradient-to-r from-purple-50 to-blue-50 rounded-lg p-4 border border-purple-200">
-            <h4 className="text-sm font-semibold mb-3 flex items-center justify-between">
+          <div className="mb-4 bg-gradient-to-r from-purple-50 to-blue-50 rounded-lg p-3 sm:p-4 border border-purple-200">
+            <h4 className="text-sm font-semibold mb-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
               <div className="flex items-center">
-                <Route className="w-4 h-4 mr-2 text-purple-600" />
+                <Route className="w-3 h-3 sm:w-4 sm:h-4 mr-2 text-purple-600" />
                 Chi tiết hành trình đa thành phố ({flightData.segments} chặng)
               </div>
               <div className="text-sm font-bold text-purple-700">
-                Tổng: {formatPrice(flightData.totalPrice || flightData.price)}
+                Tổng:{" "}
+                {formatCurrencyVND(flightData.totalPrice || flightData.price)}
               </div>
             </h4>
             <div className="space-y-3">
@@ -997,31 +766,31 @@ export function FlightCard({
                 return (
                   <div
                     key={index}
-                    className="flex items-center justify-between text-sm bg-white rounded-lg p-3 border-l-4 border-purple-300"
+                    className="flex flex-col sm:flex-row sm:items-center sm:justify-between text-sm bg-white rounded-lg p-3 border-l-4 border-purple-300 gap-2 sm:gap-4"
                   >
-                    <div className="flex items-center gap-4">
-                      <span className="font-medium text-purple-600 bg-purple-100 rounded-full w-6 h-6 flex items-center justify-center text-xs">
+                    <div className="flex items-center gap-3 sm:gap-4">
+                      <span className="font-medium text-purple-600 bg-purple-100 rounded-full w-5 h-5 sm:w-6 sm:h-6 flex items-center justify-center text-xs">
                         {index + 1}
                       </span>
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium text-gray-800">
+                      <div className="flex items-center gap-1 sm:gap-2">
+                        <span className="font-medium text-gray-800 text-xs sm:text-sm">
                           {leg.departureAirport?.airportCode}
                         </span>
                         <ChevronRight className="w-3 h-3 text-gray-400" />
-                        <span className="font-medium text-gray-800">
+                        <span className="font-medium text-gray-800 text-xs sm:text-sm">
                           {leg.arrivalAirport?.airportCode}
                         </span>
                       </div>
                       <span className="text-gray-600 font-mono text-xs bg-gray-100 px-2 py-1 rounded">
                         {leg.flightNumber}
                       </span>
-                      <span className="text-xs text-gray-500">
+                      <span className="text-xs text-gray-500 hidden sm:inline">
                         {leg.airline?.airlineName}
                       </span>
                     </div>
-                    <div className="flex items-center gap-4 text-gray-600">
-                      <div className="text-right">
-                        <div className="flex items-center gap-2">
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 text-gray-600">
+                      <div className="text-left sm:text-right">
+                        <div className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm">
                           <span className="font-medium">
                             {formatTime(leg.departureTime)}
                           </span>
@@ -1035,9 +804,9 @@ export function FlightCard({
                         </div>
                       </div>
                       {segmentPrice && (
-                        <div className="text-right">
+                        <div className="text-left sm:text-right">
                           <div className="font-semibold text-blue-600 text-sm">
-                            {formatPrice(segmentPrice)}
+                            {formatCurrencyVND(segmentPrice)}
                           </div>
                           <div className="text-xs text-gray-500">/khách</div>
                         </div>
@@ -1050,8 +819,8 @@ export function FlightCard({
 
             {/* Tổng kết hành trình */}
             <div className="mt-3 pt-3 border-t border-purple-200 bg-white rounded-lg p-3">
-              <div className="flex items-center justify-between text-sm">
-                <div className="flex items-center gap-4">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-sm">
+                <div className="flex items-center gap-3 sm:gap-4">
                   <span className="font-medium">Tổng thời gian bay:</span>
                   <span className="text-gray-600">
                     {formatDuration(
@@ -1059,7 +828,7 @@ export function FlightCard({
                     )}
                   </span>
                 </div>
-                <div className="flex items-center gap-4">
+                <div className="flex items-center gap-3 sm:gap-4">
                   <span className="font-medium">Tổng điểm dừng:</span>
                   <span className="text-gray-600">
                     {flightData.totalStops || 0}
@@ -1093,7 +862,6 @@ export function FlightCard({
                       if (onSelect) {
                         onSelect();
                       } else {
-                        // For multi-city flights, pass the original flight (itinerary) with all legs
                         const flightToPass =
                           flightData.isMultiCityDisplay && flight.legs
                             ? {
@@ -1108,23 +876,12 @@ export function FlightCard({
                               }
                             : flightData;
 
-                        console.log(
-                          "🚀 FlightCard navigate with flight data:",
-                          {
-                            flightToPass,
-                            aircraftInfo: flightToPass.aircraftInfo,
-                            seatLayout: flightToPass.seatLayout,
-                            totalSeats: flightToPass.totalSeats,
-                            aircraft: flightToPass.aircraft,
-                          }
-                        );
-
                         navigate(`/detail/${flightData.flightId}`, {
                           state: { flight: flightToPass },
                         });
                       }
                     }}
-                    className="text-white hover:text-gray-900 bg-blue-500 rounded-sm px-8"
+                    className="text-white hover:text-gray-900 bg-blue-500 rounded-sm px-6 sm:px-8"
                   >
                     Chi tiết
                   </Button>
@@ -1144,7 +901,6 @@ export function FlightCard({
                 if (onSelect) {
                   onSelect();
                 } else {
-                  // For multi-city flights, pass the original flight (itinerary) with all legs
                   const flightToPass =
                     flightData.isMultiCityDisplay && flight.legs
                       ? {
@@ -1158,23 +914,6 @@ export function FlightCard({
                           originalItinerary: flight,
                         }
                       : flightData;
-
-                  console.log(
-                    "🚀 FlightCard navigate with flight data (multi-city):",
-                    {
-                      flightToPass,
-                      aircraftInfo: flightToPass.aircraftInfo,
-                      seatLayout: flightToPass.seatLayout,
-                      totalSeats: flightToPass.totalSeats,
-                      aircraft: flightToPass.aircraft,
-                      legs: flightToPass.legs?.map((leg) => ({
-                        aircraftInfo: leg.aircraftInfo,
-                        seatLayout: leg.seatLayout,
-                        totalSeats: leg.totalSeats,
-                        aircraft: leg.aircraft,
-                      })),
-                    }
-                  );
 
                   navigate(`/detail/${flightData.flightId}`, {
                     state: { flight: flightToPass },
@@ -1273,190 +1012,11 @@ export function FlightCard({
               </div>
             </div>
           )}
-
-        {/* Fare Selection Section - Ẩn trong chế độ compact */}
-        {/* {!compact && onToggleDetails && (
-          <div className="mt-4">
-            <Button
-              variant="link"
-              className="text-blue-600 p-0 hover:text-blue-800"
-              onClick={() => onToggleDetails(flight.itineraryId)}
-            >
-              {expandedFlights?.has(flight.itineraryId) ? "Ẩn" : "Chọn vé ngay"}
-              <ChevronRight
-                className={`w-4 h-4 ml-1 transition-transform ${
-                  expandedFlights?.has(flight.itineraryId) ? "rotate-90" : ""
-                }`}
-              />
-            </Button>
-
-            {expandedFlights?.has(flight.itineraryId) && (
-              <div className="mt-4 border-t pt-4 bg-gray-50 dark:bg-gray-800 -mx-3 sm:-mx-4 px-3 sm:px-4 pb-4 rounded-b-lg">
-                {flightData.isRoundTripDisplay ? (
-                  <RoundTripFareSelection
-                    flightData={flightData}
-                    selectedFares={selectedFares}
-                    fareSelectionStep={fareSelectionStep}
-                    setFareSelectionStep={setFareSelectionStep}
-                    onSelectFare={onSelectFare}
-                    onProceedToBooking={onProceedToBooking}
-                  />
-                ) : (
-                  <div>
-                    <h3 className="text-lg font-semibold mb-4 text-gray-900 dark:text-gray-200">
-                      Chọn loại vé phù hợp
-                    </h3>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      {flightData.flightTravelClasses &&
-                      flightData.flightTravelClasses.length > 0 ? (
-                        flightData.flightTravelClasses.map(
-                          (travelClass, index) => {
-                            const isRecommended =
-                              index === 0 ||
-                              travelClass.customPrice ===
-                                Math.min(
-                                  ...flightData.flightTravelClasses.map(
-                                    (tc) => tc.customPrice
-                                  )
-                                );
-
-                            return (
-                              <FareOption
-                                key={travelClass.id}
-                                fare={{
-                                  id: travelClass.id,
-                                  name:
-                                    travelClass.travelClass?.className ||
-                                    `Hạng ${index + 1}`,
-                                  price: travelClass.customPrice,
-                                  originalPrice: travelClass.customPrice,
-                                  recommended: isRecommended,
-                                  features: [
-                                    {
-                                      included: true,
-                                      text: "Hành lý xách tay",
-                                    },
-                                    {
-                                      included:
-                                        travelClass.travelClass?.benefits
-                                          ?.toLowerCase()
-                                          .includes("ký gửi") ||
-                                        travelClass.travelClass?.benefits
-                                          ?.toLowerCase()
-                                          .includes("luggage") ||
-                                        false,
-                                      text: "Hành lý ký gửi",
-                                    },
-                                    {
-                                      included:
-                                        travelClass.travelClass?.benefits
-                                          ?.toLowerCase()
-                                          .includes("chỗ ngồi") ||
-                                        travelClass.travelClass?.benefits
-                                          ?.toLowerCase()
-                                          .includes("seat") ||
-                                        false,
-                                      text: "Chọn chỗ ngồi",
-                                    },
-                                    {
-                                      included:
-                                        travelClass.travelClass?.changeable ||
-                                        false,
-                                      text: "Đổi vé",
-                                    },
-                                    {
-                                      included:
-                                        travelClass.travelClass?.refundable ||
-                                        false,
-                                      text: "Hoàn tiền",
-                                    },
-                                  ],
-                                  availableSeats: travelClass.availableSeats,
-                                  benefits: travelClass.travelClass?.benefits,
-                                  direction: travelClass.direction,
-                                }}
-                                flight={flightData}
-                                isSelected={
-                                  selectedFares?.[flight.itineraryId] ===
-                                  travelClass.id
-                                }
-                                onSelect={() =>
-                                  onSelectFare(
-                                    flight.itineraryId,
-                                    travelClass.id
-                                  )
-                                }
-                                onProceedToBooking={onProceedToBooking}
-                              />
-                            );
-                          }
-                        )
-                      ) : (
-                        <div className="col-span-full text-center py-8 text-gray-500">
-                          <p>Không có thông tin hạng vé cho chuyến bay này</p>
-                          <p className="text-sm mt-2">
-                            Vui lòng liên hệ với hãng hàng không để biết thêm
-                            chi tiết
-                          </p>
-                        </div>
-                      )}
-                    </div>
-
-                    {selectedFares?.[flightData.itineraryId] &&
-                      flightData.flightTravelClasses && (
-                        <FareSummary
-                          fare={
-                            flightData.flightTravelClasses?.find(
-                              (tc) =>
-                                tc.id === selectedFares[flightData.itineraryId]
-                            )
-                              ? {
-                                  id: flightData.flightTravelClasses.find(
-                                    (tc) =>
-                                      tc.id ===
-                                      selectedFares[flightData.itineraryId]
-                                  ).id,
-                                  name:
-                                    flightData.flightTravelClasses.find(
-                                      (tc) =>
-                                        tc.id ===
-                                        selectedFares[flightData.itineraryId]
-                                    ).travelClass?.className || "Hạng vé",
-                                  price: flightData.flightTravelClasses.find(
-                                    (tc) =>
-                                      tc.id ===
-                                      selectedFares[flightData.itineraryId]
-                                  ).customPrice,
-                                  originalPrice:
-                                    flightData.flightTravelClasses.find(
-                                      (tc) =>
-                                        tc.id ===
-                                        selectedFares[flightData.itineraryId]
-                                    ).customPrice,
-                                }
-                              : null
-                          }
-                          flight={flightData}
-                          onProceedToBooking={() =>
-                            onProceedToBooking(
-                              flight,
-                              selectedFares[flightData.itineraryId]
-                            )
-                          }
-                        />
-                      )}
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-        )} */}
       </CardContent>
     </Card>
   );
 }
 
-// Component: Fare Option
 const FareOption = ({
   fare,
   flight,
@@ -1483,12 +1043,11 @@ const FareOption = ({
     )}
 
     <div className="mb-4">
-      <h4 className="font-bold text-gray-900 text-lg mb-1">{fare.name}</h4>
-      <p className="text-2xl font-bold text-blue-600 mb-1">
-        {new Intl.NumberFormat("vi-VN", {
-          style: "currency",
-          currency: "VND",
-        }).format(fare.price)}
+      <h4 className="font-bold text-gray-900 text-base md:text-lg mb-1">
+        {fare.name}
+      </h4>
+      <p className="text-xl md:text-2xl font-bold text-blue-600 mb-1">
+        {formatCurrencyVND(fare.price)}
       </p>
       {fare.direction && (
         <p className="text-xs text-gray-500 mb-1">
@@ -1497,11 +1056,7 @@ const FareOption = ({
       )}
       {fare.originalPrice && fare.originalPrice !== fare.price && (
         <p className="text-sm text-gray-600">
-          Đơn giá:{" "}
-          {new Intl.NumberFormat("vi-VN", {
-            style: "currency",
-            currency: "VND",
-          }).format(fare.originalPrice)}
+          Đơn giá: {formatCurrencyVND(fare.originalPrice)}
         </p>
       )}
       <p className="text-xs text-gray-500">mỗi hành khách</p>
@@ -1565,7 +1120,6 @@ const FareOption = ({
   </div>
 );
 
-// Component: Fare Summary
 const FareSummary = ({ fare, flight, onProceedToBooking }) => (
   <div className="mt-6 p-4 bg-green-50 border border-green-200 rounded-lg">
     <div className="flex items-center justify-between">
@@ -1574,25 +1128,12 @@ const FareSummary = ({ fare, flight, onProceedToBooking }) => (
           {fare.name} đã được chọn
         </p>
         <p className="text-xs text-green-600 mt-1">
-          Tổng cộng:{" "}
-          {new Intl.NumberFormat("vi-VN", {
-            style: "currency",
-            currency: "VND",
-          }).format(fare.price)}
+          Tổng cộng: {formatCurrencyVND(fare.price)}
         </p>
         {flight?.isRoundTripDisplay && fare.originalPrice && (
           <p className="text-xs text-green-600">
-            (Chiều đi:{" "}
-            {new Intl.NumberFormat("vi-VN", {
-              style: "currency",
-              currency: "VND",
-            }).format(fare.originalPrice)}{" "}
-            + Chiều về:{" "}
-            {new Intl.NumberFormat("vi-VN", {
-              style: "currency",
-              currency: "VND",
-            }).format(fare.originalPrice)}
-            )
+            (Chiều đi: {formatCurrencyVND(fare.originalPrice)} + Chiều về:{" "}
+            {formatCurrencyVND(fare.originalPrice)})
           </p>
         )}
       </div>
@@ -1608,7 +1149,6 @@ const FareSummary = ({ fare, flight, onProceedToBooking }) => (
   </div>
 );
 
-// Component: Round Trip Fare Selection
 const RoundTripFareSelection = ({
   flightData,
   selectedFares,
@@ -1701,14 +1241,14 @@ const RoundTripFareSelection = ({
 
       {/* Current Step Content */}
       <div className="mb-6">
-        <h3 className="text-lg font-semibold mb-2 text-gray-900 dark:text-gray-200">
+        <h3 className="text-base md:text-lg font-semibold mb-2 text-gray-900 dark:text-gray-200">
           {stepTitle}
         </h3>
         <p className="text-sm text-gray-600 mb-4">{stepDescription}</p>
       </div>
 
       {/* Fare Options */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 mb-6">
         {currentFlight?.flightTravelClasses &&
         currentFlight.flightTravelClasses.length > 0 ? (
           currentFlight.flightTravelClasses.map((travelClass, index) => {
@@ -1775,7 +1315,7 @@ const RoundTripFareSelection = ({
                     : returnFareId === travelClass.id
                 }
                 onSelect={() => handleFareSelect(travelClass.id)}
-                onProceedToBooking={null} // Disable individual booking
+                onProceedToBooking={null}
               />
             );
           })

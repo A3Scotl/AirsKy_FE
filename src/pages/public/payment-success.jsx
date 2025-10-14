@@ -36,7 +36,7 @@ const PaymentSuccess = () => {
           setStatus("success");
           setMessage("Thanh toán thành công!");
           toast.success("Thanh toán thành công!");
-          setTimeout(() => navigate("/my-flights"), 2500);
+          setTimeout(() => navigate("/confirm-booking"), 2500);
         } else {
           throw new Error(response.data?.message || "Lỗi cập nhật thanh toán");
         }
@@ -74,10 +74,10 @@ const PaymentSuccess = () => {
           </h1>
           <p className="text-gray-600 mt-2">{message}</p>
           <button
-            onClick={() => navigate("/my-flights")}
+            onClick={() => navigate("/confirm-booking")}
             className="mt-6 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
           >
-            Quay lại danh sách chuyến bay
+            Xem chi tiết đặt chỗ
           </button>
         </>
       )}
@@ -90,7 +90,7 @@ const PaymentSuccess = () => {
           </h1>
           <p className="text-gray-600 mt-2">{message}</p>
           <button
-            onClick={() => navigate("/my-flights")}
+            onClick={() => navigate("/confirm-booking")}
             className="mt-6 bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600"
           >
             Quay lại

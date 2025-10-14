@@ -11,7 +11,12 @@ export default function QRPay() {
   const location = useLocation();
   const navigate = useNavigate();
 
-  const { approvalUrl, bookingCode } = location.state || {};
+  // Get data from URL parameters or state
+  const urlParams = new URLSearchParams(location.search);
+  const bookingCode =
+    urlParams.get("bookingCode") || location.state?.bookingCode;
+  const approvalUrl =
+    urlParams.get("approvalUrl") || location.state?.approvalUrl;
   const [status, setStatus] = useState("waiting");
 
   const pollingRef = useRef(null);
@@ -30,7 +35,7 @@ export default function QRPay() {
           toast.success("Thanh toán thành công!");
 
           clearInterval(pollingRef.current);
-          setTimeout(() => navigate("/"), 10000);
+          setTimeout(() => navigate("/confirm-booking"), 3000); // Auto redirect after 3 seconds
         }
       } catch (error) {
         console.error("Lỗi khi kiểm tra thanh toán:", error);
@@ -69,13 +74,14 @@ export default function QRPay() {
           Thanh toán thành công!
         </h1>
         <p className="text-gray-600 mt-2">
-          Cảm ơn bạn đã sử dụng dịch vụ. Hệ thống sẽ gửi thông tin đến email của bạn.
+          Cảm ơn bạn đã sử dụng dịch vụ. Hệ thống sẽ gửi thông tin đến email của
+          bạn.
         </p>
         <button
-          onClick={() => navigate("/my-flights")}
+          onClick={() => navigate("/confirm-booking")}
           className="mt-6 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
         >
-          Quay lại danh sách chuyến bay
+          Xem chi tiết đặt chỗ ngay
         </button>
       </div>
     );
@@ -101,7 +107,8 @@ export default function QRPay() {
             className="w-[300px] h-[300px]"
           />
           <p className="text-sm opacity-90">
-            Sau khi thanh toán xong , vui lòng đợi để chúng tôi kiểm tra.
+            Sau khi thanh toán xong, hệ thống sẽ tự động chuyển hướng về trang
+            danh sách chuyến bay trong 3 giây.
           </p>
         </CardContent>
       </Card>

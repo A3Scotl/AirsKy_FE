@@ -4,7 +4,10 @@ import { useState, useEffect, useMemo } from "react";
 import SEO from "@/components/common/seo";
 import Stepper from "@/lib/Stepper";
 import PassengerDetails from "@/components/section/flight/passenger-detail-section";
-import Extras from "@/components/section/flight/extras-section";
+import Extras, {
+  autoAssignStandardSeats,
+  processExtrasDataForBooking,
+} from "@/components/section/flight/extras-section";
 import Payment from "@/components/section/flight/payment-section";
 import PropTypes from "prop-types";
 import { Badge } from "@/components/ui/badge";
@@ -559,6 +562,93 @@ function FlightBookingStepper() {
 
   const handleNext = () => {
     if (validateCurrentStep() && currentStep < steps.length) {
+      // Auto-assign seats when leaving Extras step (step 3) if user hasn't selected all seats
+      if (currentStep === 3 && extrasData) {
+        const { selectedSeats, selectedReturnSeats } = extrasData;
+        const isRoundTrip = flight.type === "ROUND_TRIP";
+
+        // Check if auto-assignment is needed for outbound seats
+        const needsOutboundAssignment = formData.passengers?.some(
+          (_, index) => {
+            const passengerKey = `passenger${index + 1}`;
+            const existingSeat = selectedSeats?.[passengerKey];
+            return (
+              !existingSeat ||
+              (typeof existingSeat === "object" && !existingSeat.seatNumber)
+            );
+          }
+        );
+
+        // Check if auto-assignment is needed for return seats (round-trip only)
+        const needsReturnAssignment =
+          isRoundTrip &&
+          formData.passengers?.some((_, index) => {
+            const passengerKey = `passenger${index + 1}`;
+            const existingSeat = selectedReturnSeats?.[passengerKey];
+            return (
+              !existingSeat ||
+              (typeof existingSeat === "object" && !existingSeat.seatNumber)
+            );
+          });
+
+        if (needsOutboundAssignment || needsReturnAssignment) {
+          console.log("🎯 Auto-assigning seats for unselected passengers");
+
+          // Auto-assign outbound seats if needed
+          if (
+            needsOutboundAssignment &&
+            extrasData.seats &&
+            extrasData.seats.length > 0
+          ) {
+            const autoAssignedOutbound = autoAssignStandardSeats(
+              extrasData.seats,
+              formData.passengers,
+              selectedSeats || {},
+              flight.type === "ROUND_TRIP"
+                ? flight.outbound?.selectedClass
+                : flight.selectedClass,
+              false
+            );
+
+            if (Object.keys(autoAssignedOutbound).length > 0) {
+              setExtrasData((prev) => ({
+                ...prev,
+                selectedSeats: {
+                  ...prev.selectedSeats,
+                  ...autoAssignedOutbound,
+                },
+              }));
+            }
+          }
+
+          // Auto-assign return seats if needed (round-trip only)
+          if (
+            needsReturnAssignment &&
+            isRoundTrip &&
+            extrasData.returnSeats &&
+            extrasData.returnSeats.length > 0
+          ) {
+            const autoAssignedReturn = autoAssignStandardSeats(
+              extrasData.returnSeats,
+              formData.passengers,
+              selectedReturnSeats || {},
+              flight.return?.selectedClass,
+              true
+            );
+
+            if (Object.keys(autoAssignedReturn).length > 0) {
+              setExtrasData((prev) => ({
+                ...prev,
+                selectedReturnSeats: {
+                  ...prev.selectedReturnSeats,
+                  ...autoAssignedReturn,
+                },
+              }));
+            }
+          }
+        }
+      }
+
       setCurrentStep(currentStep + 1);
     }
   };
@@ -656,7 +746,7 @@ function FlightBookingStepper() {
         keywords="đặt vé máy bay, booking chuyến bay, thông tin hành khách, thanh toán vé máy bay"
       />
       <div className="min-h-screen bg-gray-50 dark:bg-gray-700">
-        <main className="max-w-5xl mx-auto py-8 pt-20 px-4 sm:px-6 lg:px-8">
+        <main className="max-w-7xl mx-auto py-8 pt-20 px-4 sm:px-6 lg:px-8">
           <Stepper
             steps={steps}
             currentStep={currentStep}

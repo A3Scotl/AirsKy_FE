@@ -39,6 +39,7 @@ const CheckInSeatSelection = ({
   const [seatTypePricing, setSeatTypePricing] = useState({});
   const [ancillaryServices, setAncillaryServices] = useState([]);
   const [selectedServices, setSelectedServices] = useState({});
+  const [preSelectedServices, setPreSelectedServices] = useState({});
   const [loadingServices, setLoadingServices] = useState(false);
 
   // Get current passenger info
@@ -209,10 +210,14 @@ const CheckInSeatSelection = ({
   useEffect(() => {
     if (booking?.ancillaryServices && ancillaryServices.length > 0) {
       const initialSelected = {};
+      const preSelected = {};
       booking.ancillaryServices.forEach((service) => {
-        initialSelected[service.id] = true;
+        const serviceKey = service.serviceId || service.id;
+        initialSelected[serviceKey] = true;
+        preSelected[serviceKey] = true;
       });
       setSelectedServices(initialSelected);
+      setPreSelectedServices(preSelected);
     }
   }, [booking?.ancillaryServices, ancillaryServices]);
 
@@ -254,6 +259,11 @@ const CheckInSeatSelection = ({
 
   // Handle service selection
   const handleServiceSelection = (serviceId, checked) => {
+    // Don't allow unchecking pre-selected services
+    if (preSelectedServices[serviceId] && !checked) {
+      return;
+    }
+
     setSelectedServices((prev) => ({
       ...prev,
       [serviceId]: checked,
@@ -272,9 +282,10 @@ const CheckInSeatSelection = ({
       }
     }
 
-    // Add selected services cost
+    // Add selected services cost (only newly selected services, not pre-selected)
     ancillaryServices.forEach((service) => {
-      if (selectedServices[service.id]) {
+      const serviceKey = service.serviceId || service.id;
+      if (selectedServices[serviceKey] && !preSelectedServices[serviceKey]) {
         total += service.price || 0;
       }
     });
@@ -282,9 +293,12 @@ const CheckInSeatSelection = ({
     return total;
   };
 
-  // Get selected services list
+  // Get selected services list (only newly selected, not pre-selected)
   const getSelectedServices = () => {
-    return ancillaryServices.filter((service) => selectedServices[service.id]);
+    return ancillaryServices.filter((service) => {
+      const serviceKey = service.serviceId || service.id;
+      return selectedServices[serviceKey] && !preSelectedServices[serviceKey];
+    });
   };
 
   const getSeatType = (seatNumber) => {
@@ -341,12 +355,11 @@ const CheckInSeatSelection = ({
     return "available";
   };
 
-  const selectedSeatPrice = selectedSeat
-    ? getSeatPrice(selectedSeat.seatNumber)
-    : 0;
-  const selectedSeatDescription = selectedSeat
-    ? getSeatDescription(selectedSeat.seatNumber)
-    : "";
+  const handleProceedToPayment = () => {
+    const cost = calculateTotalAdditionalCost();
+    const services = getSelectedServices();
+    onProceedToPayment(cost, services, selectedSeat);
+  };
 
   return (
     <div className="space-y-6">
@@ -755,31 +768,51 @@ const CheckInSeatSelection = ({
             <div className="space-y-3">
               {ancillaryServices.map((service) => (
                 <div
-                  key={service.id}
+                  key={service.serviceId || service.id}
                   className="flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50"
                 >
                   <div className="flex items-center gap-3">
                     <Checkbox
-                      id={`service-${service.id}`}
-                      checked={selectedServices[service.id] || false}
+                      id={`service-${service.serviceId || service.id}`}
+                      checked={
+                        selectedServices[service.serviceId || service.id] ||
+                        false
+                      }
+                      disabled={
+                        preSelectedServices[service.serviceId || service.id] ||
+                        false
+                      }
                       onCheckedChange={(checked) =>
-                        handleServiceSelection(service.id, checked)
+                        handleServiceSelection(
+                          service.serviceId || service.id,
+                          checked
+                        )
                       }
                     />
+                    {preSelectedServices[service.serviceId || service.id] && (
+                      <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
+                        Đã chọn
+                      </span>
+                    )}
                     <div className="flex items-center gap-2">
                       <span className="text-lg">
                         {getServiceTypeIcon(service.serviceType)}
                       </span>
                       <div>
                         <label
-                          htmlFor={`service-${service.id}`}
+                          htmlFor={`service-${service.serviceId || service.id}`}
                           className="font-medium cursor-pointer"
                         >
-                          {service.name}
+                          {service.serviceName || service.name}
                         </label>
                         <p className="text-sm text-gray-600">
                           {service.description}
                         </p>
+                        {service.maxQuantity && (
+                          <p className="text-xs text-blue-600">
+                            Số lượng tối đa: {service.maxQuantity}
+                          </p>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -844,7 +877,7 @@ const CheckInSeatSelection = ({
         </Button>
         {calculateTotalAdditionalCost() > 0 ? (
           <Button
-            onClick={onProceedToPayment}
+            onClick={handleProceedToPayment}
             className="flex-1 bg-orange-600 hover:bg-orange-700"
           >
             <CreditCard className="w-4 h-4 mr-2" />
