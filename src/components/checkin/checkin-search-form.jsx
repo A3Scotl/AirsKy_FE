@@ -97,7 +97,7 @@ const CheckInSearchForm = ({ onSearch, onShowTerms, isLoading, error }) => {
             />
           </div>
 
-          <div className="space-y-2">
+          {/* <div className="space-y-2">
             <Label htmlFor="email" className="text-sm font-medium">
               Email (tùy chọn)
             </Label>
@@ -109,7 +109,7 @@ const CheckInSearchForm = ({ onSearch, onShowTerms, isLoading, error }) => {
               onChange={(e) => handleChange("email", e.target.value)}
               className="text-sm"
             />
-          </div>
+          </div> */}
 
           {error && (
             <Alert variant="destructive">

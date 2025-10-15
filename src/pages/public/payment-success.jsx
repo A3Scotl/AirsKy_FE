@@ -20,6 +20,23 @@ const PaymentSuccess = () => {
       const payerId = params.get("PayerID");
       const bookingId = params.get("bookingId");
 
+      // Check if this is from check-in payment flow (stored in localStorage)
+      const checkinPaymentInfo = localStorage.getItem("checkin_payment_info");
+      let isCheckinPayment = false;
+      let bookingCode = null;
+
+      if (checkinPaymentInfo) {
+        try {
+          const paymentInfo = JSON.parse(checkinPaymentInfo);
+          isCheckinPayment = paymentInfo.isCheckinPayment;
+          bookingCode = paymentInfo.bookingCode;
+          // Clean up after use
+          localStorage.removeItem("checkin_payment_info");
+        } catch (error) {
+          console.error("Error parsing checkin payment info:", error);
+        }
+      }
+
       if (!paymentId || !payerId || !bookingId) {
         setStatus("error");
         setMessage("Thiếu thông tin thanh toán. Vui lòng kiểm tra lại.");
@@ -36,7 +53,28 @@ const PaymentSuccess = () => {
           setStatus("success");
           setMessage("Thanh toán thành công!");
           toast.success("Thanh toán thành công!");
-          setTimeout(() => navigate("/confirm-booking"), 2500);
+
+          // Check if this is from check-in payment flow
+          if (isCheckinPayment && bookingCode) {
+            console.log(
+              "🔄 Redirecting back to check-in page for booking:",
+              bookingCode
+            );
+            // Redirect back to check-in page to continue with check-in process
+            setTimeout(
+              () =>
+                navigate(
+                  `/check-in?bookingCode=${bookingCode}&paymentSuccess=true`
+                ),
+              2500
+            );
+          } else {
+            console.log(
+              "🔄 Redirecting to confirm booking (normal booking payment)"
+            );
+            // Normal booking payment - go to confirm booking
+            setTimeout(() => navigate("/confirm-booking"), 2500);
+          }
         } else {
           throw new Error(response.data?.message || "Lỗi cập nhật thanh toán");
         }
@@ -74,10 +112,53 @@ const PaymentSuccess = () => {
           </h1>
           <p className="text-gray-600 mt-2">{message}</p>
           <button
-            onClick={() => navigate("/confirm-booking")}
+            onClick={() => {
+              // Check localStorage for checkin payment info
+              const checkinPaymentInfo = localStorage.getItem(
+                "checkin_payment_info_backup"
+              );
+              let isCheckinPayment = false;
+              let bookingCode = null;
+
+              if (checkinPaymentInfo) {
+                try {
+                  const paymentInfo = JSON.parse(checkinPaymentInfo);
+                  isCheckinPayment = paymentInfo.isCheckinPayment;
+                  bookingCode = paymentInfo.bookingCode;
+                } catch (error) {
+                  console.error("Error parsing checkin payment info:", error);
+                }
+              }
+
+              if (isCheckinPayment && bookingCode) {
+                navigate(
+                  `/check-in?bookingCode=${bookingCode}&paymentSuccess=true`
+                );
+              } else {
+                navigate("/confirm-booking");
+              }
+            }}
             className="mt-6 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
           >
-            Xem chi tiết đặt chỗ
+            {(() => {
+              const checkinPaymentInfo = localStorage.getItem(
+                "checkin_payment_info_backup"
+              );
+              let isCheckinPayment = false;
+
+              if (checkinPaymentInfo) {
+                try {
+                  const paymentInfo = JSON.parse(checkinPaymentInfo);
+                  isCheckinPayment = paymentInfo.isCheckinPayment;
+                } catch (error) {
+                  console.error("Error parsing checkin payment info:", error);
+                }
+              }
+
+              return isCheckinPayment
+                ? "Tiếp tục check-in"
+                : "Xem chi tiết đặt chỗ";
+            })()}
           </button>
         </>
       )}
@@ -90,7 +171,32 @@ const PaymentSuccess = () => {
           </h1>
           <p className="text-gray-600 mt-2">{message}</p>
           <button
-            onClick={() => navigate("/confirm-booking")}
+            onClick={() => {
+              // Check localStorage for checkin payment info
+              const checkinPaymentInfo = localStorage.getItem(
+                "checkin_payment_info_backup"
+              );
+              let isCheckinPayment = false;
+              let bookingCode = null;
+
+              if (checkinPaymentInfo) {
+                try {
+                  const paymentInfo = JSON.parse(checkinPaymentInfo);
+                  isCheckinPayment = paymentInfo.isCheckinPayment;
+                  bookingCode = paymentInfo.bookingCode;
+                } catch (error) {
+                  console.error("Error parsing checkin payment info:", error);
+                }
+              }
+
+              if (isCheckinPayment && bookingCode) {
+                navigate(
+                  `/check-in?bookingCode=${bookingCode}&paymentError=true`
+                );
+              } else {
+                navigate("/confirm-booking");
+              }
+            }}
             className="mt-6 bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600"
           >
             Quay lại

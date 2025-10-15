@@ -17,6 +17,7 @@ export default function QRPay() {
     urlParams.get("bookingCode") || location.state?.bookingCode;
   const approvalUrl =
     urlParams.get("approvalUrl") || location.state?.approvalUrl;
+  const isCheckinPayment = urlParams.get("isCheckinPayment") === "true";
   const [status, setStatus] = useState("waiting");
 
   const pollingRef = useRef(null);
@@ -35,7 +36,44 @@ export default function QRPay() {
           toast.success("Thanh toán thành công!");
 
           clearInterval(pollingRef.current);
-          setTimeout(() => navigate("/confirm-booking"), 3000); // Auto redirect after 3 seconds
+
+          // Check if this is from check-in payment flow (use localStorage if URL param is not available)
+          let isCheckinFlow = isCheckinPayment;
+          let bookingCodeForRedirect = bookingCode;
+
+          if (!isCheckinFlow) {
+            const checkinPaymentInfo = localStorage.getItem(
+              "checkin_payment_info"
+            );
+            if (checkinPaymentInfo) {
+              try {
+                const paymentInfo = JSON.parse(checkinPaymentInfo);
+                isCheckinFlow = paymentInfo.isCheckinPayment;
+                bookingCodeForRedirect = paymentInfo.bookingCode;
+              } catch (error) {
+                console.error("Error parsing checkin payment info:", error);
+              }
+            }
+          }
+
+          if (isCheckinFlow && bookingCodeForRedirect) {
+            console.log(
+              "🔄 QR Payment success - redirecting to check-in for booking:",
+              bookingCodeForRedirect
+            );
+            setTimeout(
+              () =>
+                navigate(
+                  `/check-in?bookingCode=${bookingCodeForRedirect}&paymentSuccess=true`
+                ),
+              3000
+            );
+          } else {
+            console.log(
+              "🔄 QR Payment success - redirecting to confirm booking"
+            );
+            setTimeout(() => navigate("/confirm-booking"), 3000); // Auto redirect after 3 seconds
+          }
         }
       } catch (error) {
         console.error("Lỗi khi kiểm tra thanh toán:", error);
@@ -78,10 +116,57 @@ export default function QRPay() {
           bạn.
         </p>
         <button
-          onClick={() => navigate("/confirm-booking")}
+          onClick={() => {
+            // Check localStorage if URL params are not available
+            let isCheckinFlow = isCheckinPayment;
+            let bookingCodeForRedirect = bookingCode;
+
+            if (!isCheckinFlow) {
+              const checkinPaymentInfo = localStorage.getItem(
+                "checkin_payment_info_backup"
+              );
+              if (checkinPaymentInfo) {
+                try {
+                  const paymentInfo = JSON.parse(checkinPaymentInfo);
+                  isCheckinFlow = paymentInfo.isCheckinPayment;
+                  bookingCodeForRedirect = paymentInfo.bookingCode;
+                } catch (error) {
+                  console.error("Error parsing checkin payment info:", error);
+                }
+              }
+            }
+
+            if (isCheckinFlow && bookingCodeForRedirect) {
+              navigate(
+                `/check-in?bookingCode=${bookingCodeForRedirect}&paymentSuccess=true`
+              );
+            } else {
+              navigate("/confirm-booking");
+            }
+          }}
           className="mt-6 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
         >
-          Xem chi tiết đặt chỗ ngay
+          {(() => {
+            let isCheckinFlow = isCheckinPayment;
+
+            if (!isCheckinFlow) {
+              const checkinPaymentInfo = localStorage.getItem(
+                "checkin_payment_info_backup"
+              );
+              if (checkinPaymentInfo) {
+                try {
+                  const paymentInfo = JSON.parse(checkinPaymentInfo);
+                  isCheckinFlow = paymentInfo.isCheckinPayment;
+                } catch (error) {
+                  console.error("Error parsing checkin payment info:", error);
+                }
+              }
+            }
+
+            return isCheckinFlow
+              ? "Tiếp tục check-in"
+              : "Xem chi tiết đặt chỗ ngay";
+          })()}
         </button>
       </div>
     );

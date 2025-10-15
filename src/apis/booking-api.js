@@ -69,4 +69,36 @@ export const bookingApi = {
     const queryString = queryParams.toString();
     return apiHandler("get", `/bookings/lookup?${queryString}`);
   },
+
+  /**
+   * Tính toán thay đổi ghế
+   * @param {Object} seatChangeData - Dữ liệu tính toán thay đổi ghế
+   * @returns {Promise<{ success: boolean, data?: any, message: string }>}
+   */
+  calculateSeatChange: async (seatChangeData) => {
+    return apiHandler(
+      "post",
+      "/bookings/calculate-seat-change",
+      seatChangeData
+    );
+  },
+
+  /**
+   * Cập nhật tổng tiền booking
+   * @param {number} id - ID của booking
+   * @param {Object} updateData - Dữ liệu cập nhật tổng tiền
+   * @returns {Promise<{ success: boolean, data?: any, message: string }>}
+   */
+  updateBookingTotal: async (id, updateData) => {
+    return apiHandler("put", `/bookings/${id}/update-total`, updateData);
+  },
+
+  /**
+   * Xử lý check-in
+   * @param {Object} checkinData - Dữ liệu check-in với cấu trúc: { bookingCode, passengerId, passengerFullName }
+   * @returns {Promise<{ success: boolean, data?: any, message: string }>}
+   */
+  processCheckin: async (checkinData) => {
+    return apiHandler("put", "/bookings/checkin", checkinData);
+  },
 };
