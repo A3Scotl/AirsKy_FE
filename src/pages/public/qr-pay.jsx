@@ -15,8 +15,8 @@ export default function QRPay() {
   const urlParams = new URLSearchParams(location.search);
   const bookingCode =
     urlParams.get("bookingCode") || location.state?.bookingCode;
-  const approvalUrl =
-    urlParams.get("approvalUrl") || location.state?.approvalUrl;
+  const checkoutUrl =
+    urlParams.get("checkoutUrl") || location.state?.checkoutUrl;
   const isCheckinPayment = urlParams.get("isCheckinPayment") === "true";
   const [status, setStatus] = useState("waiting");
 
@@ -91,7 +91,7 @@ export default function QRPay() {
     return () => clearInterval(pollingRef.current);
   }, [bookingCode, navigate]);
 
-  if (!approvalUrl) {
+  if (!checkoutUrl) {
     return (
       <div className="flex flex-col items-center justify-center h-screen text-center">
         <h2 className="text-2xl font-semibold text-gray-700 mb-4">
@@ -187,7 +187,7 @@ export default function QRPay() {
         <CardContent className="flex flex-col items-center p-6 space-y-4">
           {/* QR Code */}
           <img
-            src={approvalUrl}
+            src={checkoutUrl}
             alt="QR Code"
             className="w-[300px] h-[300px]"
           />
