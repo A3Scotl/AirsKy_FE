@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { paymentApi } from "@/apis/payment-api";
+import { bookingApi } from "@/apis/booking-api";
 import { formatCurrencyVND } from "@/utils/currency-utils";
 
 const CheckInCompletion = ({
@@ -37,17 +38,110 @@ const CheckInCompletion = ({
   selectedSeat = null,
   onPaymentSuccess,
   onBack,
+  fromPaymentSuccess = false, // New prop to indicate if coming from payment success
 }) => {
   const [emailSent, setEmailSent] = useState(false);
   const [downloadStarted, setDownloadStarted] = useState(false);
   const [imageLoadError, setImageLoadError] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState("PAYPAL");
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
+  const [autoCheckInAttempted, setAutoCheckInAttempted] = useState(false);
 
   // Get passenger info
   const currentPassenger =
     booking.checkinEligiblePassengers?.[0] || booking.passengers?.[0];
   const checkinData = booking.checkinId ? booking : null;
+
+  // Auto check-in when coming from payment success
+  useEffect(() => {
+    if (
+      fromPaymentSuccess &&
+      !autoCheckInAttempted &&
+      !isAlreadyCheckedIn &&
+      (selectedSeat || selectedServices.length > 0)
+    ) {
+      console.log("🔄 Auto check-in attempt from payment success", {
+        selectedSeat,
+        selectedServices,
+        bookingCode: booking.bookingCode,
+      });
+
+      performAutoCheckIn();
+    }
+  }, [
+    fromPaymentSuccess,
+    autoCheckInAttempted,
+    selectedSeat,
+    selectedServices,
+    booking,
+  ]);
+
+  const performAutoCheckIn = async () => {
+    if (autoCheckInAttempted) return;
+
+    setAutoCheckInAttempted(true);
+
+    try {
+      const selectedPassenger =
+        booking.checkinEligiblePassengers?.[0] || booking.passengers?.[0];
+      if (!selectedPassenger) {
+        console.warn("⚠️ No passenger found for auto check-in");
+        return;
+      }
+
+      // Resolve seat ID
+      let newSeatId = null;
+      if (selectedSeat?.seatId) {
+        newSeatId = selectedSeat.seatId;
+      } else if (selectedPassenger?.seatId) {
+        newSeatId = selectedPassenger.seatId;
+      } else {
+        // Try to find seat from booking data
+        const currentSeatNumber = selectedPassenger?.seatNumber;
+        if (currentSeatNumber) {
+          const seatDetails = booking.seatTypeDetails?.find(
+            (detail) => detail.seatNumber === currentSeatNumber
+          );
+          newSeatId = seatDetails?.seatId;
+        }
+      }
+
+      if (!newSeatId && selectedSeat) {
+        console.warn("⚠️ Could not resolve seat ID for auto check-in");
+        return;
+      }
+
+      const checkinData = {
+        bookingCode: booking.bookingCode,
+        passengerId: selectedPassenger.passengerId,
+        newSeatId: newSeatId,
+        servicesToAdd: selectedServices.map((service) => ({
+          serviceId: service.id || service.serviceId,
+          quantity: service.quantity || 1,
+        })),
+      };
+
+      console.log("📝 Auto submitting check-in data:", checkinData);
+
+      const response = await bookingApi.processCheckin(checkinData);
+
+      if (response.success && response.data) {
+        console.log("✅ Auto check-in successful:", response.data);
+        toast.success("Check-in hoàn tất thành công!");
+
+        // Update booking data
+        if (onRefresh) {
+          onRefresh();
+        }
+      } else {
+        console.warn("⚠️ Auto check-in failed:", response);
+        toast.info("Vui lòng hoàn tất check-in thủ công");
+      }
+    } catch (error) {
+      console.error("❌ Auto check-in error:", error);
+      toast.info("Vui lòng hoàn tất check-in thủ công");
+    }
+  };
 
   const handleEmail = async () => {
     try {
@@ -936,9 +1030,24 @@ const CheckInCompletion = ({
                 >
                   {isAlreadyCheckedIn
                     ? "Bạn có muốn check-in cho một chuyến bay khác không?"
+                    : fromPaymentSuccess && !isAlreadyCheckedIn
+                    ? "Thanh toán thành công! Vui lòng hoàn tất check-in."
                     : "Cảm ơn bạn đã hoàn tất check-in!"}
                 </p>
                 <div className="space-y-2">
+                  {fromPaymentSuccess &&
+                    !isAlreadyCheckedIn &&
+                    (selectedSeat || selectedServices.length > 0) && (
+                      <Button
+                        onClick={performAutoCheckIn}
+                        disabled={autoCheckInAttempted}
+                        className="bg-blue-600 hover:bg-blue-700 w-full mb-2"
+                      >
+                        {autoCheckInAttempted
+                          ? "Đang xử lý..."
+                          : "Hoàn tất check-in"}
+                      </Button>
+                    )}
                   <Button
                     onClick={onNewCheckIn}
                     className={

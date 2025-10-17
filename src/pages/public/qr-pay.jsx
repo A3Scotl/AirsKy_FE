@@ -25,13 +25,44 @@ export default function QRPay() {
   useEffect(() => {
     if (!bookingCode) return;
 
+    // Check if QR payment for this booking already succeeded or is being processed
+    const qrPaymentKey = `qr_payment_success_${bookingCode}`;
+    const qrProcessingKey = `qr_payment_processing_${bookingCode}`;
+    const alreadySucceeded = localStorage.getItem(qrPaymentKey);
+    const currentlyProcessing = localStorage.getItem(qrProcessingKey);
+
+    if (alreadySucceeded || currentlyProcessing) {
+      console.log("💡 QR Payment already succeeded or in progress:", {
+        bookingCode,
+        alreadySucceeded: !!alreadySucceeded,
+        currentlyProcessing: !!currentlyProcessing,
+      });
+      setStatus("success");
+      toast.success("Thanh toán đã thành công!");
+      return;
+    }
+
     const checkPaymentStatus = async () => {
       try {
+        console.log("🏦 Checking QR payment status for booking:", bookingCode);
+
         const response = await axios.get(
           `http://localhost:8080/api/v1/payments/sepay/check/${bookingCode}`
         );
 
+        console.log("🏦 QR payment check response:", response.data);
+
         if (response.data?.success) {
+          // Mark QR payment as being processed and succeeded
+          const qrPaymentKey = `qr_payment_success_${bookingCode}`;
+          const qrProcessingKey = `qr_payment_processing_${bookingCode}`;
+          localStorage.setItem(qrProcessingKey, Date.now().toString());
+          localStorage.setItem(qrPaymentKey, Date.now().toString());
+          console.log("🧹 Set QR payment flags:", {
+            qrPaymentKey,
+            qrProcessingKey,
+          });
+
           setStatus("success");
           toast.success("Thanh toán thành công!");
 
@@ -56,6 +87,25 @@ export default function QRPay() {
             }
           }
 
+          // Check if this is from my-flights payment flow
+          let isMyFlightsFlow = false;
+          let myFlightsBookingCodeForRedirect = bookingCode;
+
+          if (!isMyFlightsFlow) {
+            const myFlightsPaymentInfo = localStorage.getItem(
+              "my_flights_payment_info"
+            );
+            if (myFlightsPaymentInfo) {
+              try {
+                const paymentInfo = JSON.parse(myFlightsPaymentInfo);
+                isMyFlightsFlow = paymentInfo.isMyFlightsPayment;
+                myFlightsBookingCodeForRedirect = paymentInfo.bookingCode;
+              } catch (error) {
+                console.error("Error parsing my flights payment info:", error);
+              }
+            }
+          }
+
           if (isCheckinFlow && bookingCodeForRedirect) {
             console.log(
               "🔄 QR Payment success - redirecting to check-in for booking:",
@@ -66,6 +116,23 @@ export default function QRPay() {
                 navigate(
                   `/check-in?bookingCode=${bookingCodeForRedirect}&paymentSuccess=true`
                 ),
+              3000
+            );
+          } else if (isMyFlightsFlow && myFlightsBookingCodeForRedirect) {
+            console.log(
+              "🔄 QR Payment success - redirecting to my-flights success for booking:",
+              myFlightsBookingCodeForRedirect
+            );
+            setTimeout(
+              () =>
+                navigate("/my-flights", {
+                  state: {
+                    bookingCode: myFlightsBookingCodeForRedirect,
+                    paymentSuccess: true,
+                    message:
+                      "Thanh toán thành công! Đặt chỗ của bạn đã được xác nhận.",
+                  },
+                }),
               3000
             );
           } else {
@@ -88,7 +155,13 @@ export default function QRPay() {
     pollingRef.current = setInterval(checkPaymentStatus, 3000);
 
     // Cleanup khi component unmount
-    return () => clearInterval(pollingRef.current);
+    return () => {
+      clearInterval(pollingRef.current);
+      // Clean up processing flag when component unmounts (optional cleanup)
+      const qrProcessingKey = `qr_payment_processing_${bookingCode}`;
+      // Note: We might not want to remove this here if user navigates away and comes back
+      console.log("🧹 Component unmount - polling stopped for:", bookingCode);
+    };
   }, [bookingCode, navigate]);
 
   if (!approvalUrl) {
@@ -136,10 +209,41 @@ export default function QRPay() {
               }
             }
 
+            // Check my-flights payment info
+            let isMyFlightsFlow = false;
+            let myFlightsBookingCodeForRedirect = bookingCode;
+
+            if (!isMyFlightsFlow) {
+              const myFlightsPaymentInfo = localStorage.getItem(
+                "my_flights_payment_info_backup"
+              );
+              if (myFlightsPaymentInfo) {
+                try {
+                  const paymentInfo = JSON.parse(myFlightsPaymentInfo);
+                  isMyFlightsFlow = paymentInfo.isMyFlightsPayment;
+                  myFlightsBookingCodeForRedirect = paymentInfo.bookingCode;
+                } catch (error) {
+                  console.error(
+                    "Error parsing my flights payment info:",
+                    error
+                  );
+                }
+              }
+            }
+
             if (isCheckinFlow && bookingCodeForRedirect) {
               navigate(
                 `/check-in?bookingCode=${bookingCodeForRedirect}&paymentSuccess=true`
               );
+            } else if (isMyFlightsFlow && myFlightsBookingCodeForRedirect) {
+              navigate("/my-flights", {
+                state: {
+                  bookingCode: myFlightsBookingCodeForRedirect,
+                  paymentSuccess: true,
+                  message:
+                    "Thanh toán thành công! Đặt chỗ của bạn đã được xác nhận.",
+                },
+              });
             } else {
               navigate("/confirm-booking");
             }
@@ -163,9 +267,31 @@ export default function QRPay() {
               }
             }
 
-            return isCheckinFlow
-              ? "Tiếp tục check-in"
-              : "Xem chi tiết đặt chỗ ngay";
+            let isMyFlightsFlow = false;
+            if (!isMyFlightsFlow) {
+              const myFlightsPaymentInfo = localStorage.getItem(
+                "my_flights_payment_info_backup"
+              );
+              if (myFlightsPaymentInfo) {
+                try {
+                  const paymentInfo = JSON.parse(myFlightsPaymentInfo);
+                  isMyFlightsFlow = paymentInfo.isMyFlightsPayment;
+                } catch (error) {
+                  console.error(
+                    "Error parsing my flights payment info:",
+                    error
+                  );
+                }
+              }
+            }
+
+            if (isCheckinFlow) {
+              return "Tiếp tục check-in";
+            } else if (isMyFlightsFlow) {
+              return "Xem chi tiết đặt chỗ ngay";
+            } else {
+              return "Xem chi tiết đặt chỗ ngay";
+            }
           })()}
         </button>
       </div>

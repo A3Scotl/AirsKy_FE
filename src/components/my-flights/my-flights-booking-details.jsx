@@ -16,13 +16,18 @@ import {
   AlertTriangle,
   DollarSign,
   Mail,
-  Tag
+  Tag,
 } from "lucide-react";
 import { formatCurrencyVND } from "@/utils/currency-utils";
 import { paymentApi } from "@/apis/payment-api";
 import { toast } from "sonner";
 
-const MyFlightsBookingDetails = ({ booking, onProceed, onBack }) => {
+const MyFlightsBookingDetails = ({
+  booking,
+  onProceed,
+  onBack,
+  passengerName,
+}) => {
   const navigate = useNavigate();
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
   const [paymentError, setPaymentError] = useState(null);
@@ -115,6 +120,22 @@ const MyFlightsBookingDetails = ({ booking, onProceed, onBack }) => {
 
       if (response.success && response.data) {
         const payment = response.data;
+
+        // Store payment info for redirect handling
+        const paymentInfo = {
+          isMyFlightsPayment: true,
+          bookingCode: booking.bookingCode,
+          bookingId: booking.bookingId,
+          passengerName: passengerName, // Add passenger name for auto-search after payment
+        };
+        localStorage.setItem(
+          "my_flights_payment_info",
+          JSON.stringify(paymentInfo)
+        );
+        localStorage.setItem(
+          "my_flights_payment_info_backup",
+          JSON.stringify(paymentInfo)
+        );
 
         // Handle PayPal payment
         if (paymentMethod === "PAYPAL" && payment.paypalApprovalUrl) {

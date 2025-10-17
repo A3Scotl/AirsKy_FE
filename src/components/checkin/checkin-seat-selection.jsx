@@ -42,7 +42,181 @@ const CheckInSeatSelection = ({
   selectedSeat,
   onProceedToPayment,
   onProceedToFreeCheckIn,
+  isProcessingPaymentSuccess = false,
 }) => {
+  // Seat Button Component for Aircraft Layout
+  const SeatButton = ({
+    seat,
+    isSelected,
+    isCurrent,
+    isHovered,
+    onClick,
+    onMouseEnter,
+    onMouseLeave,
+    getSeatPrice,
+    getSeatDescription,
+    getSeatClassName,
+  }) => {
+    const seatNumber = seat.seatNumber;
+    const seatPrice = getSeatPrice(seatNumber);
+    const seatDesc = getSeatDescription(seatNumber);
+
+    return (
+      <button
+        className={`
+          relative w-14 h-14 rounded-xl flex items-center justify-center text-xs font-bold transition-all duration-300 border-2 shadow-xl transform
+          ${
+            isSelected
+              ? "bg-gradient-to-b from-blue-400 to-blue-600 text-white scale-110 shadow-2xl border-blue-300 ring-4 ring-blue-200 transform rotate-1 -translate-y-1"
+              : isCurrent
+              ? "bg-gradient-to-b from-green-400 to-green-600 text-white scale-110 shadow-2xl border-green-300 ring-4 ring-green-200 transform rotate-1 -translate-y-1"
+              : seat.status === "PENDING_PAYMENT"
+              ? "bg-gradient-to-b from-yellow-400 to-yellow-600 text-white shadow-inner transform translate-y-0.5 border-yellow-300"
+              : seat.status === "BOOKED"
+              ? "bg-gradient-to-b from-red-400 to-red-600 text-white shadow-inner transform translate-y-0.5 border-red-300 cursor-not-allowed"
+              : isHovered
+              ? "bg-gradient-to-b from-yellow-400 to-yellow-600 text-white shadow-2xl hover:brightness-110 hover:-translate-y-2 transition-all duration-300 cursor-pointer hover:rotate-1 border-yellow-300"
+              : getSeatClassName(seatNumber) === "premium"
+              ? "bg-gradient-to-b from-blue-50 to-blue-100 text-blue-800 hover:scale-110 hover:shadow-2xl hover:brightness-110 hover:-translate-y-2 transition-all duration-300 cursor-pointer hover:rotate-1 border-blue-200"
+              : getSeatClassName(seatNumber) === "business"
+              ? "bg-gradient-to-b from-purple-50 to-purple-100 text-purple-800 hover:scale-110 hover:shadow-2xl hover:brightness-110 hover:-translate-y-2 transition-all duration-300 cursor-pointer hover:rotate-1 border-purple-200"
+              : getSeatClassName(seatNumber) === "accessible"
+              ? "bg-gradient-to-b from-orange-50 to-orange-100 text-orange-800 hover:scale-110 hover:shadow-2xl hover:brightness-110 hover:-translate-y-2 transition-all duration-300 cursor-pointer hover:rotate-1 border-orange-200"
+              : "bg-gradient-to-b from-green-50 to-green-100 text-green-800 hover:scale-110 hover:shadow-2xl hover:brightness-110 hover:-translate-y-2 transition-all duration-300 cursor-pointer hover:rotate-1 border-green-200"
+          }
+        `}
+        onClick={onClick}
+        onMouseEnter={onMouseEnter}
+        onMouseLeave={onMouseLeave}
+        disabled={seat.status === "BOOKED"}
+        title={`${seatNumber} - ${seat.className} - ${seatDesc} - ${
+          seatPrice > 0 ? `+${formatCurrencyVND(seatPrice)}` : "Miễn phí"
+        }${seat.status === "PENDING_PAYMENT" ? " - Đang chờ thanh toán" : ""}${
+          seat.status === "BOOKED"
+            ? ` - Đã đặt bởi ${seat.bookedBy || "khách hàng khác"}`
+            : ""
+        }`}
+      >
+        {/* 3D Seat Effect */}
+        <div
+          className={`absolute inset-0 rounded-xl ${
+            isSelected || isCurrent
+              ? "bg-gradient-to-br from-white/40 via-white/20 to-blue-500/30 shadow-inner"
+              : seat.status === "BOOKED" || seat.status === "PENDING_PAYMENT"
+              ? "bg-gradient-to-br from-black/20 via-black/10 to-black/30 shadow-inner"
+              : "bg-gradient-to-br from-white/30 via-white/15 to-black/25 shadow-inner"
+          }`}
+        />
+
+        {/* Seat Armrests */}
+        <div className="absolute left-0 top-1 bottom-1 w-1 bg-gradient-to-r from-black/20 to-transparent rounded-l-xl" />
+        <div className="absolute right-0 top-1 bottom-1 w-1 bg-gradient-to-l from-black/20 to-transparent rounded-r-xl" />
+
+        {/* Seat Back */}
+        <div className="absolute top-0 left-1 right-1 h-2 bg-gradient-to-b from-black/15 to-transparent rounded-t-xl" />
+
+        {/* Seat Padding */}
+        <div className="absolute inset-1 rounded-lg bg-gradient-to-b from-white/15 via-white/5 to-black/10" />
+
+        {/* Seat Content */}
+        <div className="relative flex flex-col items-center z-10">
+          <span
+            className={`font-bold text-xs tracking-tight ${
+              isSelected || isCurrent
+                ? "text-white drop-shadow-lg font-extrabold"
+                : "text-black drop-shadow-md"
+            }`}
+          >
+            {seatNumber}
+          </span>
+
+          {/* Seat Type Indicator */}
+          {seat.seatType && seat.seatType !== "STANDARD" && (
+            <div className="flex flex-col items-center">
+              <span
+                className={`text-[8px] font-black uppercase tracking-widest px-1 py-0.5 rounded-full border ${
+                  isSelected || isCurrent
+                    ? "text-white bg-blue-600/80 border-white/50 drop-shadow-lg"
+                    : "text-black bg-white/60 border-black/30 drop-shadow-md"
+                }`}
+              >
+                {seat.seatType === "EXTRA_LEGROOM"
+                  ? "EL"
+                  : seat.seatType === "EXIT_ROW"
+                  ? "ER"
+                  : seat.seatType === "FRONT_ROW"
+                  ? "FR"
+                  : seat.seatType === "ACCESSIBLE"
+                  ? "AC"
+                  : "ST"}
+              </span>
+            </div>
+          )}
+
+          {/* Price Indicator */}
+          {seatPrice > 0 && (
+            <div
+              className={`text-[8px] leading-none mt-0.5 ${
+                isSelected || isCurrent
+                  ? "text-white drop-shadow-lg"
+                  : "text-green-600 drop-shadow-sm"
+              }`}
+            >
+              +{formatCurrencyVND(seatPrice)}
+            </div>
+          )}
+
+          {/* Current Seat Indicator */}
+          {isCurrent && (
+            <div className="text-[8px] leading-none mt-0.5 text-white drop-shadow-lg">
+              Hiện tại
+            </div>
+          )}
+        </div>
+
+        {/* Selection/Checkmark Indicator */}
+        {(isSelected || isCurrent) && (
+          <div className="absolute -top-3 -right-3 w-6 h-6 bg-gradient-to-br from-green-400 to-green-600 rounded-full border-3 border-white flex items-center justify-center shadow-2xl transform rotate-12">
+            <svg
+              className="w-4 h-4 text-white drop-shadow-lg"
+              fill="currentColor"
+              viewBox="0 0 20 20"
+            >
+              <path
+                fillRule="evenodd"
+                d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                clipRule="evenodd"
+              />
+            </svg>
+          </div>
+        )}
+
+        {/* Occupied/Pending Indicator */}
+        {(seat.status === "BOOKED" || seat.status === "PENDING_PAYMENT") && (
+          <div
+            className={`absolute -top-2 -right-2 w-5 h-5 rounded-full flex items-center justify-center shadow-xl border-2 border-white transform rotate-12 ${
+              seat.status === "PENDING_PAYMENT"
+                ? "bg-gradient-to-br from-yellow-400 to-yellow-600"
+                : "bg-gradient-to-br from-red-400 to-red-600"
+            }`}
+          >
+            <svg
+              className="w-3 h-3 text-white drop-shadow-lg"
+              fill="currentColor"
+              viewBox="0 0 20 20"
+            >
+              <path
+                fillRule="evenodd"
+                d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+                clipRule="evenodd"
+              />
+            </svg>
+          </div>
+        )}
+      </button>
+    );
+  };
+
   const [hoveredSeat, setHoveredSeat] = useState(null);
   const [seatsData, setSeatsData] = useState([]);
   const [loadingSeats, setLoadingSeats] = useState(false);
@@ -428,6 +602,12 @@ const CheckInSeatSelection = ({
   };
 
   const handleProceedToPayment = () => {
+    // Skip payment if already processing payment success
+    if (isProcessingPaymentSuccess) {
+      console.log("⏭️ Skipping payment - payment success in progress");
+      return;
+    }
+
     const finalTotal = calculateFinalTotal();
     const services = getSelectedServices();
 
@@ -491,6 +671,12 @@ const CheckInSeatSelection = ({
     newSeatType,
     newSeatId
   ) => {
+    // Skip calculation if processing payment success to prevent duplicate API calls
+    if (isProcessingPaymentSuccess) {
+      console.log("⏭️ Skipping seat calculation - payment success in progress");
+      return;
+    }
+
     setIsCalculating(true);
     try {
       const currentPassenger =
@@ -887,7 +1073,7 @@ const CheckInSeatSelection = ({
           )}
 
           {/* Available Seats Display */}
-          <div className="bg-gray-50 p-4 rounded-lg">
+          <div className="bg-gradient-to-b from-blue-50 to-gray-100 rounded-2xl p-6 shadow-lg">
             {loadingSeats ? (
               <div className="text-center py-8">
                 <div className="animate-spin w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full mx-auto mb-4"></div>
@@ -895,100 +1081,210 @@ const CheckInSeatSelection = ({
               </div>
             ) : (
               <>
-                <h4 className="text-sm font-medium mb-3">
-                  Ghế có sẵn ({availableSeats.length} ghế)
-                  {currentSeat && (
-                    <span className="ml-2 text-green-600">
-                      • Ghế hiện tại: {currentSeat}
-                    </span>
-                  )}
-                </h4>
-                <div className="grid grid-cols-6 sm:grid-cols-8 md:grid-cols-10 lg:grid-cols-12 gap-2">
-                  {availableSeats.map((seat, index) => {
-                    const seatNumber = seat.seatNumber;
-                    const seatClass = getSeatClass(seatNumber);
-                    const seatPrice = getSeatPrice(seatNumber);
-                    const seatDesc = getSeatDescription(seatNumber);
-                    const isSelected = selectedSeat?.seatNumber === seatNumber;
-                    const isCurrent = currentSeat === seatNumber;
-                    // Create unique key using seatId or combination of properties
-                    const uniqueKey =
-                      seat.seatId ||
-                      `${seatNumber}-${seat.className}-${seat.seatType}-${index}`;
+                <div className="text-center mb-6">
+                  <h4 className="text-lg font-semibold text-gray-800 mb-2">
+                    Sơ đồ chỗ ngồi máy bay
+                  </h4>
+                  <p className="text-sm text-gray-600">
+                    Ghế có sẵn ({availableSeats.length} ghế)
+                    {currentSeat && (
+                      <span className="ml-2 text-green-600 font-medium">
+                        • Ghế hiện tại: {currentSeat}
+                      </span>
+                    )}
+                  </p>
+                </div>
 
-                    return (
-                      <button
-                        key={uniqueKey}
-                        className={`
-                      relative p-2 rounded border-2 text-xs font-medium transition-all duration-200 min-h-[60px]
-                      ${
-                        isSelected
-                          ? "bg-blue-600 border-blue-700 text-white shadow-lg scale-105"
-                          : isCurrent
-                          ? "bg-green-600 border-green-700 text-white shadow-lg ring-2 ring-green-300"
-                          : hoveredSeat === seatNumber
-                          ? "bg-yellow-400 border-yellow-500 text-gray-800 shadow-md"
-                          : getSeatClassName(seatNumber) === "premium"
-                          ? "bg-blue-50 border-blue-200 hover:border-blue-400 hover:bg-blue-100"
-                          : getSeatClassName(seatNumber) === "business"
-                          ? "bg-purple-50 border-purple-200 hover:border-purple-400 hover:bg-purple-100"
-                          : getSeatClassName(seatNumber) === "accessible"
-                          ? "bg-orange-50 border-orange-200 hover:border-orange-400 hover:bg-orange-100"
-                          : "bg-green-50 border-green-200 hover:border-green-400 hover:bg-green-100"
-                      }
-                    `}
-                        onClick={() => {
-                          console.log("🎯 Seat clicked:", {
-                            seatNumber,
-                            seatType: seat.seatType,
-                            seatId: seat.seatId,
-                          });
-                          if (!seat.seatId) {
-                            console.error(
-                              "❌ Missing seatId for seat:",
-                              seatNumber
-                            );
-                            toast.error(
-                              `Không thể chọn ghế ${seatNumber} - thiếu thông tin ID ghế`
-                            );
-                            return;
-                          }
-                          handleSeatSelection(
-                            seatNumber,
-                            seat.seatType,
-                            seat.seatId
-                          );
-                        }}
-                        onMouseEnter={() => setHoveredSeat(seatNumber)}
-                        onMouseLeave={() => setHoveredSeat(null)}
-                        title={`${seatNumber} - ${
-                          seat.className
-                        } - ${seatDesc} - ${
-                          seatPrice > 0
-                            ? `+${formatCurrencyVND(seatPrice)}`
-                            : "Miễn phí"
-                        }`}
-                      >
-                        <div className="font-bold">{seatNumber}</div>
-                        <div className="text-[8px] leading-none">
-                          {seat.className}
-                        </div>
-                        <div className="text-[8px] leading-none">
-                          {seat.seatType}
-                        </div>
-                        {seatPrice > 0 && (
-                          <div className="text-[10px] leading-none mt-1">
-                            +{formatCurrencyVND(seatPrice)}
-                          </div>
-                        )}
-                        {isCurrent && (
-                          <div className="text-[10px] leading-none mt-1">
-                            Hiện tại
-                          </div>
-                        )}
-                      </button>
+                {/* Aircraft Layout */}
+                <div className="max-w-4xl mx-auto">
+                  {/* Cockpit */}
+                  <div className="flex justify-center mb-6">
+                    <div className="relative">
+                      <div className="w-20 h-12 bg-gradient-to-b from-gray-200 to-gray-400 rounded-t-full flex items-center justify-center shadow-lg border-2 border-gray-300">
+                        <span className="text-lg">✈️</span>
+                      </div>
+                      <div className="absolute top-2 left-1/2 transform -translate-x-1/2 flex gap-1">
+                        <div className="w-3 h-2 bg-blue-400 rounded-sm shadow-inner border border-blue-500"></div>
+                        <div className="w-3 h-2 bg-blue-400 rounded-sm shadow-inner border border-blue-500"></div>
+                      </div>
+                      <div className="absolute inset-0 rounded-t-full bg-gradient-to-r from-white/30 via-transparent to-white/30"></div>
+                    </div>
+                  </div>
+
+                  {/* Aisle */}
+                  <div className="flex justify-center mb-4">
+                    <div className="w-2 h-8 bg-gradient-to-b from-gray-300 to-gray-400 shadow-sm"></div>
+                  </div>
+
+                  {/* Seats by Row */}
+                  {(() => {
+                    // Group seats by row number
+                    const seatsByRow = {};
+                    availableSeats.forEach((seat) => {
+                      const rowNum = seat.seatNumber.match(/\d+/)?.[0] || "1";
+                      if (!seatsByRow[rowNum]) seatsByRow[rowNum] = [];
+                      seatsByRow[rowNum].push(seat);
+                    });
+
+                    // Sort row numbers
+                    const sortedRowNumbers = Object.keys(seatsByRow).sort(
+                      (a, b) => parseInt(a) - parseInt(b)
                     );
-                  })}
+
+                    return sortedRowNumbers.map((rowNum) => {
+                      const rowSeats = seatsByRow[rowNum];
+                      // Sort seats by column: A, B, C, D, E, F
+                      const sortedSeats = rowSeats.sort((a, b) => {
+                        const colA = a.seatNumber.match(/[A-Z]/)?.[0] || "A";
+                        const colB = b.seatNumber.match(/[A-Z]/)?.[0] || "A";
+                        return colA.localeCompare(colB);
+                      });
+
+                      return (
+                        <div key={rowNum} className="mb-4">
+                          {/* Row Number */}
+                          <div className="flex items-center justify-center mb-2">
+                            <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center text-xs font-bold text-gray-700">
+                              {rowNum}
+                            </div>
+                          </div>
+
+                          {/* Seat Row */}
+                          <div className="flex items-center justify-center gap-2">
+                            {/* Left Side: A B C */}
+                            <div className="flex gap-2">
+                              {["A", "B", "C"].map((col) => {
+                                const seat = sortedSeats.find(
+                                  (s) => s.seatNumber === `${rowNum}${col}`
+                                );
+                                return seat ? (
+                                  <SeatButton
+                                    key={seat.seatId}
+                                    seat={seat}
+                                    isSelected={
+                                      selectedSeat?.seatNumber ===
+                                      seat.seatNumber
+                                    }
+                                    isCurrent={currentSeat === seat.seatNumber}
+                                    isHovered={hoveredSeat === seat.seatNumber}
+                                    onClick={() => {
+                                      console.log("🎯 Seat clicked:", {
+                                        seatNumber: seat.seatNumber,
+                                        seatType: seat.seatType,
+                                        seatId: seat.seatId,
+                                      });
+                                      if (!seat.seatId) {
+                                        console.error(
+                                          "❌ Missing seatId for seat:",
+                                          seat.seatNumber
+                                        );
+                                        toast.error(
+                                          `Không thể chọn ghế ${seat.seatNumber} - thiếu thông tin ID ghế`
+                                        );
+                                        return;
+                                      }
+                                      handleSeatSelection(
+                                        seat.seatNumber,
+                                        seat.seatType,
+                                        seat.seatId
+                                      );
+                                    }}
+                                    onMouseEnter={() =>
+                                      setHoveredSeat(seat.seatNumber)
+                                    }
+                                    onMouseLeave={() => setHoveredSeat(null)}
+                                    getSeatPrice={getSeatPrice}
+                                    getSeatDescription={getSeatDescription}
+                                    getSeatClassName={getSeatClassName}
+                                  />
+                                ) : (
+                                  <div
+                                    key={`empty-${rowNum}-${col}`}
+                                    className="w-14 h-14 rounded-xl border-2 border-gray-200 bg-gray-100 flex items-center justify-center text-gray-400 text-xs"
+                                  >
+                                    {rowNum}
+                                    {col}
+                                  </div>
+                                );
+                              })}
+                            </div>
+
+                            {/* Aisle */}
+                            <div className="w-8 h-14 bg-gradient-to-b from-gray-200 to-gray-300 rounded-lg flex items-center justify-center shadow-inner border-2 border-gray-300">
+                              <span className="text-xs text-gray-600 font-medium transform -rotate-90 whitespace-nowrap">
+                                AISLE
+                              </span>
+                            </div>
+
+                            {/* Right Side: D E F */}
+                            <div className="flex gap-2">
+                              {["D", "E", "F"].map((col) => {
+                                const seat = sortedSeats.find(
+                                  (s) => s.seatNumber === `${rowNum}${col}`
+                                );
+                                return seat ? (
+                                  <SeatButton
+                                    key={seat.seatId}
+                                    seat={seat}
+                                    isSelected={
+                                      selectedSeat?.seatNumber ===
+                                      seat.seatNumber
+                                    }
+                                    isCurrent={currentSeat === seat.seatNumber}
+                                    isHovered={hoveredSeat === seat.seatNumber}
+                                    onClick={() => {
+                                      console.log("🎯 Seat clicked:", {
+                                        seatNumber: seat.seatNumber,
+                                        seatType: seat.seatType,
+                                        seatId: seat.seatId,
+                                      });
+                                      if (!seat.seatId) {
+                                        console.error(
+                                          "❌ Missing seatId for seat:",
+                                          seat.seatNumber
+                                        );
+                                        toast.error(
+                                          `Không thể chọn ghế ${seat.seatNumber} - thiếu thông tin ID ghế`
+                                        );
+                                        return;
+                                      }
+                                      handleSeatSelection(
+                                        seat.seatNumber,
+                                        seat.seatType,
+                                        seat.seatId
+                                      );
+                                    }}
+                                    onMouseEnter={() =>
+                                      setHoveredSeat(seat.seatNumber)
+                                    }
+                                    onMouseLeave={() => setHoveredSeat(null)}
+                                    getSeatPrice={getSeatPrice}
+                                    getSeatDescription={getSeatDescription}
+                                    getSeatClassName={getSeatClassName}
+                                  />
+                                ) : (
+                                  <div
+                                    key={`empty-${rowNum}-${col}`}
+                                    className="w-14 h-14 rounded-xl border-2 border-gray-200 bg-gray-100 flex items-center justify-center text-gray-400 text-xs"
+                                  >
+                                    {rowNum}
+                                    {col}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    });
+                  })()}
+
+                  {/* Rear Section */}
+                  <div className="flex justify-center mt-6">
+                    <div className="w-16 h-6 bg-gradient-to-b from-gray-300 to-gray-500 rounded-b-lg shadow-lg border-2 border-gray-400">
+                      <div className="w-full h-full bg-gradient-to-r from-white/20 via-transparent to-white/20 rounded-b-lg"></div>
+                    </div>
+                  </div>
                 </div>
               </>
             )}

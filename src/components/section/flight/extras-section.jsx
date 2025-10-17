@@ -23,6 +23,8 @@ import { handleFetch } from "@/utils/fetch-helper";
 import PropTypes from "prop-types";
 import { toast } from "sonner";
 import { formatCurrencyVND } from "@/utils/currency-utils";
+import SeatMap from "./seat-map";
+import SeatSelectionWrapper from "./seat-selection-wrapper";
 
 // Constants - Seat Type Labels (Pricing will come from backend)
 const SEAT_TYPE_LABELS = {
@@ -51,6 +53,49 @@ const SEAT_TYPE_LABELS = {
     shortLabel: "ST",
     color: "bg-green-500",
   },
+};
+
+// Constants - Travel Class Mapping
+const TRAVEL_CLASS_MAPPING = {
+  1: { name: "Phổ thông", type: "ECONOMY", englishName: "Economy" },
+  2: { name: "Thương gia", type: "BUSINESS", englishName: "Business" },
+  3: { name: "Hạng nhất", type: "FIRST", englishName: "First Class" },
+};
+
+// Helper function to get travel class ID from className or fallback logic
+const getTravelClassIdFromSeat = (seat) => {
+  // First try API fields
+  if (seat.travelClassId) return seat.travelClassId;
+  if (seat.classId) return seat.classId;
+  if (seat.travelClass?.id) return seat.travelClass.id;
+  if (seat.class?.id) return seat.class.id;
+
+  // Fallback: map from className
+  const className = seat.className?.toLowerCase();
+  if (className?.includes("economy") || className?.includes("phổ thông"))
+    return 1;
+  if (className?.includes("business") || className?.includes("thương gia"))
+    return 2;
+  if (className?.includes("first") || className?.includes("hạng nhất"))
+    return 3;
+
+  // Final fallback: based on row number (same logic as seat-map)
+  const rowNum = parseInt(seat.seatNumber?.match(/\d+/)?.[0] || "1");
+  if (rowNum <= 2 || (rowNum >= 16 && rowNum <= 17)) return 3; // First Class
+  if (rowNum <= 5 || (rowNum >= 18 && rowNum <= 20)) return 2; // Business
+  return 1; // Economy (default)
+};
+
+// Helper function to get travel class name
+const getTravelClassName = (travelClassId) => {
+  // Handle both string and number types
+  const id =
+    typeof travelClassId === "string" ? parseInt(travelClassId) : travelClassId;
+  const result = TRAVEL_CLASS_MAPPING[id]?.name || "Không xác định";
+  console.log(
+    `🏷️ getTravelClassName(${travelClassId}) -> id: ${id}, result: "${result}"`
+  );
+  return result;
 };
 
 // Helper function to get seat type pricing from fixed values (not from API)
@@ -272,24 +317,15 @@ const getSeatStatusColor = (
 
   // For available seats, show color based on travel class
   if (status === "AVAILABLE") {
-    const className = seat?.className || seat?.travelClassName;
+    const travelClassId = seat?.travelClassId;
+    const className = getTravelClassName(travelClassId);
 
     // Match travel class colors with legend (avoid blue conflict with selected state)
-    if (
-      (className && className.toLowerCase().includes("first")) ||
-      className === "Hạng nhất"
-    ) {
+    if (className === "Hạng nhất") {
       return "bg-purple-600 border-purple-700 text-white"; // First Class - Purple
-    } else if (
-      className &&
-      (className.toLowerCase().includes("business") ||
-        className === "Thương gia")
-    ) {
+    } else if (className === "Thương gia") {
       return "bg-indigo-600 border-indigo-700 text-white"; // Business Class - Indigo (different from selected blue)
-    } else if (
-      className &&
-      (className.toLowerCase().includes("economy") || className === "Phổ thông")
-    ) {
+    } else if (className === "Phổ thông") {
       return "bg-green-600 border-green-700 text-white"; // Economy Class - Green
     }
   }
@@ -875,21 +911,22 @@ const AircraftLayout = ({
           return letterA.localeCompare(letterB);
         });
 
+        // Check if this row has exit row seats
+        const hasExitRowSeats = rowSeats.some(
+          (seat) => seat.seatType === "EXIT_ROW"
+        );
+        const rowNumber = parseInt(rowNum);
+
         return (
           <div
             key={rowNum}
-            className="flex justify-center items-center gap-2 mb-3 px-4"
+            className="flex justify-center items-center gap-3 mb-4 px-4"
           >
-            {/* Row number - left side */}
-            <div className="w-8 h-12 flex items-center justify-center bg-gradient-to-r from-gray-200 to-gray-300 rounded-l-lg border border-gray-400 shadow-sm">
-              <span className="text-xs font-bold text-gray-700">{rowNum}</span>
-            </div>
-
             {/* Render seats with aircraft layout structure */}
             {seatSections.map((sectionLetters, sectionIndex) => (
               <div key={sectionIndex} className="flex items-center">
                 {/* Seat section */}
-                <div className="flex gap-1">
+                <div className="flex gap-2">
                   {sectionLetters.map((letter) => {
                     // Find ALL seats with this letter in this row
                     const seatsWithLetter = rowSeats.filter(
@@ -915,28 +952,65 @@ const AircraftLayout = ({
                     ) : (
                       <div
                         key={`empty-${letter}-${rowNum}`}
-                        className="w-8 h-8"
+                        className="w-14 h-14"
                       ></div>
                     );
                   })}
                 </div>
 
-                {/* Aisle - realistic aircraft aisle */}
+                {/* Enhanced Aisle - Beautiful aircraft aisle with exit row indicators */}
                 {sectionIndex < seatSections.length - 1 && (
-                  <div className="flex flex-col items-center mx-4">
-                    {/* Aisle carpet effect */}
-                    <div className="w-8 h-12 bg-gradient-to-r from-blue-100 via-blue-200 to-blue-100 border-l-2 border-r-2 border-blue-300 shadow-inner">
-                      <div className="w-full h-full bg-gradient-to-b from-transparent via-blue-200/50 to-transparent"></div>
+                  <div className="flex flex-col items-center mx-6">
+                    {/* Exit Row Indicator */}
+                    {hasExitRowSeats && (
+                      <div className="mb-2">
+                        <div className="bg-red-600 text-white px-3 py-1 rounded-full text-xs font-bold shadow-lg border-2 border-red-700 flex items-center gap-1">
+                          <span>🚪</span>
+                          <span>EXIT</span>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Main Aisle Design */}
+                    <div className="relative">
+                      {/* Aisle carpet with emergency lighting effect */}
+                      <div className="w-12 h-16 bg-gradient-to-b from-blue-100 via-blue-200 to-blue-100 border-l-4 border-r-4 border-blue-300 shadow-inner rounded-lg">
+                        {/* Emergency lighting strips */}
+                        <div className="absolute top-0 left-1 right-1 h-1 bg-gradient-to-r from-red-400 via-yellow-400 to-red-400 rounded-full shadow-lg"></div>
+                        <div className="absolute bottom-0 left-1 right-1 h-1 bg-gradient-to-r from-red-400 via-yellow-400 to-red-400 rounded-full shadow-lg"></div>
+
+                        {/* Center pattern */}
+                        <div className="w-full h-full bg-gradient-to-b from-transparent via-blue-200/50 to-transparent">
+                          {/* Direction arrows */}
+                          <div className="absolute top-2 left-1/2 transform -translate-x-1/2">
+                            <div className="w-2 h-2 border-l-2 border-r-2 border-t-2 border-blue-600 transform rotate-45"></div>
+                          </div>
+                          <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2">
+                            <div className="w-2 h-2 border-l-2 border-r-2 border-b-2 border-blue-600 transform rotate-45"></div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Side lighting effects */}
+                      <div className="absolute -left-2 top-0 bottom-0 w-2 bg-gradient-to-b from-blue-300/50 to-transparent rounded-l-lg"></div>
+                      <div className="absolute -right-2 top-0 bottom-0 w-2 bg-gradient-to-b from-blue-300/50 to-transparent rounded-r-lg"></div>
                     </div>
+
+                    {/* Exit Row Additional Info */}
+                    {hasExitRowSeats && (
+                      <div className="mt-2 text-center">
+                        <div className="text-xs text-gray-600 font-medium">
+                          Hàng thoát hiểm
+                        </div>
+                        <div className="text-xs text-red-600 font-bold">
+                          Không phí phụ thu
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
             ))}
-
-            {/* Row number - right side */}
-            <div className="w-8 h-12 flex items-center justify-center bg-gradient-to-l from-gray-200 to-gray-300 rounded-r-lg border border-gray-400 shadow-sm">
-              <span className="text-xs font-bold text-gray-700">{rowNum}</span>
-            </div>
           </div>
         );
       })}
@@ -1021,6 +1095,18 @@ const renderSeatButton = (
 
   const isDisabledByClass = selectedTravelClass && !isAllowedClass;
 
+  // Get seat price for tooltip
+  const getSeatPrice = () => {
+    if (seat.priceVND) return formatCurrencyVND(seat.priceVND);
+    if (seat.seatType && SEAT_TYPE_LABELS[seat.seatType]) {
+      return (
+        getSeatTypePricingFromApi([seat])[seat.seatType]?.price ||
+        formatCurrencyVND(0)
+      );
+    }
+    return formatCurrencyVND(0);
+  };
+
   return (
     <TooltipProvider key={uniqueKey || seat.seatNumber}>
       <Tooltip>
@@ -1091,9 +1177,9 @@ const renderSeatButton = (
                 }
               }
             }}
-            className={`relative w-12 h-12 rounded-lg flex items-center justify-center text-xs font-bold transition-all duration-300 border-2 shadow-lg ${
+            className={`relative w-14 h-14 rounded-xl flex items-center justify-center text-xs font-bold transition-all duration-300 border-2 shadow-xl transform ${
               isSelected
-                ? "bg-gradient-to-b from-blue-400 to-blue-600 text-white scale-110 shadow-2xl border-blue-300 ring-2 ring-blue-200 transform rotate-1"
+                ? "bg-gradient-to-b from-blue-400 to-blue-600 text-white scale-110 shadow-2xl border-blue-300 ring-4 ring-blue-200 transform rotate-1 -translate-y-1"
                 : isDisabledByClass
                 ? `${getSeatDisplayColor(
                     seat,
@@ -1105,12 +1191,12 @@ const renderSeatButton = (
                     seat,
                     false,
                     false
-                  )} cursor-not-allowed shadow-inner`
+                  )} cursor-not-allowed shadow-inner transform translate-y-0.5`
                 : `${getSeatDisplayColor(
                     seat,
                     false,
                     false
-                  )} hover:scale-105 hover:shadow-xl hover:brightness-105 hover:-translate-y-1 transition-all duration-300 cursor-pointer`
+                  )} hover:scale-110 hover:shadow-2xl hover:brightness-110 hover:-translate-y-2 transition-all duration-300 cursor-pointer hover:rotate-1`
             }`}
             disabled={isOccupied || isPending || isDisabledByClass}
             title={
@@ -1137,49 +1223,61 @@ const renderSeatButton = (
                   }`
             }
           >
-            {/* 3D Aircraft Seat Design */}
+            {/* Enhanced 3D Aircraft Seat Design */}
             <div
-              className={`absolute inset-0 rounded-lg ${
+              className={`absolute inset-0 rounded-xl ${
                 isSelected
-                  ? "bg-gradient-to-br from-white/30 via-white/10 to-blue-500/20"
+                  ? "bg-gradient-to-br from-white/40 via-white/20 to-blue-500/30 shadow-inner"
                   : isOccupied || isPending
-                  ? "bg-gradient-to-br from-white/10 via-white/5 to-black/10"
-                  : "bg-gradient-to-br from-white/20 via-transparent to-black/20"
-              } shadow-inner`}
+                  ? "bg-gradient-to-br from-black/20 via-black/10 to-black/30 shadow-inner"
+                  : "bg-gradient-to-br from-white/30 via-white/15 to-black/25 shadow-inner"
+              }`}
             />
 
-            {/* Seat Padding Effect */}
-            <div className="absolute inset-1 rounded bg-gradient-to-b from-white/10 to-transparent" />
+            {/* Seat Armrests - 3D Effect */}
+            <div className="absolute left-0 top-1 bottom-1 w-1 bg-gradient-to-r from-black/20 to-transparent rounded-l-xl" />
+            <div className="absolute right-0 top-1 bottom-1 w-1 bg-gradient-to-l from-black/20 to-transparent rounded-r-xl" />
+
+            {/* Seat Back - 3D Effect */}
+            <div className="absolute top-0 left-1 right-1 h-2 bg-gradient-to-b from-black/15 to-transparent rounded-t-xl" />
+
+            {/* Seat Padding Effect - Enhanced */}
+            <div className="absolute inset-1 rounded-lg bg-gradient-to-b from-white/15 via-white/5 to-black/10" />
 
             {/* Seat Content */}
             <div className="relative flex flex-col items-center z-10">
+              {/* Seat Number - Smaller */}
               <span
-                className={`font-bold text-sm tracking-tight ${
+                className={`font-bold text-xs tracking-tight ${
                   isSelected
-                    ? "text-white drop-shadow-md font-extrabold"
-                    : "text-white drop-shadow-sm"
+                    ? "text-white drop-shadow-lg font-extrabold"
+                    : "text-white drop-shadow-md"
                 }`}
               >
                 {seat.seatNumber}
               </span>
-              {seat.seatType && (
-                <span
-                  className={`text-[7px] font-semibold uppercase tracking-wider ${
-                    isSelected
-                      ? "text-white/95 drop-shadow-sm"
-                      : "text-white/85 drop-shadow-sm"
-                  }`}
-                >
-                  {SEAT_TYPE_LABELS[seat.seatType]?.shortLabel || seat.seatType}
-                </span>
+
+              {/* Seat Type Short Label - More Prominent */}
+              {seat.seatType && SEAT_TYPE_LABELS[seat.seatType] && (
+                <div className="flex flex-col items-center">
+                  <span
+                    className={`text-[8px] font-black uppercase tracking-widest px-1 py-0.5 rounded-full border ${
+                      isSelected
+                        ? "text-white bg-blue-600/80 border-white/50 drop-shadow-lg"
+                        : "text-white bg-black/40 border-white/30 drop-shadow-md"
+                    }`}
+                  >
+                    {SEAT_TYPE_LABELS[seat.seatType].shortLabel}
+                  </span>
+                </div>
               )}
             </div>
 
-            {/* Selection Indicator - Professional checkmark */}
+            {/* Selection Indicator - Enhanced 3D checkmark */}
             {isSelected && (
-              <div className="absolute -top-2 -right-2 w-5 h-5 bg-white rounded-full border-2 border-blue-500 flex items-center justify-center shadow-lg">
+              <div className="absolute -top-3 -right-3 w-6 h-6 bg-gradient-to-br from-green-400 to-green-600 rounded-full border-3 border-white flex items-center justify-center shadow-2xl transform rotate-12">
                 <svg
-                  className="w-3 h-3 text-blue-600"
+                  className="w-4 h-4 text-white drop-shadow-lg"
                   fill="currentColor"
                   viewBox="0 0 20 20"
                 >
@@ -1192,15 +1290,17 @@ const renderSeatButton = (
               </div>
             )}
 
-            {/* Seat Status Indicator */}
+            {/* Seat Status Indicator - Enhanced */}
             {(isOccupied || isPending) && (
               <div
-                className={`absolute -top-1 -right-1 w-4 h-4 rounded-full flex items-center justify-center shadow-md ${
-                  isPending ? "bg-yellow-500" : "bg-red-500"
+                className={`absolute -top-2 -right-2 w-5 h-5 rounded-full flex items-center justify-center shadow-xl border-2 border-white transform rotate-12 ${
+                  isPending
+                    ? "bg-gradient-to-br from-yellow-400 to-yellow-600"
+                    : "bg-gradient-to-br from-red-400 to-red-600"
                 }`}
               >
                 <svg
-                  className="w-2.5 h-2.5 text-white"
+                  className="w-3 h-3 text-white drop-shadow-lg"
                   fill="currentColor"
                   viewBox="0 0 20 20"
                 >
@@ -1214,67 +1314,103 @@ const renderSeatButton = (
             )}
           </button>
         </TooltipTrigger>
-        <TooltipContent>
-          <div className="text-center">
-            <p className="font-semibold">Ghế {seat.seatNumber}</p>
-            <p className="text-sm">Hạng: {seat.className}</p>
-            {seat.seatType && (
-              <p className="text-sm">
-                Loại ghế:{" "}
-                {SEAT_TYPE_LABELS[seat.seatType]?.label || seat.seatType}
+        <TooltipContent className="bg-white border-2 border-gray-200 shadow-2xl rounded-xl p-4 max-w-xs">
+          <div className="text-center space-y-2">
+            <div className="flex items-center justify-center gap-2">
+              <span className="text-lg">💺</span>
+              <p className="font-bold text-lg text-gray-800">
+                Ghế {seat.seatNumber}
               </p>
-            )}
-            <p className="text-sm">
-              Trạng thái:{" "}
-              {seat.status === "AVAILABLE"
-                ? "Có sẵn"
-                : seat.status === "BOOKED"
-                ? "Đã đặt"
-                : seat.status === "PENDING_PAYMENT"
-                ? "Đang chờ thanh toán"
-                : seat.status === "OCCUPIED"
-                ? "Đã được đặt"
-                : "Không xác định"}
-            </p>
-            {seat.seatType && SEAT_TYPE_LABELS[seat.seatType] && (
-              <p className="text-sm font-medium text-blue-600">
-                Phí:{" "}
-                {seat.priceVND
-                  ? formatCurrencyVND(seat.priceVND)
-                  : getSeatTypePricingFromApi([seat])[seat.seatType]?.price ||
-                    formatCurrencyVND(0)}
+            </div>
+
+            <div className="bg-gray-50 rounded-lg p-3 space-y-1">
+              <p className="text-sm font-medium">
+                <span className="text-gray-600">Hạng:</span>{" "}
+                <span className="text-blue-600 font-semibold">
+                  {seat.className}
+                </span>
               </p>
+
+              {seat.seatType && (
+                <p className="text-sm font-medium">
+                  <span className="text-gray-600">Loại ghế:</span>{" "}
+                  <span className="text-purple-600 font-semibold">
+                    {SEAT_TYPE_LABELS[seat.seatType]?.label || seat.seatType}
+                    {SEAT_TYPE_LABELS[seat.seatType] && (
+                      <span className="ml-1 px-1.5 py-0.5 bg-purple-100 text-purple-800 rounded text-xs font-bold">
+                        {SEAT_TYPE_LABELS[seat.seatType].shortLabel}
+                      </span>
+                    )}
+                  </span>
+                </p>
+              )}
+
+              <p className="text-sm font-medium">
+                <span className="text-gray-600">Trạng thái:</span>{" "}
+                <span
+                  className={`font-semibold ${
+                    seat.status === "AVAILABLE"
+                      ? "text-green-600"
+                      : seat.status === "BOOKED" || seat.status === "OCCUPIED"
+                      ? "text-red-600"
+                      : seat.status === "PENDING_PAYMENT"
+                      ? "text-yellow-600"
+                      : "text-gray-600"
+                  }`}
+                >
+                  {seat.status === "AVAILABLE"
+                    ? "✅ Có sẵn"
+                    : seat.status === "BOOKED"
+                    ? "❌ Đã đặt"
+                    : seat.status === "PENDING_PAYMENT"
+                    ? "⏳ Đang chờ thanh toán"
+                    : seat.status === "OCCUPIED"
+                    ? "❌ Đã được đặt"
+                    : "❓ Không xác định"}
+                </span>
+              </p>
+            </div>
+
+            {/* Price Display - Always show for available seats */}
+            {seat.status === "AVAILABLE" && (
+              <div className="bg-green-50 border-2 border-green-200 rounded-lg p-3">
+                <p className="text-sm font-bold text-green-700 flex items-center justify-center gap-1">
+                  <span>💰</span>
+                  Giá: {getSeatPrice()}
+                </p>
+                {seat.seatType && SEAT_TYPE_LABELS[seat.seatType] && (
+                  <p className="text-xs text-green-600 mt-1">
+                    Phí loại ghế:{" "}
+                    {SEAT_TYPE_LABELS[seat.seatType].label.toLowerCase()}
+                  </p>
+                )}
+              </div>
             )}
+
             {isDisabledByClass && (
-              <p className="text-sm text-orange-600 font-medium">
-                ⚠️ Không thể chọn
-              </p>
+              <div className="bg-orange-50 border-2 border-orange-200 rounded-lg p-3">
+                <p className="text-sm font-bold text-orange-700 flex items-center justify-center gap-1">
+                  <span>⚠️</span>
+                  Không thể chọn
+                </p>
+                <p className="text-xs text-orange-600 mt-1">
+                  Vé của bạn:{" "}
+                  {typeof selectedTravelClass === "string"
+                    ? selectedTravelClass
+                    : selectedTravelClass?.travelClass?.className}
+                </p>
+              </div>
             )}
-            {isDisabledByClass && selectedTravelClass && (
-              <p className="text-xs text-gray-600">
-                Vé của bạn:{" "}
-                {typeof selectedTravelClass === "string"
-                  ? selectedTravelClass
-                  : selectedTravelClass?.travelClass?.className}
-              </p>
-            )}
-            {!isOccupied && !isPending && !isDisabledByClass && (
-              <p className="text-sm font-medium text-green-600">
-                {seat.priceVND
-                  ? formatCurrencyVND(seat.priceVND)
-                  : seat.seatType
-                  ? getSeatTypePricingFromApi([seat])[seat.seatType]?.price ||
-                    formatCurrencyVND(0)
-                  : formatCurrencyVND(0)}
-              </p>
-            )}
+
             {(seat.bookedByUserId || seat.bookedByPassengerId) && (
-              <p className="text-sm text-red-500">
-                Đã đặt:{" "}
-                {seat.bookedByUserId
-                  ? `User ${seat.bookedByUserId}`
-                  : `Passenger ${seat.bookedByPassengerId}`}
-              </p>
+              <div className="bg-red-50 border-2 border-red-200 rounded-lg p-2">
+                <p className="text-sm text-red-700">
+                  <span className="font-semibold">Đã đặt:</span>{" "}
+                  {seat.bookedByUserId
+                    ? `User ${seat.bookedByUserId}`
+                    : `Passenger ${seat.bookedByPassengerId}`}
+                </p>
+              </div>
             )}
           </div>
         </TooltipContent>
@@ -1566,10 +1702,6 @@ const MultiCitySeatSelectionCard = ({
                       <SeatLegend seatLegend={seatLegend} />
                       <div className="bg-white p-6 rounded-lg border max-h-[600px] overflow-y-auto">
                         <div className="text-center mb-4">
-                          <Badge variant="secondary">
-                            Sơ đồ máy bay - Chặng {segmentIndex + 1} (
-                            {leg.aircraftName || leg.aircraft || "N/A"})
-                          </Badge>
                           <p className="text-sm text-gray-500 mt-2">
                             {leg.departureAirport?.airportName ||
                               leg.departureAirport?.name ||
@@ -2000,124 +2132,45 @@ const SeatSelectionCard = ({
                   <div className="mb-4 flex justify-center"></div>
 
                   <div className="bg-white p-6 rounded-lg border max-h-[600px] overflow-y-auto">
-                    {/* Aircraft Information */}
-                    <div className="bg-blue-50 rounded-lg p-4 mb-4">
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-                        <div className="text-center">
-                          <div className="font-medium text-blue-800">
-                            Loại máy bay
-                          </div>
-                          <div className="text-gray-700">
-                            {flight?.isRoundTrip ||
-                            flight?.type === "ROUND_TRIP"
-                              ? flight.outbound?.aircraftInfo?.aircraftName ||
-                                flight.outbound?.aircraftName ||
-                                flight?.aircraftInfo?.aircraftName ||
-                                flight?.aircraft ||
-                                "N/A"
-                              : flight?.flight?.aircraftInfo?.aircraftName ||
-                                flight?.flight?.aircraftName ||
-                                flight?.aircraftInfo?.aircraftName ||
-                                flight?.aircraft ||
-                                "N/A"}
-                          </div>
-                        </div>
-                        <div className="text-center">
-                          <div className="font-medium text-blue-800">
-                            Cấu hình ghế
-                          </div>
-                          <div className="text-gray-700">
-                            {flight?.isRoundTrip ||
-                            flight?.type === "ROUND_TRIP"
-                              ? flight.outbound?.aircraftInfo?.seatLayout ||
-                                flight.outbound?.seatLayout ||
-                                flight?.aircraftInfo?.seatLayout ||
-                                flight?.seatLayout ||
-                                "N/A"
-                              : flight?.flight?.aircraftInfo?.seatLayout ||
-                                flight?.flight?.seatLayout ||
-                                flight?.aircraftInfo?.seatLayout ||
-                                flight?.seatLayout ||
-                                "N/A"}
-                          </div>
-                        </div>
-                        <div className="text-center">
-                          <div className="font-medium text-blue-800">
-                            Tổng số ghế
-                          </div>
-                          <div className="text-gray-700">
-                            {flight?.isRoundTrip ||
-                            flight?.type === "ROUND_TRIP"
-                              ? flight.outbound?.aircraftInfo?.totalSeats ||
-                                flight.outbound?.totalSeats ||
-                                flight?.aircraftInfo?.totalSeats ||
-                                flight?.totalSeats ||
-                                0
-                              : flight?.flight?.aircraftInfo?.totalSeats ||
-                                flight?.flight?.totalSeats ||
-                                flight?.aircraftInfo?.totalSeats ||
-                                flight?.totalSeats ||
-                                0}{" "}
-                            ghế
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
                     <div className="text-center mb-4">
-                      <Badge variant="secondary">
-                        Sơ đồ máy bay (
-                        {flight?.isRoundTrip || flight?.type === "ROUND_TRIP"
-                          ? flight.outbound?.aircraftInfo?.aircraftName ||
-                            flight.outbound?.aircraftName ||
-                            flight?.aircraftInfo?.aircraftName ||
-                            flight?.aircraft ||
-                            "N/A"
-                          : flight?.flight?.aircraftInfo?.aircraftName ||
-                            flight?.flight?.aircraftName ||
-                            flight?.aircraftInfo?.aircraftName ||
-                            flight?.aircraft ||
-                            "N/A"}
-                        )
-                      </Badge>
                       <p className="text-sm text-gray-500 mt-2">
                         Cuộn xuống để xem thêm hàng ghế
                       </p>
                     </div>
-                    <div className="max-w-lg mx-auto">
-                      <AircraftLayout
+                    <div className="max-w-6xl mx-auto">
+                      <SeatSelectionWrapper
                         seats={seats}
                         selectedSeats={selectedSeats}
                         passengers={passengers}
-                        handleSeatSelect={(seatNumber, passengerIndex) =>
+                        onSeatSelect={(seatNumber, passengerIndex, isReturn) =>
                           handleSeatSelect(seatNumber, passengerIndex, false)
                         }
-                        aircraftLayout={
-                          flight.outbound?.seatLayout ||
-                          flight.flight?.seatLayout ||
-                          "N/A"
-                        }
-                        selectedTravelClass={
-                          flight.outbound?.selectedClass ||
-                          flight.flight?.selectedClass ||
-                          flight?.selectedClass
-                        }
-                        totalSeats={
-                          flight.outbound?.aircraftInfo?.totalSeats ||
-                          flight.outbound?.totalSeats ||
-                          flight?.aircraftInfo?.totalSeats ||
-                          flight?.totalSeats ||
-                          flight?.flight?.aircraftInfo?.totalSeats ||
-                          flight?.flight?.totalSeats ||
-                          flight?.aircraftInfo?.totalSeats ||
-                          flight?.totalSeats ||
-                          150
-                        }
-                        flight={flight.outbound || flight.flight}
-                        flightId={
-                          flight.outbound?.id || flight.flight?.id || flight?.id
+                        isReturnFlight={false}
+                        flightTitle={`Chọn Chỗ Ngồi - ${
+                          flight?.isRoundTrip || flight?.type === "ROUND_TRIP"
+                            ? flight.outbound?.aircraftName ||
+                              flight.outbound?.aircraft ||
+                              "N/A"
+                            : flight?.flight?.aircraftName ||
+                              flight?.flight?.aircraft ||
+                              flight?.aircraft ||
+                              "N/A"
+                        }`}
+                        showLegend={true}
+                        userTravelClassId={
+                          flight?.isRoundTrip || flight?.type === "ROUND_TRIP"
+                            ? flight.outbound?.selectedClass?.travelClass?.id
+                            : flight?.flight?.selectedClass?.travelClass?.id ||
+                              flight?.selectedClass?.travelClass?.id
                         }
                       />
+                      {console.log(
+                        `🚀 Extras - Outbound userTravelClassId:`,
+                        flight?.isRoundTrip || flight?.type === "ROUND_TRIP"
+                          ? flight.outbound?.selectedClass?.travelClass?.id
+                          : flight?.flight?.selectedClass?.travelClass?.id ||
+                              flight?.selectedClass?.travelClass?.id
+                      )}
                     </div>
                     <SelectedSeatsSummary
                       selectedSeats={selectedSeats}
@@ -2174,38 +2227,37 @@ const SeatSelectionCard = ({
 
                     <div className="bg-white p-6 rounded-lg border max-h-[600px] overflow-y-auto">
                       <div className="text-center mb-4">
-                        <Badge
-                          variant="secondary"
-                          className="bg-green-100 text-green-700"
-                        >
-                          Sơ đồ máy bay - Chuyến Về (
-                          {flight.return?.aircraftName ||
-                            flight.return?.aircraft ||
-                            "N/A"}
-                          )
-                        </Badge>
                         <p className="text-sm text-gray-500 mt-2">
                           Cuộn xuống để xem thêm hàng ghế
                         </p>
                       </div>
-                      <div className="max-w-lg mx-auto">
-                        <AircraftLayout
+                      <div className="max-w-6xl mx-auto">
+                        <SeatSelectionWrapper
                           seats={returnSeats}
                           selectedSeats={selectedReturnSeats}
                           passengers={passengers}
-                          handleSeatSelect={(seatNumber, passengerIndex) =>
+                          onSeatSelect={(
+                            seatNumber,
+                            passengerIndex,
+                            isReturn
+                          ) =>
                             handleSeatSelect(seatNumber, passengerIndex, true)
                           }
-                          aircraftLayout={flight.return?.seatLayout || "N/A"}
-                          selectedTravelClass={flight.return?.selectedClass}
-                          totalSeats={
-                            flight.return?.aircraftInfo?.totalSeats ||
-                            flight.return?.totalSeats ||
-                            150
+                          isReturnFlight={true}
+                          flightTitle={`Chọn Chỗ Ngồi - ${
+                            flight.return?.aircraftName ||
+                            flight.return?.aircraft ||
+                            "N/A"
+                          }`}
+                          showLegend={false}
+                          userTravelClassId={
+                            flight.return?.selectedClass?.travelClass?.id
                           }
-                          flight={flight.return}
-                          flightId={flight.return?.id}
                         />
+                        {console.log(
+                          `🚀 Extras - Return userTravelClassId:`,
+                          flight.return?.selectedClass?.travelClass?.id
+                        )}
                       </div>
                       <SelectedSeatsSummary
                         selectedSeats={selectedReturnSeats}
@@ -3316,19 +3368,43 @@ const Extras = ({ flight, fare, formData, setExtrasData }) => {
           handleFetch({
             apiCall: () => flightApi.getSeatsByFlight(flightId),
             setData: (data) => {
+              console.log(
+                `🪑 Raw multi-city segment ${segmentIndex} seat data from API:`,
+                data
+              );
               // Load all seats without filtering by travel class
-              const transformedSeats = data.map((seat) => ({
-                seatId: seat.seatId,
-                seatNumber: seat.seatNumber,
-                className: seat.className,
-                status: seat.status, // Keep original API status
-                bookedByUserId: seat.bookedByUserId,
-                bookedByPassengerId: seat.bookedByPassengerId,
-                seatType: seat.seatType, // Use correct seatType field from API
-                flightId: seat.flightId,
-                travelClassId: seat.travelClassId,
-                priceVND: seat.priceVND || 0, // Use price from API or 0
-              }));
+              const transformedSeats = data.map((seat) => {
+                console.log(
+                  `🪑 Individual multi-city segment ${segmentIndex} seat:`,
+                  seat
+                );
+                // Try different field names for travel class ID, with fallback logic
+                const travelClassId = getTravelClassIdFromSeat(seat);
+                console.log(
+                  `🪑 Multi-city segment ${segmentIndex} travel class ID extraction:`,
+                  {
+                    seatNumber: seat.seatNumber,
+                    travelClassId: seat.travelClassId,
+                    classId: seat.classId,
+                    travelClassIdFromObject: seat.travelClass?.id,
+                    classIdFromObject: seat.class?.id,
+                    className: seat.className,
+                    finalTravelClassId: travelClassId,
+                  }
+                );
+                return {
+                  seatId: seat.seatId,
+                  seatNumber: seat.seatNumber,
+                  className: seat.className,
+                  status: seat.status, // Keep original API status
+                  bookedByUserId: seat.bookedByUserId,
+                  bookedByPassengerId: seat.bookedByPassengerId,
+                  seatType: seat.seatType, // Use correct seatType field from API
+                  flightId: seat.flightId,
+                  travelClassId: travelClassId, // Use fallback logic
+                  priceVND: seat.priceVND || 0, // Use price from API or 0
+                };
+              });
 
               setMultiCitySeatData((prev) => ({
                 ...prev,
@@ -3352,20 +3428,35 @@ const Extras = ({ flight, fare, formData, setExtrasData }) => {
         handleFetch({
           apiCall: () => flightApi.getSeatsByFlight(flight.outbound.id),
           setData: (data) => {
+            console.log("🪑 Raw outbound seat data from API:", data);
             // Load all seats without filtering by travel class
             setSeats(
-              data.map((seat) => ({
-                seatId: seat.seatId,
-                seatNumber: seat.seatNumber,
-                className: seat.className,
-                status: seat.status, // Keep original API status
-                bookedByUserId: seat.bookedByUserId,
-                bookedByPassengerId: seat.bookedByPassengerId,
-                seatType: seat.seatType, // Use correct seatType field from API
-                flightId: seat.flightId,
-                travelClassId: seat.travelClassId,
-                priceVND: seat.priceVND || 0, // Use price from API
-              }))
+              data.map((seat) => {
+                console.log("🪑 Individual outbound seat:", seat);
+                // Try different field names for travel class ID, with fallback logic
+                const travelClassId = getTravelClassIdFromSeat(seat);
+                console.log("🪑 Outbound travel class ID extraction:", {
+                  seatNumber: seat.seatNumber,
+                  travelClassId: seat.travelClassId,
+                  classId: seat.classId,
+                  travelClassIdFromObject: seat.travelClass?.id,
+                  classIdFromObject: seat.class?.id,
+                  className: seat.className,
+                  finalTravelClassId: travelClassId,
+                });
+                return {
+                  seatId: seat.seatId,
+                  seatNumber: seat.seatNumber,
+                  className: seat.className,
+                  status: seat.status, // Keep original API status
+                  bookedByUserId: seat.bookedByUserId,
+                  bookedByPassengerId: seat.bookedByPassengerId,
+                  seatType: seat.seatType, // Use correct seatType field from API
+                  flightId: seat.flightId,
+                  travelClassId: travelClassId, // Use fallback logic
+                  priceVND: seat.priceVND || 0, // Use price from API
+                };
+              })
             );
           },
           setLoading,
@@ -3378,20 +3469,35 @@ const Extras = ({ flight, fare, formData, setExtrasData }) => {
         handleFetch({
           apiCall: () => flightApi.getSeatsByFlight(flight.return.id),
           setData: (data) => {
+            console.log("🪑 Raw return seat data from API:", data);
             // Load all seats without filtering by travel class
             setReturnSeats(
-              data.map((seat) => ({
-                seatId: seat.seatId,
-                seatNumber: seat.seatNumber,
-                className: seat.className,
-                status: seat.status, // Keep original API status
-                bookedByUserId: seat.bookedByUserId,
-                bookedByPassengerId: seat.bookedByPassengerId,
-                seatType: seat.seatType, // Use correct seatType field from API
-                flightId: seat.flightId,
-                travelClassId: seat.travelClassId,
-                priceVND: seat.priceVND || 0, // Use price from API
-              }))
+              data.map((seat) => {
+                console.log("🪑 Individual return seat:", seat);
+                // Try different field names for travel class ID, with fallback logic
+                const travelClassId = getTravelClassIdFromSeat(seat);
+                console.log("🪑 Return travel class ID extraction:", {
+                  seatNumber: seat.seatNumber,
+                  travelClassId: seat.travelClassId,
+                  classId: seat.classId,
+                  travelClassIdFromObject: seat.travelClass?.id,
+                  classIdFromObject: seat.class?.id,
+                  className: seat.className,
+                  finalTravelClassId: travelClassId,
+                });
+                return {
+                  seatId: seat.seatId,
+                  seatNumber: seat.seatNumber,
+                  className: seat.className,
+                  status: seat.status, // Keep original API status
+                  bookedByUserId: seat.bookedByUserId,
+                  bookedByPassengerId: seat.bookedByPassengerId,
+                  seatType: seat.seatType, // Use correct seatType field from API
+                  flightId: seat.flightId,
+                  travelClassId: travelClassId, // Use fallback logic
+                  priceVND: seat.priceVND || 0, // Use price from API
+                };
+              })
             );
           },
           setLoading: setReturnLoading,
@@ -3405,20 +3511,35 @@ const Extras = ({ flight, fare, formData, setExtrasData }) => {
         handleFetch({
           apiCall: () => flightApi.getSeatsByFlight(flightId),
           setData: (data) => {
+            console.log("🪑 Raw seat data from API:", data);
             // Load all seats without filtering by travel class
             setSeats(
-              data.map((seat) => ({
-                seatId: seat.seatId,
-                seatNumber: seat.seatNumber,
-                className: seat.className,
-                status: seat.status, // Keep original API status
-                bookedByUserId: seat.bookedByUserId,
-                bookedByPassengerId: seat.bookedByPassengerId,
-                seatType: seat.seatType, // Use correct seatType field from API
-                flightId: seat.flightId,
-                travelClassId: seat.travelClassId,
-                priceVND: seat.priceVND || 0, // Use price from API
-              }))
+              data.map((seat) => {
+                console.log("🪑 Individual seat:", seat);
+                // Try different field names for travel class ID, with fallback logic
+                const travelClassId = getTravelClassIdFromSeat(seat);
+                console.log("🪑 Travel class ID extraction:", {
+                  seatNumber: seat.seatNumber,
+                  travelClassId: seat.travelClassId,
+                  classId: seat.classId,
+                  travelClassIdFromObject: seat.travelClass?.id,
+                  classIdFromObject: seat.class?.id,
+                  className: seat.className,
+                  finalTravelClassId: travelClassId,
+                });
+                return {
+                  seatId: seat.seatId,
+                  seatNumber: seat.seatNumber,
+                  className: seat.className,
+                  status: seat.status, // Keep original API status
+                  bookedByUserId: seat.bookedByUserId,
+                  bookedByPassengerId: seat.bookedByPassengerId,
+                  seatType: seat.seatType, // Use correct seatType field from API
+                  flightId: seat.flightId,
+                  travelClassId: travelClassId, // Use fallback logic
+                  priceVND: seat.priceVND || 0, // Use price from API
+                };
+              })
             );
           },
           setLoading,
@@ -3458,6 +3579,13 @@ const Extras = ({ flight, fare, formData, setExtrasData }) => {
       status: "OCCUPIED",
       color: "bg-red-500",
       label: "Đã được đặt",
+      price: "Miễn phí",
+      type: "status",
+    },
+    {
+      status: "DISABLE",
+      color: "bg-gray-300",
+      label: "Không được chọn",
       price: "Miễn phí",
       type: "status",
     },
@@ -3946,5 +4074,13 @@ Extras.propTypes = {
 };
 
 // Export both default and named exports for flexibility
-export { autoAssignStandardSeats, processExtrasDataForBooking };
+export {
+  autoAssignStandardSeats,
+  processExtrasDataForBooking,
+  getSeatStatusColor,
+  SEAT_TYPE_LABELS,
+  TRAVEL_CLASS_MAPPING,
+  getTravelClassName,
+  getTravelClassIdFromSeat,
+};
 export default Extras;

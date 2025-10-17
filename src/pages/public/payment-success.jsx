@@ -20,6 +20,84 @@ const PaymentSuccess = () => {
       const payerId = params.get("PayerID");
       const bookingId = params.get("bookingId");
 
+      // Check if this payment has already been processed
+      const paymentKey = `payment_processed_${paymentId}_${bookingId}`;
+      const processingKey = `processing_payment_${paymentId}_${bookingId}`;
+      const alreadyProcessed = localStorage.getItem(paymentKey);
+      const currentlyProcessing = localStorage.getItem(processingKey);
+
+      if (alreadyProcessed || currentlyProcessing) {
+        console.log("💡 Payment already processed or in progress:", {
+          paymentKey,
+          alreadyProcessed: !!alreadyProcessed,
+          currentlyProcessing: !!currentlyProcessing,
+        });
+        setStatus("success");
+        setMessage("Thanh toán đã được xử lý thành công!");
+
+        // Still redirect to appropriate page
+        const checkinPaymentInfo = localStorage.getItem("checkin_payment_info");
+        let isCheckinPayment = false;
+        let bookingCode = null;
+
+        if (checkinPaymentInfo) {
+          try {
+            const paymentInfo = JSON.parse(checkinPaymentInfo);
+            isCheckinPayment = paymentInfo.isCheckinPayment;
+            bookingCode = paymentInfo.bookingCode;
+          } catch (error) {
+            console.error("Error parsing checkin payment info:", error);
+          }
+        }
+
+        // Check my-flights payment info
+        const myFlightsPaymentInfo = localStorage.getItem(
+          "my_flights_payment_info_backup"
+        );
+        let isMyFlightsPayment = false;
+        let myFlightsBookingCode = null;
+
+        if (myFlightsPaymentInfo) {
+          try {
+            const paymentInfo = JSON.parse(myFlightsPaymentInfo);
+            isMyFlightsPayment = paymentInfo.isMyFlightsPayment;
+            myFlightsBookingCode = paymentInfo.bookingCode;
+          } catch (error) {
+            console.error("Error parsing my flights payment info:", error);
+          }
+        }
+
+        if (isCheckinPayment && bookingCode) {
+          setTimeout(
+            () =>
+              navigate(
+                `/check-in?bookingCode=${bookingCode}&paymentSuccess=true`
+              ),
+            2500
+          );
+        } else if (isMyFlightsPayment && myFlightsBookingCode) {
+          setTimeout(
+            () =>
+              navigate("/my-flights", {
+                state: {
+                  bookingCode: myFlightsBookingCode,
+                  paymentSuccess: true,
+                  message:
+                    "Thanh toán thành công! Đặt chỗ của bạn đã được xác nhận.",
+                },
+              }),
+            2500
+          );
+        } else {
+          setTimeout(() => navigate("/confirm-booking"), 2500);
+        }
+        return;
+      }
+
+      // Mark payment as being processed (set processing flag first, then processed flag)
+      localStorage.setItem(processingKey, Date.now().toString());
+      localStorage.setItem(paymentKey, Date.now().toString());
+
       // Check if this is from check-in payment flow (stored in localStorage)
       const checkinPaymentInfo = localStorage.getItem("checkin_payment_info");
       let isCheckinPayment = false;
@@ -37,6 +115,25 @@ const PaymentSuccess = () => {
         }
       }
 
+      // Check if this is from my-flights payment flow
+      const myFlightsPaymentInfo = localStorage.getItem(
+        "my_flights_payment_info"
+      );
+      let isMyFlightsPayment = false;
+      let myFlightsBookingCode = null;
+
+      if (myFlightsPaymentInfo) {
+        try {
+          const paymentInfo = JSON.parse(myFlightsPaymentInfo);
+          isMyFlightsPayment = paymentInfo.isMyFlightsPayment;
+          myFlightsBookingCode = paymentInfo.bookingCode;
+          // Clean up after use
+          localStorage.removeItem("my_flights_payment_info");
+        } catch (error) {
+          console.error("Error parsing my flights payment info:", error);
+        }
+      }
+
       if (!paymentId || !payerId || !bookingId) {
         setStatus("error");
         setMessage("Thiếu thông tin thanh toán. Vui lòng kiểm tra lại.");
@@ -44,15 +141,27 @@ const PaymentSuccess = () => {
       }
 
       try {
+        console.log("💳 Calling /payments/success API with:", {
+          paymentId,
+          PayerID: payerId,
+          bookingId,
+        });
+
         const response = await axios.get(
           `http://localhost:8080/api/v1/payments/success`,
           { params: { paymentId, PayerID: payerId, bookingId } }
         );
 
+        console.log("💳 /payments/success API response:", response.data);
+
         if (response.data?.success) {
           setStatus("success");
           setMessage("Thanh toán thành công!");
           toast.success("Thanh toán thành công!");
+
+          // Clean up processing flag after successful payment
+          localStorage.removeItem(processingKey);
+          console.log("🧹 Cleaned up processing flag:", processingKey);
 
           // Check if this is from check-in payment flow
           if (isCheckinPayment && bookingCode) {
@@ -66,6 +175,24 @@ const PaymentSuccess = () => {
                 navigate(
                   `/check-in?bookingCode=${bookingCode}&paymentSuccess=true`
                 ),
+              2500
+            );
+          } else if (isMyFlightsPayment && myFlightsBookingCode) {
+            console.log(
+              "🔄 Redirecting back to my-flights success page for booking:",
+              myFlightsBookingCode
+            );
+            // Redirect back to my-flights page with success state
+            setTimeout(
+              () =>
+                navigate("/my-flights", {
+                  state: {
+                    bookingCode: myFlightsBookingCode,
+                    paymentSuccess: true,
+                    message:
+                      "Thanh toán thành công! Đặt chỗ của bạn đã được xác nhận.",
+                  },
+                }),
               2500
             );
           } else {
@@ -86,6 +213,13 @@ const PaymentSuccess = () => {
             "Có lỗi xảy ra khi xác nhận thanh toán."
         );
         toast.error("Thanh toán thất bại!");
+
+        // Clean up processing flag after error
+        localStorage.removeItem(processingKey);
+        console.log(
+          "🧹 Cleaned up processing flag after error:",
+          processingKey
+        );
       }
     };
 
@@ -130,10 +264,39 @@ const PaymentSuccess = () => {
                 }
               }
 
+              // Check my-flights payment info
+              const myFlightsPaymentInfo = localStorage.getItem(
+                "my_flights_payment_info_backup"
+              );
+              let isMyFlightsPayment = false;
+              let myFlightsBookingCode = null;
+
+              if (myFlightsPaymentInfo) {
+                try {
+                  const paymentInfo = JSON.parse(myFlightsPaymentInfo);
+                  isMyFlightsPayment = paymentInfo.isMyFlightsPayment;
+                  myFlightsBookingCode = paymentInfo.bookingCode;
+                } catch (error) {
+                  console.error(
+                    "Error parsing my flights payment info:",
+                    error
+                  );
+                }
+              }
+
               if (isCheckinPayment && bookingCode) {
                 navigate(
                   `/check-in?bookingCode=${bookingCode}&paymentSuccess=true`
                 );
+              } else if (isMyFlightsPayment && myFlightsBookingCode) {
+                navigate("/my-flights", {
+                  state: {
+                    bookingCode: myFlightsBookingCode,
+                    paymentSuccess: true,
+                    message:
+                      "Thanh toán thành công! Đặt chỗ của bạn đã được xác nhận.",
+                  },
+                });
               } else {
                 navigate("/confirm-booking");
               }
@@ -155,9 +318,30 @@ const PaymentSuccess = () => {
                 }
               }
 
-              return isCheckinPayment
-                ? "Tiếp tục check-in"
-                : "Xem chi tiết đặt chỗ";
+              const myFlightsPaymentInfo = localStorage.getItem(
+                "my_flights_payment_info_backup"
+              );
+              let isMyFlightsPayment = false;
+
+              if (myFlightsPaymentInfo) {
+                try {
+                  const paymentInfo = JSON.parse(myFlightsPaymentInfo);
+                  isMyFlightsPayment = paymentInfo.isMyFlightsPayment;
+                } catch (error) {
+                  console.error(
+                    "Error parsing my flights payment info:",
+                    error
+                  );
+                }
+              }
+
+              if (isCheckinPayment) {
+                return "Tiếp tục check-in";
+              } else if (isMyFlightsPayment) {
+                return "Xem chi tiết đặt chỗ";
+              } else {
+                return "Xem chi tiết đặt chỗ";
+              }
             })()}
           </button>
         </>
