@@ -27,11 +27,13 @@ import {
   formatDateVN,
   formatTimeVN,
 } from "@/utils/currency-utils";
+import { paymentApi } from "@/apis/payment-api";
 
 const BookingConfirmation = () => {
   const navigate = useNavigate();
   const [copied, setCopied] = useState(false);
   const [bookingData, setBookingData] = useState(null);
+  const [isRefreshingPayment, setIsRefreshingPayment] = useState(false);
 
   useEffect(() => {
     const storedBookingData = localStorage.getItem("bookingConfirmation");
@@ -42,6 +44,108 @@ const BookingConfirmation = () => {
       navigate("/");
     }
   }, [navigate]);
+
+  // Check and refresh payment status when returning from PayPal
+  useEffect(() => {
+    const checkPaymentStatus = async () => {
+      const storedBookingData = localStorage.getItem("bookingConfirmation");
+      if (!storedBookingData) return;
+
+      const bookingData = JSON.parse(storedBookingData);
+      const bookingCode = bookingData.bookingCode;
+
+      if (!bookingCode) return;
+
+      // Check if user just returned from PayPal payment via URL parameters
+      const urlParams = new URLSearchParams(window.location.search);
+      const paymentReturn = urlParams.get("paymentReturn");
+      const urlBookingCode = urlParams.get("bookingCode");
+
+      // Check localStorage flags for payment completion
+      const paymentCompletedFlag = localStorage.getItem(
+        `payment_completed_${bookingCode}`
+      );
+      const paypalSuccessFlag = localStorage.getItem("paypal_payment_success");
+      const paymentReturnFlag = localStorage.getItem(
+        `payment_return_${bookingCode}`
+      );
+
+      // Check if this is a payment return (from URL param or localStorage flag)
+      const isPaymentReturn =
+        paymentReturn === "true" ||
+        (paymentReturnFlag && urlBookingCode === bookingCode);
+
+      if (isPaymentReturn || paymentCompletedFlag || paypalSuccessFlag) {
+        console.log(
+          "🔄 Detected payment return, refreshing payment status for booking:",
+          bookingCode,
+          {
+            paymentReturn,
+            urlBookingCode,
+            paymentReturnFlag: !!paymentReturnFlag,
+            paymentCompletedFlag: !!paymentCompletedFlag,
+            paypalSuccessFlag: !!paypalSuccessFlag,
+          }
+        );
+        setIsRefreshingPayment(true);
+
+        try {
+          const response = await paymentApi.getPaymentStatusByBookingCode(
+            bookingCode
+          );
+
+          if (response.success && response.data) {
+            const paymentData = response.data;
+            console.log("✅ Refreshed payment status:", paymentData.status);
+
+            // Update booking data with new payment information
+            const updatedBookingData = {
+              ...bookingData,
+              payment: {
+                method: paymentData.paymentMethod,
+                status: paymentData.status,
+                transactionId: paymentData.transactionId,
+                paidAt: paymentData.paymentDate,
+                amount: paymentData.amount,
+                paymentId: paymentData.paymentId,
+                bookingId: paymentData.bookingId,
+                payerId: paymentData.payerId,
+                checkoutUrl: paymentData.checkoutUrl,
+              },
+            };
+
+            // Update localStorage and state
+            localStorage.setItem(
+              "bookingConfirmation",
+              JSON.stringify(updatedBookingData)
+            );
+            setBookingData(updatedBookingData);
+
+            // Clean up flags
+            localStorage.removeItem(`payment_completed_${bookingCode}`);
+            localStorage.removeItem("paypal_payment_success");
+            localStorage.removeItem(`payment_return_${bookingCode}`);
+
+            // Clean up URL parameters
+            if (paymentReturn) {
+              const newUrl = window.location.pathname;
+              window.history.replaceState({}, document.title, newUrl);
+            }
+
+            console.log("✅ Payment status updated successfully");
+          }
+        } catch (error) {
+          console.error("❌ Error refreshing payment status:", error);
+        } finally {
+          setIsRefreshingPayment(false);
+        }
+      }
+    };
+
+    // Small delay to ensure component is fully mounted
+    const timer = setTimeout(checkPaymentStatus, 500);
+    return () => clearTimeout(timer);
+  }, []);
 
   // Helper function to get flight segment info from API response
   const getFlightSegmentInfo = (segments, flight) => {
@@ -421,7 +525,13 @@ const BookingConfirmation = () => {
                               {passenger.dateOfBirth}
                             </p>
                           </div>
-                          <Badge variant="outline">{passenger.gender}</Badge>
+                          <Badge variant="outline">
+                            {passenger.gender === "MALE"
+                              ? "Nam"
+                              : passenger.gender === "FEMALE"
+                              ? "Nữ"
+                              : "Khác"}
+                          </Badge>
                         </div>
                       ))}
                     </div>
@@ -1071,8 +1181,15 @@ const BookingConfirmation = () => {
                     </CardHeader>
                     <CardContent>
                       <div className="space-y-3">
-                        {bookingDetails.payment.method === "PAY_LATER" ||
-                        bookingDetails.payment.status === "PENDING" ? (
+                        {isRefreshingPayment ? (
+                          <div className="text-center py-4">
+                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
+                            <p className="text-sm text-gray-600">
+                              Đang cập nhật trạng thái thanh toán...
+                            </p>
+                          </div>
+                        ) : bookingDetails.payment.status === "PENDING" ||
+                          bookingDetails.payment.status === "PAY_LATER" ? (
                           <div className="text-center py-4">
                             <div className="text-yellow-600 font-medium">
                               ⏳ Chưa thanh toán
@@ -1144,6 +1261,16 @@ const BookingConfirmation = () => {
                                   {new Date(
                                     bookingDetails.payment.paidAt
                                   ).toLocaleString("vi-VN")}
+                                </span>
+                              </div>
+                            )}
+                            {bookingDetails.payment.amount && (
+                              <div className="flex justify-between">
+                                <span>Số tiền:</span>
+                                <span className="font-medium text-green-600">
+                                  {formatCurrencyVND(
+                                    bookingDetails.payment.amount
+                                  )}
                                 </span>
                               </div>
                             )}

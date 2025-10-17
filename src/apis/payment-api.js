@@ -116,6 +116,15 @@ const paymentApi = {
     });
     return apiHandler("get", `/payments/cancel?${params.toString()}`);
   },
+
+  /**
+   * Get payment status by booking code
+   * @param {string} bookingCode - Booking code
+   * @returns {Promise<{ success: boolean, data?: any, message: string }>}
+   */
+  getPaymentStatusByBookingCode: async (bookingCode) => {
+    return apiHandler("get", `/payments/status/${bookingCode}`);
+  },
 };
 
 export { paymentApi };

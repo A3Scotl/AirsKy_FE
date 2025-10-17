@@ -134,7 +134,11 @@ export default function QRPay() {
             console.log(
               "🔄 QR Payment success - redirecting to confirm booking (booking payment)"
             );
-            setTimeout(() => navigate("/confirm-booking"), 3000);
+            setTimeout(() => {
+              // Set flag to indicate payment status needs refresh
+              localStorage.setItem(`payment_return_${bookingBookingCodeForRedirect}`, Date.now().toString());
+              navigate(`/confirm-booking?paymentReturn=true&bookingCode=${bookingBookingCodeForRedirect}`);
+            }, 3000);
           } else if (isCheckinFlow && bookingCodeForRedirect) {
             console.log(
               "🔄 QR Payment success - redirecting to check-in for booking:",
@@ -168,7 +172,15 @@ export default function QRPay() {
             console.log(
               "🔄 QR Payment success - redirecting to confirm booking (fallback)"
             );
-            setTimeout(() => navigate("/confirm-booking"), 3000); // Auto redirect after 3 seconds
+            setTimeout(() => {
+              // Set flag for fallback case too
+              if (bookingCode) {
+                localStorage.setItem(`payment_return_${bookingCode}`, Date.now().toString());
+                navigate(`/confirm-booking?paymentReturn=true&bookingCode=${bookingCode}`);
+              } else {
+                navigate("/confirm-booking");
+              }
+            }, 3000);
           }
         }
       } catch (error) {

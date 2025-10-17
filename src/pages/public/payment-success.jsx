@@ -203,8 +203,17 @@ const PaymentSuccess = () => {
           // Priority: booking payment > checkin payment > my-flights payment
           if (isBookingPayment && bookingPaymentBookingCode) {
             console.log("🔄 Redirecting to confirm booking (booking payment)");
-            // Booking payment - go to confirm booking
-            setTimeout(() => navigate("/confirm-booking"), 2500);
+            // Booking payment - go to confirm booking with payment refresh flag
+            setTimeout(() => {
+              // Set flag to indicate payment status needs refresh
+              localStorage.setItem(
+                `payment_return_${bookingPaymentBookingCode}`,
+                Date.now().toString()
+              );
+              navigate(
+                `/confirm-booking?paymentReturn=true&bookingCode=${bookingPaymentBookingCode}`
+              );
+            }, 2500);
           } else if (isCheckinPayment && bookingCode) {
             console.log(
               "🔄 Redirecting back to check-in page for booking:",
@@ -240,8 +249,21 @@ const PaymentSuccess = () => {
             console.log(
               "🔄 Redirecting to confirm booking (fallback - normal booking payment)"
             );
-            // Fallback - assume normal booking payment
-            setTimeout(() => navigate("/confirm-booking"), 2500);
+            // Fallback - assume normal booking payment, try to get booking code from URL or localStorage
+            const fallbackBookingCode = params.get("bookingId") || bookingId;
+            setTimeout(() => {
+              if (fallbackBookingCode) {
+                localStorage.setItem(
+                  `payment_return_${fallbackBookingCode}`,
+                  Date.now().toString()
+                );
+                navigate(
+                  `/confirm-booking?paymentReturn=true&bookingCode=${fallbackBookingCode}`
+                );
+              } else {
+                navigate("/confirm-booking");
+              }
+            }, 2500);
           }
         } else {
           throw new Error(response.data?.message || "Lỗi cập nhật thanh toán");

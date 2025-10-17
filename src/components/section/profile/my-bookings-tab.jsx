@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -43,13 +44,18 @@ import {
   Calendar,
   MapPin,
   DollarSign,
+  CreditCard,
 } from "lucide-react";
 import { userApi } from "@/apis/user-api";
 import { bookingApi } from "@/apis/booking-api";
+import { paymentApi } from "@/apis/payment-api";
 import { useAuth } from "@/contexts/auth-context";
+import { formatCurrencyVND } from "@/utils/currency-utils";
+import { toast } from "sonner";
 
 const MyBookingsTab = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [dateRange, setDateRange] = useState();
@@ -60,6 +66,8 @@ const MyBookingsTab = () => {
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [isProcessingPayment, setIsProcessingPayment] = useState(false);
+  const [paymentError, setPaymentError] = useState(null);
   const itemsPerPage = 5;
 
   // Fetch bookings data
@@ -152,6 +160,91 @@ const MyBookingsTab = () => {
         console.error("Error canceling booking:", error);
         alert("Có lỗi xảy ra khi hủy booking. Vui lòng thử lại.");
       }
+    }
+  };
+
+  // Handle payment
+  const handlePayment = async (paymentMethod) => {
+    if (!selectedBooking) return;
+
+    setIsProcessingPayment(true);
+    setPaymentError(null);
+
+    try {
+      // Format totalAmount to ensure it's a string with proper decimal places for PayPal
+      const rawAmount = selectedBooking.price || 0;
+      const formattedAmount =
+        typeof rawAmount === "number"
+          ? rawAmount.toFixed(2)
+          : parseFloat(rawAmount).toFixed(2);
+
+      const paymentData = {
+        bookingId: selectedBooking.bookingId,
+        paymentMethod: paymentMethod,
+        totalAmount: formattedAmount + "", // Force string concatenation
+      };
+
+      const response = await paymentApi.createPayment(paymentData);
+
+      if (response.success && response.data) {
+        const payment = response.data;
+        const checkoutUrl = payment.checkoutUrl;
+
+        // Store payment info for redirect handling
+        const paymentInfo = {
+          isMyBookingsPayment: true,
+          bookingCode: selectedBooking.id,
+          bookingId: selectedBooking.bookingId,
+          passengerName:
+            selectedBooking.passengers?.[0]?.firstName +
+            " " +
+            selectedBooking.passengers?.[0]?.lastName,
+        };
+        localStorage.setItem(
+          "my_bookings_payment_info",
+          JSON.stringify(paymentInfo)
+        );
+        localStorage.setItem(
+          "my_bookings_payment_info_backup",
+          JSON.stringify(paymentInfo)
+        );
+
+        // Handle payment redirect based on method
+        if (paymentMethod === "PAYPAL") {
+          if (checkoutUrl) {
+            toast.success("Đang chuyển hướng đến PayPal để thanh toán...");
+            window.location.href = checkoutUrl;
+          } else {
+            toast.error("Không thể tạo liên kết thanh toán PayPal");
+          }
+        } else if (paymentMethod === "BANK_TRANSFER") {
+          if (checkoutUrl) {
+            toast.success("Đang chuyển hướng đến trang thanh toán QR...");
+            navigate("/qr-pay", {
+              state: {
+                checkoutUrl: checkoutUrl,
+                bookingCode: selectedBooking.id,
+              },
+            });
+          } else {
+            toast.error("Không thể tạo liên kết thanh toán");
+          }
+        }
+      } else {
+        const errorMessage = response.message || "Có lỗi xảy ra khi thanh toán";
+        setPaymentError(errorMessage);
+        toast.error(errorMessage);
+      }
+    } catch (error) {
+      console.error("Payment error:", error);
+      const errorMessage =
+        paymentMethod === "PAYPAL"
+          ? "Có lỗi xảy ra khi thanh toán PayPal"
+          : "Có lỗi xảy ra khi thanh toán. Vui lòng thử lại.";
+      setPaymentError(errorMessage);
+      toast.error(errorMessage);
+    } finally {
+      setIsProcessingPayment(false);
     }
   };
 
@@ -341,16 +434,6 @@ const MyBookingsTab = () => {
                       >
                         Xem
                       </Button>
-                      {(booking.status === "PENDING" ||
-                        booking.status === "CONFIRMED") && (
-                        <Button
-                          variant="destructive"
-                          size="sm"
-                          onClick={() => handleCancelBooking(booking)}
-                        >
-                          Hủy
-                        </Button>
-                      )}
                     </TableCell>
                   </TableRow>
                 ))}
@@ -578,12 +661,90 @@ const MyBookingsTab = () => {
                       </CardTitle>
                     </CardHeader>
                     <CardContent>
-                      <div className="flex items-center justify-between">
+                      <div className="flex items-center justify-between mb-4">
                         <span className="text-lg">Tổng tiền</span>
                         <span className="text-2xl font-bold text-blue-600">
-                          {selectedBooking.formattedPrice}
+                          {formatCurrencyVND(selectedBooking.price)}
                         </span>
                       </div>
+
+                      {/* Payment Status */}
+                      {selectedBooking.payment && (
+                        <div className="mb-4 p-3 bg-gray-50 rounded-lg">
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm font-medium">
+                              Trạng thái thanh toán:
+                            </span>
+                            <Badge
+                              variant={
+                                selectedBooking.payment.status === "COMPLETED"
+                                  ? "success"
+                                  : selectedBooking.payment.status === "PENDING"
+                                  ? "warning"
+                                  : "destructive"
+                              }
+                            >
+                              {selectedBooking.payment.status === "COMPLETED"
+                                ? "Đã thanh toán"
+                                : selectedBooking.payment.status === "PENDING"
+                                ? "Chưa thanh toán"
+                                : selectedBooking.payment.status}
+                            </Badge>
+                          </div>
+                          {selectedBooking.payment.status === "COMPLETED" &&
+                            selectedBooking.payment.transactionId && (
+                              <p className="text-xs text-gray-600 mt-1">
+                                Mã giao dịch:{" "}
+                                {selectedBooking.payment.transactionId}
+                              </p>
+                            )}
+                        </div>
+                      )}
+
+                      {/* Payment Methods for PENDING bookings */}
+                      {selectedBooking.status === "PENDING" &&
+                        (!selectedBooking.payment ||
+                          selectedBooking.payment.status !== "COMPLETED") && (
+                          <div className="border-t pt-4">
+                            <h4 className="font-medium mb-3">
+                              Chọn phương thức thanh toán:
+                            </h4>
+                            {paymentError && (
+                              <div className="mb-3 p-3 bg-red-50 border border-red-200 rounded-lg">
+                                <p className="text-sm text-red-700">
+                                  {paymentError}
+                                </p>
+                              </div>
+                            )}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                              <Button
+                                onClick={() => handlePayment("PAYPAL")}
+                                disabled={isProcessingPayment}
+                                className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700"
+                              >
+                                <CreditCard className="w-4 h-4" />
+                                {isProcessingPayment
+                                  ? "Đang xử lý..."
+                                  : "Thanh toán bằng PayPal"}
+                              </Button>
+                              <Button
+                                onClick={() => handlePayment("BANK_TRANSFER")}
+                                disabled={isProcessingPayment}
+                                variant="outline"
+                                className="flex items-center gap-2"
+                              >
+                                <CreditCard className="w-4 h-4" />
+                                {isProcessingPayment
+                                  ? "Đang xử lý..."
+                                  : "Thanh toán bằng thẻ tín dụng"}
+                              </Button>
+                            </div>
+                            <p className="text-xs text-gray-500 mt-2">
+                              * Bạn sẽ được chuyển hướng đến cổng thanh toán an
+                              toàn
+                            </p>
+                          </div>
+                        )}
                     </CardContent>
                   </Card>
 
@@ -638,13 +799,7 @@ const MyBookingsTab = () => {
                         </Button>
                       </>
                     )}
-                    {(selectedBooking.status === "CONFIRMED" ||
-                      selectedBooking.status === "PENDING") && (
-                      <Button variant="destructive" className="flex-1">
-                        Hủy đặt chỗ
-                      </Button>
-                    )}
-                    {selectedBooking.status === "Cancelled" && (
+                    {selectedBooking.status === "CANCELLED" && (
                       <Button className="w-full">Đặt lại chuyến bay</Button>
                     )}
                   </div>

@@ -2861,7 +2861,15 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
                         passenger.lastName || ""
                       }`.trim()
                     : `Hành khách ${index + 1}`}{" "}
-                  <span className="text-gray-500">({passenger.type})</span>
+                  <span className="text-gray-500">
+                    (
+                    {passenger.type === "ADULT"
+                      ? "Người lớn"
+                      : passenger.type === "CHILD"
+                      ? "Trẻ em"
+                      : "Em bé"}
+                    )
+                  </span>
                 </p>
               ))}
             </CardContent>
@@ -3865,57 +3873,6 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
                     Quy định giá vé
                   </span>
                 </Label>
-              </div>
-
-              {/* Debug Panel */}
-              <div className="mt-4 p-3 bg-gray-50 rounded-md">
-                <div className="flex items-center space-x-2 mb-2">
-                  <Checkbox
-                    id="debug"
-                    checked={showDebug}
-                    onCheckedChange={setShowDebug}
-                  />
-                  <Label htmlFor="debug" className="text-sm">
-                    Hiển thị thông tin debug (Console)
-                  </Label>
-                </div>
-                {showDebug && (
-                  <div className="text-xs bg-gray-100 p-2 rounded mt-2 max-h-40 overflow-y-auto">
-                    <strong>Booking Data Preview:</strong>
-                    <pre className="mt-1">
-                      {JSON.stringify(
-                        {
-                          flightId: flight.id,
-                          classId: fare?.travelClass?.classId,
-                          totalAmount: currentTotalAmount,
-                          totalAmountUSD: currentTotalAmount.toFixed(2),
-                          passengers: formData.passengers.length,
-                          selectedSeats: Object.keys(
-                            extrasData?.selectedSeats || {}
-                          ).length,
-                          needAutoAssign:
-                            formData.passengers.length -
-                            Object.keys(extrasData?.selectedSeats || {}).length,
-                          baggage: Object.values(
-                            extrasData?.baggage || {}
-                          ).reduce(
-                            (total, bag) =>
-                              total + bag.firstBag + bag.secondBag,
-                            0
-                          ),
-                          services: Object.values(
-                            extrasData?.additionalServices || {}
-                          ).filter(Boolean).length,
-                          paymentMethod: paymentMethod, // Updated dynamically
-                          status:
-                            "Will be PENDING if pay later, CONFIRMED if pay now",
-                        },
-                        null,
-                        2
-                      )}
-                    </pre>
-                  </div>
-                )}
               </div>
 
               {/* Payment Buttons - Responsive */}
