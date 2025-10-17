@@ -68,6 +68,25 @@ export default function QRPay() {
 
           clearInterval(pollingRef.current);
 
+          // Check if this is from booking payment flow (stored in localStorage)
+          let isBookingFlow = false;
+          let bookingBookingCodeForRedirect = bookingCode;
+
+          const bookingPaymentInfo = localStorage.getItem(
+            "booking_payment_info"
+          );
+          if (bookingPaymentInfo) {
+            try {
+              const paymentInfo = JSON.parse(bookingPaymentInfo);
+              isBookingFlow = paymentInfo.isBookingPayment;
+              bookingBookingCodeForRedirect = paymentInfo.bookingCode;
+              // Clean up after use
+              localStorage.removeItem("booking_payment_info");
+            } catch (error) {
+              console.error("Error parsing booking payment info:", error);
+            }
+          }
+
           // Check if this is from check-in payment flow (use localStorage if URL param is not available)
           let isCheckinFlow = isCheckinPayment;
           let bookingCodeForRedirect = bookingCode;
@@ -81,6 +100,8 @@ export default function QRPay() {
                 const paymentInfo = JSON.parse(checkinPaymentInfo);
                 isCheckinFlow = paymentInfo.isCheckinPayment;
                 bookingCodeForRedirect = paymentInfo.bookingCode;
+                // Clean up after use
+                localStorage.removeItem("checkin_payment_info");
               } catch (error) {
                 console.error("Error parsing checkin payment info:", error);
               }
@@ -100,13 +121,21 @@ export default function QRPay() {
                 const paymentInfo = JSON.parse(myFlightsPaymentInfo);
                 isMyFlightsFlow = paymentInfo.isMyFlightsPayment;
                 myFlightsBookingCodeForRedirect = paymentInfo.bookingCode;
+                // Clean up after use
+                localStorage.removeItem("my_flights_payment_info");
               } catch (error) {
                 console.error("Error parsing my flights payment info:", error);
               }
             }
           }
 
-          if (isCheckinFlow && bookingCodeForRedirect) {
+          // Priority: booking payment > checkin payment > my-flights payment
+          if (isBookingFlow && bookingBookingCodeForRedirect) {
+            console.log(
+              "🔄 QR Payment success - redirecting to confirm booking (booking payment)"
+            );
+            setTimeout(() => navigate("/confirm-booking"), 3000);
+          } else if (isCheckinFlow && bookingCodeForRedirect) {
             console.log(
               "🔄 QR Payment success - redirecting to check-in for booking:",
               bookingCodeForRedirect
@@ -137,7 +166,7 @@ export default function QRPay() {
             );
           } else {
             console.log(
-              "🔄 QR Payment success - redirecting to confirm booking"
+              "🔄 QR Payment success - redirecting to confirm booking (fallback)"
             );
             setTimeout(() => navigate("/confirm-booking"), 3000); // Auto redirect after 3 seconds
           }
@@ -190,19 +219,40 @@ export default function QRPay() {
         </p>
         <button
           onClick={() => {
+            // Check booking payment info first
+            let isBookingFlow = false;
+            let bookingBookingCodeForRedirect = bookingCode;
+
+            const bookingPaymentInfo = localStorage.getItem(
+              "booking_payment_info"
+            );
+            if (bookingPaymentInfo) {
+              try {
+                const paymentInfo = JSON.parse(bookingPaymentInfo);
+                isBookingFlow = paymentInfo.isBookingPayment;
+                bookingBookingCodeForRedirect = paymentInfo.bookingCode;
+                // Clean up after use
+                localStorage.removeItem("booking_payment_info");
+              } catch (error) {
+                console.error("Error parsing booking payment info:", error);
+              }
+            }
+
             // Check localStorage if URL params are not available
             let isCheckinFlow = isCheckinPayment;
             let bookingCodeForRedirect = bookingCode;
 
             if (!isCheckinFlow) {
               const checkinPaymentInfo = localStorage.getItem(
-                "checkin_payment_info_backup"
+                "checkin_payment_info"
               );
               if (checkinPaymentInfo) {
                 try {
                   const paymentInfo = JSON.parse(checkinPaymentInfo);
                   isCheckinFlow = paymentInfo.isCheckinPayment;
                   bookingCodeForRedirect = paymentInfo.bookingCode;
+                  // Clean up after use
+                  localStorage.removeItem("checkin_payment_info");
                 } catch (error) {
                   console.error("Error parsing checkin payment info:", error);
                 }
@@ -215,13 +265,15 @@ export default function QRPay() {
 
             if (!isMyFlightsFlow) {
               const myFlightsPaymentInfo = localStorage.getItem(
-                "my_flights_payment_info_backup"
+                "my_flights_payment_info"
               );
               if (myFlightsPaymentInfo) {
                 try {
                   const paymentInfo = JSON.parse(myFlightsPaymentInfo);
                   isMyFlightsFlow = paymentInfo.isMyFlightsPayment;
                   myFlightsBookingCodeForRedirect = paymentInfo.bookingCode;
+                  // Clean up after use
+                  localStorage.removeItem("my_flights_payment_info");
                 } catch (error) {
                   console.error(
                     "Error parsing my flights payment info:",
@@ -231,7 +283,10 @@ export default function QRPay() {
               }
             }
 
-            if (isCheckinFlow && bookingCodeForRedirect) {
+            // Priority: booking payment > checkin payment > my-flights payment
+            if (isBookingFlow && bookingBookingCodeForRedirect) {
+              navigate("/confirm-booking");
+            } else if (isCheckinFlow && bookingCodeForRedirect) {
               navigate(
                 `/check-in?bookingCode=${bookingCodeForRedirect}&paymentSuccess=true`
               );
@@ -251,11 +306,24 @@ export default function QRPay() {
           className="mt-6 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
         >
           {(() => {
-            let isCheckinFlow = isCheckinPayment;
+            // Check booking payment info first
+            let isBookingFlow = false;
+            const bookingPaymentInfo = localStorage.getItem(
+              "booking_payment_info"
+            );
+            if (bookingPaymentInfo) {
+              try {
+                const paymentInfo = JSON.parse(bookingPaymentInfo);
+                isBookingFlow = paymentInfo.isBookingPayment;
+              } catch (error) {
+                console.error("Error parsing booking payment info:", error);
+              }
+            }
 
+            let isCheckinFlow = isCheckinPayment;
             if (!isCheckinFlow) {
               const checkinPaymentInfo = localStorage.getItem(
-                "checkin_payment_info_backup"
+                "checkin_payment_info"
               );
               if (checkinPaymentInfo) {
                 try {
@@ -270,7 +338,7 @@ export default function QRPay() {
             let isMyFlightsFlow = false;
             if (!isMyFlightsFlow) {
               const myFlightsPaymentInfo = localStorage.getItem(
-                "my_flights_payment_info_backup"
+                "my_flights_payment_info"
               );
               if (myFlightsPaymentInfo) {
                 try {
@@ -285,7 +353,9 @@ export default function QRPay() {
               }
             }
 
-            if (isCheckinFlow) {
+            if (isBookingFlow) {
+              return "Xem chi tiết đặt chỗ ngay";
+            } else if (isCheckinFlow) {
               return "Tiếp tục check-in";
             } else if (isMyFlightsFlow) {
               return "Xem chi tiết đặt chỗ ngay";

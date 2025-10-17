@@ -2388,6 +2388,22 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
         localStorage.removeItem("extrasData");
         localStorage.removeItem("searchCriteria");
 
+        // Store booking payment info for redirect handling
+        const bookingPaymentInfo = {
+          isBookingPayment: true,
+          bookingCode: bookingCode,
+          bookingId: bookingId,
+          timestamp: Date.now(),
+        };
+        localStorage.setItem(
+          "booking_payment_info",
+          JSON.stringify(bookingPaymentInfo)
+        );
+        localStorage.setItem(
+          "booking_payment_info_backup",
+          JSON.stringify(bookingPaymentInfo)
+        );
+
         // Store booking confirmation (simplified)
         localStorage.setItem(
           "bookingConfirmation",

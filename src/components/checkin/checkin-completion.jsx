@@ -230,59 +230,66 @@ const CheckInCompletion = ({
       const response = await paymentApi.createPayment(paymentData);
 
       if (response.success && response.data) {
-        if (paymentMethod === "PAYPAL" && response.data.paypalApprovalUrl) {
-          toast.success("Đang chuyển hướng đến PayPal để thanh toán...");
+        const checkoutUrl = response.data.checkoutUrl;
 
-          // Store check-in payment info in localStorage for restoration after PayPal redirect
-          const checkinPaymentInfo = {
-            isCheckinPayment: true,
-            bookingCode: booking.bookingCode,
-            timestamp: Date.now(),
-          };
-          localStorage.setItem(
-            "checkin_payment_info",
-            JSON.stringify(checkinPaymentInfo)
-          );
-          localStorage.setItem(
-            "checkin_payment_info_backup",
-            JSON.stringify(checkinPaymentInfo)
-          ); // backup for button
+        if (paymentMethod === "PAYPAL") {
+          if (checkoutUrl) {
+            toast.success("Đang chuyển hướng đến PayPal để thanh toán...");
 
-          console.log("💾 Stored checkin payment info:", checkinPaymentInfo);
+            // Store check-in payment info in localStorage for restoration after PayPal redirect
+            const checkinPaymentInfo = {
+              isCheckinPayment: true,
+              bookingCode: booking.bookingCode,
+              timestamp: Date.now(),
+            };
+            localStorage.setItem(
+              "checkin_payment_info",
+              JSON.stringify(checkinPaymentInfo)
+            );
+            localStorage.setItem(
+              "checkin_payment_info_backup",
+              JSON.stringify(checkinPaymentInfo)
+            ); // backup for button
 
-          // Redirect to PayPal
-          window.location.href = response.data.paypalApprovalUrl;
-        } else if (
-          paymentMethod === "BANK_TRANSFER" &&
-          (response.data.qrCodeUrl || response.data.approvalUrl)
-        ) {
-          toast.success("Đang chuyển hướng đến trang thanh toán QR Code...");
+            console.log("💾 Stored checkin payment info:", checkinPaymentInfo);
 
-          // Store check-in payment info in localStorage for restoration after QR payment
-          const checkinPaymentInfo = {
-            isCheckinPayment: true,
-            bookingCode: booking.bookingCode,
-            timestamp: Date.now(),
-          };
-          localStorage.setItem(
-            "checkin_payment_info",
-            JSON.stringify(checkinPaymentInfo)
-          );
-          localStorage.setItem(
-            "checkin_payment_info_backup",
-            JSON.stringify(checkinPaymentInfo)
-          );
+            // Redirect to PayPal
+            window.location.href = checkoutUrl;
+          } else {
+            toast.error("Không thể tạo liên kết thanh toán PayPal");
+          }
+        } else if (paymentMethod === "BANK_TRANSFER") {
+          if (checkoutUrl) {
+            toast.success("Đang chuyển hướng đến trang thanh toán QR Code...");
 
-          console.log(
-            "💾 Stored checkin payment info for QR:",
-            checkinPaymentInfo
-          );
+            // Store check-in payment info in localStorage for restoration after QR payment
+            const checkinPaymentInfo = {
+              isCheckinPayment: true,
+              bookingCode: booking.bookingCode,
+              timestamp: Date.now(),
+            };
+            localStorage.setItem(
+              "checkin_payment_info",
+              JSON.stringify(checkinPaymentInfo)
+            );
+            localStorage.setItem(
+              "checkin_payment_info_backup",
+              JSON.stringify(checkinPaymentInfo)
+            );
 
-          // Redirect to QR payment page with check-in flag
-          const qrUrl = `/qr-pay?approvalUrl=${encodeURIComponent(
-            response.data.qrCodeUrl || response.data.approvalUrl
-          )}&bookingCode=${booking.bookingCode}&isCheckinPayment=true`;
-          window.location.href = qrUrl;
+            console.log(
+              "💾 Stored checkin payment info for QR:",
+              checkinPaymentInfo
+            );
+
+            // Redirect to QR payment page with check-in flag
+            const qrUrl = `/qr-pay?checkoutUrl=${encodeURIComponent(
+              checkoutUrl
+            )}&bookingCode=${booking.bookingCode}&isCheckinPayment=true`;
+            window.location.href = qrUrl;
+          } else {
+            toast.error("Không thể tạo liên kết thanh toán");
+          }
         } else {
           toast.success("Thanh toán thành công!");
 

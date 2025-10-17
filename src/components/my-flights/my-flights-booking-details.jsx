@@ -120,6 +120,7 @@ const MyFlightsBookingDetails = ({
 
       if (response.success && response.data) {
         const payment = response.data;
+        const checkoutUrl = payment.checkoutUrl;
 
         // Store payment info for redirect handling
         const paymentInfo = {
@@ -137,21 +138,26 @@ const MyFlightsBookingDetails = ({
           JSON.stringify(paymentInfo)
         );
 
-        // Handle PayPal payment
-        if (paymentMethod === "PAYPAL" && payment.paypalApprovalUrl) {
-          toast.success("Đang chuyển hướng đến PayPal để thanh toán...");
-          // Redirect to PayPal for approval
-          window.location.href = payment.paypalApprovalUrl;
+        // Handle payment redirect based on method
+        if (paymentMethod === "PAYPAL") {
+          if (checkoutUrl) {
+            toast.success("Đang chuyển hướng đến PayPal để thanh toán...");
+            window.location.href = checkoutUrl;
+          } else {
+            toast.error("Không thể tạo liên kết thanh toán PayPal");
+          }
         } else if (paymentMethod === "BANK_TRANSFER") {
-          // For bank transfer and credit card, redirect to QR pay page
-          toast.success("Đang chuyển hướng đến trang thanh toán QR...");
-          // Navigate to QR pay page with state (same as payment-section.jsx)
-          navigate("/qr-pay", {
-            state: {
-              approvalUrl: payment.qrCodeUrl || payment.paypalApprovalUrl,
-              bookingCode: booking.bookingCode,
-            },
-          });
+          if (checkoutUrl) {
+            toast.success("Đang chuyển hướng đến trang thanh toán QR...");
+            navigate("/qr-pay", {
+              state: {
+                checkoutUrl: checkoutUrl,
+                bookingCode: booking.bookingCode,
+              },
+            });
+          } else {
+            toast.error("Không thể tạo liên kết thanh toán");
+          }
         }
       } else {
         const errorMessage = response.message || "Có lỗi xảy ra khi thanh toán";

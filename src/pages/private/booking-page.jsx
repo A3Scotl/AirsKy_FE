@@ -120,8 +120,10 @@ const AdminBookings = () => {
           const mappedBookings = response.data.content.map((booking) => ({
             id: booking.bookingId,
             bookingRef: `BK${booking.bookingId.toString().padStart(4, "0")}`, // Generate booking ref
-            customer: booking.userEmail.split("@")[0], // Use email prefix as customer name
-            email: booking.userEmail,
+            customer: booking.userEmail
+              ? booking.userEmail.split("@")[0]
+              : "Unknown", // Use email prefix as customer name, fallback to "Unknown" if null
+            email: booking.userEmail || "N/A", // Fallback to "N/A" if email is null
             route: booking.flightNumber, // Use flight number as route for now
             departure: booking.bookingDate,
             passengers: booking.passengers.length,

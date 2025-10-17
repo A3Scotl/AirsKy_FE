@@ -36,6 +36,21 @@ const PaymentSuccess = () => {
         setMessage("Thanh toán đã được xử lý thành công!");
 
         // Still redirect to appropriate page
+        // Check if this is from booking payment flow (normal booking from payment-section)
+        const bookingPaymentInfo = localStorage.getItem("booking_payment_info");
+        let isBookingPayment = false;
+        let bookingPaymentBookingCode = null;
+
+        if (bookingPaymentInfo) {
+          try {
+            const paymentInfo = JSON.parse(bookingPaymentInfo);
+            isBookingPayment = paymentInfo.isBookingPayment;
+            bookingPaymentBookingCode = paymentInfo.bookingCode;
+          } catch (error) {
+            console.error("Error parsing booking payment info:", error);
+          }
+        }
+
         const checkinPaymentInfo = localStorage.getItem("checkin_payment_info");
         let isCheckinPayment = false;
         let bookingCode = null;
@@ -52,7 +67,7 @@ const PaymentSuccess = () => {
 
         // Check my-flights payment info
         const myFlightsPaymentInfo = localStorage.getItem(
-          "my_flights_payment_info_backup"
+          "my_flights_payment_info"
         );
         let isMyFlightsPayment = false;
         let myFlightsBookingCode = null;
@@ -67,7 +82,10 @@ const PaymentSuccess = () => {
           }
         }
 
-        if (isCheckinPayment && bookingCode) {
+        // Priority: booking payment > checkin payment > my-flights payment
+        if (isBookingPayment && bookingPaymentBookingCode) {
+          setTimeout(() => navigate("/confirm-booking"), 2500);
+        } else if (isCheckinPayment && bookingCode) {
           setTimeout(
             () =>
               navigate(
@@ -163,8 +181,31 @@ const PaymentSuccess = () => {
           localStorage.removeItem(processingKey);
           console.log("🧹 Cleaned up processing flag:", processingKey);
 
-          // Check if this is from check-in payment flow
-          if (isCheckinPayment && bookingCode) {
+          // Check if this is from booking payment flow (stored in localStorage)
+          const bookingPaymentInfo = localStorage.getItem(
+            "booking_payment_info"
+          );
+          let isBookingPayment = false;
+          let bookingPaymentBookingCode = null;
+
+          if (bookingPaymentInfo) {
+            try {
+              const paymentInfo = JSON.parse(bookingPaymentInfo);
+              isBookingPayment = paymentInfo.isBookingPayment;
+              bookingPaymentBookingCode = paymentInfo.bookingCode;
+              // Clean up after use
+              localStorage.removeItem("booking_payment_info");
+            } catch (error) {
+              console.error("Error parsing booking payment info:", error);
+            }
+          }
+
+          // Priority: booking payment > checkin payment > my-flights payment
+          if (isBookingPayment && bookingPaymentBookingCode) {
+            console.log("🔄 Redirecting to confirm booking (booking payment)");
+            // Booking payment - go to confirm booking
+            setTimeout(() => navigate("/confirm-booking"), 2500);
+          } else if (isCheckinPayment && bookingCode) {
             console.log(
               "🔄 Redirecting back to check-in page for booking:",
               bookingCode
@@ -197,9 +238,9 @@ const PaymentSuccess = () => {
             );
           } else {
             console.log(
-              "🔄 Redirecting to confirm booking (normal booking payment)"
+              "🔄 Redirecting to confirm booking (fallback - normal booking payment)"
             );
-            // Normal booking payment - go to confirm booking
+            // Fallback - assume normal booking payment
             setTimeout(() => navigate("/confirm-booking"), 2500);
           }
         } else {
