@@ -2380,7 +2380,7 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
         const bookingResponse = result.data;
         const bookingId = bookingResponse.bookingId;
         const bookingCode = bookingResponse.bookingCode;
-        const approvalUrl = bookingResponse.payment?.paypalApprovalUrl;
+        const checkoutUrl = bookingResponse.payment?.checkoutUrl;
         const method = result.data?.payment?.paymentMethod;
 
         // Clear localStorage after successful booking
@@ -2425,18 +2425,18 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
           );
           navigate("/confirm-booking");
         } else if (method === "PAYPAL") {
-          if (approvalUrl) {
+          if (checkoutUrl) {
             toast.success(
               "Bạn sẽ được chuyển hướng sang trang thanh toán PayPal."
             );
-            window.location.href = approvalUrl;
+            window.location.href = checkoutUrl;
           } else {
             toast.error("Không thể tạo liên kết thanh toán PayPal");
           }
         } else {
           toast.success("Bạn sẽ được chuyển hướng sang trang QR thanh toán.");
           navigate("/qr-pay", {
-            state: { approvalUrl, bookingCode },
+            state: { checkoutUrl, bookingCode },
           });
         }
       } else {
