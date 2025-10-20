@@ -32,8 +32,8 @@ const BookingMetrics = ({ bookings = [] }) => {
     .filter((b) => b.status === "Confirmed")
     .reduce((sum, booking) => sum + booking.passengers, 0);
 
-  const averageBookingValue =
-    confirmedBookings > 0 ? totalRevenue / confirmedBookings : 0;
+  // const averageBookingValue =
+  //   confirmedBookings > 0 ? totalRevenue / confirmedBookings : 0;
 
   // Calculate booking trends (comparing with mock previous period)
   const confirmedRate =
@@ -66,26 +66,26 @@ const BookingMetrics = ({ bookings = [] }) => {
       bgColor: "bg-emerald-50",
       description: "Từ các đặt vé đã xác nhận",
     },
-    {
-      title: "Giá Trị Đặt Vé Trung Bình",
-      value: `${Math.round(averageBookingValue).toLocaleString("vi-VN")} VNĐ`,
-      icon: TrendingUp,
-      color: "text-orange-600",
-      bgColor: "bg-orange-50",
-      description: "Trên mỗi đặt vé đã xác nhận",
-    },
+    // {
+    //   title: "Giá Trị Đặt Vé Trung Bình",
+    //   value: `${Math.round(averageBookingValue).toLocaleString("vi-VN")} VNĐ`,
+    //   icon: TrendingUp,
+    //   color: "text-orange-600",
+    //   bgColor: "bg-orange-50",
+    //   description: "Trên mỗi đặt vé đã xác nhận",
+    // },
     {
       title: "Đặt Vé Đang Chờ",
       value: pendingBookings.toLocaleString(),
       icon: Clock,
       color: "text-yellow-600",
       bgColor: "bg-yellow-50",
-      description: "Đang chờ xác nhận",
+      description: "Đang chờ thanh toán",
     },
   ];
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 mb-6">
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 mb-6">
       {metrics.map((metric, index) => {
         const Icon = metric.icon;
         return (

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import React from "react";
 import {
   Eye,
   Edit,
@@ -19,7 +19,6 @@ import {
   Users,
   Plane,
 } from "lucide-react";
-import UserDetailsModal from "./user-details-modal";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -32,96 +31,88 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
-import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import Pagination from "@/components/ui/pagination";
 import { MoreHorizontal } from "lucide-react";
+import UserDetailsModal from "./user-details-modal";
+
+const statusConfig = {
+  "Hoạt động": {
+    badge: "bg-green-100 text-green-800 border-green-200",
+    icon: CheckCircle,
+  },
+  "Đã khóa": {
+    badge: "bg-red-100 text-red-800 border-red-200",
+    icon: XCircle,
+  },
+  "Đang chờ": {
+    badge: "bg-yellow-100 text-yellow-800 border-yellow-200",
+    icon: Clock,
+  },
+  // English fallbacks
+  Active: {
+    badge: "bg-green-100 text-green-800 border-green-200",
+    icon: CheckCircle,
+  },
+  Suspended: {
+    badge: "bg-red-100 text-red-800 border-red-200",
+    icon: XCircle,
+  },
+  Pending: {
+    badge: "bg-yellow-100 text-yellow-800 border-yellow-200",
+    icon: Clock,
+  },
+  default: {
+    badge: "bg-gray-100 text-gray-800 border-gray-200",
+    icon: User,
+  },
+};
+
+const roleConfig = {
+  CUSTOMER: { label: "Khách hàng", badge: "bg-blue-100 text-blue-800", icon: User },
+  BUSINESS: { label: "Doanh nghiệp", badge: "bg-purple-100 text-purple-800", icon: Crown },
+  FLIGHT_MANAGER: { label: "Quản lý bay", badge: "bg-green-100 text-green-800", icon: Plane },
+  ADMIN: { label: "Quản trị viên", badge: "bg-red-100 text-red-800", icon: Shield },
+  STAFF: { label: "Nhân viên", badge: "bg-yellow-100 text-yellow-800", icon: Users },
+  default: { label: "Không xác định", badge: "bg-gray-100 text-gray-800", icon: User },
+};
+
+const loyaltyConfig = {
+  STANDARD: { label: "Tiêu chuẩn", badge: "bg-gray-100 text-gray-800", icon: User },
+  SILVER: { label: "Bạc", badge: "bg-slate-200 text-slate-800", icon: Shield },
+  GOLD: { label: "Vàng", badge: "bg-amber-200 text-amber-800", icon: Crown },
+  PLATINUM: { label: "Bạch kim", badge: "bg-cyan-200 text-cyan-800", icon: Crown },
+  default: { label: "-", badge: "bg-gray-100 text-gray-800", icon: User },
+};
+
+const getStyle = (config, key) => config[key] || config.default;
 
 const UserTable = ({
   users,
-  searchQuery,
-  statusFilter,
-  roleFilter,
   currentUser,
   onViewUser,
   onEditUser,
   onDeleteUser,
   onSuspendUser,
+  onUpdateRole,
   pagination,
   onPageChange,
   onPageSizeChange,
 }) => {
-  const [selectedUser, setSelectedUser] = useState(null);
-  const [showDetailsModal, setShowDetailsModal] = useState(false);
-
-  const getStatusBadge = (status) => {
-    const variants = {
-      "Hoạt động": "bg-green-100 text-green-800 border-green-200",
-      "Đã khóa": "bg-red-100 text-red-800 border-red-200",
-      "Đang chờ": "bg-yellow-100 text-yellow-800 border-yellow-200",
-      Active: "bg-green-100 text-green-800 border-green-200",
-      Suspended: "bg-red-100 text-red-800 border-red-200",
-      Pending: "bg-yellow-100 text-yellow-800 border-yellow-200",
-    };
-    return variants[status] || "bg-gray-100 text-gray-800 border-gray-200";
-  };
-
-  const getRoleBadge = (role) => {
-    const variants = {
-      CUSTOMER: "bg-blue-100 text-blue-800",
-      BUSINESS: "bg-purple-100 text-purple-800",
-      FLIGHT_MANAGER: "bg-green-100 text-green-800",
-      ADMIN: "bg-red-100 text-red-800",
-      STAFF: "bg-yellow-100 text-yellow-800",
-      // Legacy support
-      Customer: "bg-blue-100 text-blue-800",
-      Premium: "bg-purple-100 text-purple-800",
-      Admin: "bg-red-100 text-red-800",
-    };
-    return variants[role] || "bg-gray-100 text-gray-800";
-  };
-
-  const getRoleIcon = (role) => {
-    const icons = {
-      CUSTOMER: User,
-      BUSINESS: Crown,
-      FLIGHT_MANAGER: Plane,
-      ADMIN: Shield,
-      STAFF: Users,
-      // Legacy support
-      Customer: User,
-      Premium: Crown,
-      Admin: Shield,
-    };
-    return icons[role] || User;
-  };
-
-  const getStatusIcon = (status) => {
-    const icons = {
-      "Hoạt động": CheckCircle,
-      "Đã khóa": XCircle,
-      "Đang chờ": Clock,
-      Active: CheckCircle,
-      Suspended: XCircle,
-      Pending: Clock,
-    };
-    return icons[status] || CheckCircle;
-  };
-
-  const displayUsers = users;
+  const [selectedUser, setSelectedUser] = React.useState(null);
+  const [showDetailsModal, setShowDetailsModal] = React.useState(false);
 
   const formatDate = (dateString) => {
+    if (!dateString) return "N/A";
     const date = new Date(dateString);
     return date.toLocaleDateString("vi-VN", {
       year: "numeric",
@@ -132,21 +123,17 @@ const UserTable = ({
 
   const formatLastLogin = (dateTimeString) => {
     if (!dateTimeString) return "Chưa đăng nhập";
-
     const date = new Date(dateTimeString);
     const now = new Date();
     const diffMs = now - date;
     const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
 
-    if (diffDays === 0) {
-      return "Hôm nay";
-    } else if (diffDays === 1) {
-      return "Hôm qua";
-    } else if (diffDays < 7) {
+    if (diffDays === 0) return "Hôm nay";
+    if (diffDays === 1) return "Hôm qua";
+    if (diffDays < 7) {
       return `${diffDays} ngày trước`;
-    } else {
-      return formatDate(dateTimeString);
     }
+    return formatDate(dateTimeString);
   };
 
   const getInitials = (name) => {
@@ -166,20 +153,20 @@ const UserTable = ({
           <TableHeader>
             <TableRow>
               <TableHead>Khách hàng</TableHead>
-              <TableHead>Liên hệ</TableHead>
               <TableHead>Vai trò</TableHead>
+              <TableHead>Hạng</TableHead>
               <TableHead>Trạng thái</TableHead>
-              <TableHead>Hạng thành viên</TableHead>
               <TableHead>Hoạt động</TableHead>
-              <TableHead>Đặt vé</TableHead>
-              <TableHead>Chi tiêu</TableHead>
+              <TableHead className="text-center">Đặt vé</TableHead>
+              <TableHead className="text-right">Chi tiêu</TableHead>
               <TableHead className="text-right">Hành động</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {displayUsers.map((user) => {
-              const StatusIcon = getStatusIcon(user.status);
-              const RoleIcon = getRoleIcon(user.role);
+            {users.map((user) => {
+              const statusStyle = getStyle(statusConfig, user.status);
+              const roleStyle = getStyle(roleConfig, user.role);
+              const loyaltyStyle = getStyle(loyaltyConfig, user.loyaltyTier);
 
               return (
                 <TableRow key={user.id} className="hover:bg-gray-50">
@@ -217,50 +204,32 @@ const UserTable = ({
                   </TableCell>
 
                   <TableCell>
-                    <div className="space-y-1">
-                      <div className="flex items-center space-x-1 text-sm">
-                        <Mail className="h-3 w-3 text-gray-400" />
-                        <span className="truncate max-w-[150px]">
-                          {user.email}
-                        </span>
-                        {user.verifiedEmail && (
-                          <CheckCircle className="h-3 w-3 text-green-500" />
-                        )}
-                      </div>
-                      <div className="flex items-center space-x-1 text-sm text-gray-600">
-                        <Phone className="h-3 w-3 text-gray-400" />
-                        <span>{user.phone}</span>
-                      </div>
-                    </div>
-                  </TableCell>
-
-                  <TableCell>
                     <Badge
                       variant="outline"
-                      className={`${getRoleBadge(
-                        user.role
-                      )} flex items-center space-x-1 w-fit`}
+                      className={`${roleStyle.badge} flex items-center space-x-1 w-fit`}
                     >
-                      <RoleIcon className="h-3 w-3" />
-                      <span>{user.role}</span>
+                      <roleStyle.icon className="h-3 w-3" />
+                      <span>{roleStyle.label}</span>
                     </Badge>
                   </TableCell>
 
                   <TableCell>
                     <Badge
                       variant="outline"
-                      className={`${getStatusBadge(
-                        user.status
-                      )} flex items-center space-x-1 w-fit`}
+                      className={`${loyaltyStyle.badge} flex items-center space-x-1 w-fit`}
                     >
-                      <StatusIcon className="h-3 w-3" />
+                      <loyaltyStyle.icon className="h-3 w-3" />
+                      <span>{loyaltyStyle.label}</span>
+                    </Badge>
+                  </TableCell>
+
+                  <TableCell>
+                    <Badge
+                      variant="outline"
+                      className={`${statusStyle.badge} flex items-center space-x-1 w-fit`}
+                    >
+                      <statusStyle.icon className="h-3 w-3" />
                       <span>{user.status}</span>
-                    </Badge>
-                  </TableCell>
-
-                  <TableCell>
-                    <Badge variant="outline" className="text-xs">
-                      {user.loyaltyTier || "-"}
                     </Badge>
                   </TableCell>
 
@@ -281,7 +250,7 @@ const UserTable = ({
                   </TableCell>
 
                   <TableCell>
-                    <div className="text-right">
+                    <div className="text-right font-medium">
                       <div className="font-semibold">
                         {user.totalSpent.toLocaleString("vi-VN")} VNĐ
                       </div>
@@ -299,13 +268,7 @@ const UserTable = ({
                           disabled={user.email === currentUser?.email}
                         >
                           <span className="sr-only">Open menu</span>
-                          <div className="h-4 w-4">
-                            {user.email === currentUser?.email ? (
-                              <></>
-                            ) : (
-                              <MoreHorizontal className="h-4 w-4" />
-                            )}
-                          </div>
+                          <MoreHorizontal className="h-4 w-4" />
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
@@ -315,31 +278,23 @@ const UserTable = ({
                             setSelectedUser(user);
                             setShowDetailsModal(true);
                           }}
-                          disabled={user.id === currentUser?.id}
                         >
                           <Eye className="mr-2 h-4 w-4" />
                           Xem chi tiết
                         </DropdownMenuItem>
                         <DropdownMenuItem
                           onClick={() => onEditUser && onEditUser(user)}
-                          disabled={user.id === currentUser?.id}
                         >
                           <Edit className="mr-2 h-4 w-4" />
                           Chỉnh sửa
                         </DropdownMenuItem>
-                        <DropdownMenuItem
-                          disabled={user.id === currentUser?.id}
-                        >
-                          <Mail className="mr-2 h-4 w-4" />
-                          Gửi email
-                        </DropdownMenuItem>
                         <DropdownMenuSeparator />
+
                         {user.status === "Hoạt động" ||
                         user.status === "Active" ? (
                           <DropdownMenuItem
                             onClick={() => onSuspendUser && onSuspendUser(user)}
-                            className="text-orange-600"
-                            disabled={user.id === currentUser?.id}
+                            className="text-orange-600 focus:text-orange-600"
                           >
                             <UserX className="mr-2 h-4 w-4" />
                             Khóa tài khoản
@@ -347,13 +302,43 @@ const UserTable = ({
                         ) : (
                           <DropdownMenuItem
                             onClick={() => onSuspendUser && onSuspendUser(user)}
-                            className="text-green-600"
-                            disabled={user.id === currentUser?.id}
+                            className="text-green-600 focus:text-green-600"
                           >
                             <UserCheck className="mr-2 h-4 w-4" />
                             Mở khóa tài khoản
                           </DropdownMenuItem>
                         )}
+
+                        <DropdownMenuSub>
+                          <DropdownMenuSubTrigger>
+                            <Shield className="mr-2 h-4 w-4" />
+                            <span>Thay đổi vai trò</span>
+                          </DropdownMenuSubTrigger>
+                          <DropdownMenuSubContent>
+                            <DropdownMenuLabel>Chọn vai trò mới</DropdownMenuLabel>
+                            <DropdownMenuSeparator />
+                            {Object.keys(roleConfig)
+                              .filter((role) => role !== "default")
+                              .map((roleKey) => (
+                                <DropdownMenuItem
+                                  key={roleKey}
+                                  disabled={user.role === roleKey}
+                                  onClick={() => onUpdateRole && onUpdateRole(user.id, roleKey)}
+                                >
+                                  {roleConfig[roleKey].label}
+                                </DropdownMenuItem>
+                              ))}
+                          </DropdownMenuSubContent>
+                        </DropdownMenuSub>
+
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem
+                          onClick={() => onDeleteUser && onDeleteUser(user)}
+                          className="text-red-600 focus:text-red-600"
+                        >
+                          <Trash2 className="mr-2 h-4 w-4" />
+                          Xóa người dùng
+                        </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </TableCell>
@@ -381,7 +366,7 @@ const UserTable = ({
       )}
 
       {/* No Results */}
-      {displayUsers.length === 0 && (
+      {users.length === 0 && (
         <div className="text-center py-12">
           <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
           <h3 className="text-lg font-medium text-gray-900 mb-2">

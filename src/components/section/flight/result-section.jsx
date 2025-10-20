@@ -11,15 +11,15 @@ import {
   Plane,
   X,
 } from "lucide-react";
-import { useState, useMemo, useEffect, useCallback, useRef } from "react";
+import { useState, useMemo, useEffect, useCallback, useRef, useReducer } from "react";
 import { useNavigate, useLocation, useSearchParams } from "react-router-dom";
 import { SearchForm } from "../../common/search-form";
 import { FlightFilters } from "./filter-section";
-import DealsSection from "./deal-section";
 import { FlightFlexSearch } from "../../common/flight-flex-search";
 import { FlightCard } from "../../common/flight-card";
 import { useSearch } from "../../../contexts/search-context";
 import { flightApi } from "../../../apis/flight-api";
+import { Skeleton } from "@/components/ui/skeleton";
 
 import {
   FLIGHTS_PER_PAGE,
@@ -31,6 +31,29 @@ import {
 import { EmptyState } from "./flight-components.jsx";
 
 const MIN_BOOKING_LEAD_TIME = 24 * 60 * 60 * 1000;
+
+const FlightCardSkeleton = () => (
+  <Card className="p-4">
+    <div className="flex flex-col sm:flex-row gap-4">
+      <div className="flex-1 space-y-4">
+        <div className="flex items-center gap-4">
+          <Skeleton className="h-8 w-8 rounded-full" />
+          <Skeleton className="h-5 w-24" />
+        </div>
+        <div className="flex items-center justify-between">
+          <Skeleton className="h-6 w-20" />
+          <Skeleton className="h-4 w-28" />
+          <Skeleton className="h-6 w-20" />
+        </div>
+      </div>
+      <div className="sm:border-l sm:pl-4 flex flex-col items-end justify-between w-full sm:w-48">
+        <Skeleton className="h-8 w-32 mb-2" />
+        <Skeleton className="h-10 w-full" />
+      </div>
+    </div>
+  </Card>
+);
+
 
 export function FlightSearchResults() {
   const navigate = useNavigate();
@@ -1539,7 +1562,6 @@ export function FlightSearchResults() {
         </div>
       </div>
 
-      <DealsSection />
 
       {searchCriteria && (
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-6 pt-16">
@@ -1701,7 +1723,11 @@ export function FlightSearchResults() {
 
             <div className="space-y-3 sm:space-y-4">
               {loading ? (
-                <EmptyState type="loading" />
+                <>
+                  <FlightCardSkeleton />
+                  <FlightCardSkeleton />
+                  <FlightCardSkeleton />
+                </>
               ) : totalItineraries > 0 ? (
                 currentItineraries.map((itinerary) => (
                   <FlightCard

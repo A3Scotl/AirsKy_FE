@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Search,
   Plus,
@@ -7,6 +7,7 @@ import {
   UserCheck,
   UserX,
   TrendingUp,
+  Loader2,
   RotateCcw,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -25,11 +26,30 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import UserTable from "@/components/admin/users/user-table";
 import UserFormModal from "@/components/admin/users/user-form-modal";
 import UserDetailsModal from "@/components/admin/users/user-details-modal";
 import { userApi } from "@/apis/user-api";
 import { toast } from "sonner";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/contexts/auth-context";
 import ExportButton from "@/components/common/export-button";
 
@@ -44,6 +64,13 @@ const AdminUsers = () => {
   const [modalMode, setModalMode] = useState("add");
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [isActionLoading, setIsActionLoading] = useState(false);
+  const [confirmModal, setConfirmModal] = useState({
+    isOpen: false,
+    title: "",
+    description: "",
+    onConfirm: () => {},
+  });
   const [pagination, setPagination] = useState({
     page: 0,
     size: 10,
@@ -55,6 +82,38 @@ const AdminUsers = () => {
     activeCustomers: 0,
     newRegistrations: 0,
   });
+
+  const UserTableSkeleton = ({ rows = 10 }) => (
+    <div className="border rounded-lg overflow-hidden">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            {Array.from({ length: 8 }).map((_, i) => (
+              <TableHead key={i}>
+                <Skeleton className="h-5 w-full" />
+              </TableHead>
+            ))}
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {Array.from({ length: rows }).map((_, i) => (
+            <TableRow key={i}>
+              <TableCell>
+                <div className="flex items-center space-x-3">
+                  <Skeleton className="h-10 w-10 rounded-full" />
+                  <div className="space-y-2">
+                    <Skeleton className="h-4 w-32" />
+                    <Skeleton className="h-3 w-20" />
+                  </div>
+                </div>
+              </TableCell>
+              {Array.from({ length: 7 }).map((_, j) => (<TableCell key={j}><Skeleton className="h-5 w-full" /></TableCell>))}
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </div>
+  );
 
   // Fetch users from API with client-side filtering and pagination
   const fetchUsers = async (params = {}) => {
@@ -161,8 +220,8 @@ const AdminUsers = () => {
           lastLogin: user?.lastLogin
             ? new Date(user.lastLogin).toISOString()
             : null,
-          totalBookings: 0, // TODO: Fetch from API if available
-          totalSpent: 0, // TODO: Fetch from API if available
+          totalBookings: user?.totalBookings || 0,
+          totalSpent: user?.totalSpent || 0,
           country: "", // TODO: Fetch from API if available
           verifiedEmail: user?.verified || false,
           preferences: {
@@ -244,55 +303,81 @@ const AdminUsers = () => {
   };
 
   const handleDeleteUser = async (user) => {
-    if (window.confirm(`Bạn có chắc chắn muốn xóa người dùng ${user.name}?`)) {
-      try {
-        const response = await userApi.deleteUser(user.id);
-        if (response.success) {
-          toast.success("Xóa người dùng thành công");
-          fetchUsers();
-        } else {
-          toast.error("Không thể xóa người dùng: " + response.message);
+    setConfirmModal({
+      isOpen: true,
+      title: `Xác nhận xóa người dùng`,
+      description: `Bạn có chắc chắn muốn xóa vĩnh viễn người dùng "${user.name}"? Hành động này không thể hoàn tác.`,
+      onConfirm: async () => {
+        setIsActionLoading(true);
+        try {
+          const response = await userApi.deleteUser(user.id);
+          if (response.success) {
+            toast.success("Xóa người dùng thành công");
+            fetchUsers();
+          } else {
+            toast.error("Không thể xóa người dùng: " + response.message);
+          }
+        } catch (error) {
+          toast.error("Lỗi khi xóa người dùng");
+        } finally {
+          setIsActionLoading(false);
+          setConfirmModal({ ...confirmModal, isOpen: false });
+          setShowDetailsModal(false);
         }
-      } catch (error) {
-        console.error("Error deleting user:", error);
-        toast.error("Lỗi khi xóa người dùng");
-      }
-      setShowDetailsModal(false);
-    }
+      },
+    });
   };
 
   const handleSuspendUser = async (user) => {
     const newActive = !user.active;
     const action = newActive ? "mở khóa" : "khóa";
-
-    if (
-      window.confirm(
-        `Bạn có chắc chắn muốn ${action} tài khoản của người dùng ${user.name}?`
-      )
-    ) {
-      try {
-        const response = await userApi.toggleActive(user.id, {
-          active: newActive,
-        });
-
-        if (response.success) {
-          toast.success(
-            `${
-              action.charAt(0).toUpperCase() + action.slice(1)
-            } tài khoản thành công`
-          );
-          fetchUsers(); // Refresh the list
-        } else {
-          toast.error(
-            `Không thể ${action} tài khoản: ` +
-              (response.message || "Lỗi không xác định")
-          );
+    setConfirmModal({
+      isOpen: true,
+      title: `Xác nhận ${action} tài khoản`,
+      description: `Bạn có chắc chắn muốn ${action} tài khoản của người dùng "${user.name}"?`,
+      onConfirm: async () => {
+        setIsActionLoading(true);
+        try {
+          const response = await userApi.toggleActive(user.id);
+          if (response.success) {
+            toast.success(`${action.charAt(0).toUpperCase() + action.slice(1)} tài khoản thành công`);
+            fetchUsers();
+          } else {
+            toast.error(`Không thể ${action} tài khoản: ` + (response.message || "Lỗi không xác định"));
+          }
+        } catch (error) {
+          toast.error(`Lỗi khi ${action} tài khoản`);
+        } finally {
+          setIsActionLoading(false);
+          setConfirmModal({ ...confirmModal, isOpen: false });
         }
-      } catch (error) {
-        console.error("Error toggling user status:", error);
-        toast.error(`Lỗi khi ${action} tài khoản`);
-      }
-    }
+      },
+    });
+  };
+
+  const handleUpdateRole = async (userId, newRole) => {
+    setConfirmModal({
+      isOpen: true,
+      title: "Xác nhận thay đổi vai trò",
+      description: `Bạn có chắc chắn muốn thay đổi vai trò của người dùng này thành ${newRole}?`,
+      onConfirm: async () => {
+        setIsActionLoading(true);
+        try {
+          const response = await userApi.updateUserRole(userId, newRole);
+          if (response.success) {
+            toast.success("Cập nhật vai trò người dùng thành công!");
+            fetchUsers();
+          } else {
+            toast.error("Không thể cập nhật vai trò: " + (response.message || "Lỗi không xác định"));
+          }
+        } catch (error) {
+          toast.error("Lỗi khi cập nhật vai trò người dùng.");
+        } finally {
+          setIsActionLoading(false);
+          setConfirmModal({ ...confirmModal, isOpen: false });
+        }
+      },
+    });
   };
 
   const handleAddUser = () => {
@@ -352,7 +437,7 @@ const AdminUsers = () => {
           </Button>
           {/* button export file */}
           <ExportButton entity="users" />
-          <Button onClick={handleAddUser}>
+          <Button onClick={handleAddUser} className="flex items-center gap-2 ">
             <Plus className="h-4 w-4 mr-2" />
             Thêm người dùng
           </Button>
@@ -483,12 +568,7 @@ const AdminUsers = () => {
           </div>
 
           {loading ? (
-            <div className="flex justify-center items-center py-12">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-              <span className="ml-2 text-gray-600">
-                Đang tải danh sách người dùng...
-              </span>
-            </div>
+            <UserTableSkeleton rows={pagination.size} />
           ) : (
             <UserTable
               users={users}
@@ -500,6 +580,7 @@ const AdminUsers = () => {
               onEditUser={handleEditUser}
               onDeleteUser={handleDeleteUser}
               onSuspendUser={handleSuspendUser}
+              onUpdateRole={handleUpdateRole}
               pagination={pagination}
               onPageChange={(newPage) => fetchUsers({ page: newPage })}
               onPageSizeChange={(newSize) =>
@@ -528,6 +609,36 @@ const AdminUsers = () => {
         onDelete={handleDeleteUser}
         currentUser={currentUser}
       />
+
+      {/* Confirmation Modal */}
+      <AlertDialog
+        open={confirmModal.isOpen}
+        onOpenChange={(isOpen) =>
+          setConfirmModal({ ...confirmModal, isOpen })
+        }
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{confirmModal.title}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {confirmModal.description}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isActionLoading}>Hủy</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmModal.onConfirm}
+              disabled={isActionLoading}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              {isActionLoading && (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              )}
+              Xác nhận
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

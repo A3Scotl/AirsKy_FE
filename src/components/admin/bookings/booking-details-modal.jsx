@@ -54,6 +54,8 @@ const TEXT = {
   bookingCancelled: "Đặt Vé Đã Hủy",
   refundProcessing: "Đang xử lý hoàn tiền",
   flightDeparture: "Khởi Hành Chuyến Bay",
+  cancellationReason: "Lý do hủy",
+  lastUpdated: "Cập nhật cuối",
   downloadPdf: "Tải PDF",
   sendEmail: "Gửi Email",
   close: "Đóng",
@@ -63,12 +65,21 @@ const TEXT = {
 const BookingDetailsModal = ({ open, onOpenChange, booking, onEdit }) => {
   if (!booking) return null;
 
+  const statusMap = {
+    Confirmed: "Đã Xác Nhận",
+    Pending: "Chờ Xử Lý",
+    Cancelled: "Đã Hủy",
+  };
+
   // Badge styling functions
   const badgeStyles = {
     status: {
       Confirmed: "bg-green-100 text-green-800 border-green-200",
+      "Đã Xác Nhận": "bg-green-100 text-green-800 border-green-200",
       Pending: "bg-yellow-100 text-yellow-800 border-yellow-200",
+      "Chờ Xử Lý": "bg-yellow-100 text-yellow-800 border-yellow-200",
       Cancelled: "bg-red-100 text-red-800 border-red-200",
+      "Đã Hủy": "bg-red-100 text-red-800 border-red-200",
     },
     class: {
       Economy: "bg-blue-100 text-blue-800",
@@ -97,10 +108,9 @@ const BookingDetailsModal = ({ open, onOpenChange, booking, onEdit }) => {
       return dateString;
     }
   };
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <div className="flex items-center justify-between">
             <div>
@@ -113,9 +123,9 @@ const BookingDetailsModal = ({ open, onOpenChange, booking, onEdit }) => {
             </div>
             <Badge
               variant="outline"
-              className={getBadgeStyle("status", booking.status)}
+              className={getBadgeStyle("status", statusMap[booking.status] || booking.status)}
             >
-              {booking.status}
+              {statusMap[booking.status] || booking.status}
             </Badge>
           </div>
         </DialogHeader>
@@ -179,6 +189,30 @@ const BookingDetailsModal = ({ open, onOpenChange, booking, onEdit }) => {
                       </p>
                       <p className="text-2xl font-bold text-green-600">
                         {booking.amount}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-4">
+                    <div>
+                      <p className="text-sm text-gray-600">Có thể hoàn tiền</p>
+                      <p className="font-semibold">
+                        {booking.isRefundable ? (
+                          <span className="text-green-600">Có</span>
+                        ) : (
+                          <span className="text-red-600">Không</span>
+                        )}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-600">Có thể thay đổi</p>
+                      <p className="font-semibold">
+                         {booking.isChangeable ? (
+                          <span className="text-green-600">Có</span>
+                        ) : (
+                          <span className="text-red-600">Không</span>
+                        )}
+                        
                       </p>
                     </div>
                   </div>
@@ -334,6 +368,19 @@ const BookingDetailsModal = ({ open, onOpenChange, booking, onEdit }) => {
                   </div>
                 )}
 
+                {booking.cancellationReason && (
+                  <div>
+                    <p className="text-sm text-gray-600 font-medium">
+                      {TEXT.cancellationReason}
+                    </p>
+                    <p className="text-sm bg-red-50 text-red-800 p-3 rounded-md">
+                      {booking.cancellationReason}
+                    </p>
+                  </div>
+                )}
+
+
+
                 {booking.payment && (
                   <div>
                     <p className="text-sm text-gray-600 font-medium">
@@ -341,15 +388,14 @@ const BookingDetailsModal = ({ open, onOpenChange, booking, onEdit }) => {
                     </p>
                     <div className="text-sm bg-gray-50 p-3 rounded-md">
                       <p>
-                        <strong>Trạng thái:</strong>{" "}
-                        {booking.payment.status || "N/A"}
+                        <strong>Trạng thái:</strong> {statusMap[booking.payment.status] || booking.payment.status || "N/A"}
                       </p>
                       <p>
-                        <strong>Phương thức:</strong>{" "}
-                        {booking.payment.method || "N/A"}
+                        <strong>Phương thức:</strong> {booking.payment.paymentMethod === 'BANK_TRANSFER' ? 'Chuyển khoản' : booking.payment.paymentMethod || "N/A"}
                       </p>
                       <p>
-                        <strong>Ngày thanh toán:</strong>{" "}
+                        <strong>Ngày thanh toán:</strong>
+                        {" "}
                         {booking.payment.paymentDate
                           ? formatShortDate(booking.payment.paymentDate)
                           : "N/A"}
@@ -397,7 +443,7 @@ const BookingDetailsModal = ({ open, onOpenChange, booking, onEdit }) => {
                   <div className="flex items-start gap-4">
                     <div className="w-2 h-2 bg-red-600 rounded-full mt-2"></div>
                     <div>
-                      <p className="font-medium">{TEXT.bookingCancelled}</p>
+                      <p className="font-medium text-red-700">{TEXT.bookingCancelled}</p>
                       <p className="text-sm text-gray-600">
                         {TEXT.refundProcessing}
                       </p>
@@ -410,7 +456,7 @@ const BookingDetailsModal = ({ open, onOpenChange, booking, onEdit }) => {
                     <div className="flex items-start gap-4">
                       <div className="w-2 h-2 bg-orange-600 rounded-full mt-2"></div>
                       <div>
-                        <p className="font-medium">Cập Nhật Cuối</p>
+                        <p className="font-medium">{TEXT.lastUpdated}</p>
                         <p className="text-sm text-gray-600">
                           {formatDate(booking.updatedAt)}
                         </p>

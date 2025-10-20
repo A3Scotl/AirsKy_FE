@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo, useEffect, useCallback } from "react";
 import {
   Download,
   Eye,
@@ -29,18 +29,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import Pagination from "@/components/ui/pagination";
-import {
-  exportBookings,
-  exportBookingSummary,
-  exportFormats,
-} from "@/utils/export";
+import { Skeleton } from "@/components/ui/skeleton";
 import { bookingFilters } from "@/utils/filter-configs";
 import { toast } from "sonner";
 import ExportButton from "@/components/common/export-button";
@@ -73,9 +63,6 @@ const TEXT = {
   amount: "Số Tiền",
   actions: "Thao Tác",
   viewDetails: "Xem Chi Tiết",
-  deleteBooking: "Xóa Đặt Vé",
-  confirmDelete: "Bạn có chắc chắn muốn xóa đặt vé",
-  deleteSuccess: "Xóa đặt vé thành công",
   exportSuccess: "Xuất file thành công dưới định dạng",
   searchPlaceholder:
     "Tìm kiếm theo tên khách hàng, mã đặt vé, email hoặc tuyến bay...",
@@ -85,7 +72,6 @@ const TEXT = {
   classEconomy: "Phổ Thông",
   classBusiness: "Thương Gia",
   classFirst: "Hạng Nhất",
-  updateStatus: "Cập Nhật Trạng Thái",
   confirmBooking: "Xác Nhận Đặt Vé",
   cancelBooking: "Hủy Đặt Vé",
   statusUpdateSuccess: "Cập nhật trạng thái thành công",
@@ -94,66 +80,40 @@ const TEXT = {
   statusChangeTo: "trạng thái này?",
 };
 
+const BookingTableSkeleton = ({ rows = 10 }) => (
+  <Table>
+    <TableHeader>
+      <TableRow>
+        {Array.from({ length: 9 }).map((_, i) => (
+          <TableHead key={i}>
+            <Skeleton className="h-5 w-full" />
+          </TableHead>
+        ))}
+      </TableRow>
+    </TableHeader>
+    <TableBody>
+      {Array.from({ length: rows }).map((_, i) => (
+        <TableRow key={i}>
+          {Array.from({ length: 9 }).map((_, j) => (
+            <TableCell key={j}><Skeleton className="h-5 w-full" /></TableCell>
+          ))}
+        </TableRow>
+      ))}
+    </TableBody>
+  </Table>
+);
+
 const AdminBookings = () => {
   // Consolidated state
   const [state, setState] = useState({
+    bookings: [],
+    loading: true,
     searchQuery: "",
-    statusFilter: "all",
     advancedFilters: {},
     currentPage: 1,
     itemsPerPage: 10,
     showDetailsModal: false,
     selectedBooking: null,
-  });
-
-  // Booking data and loading state
-  const [bookings, setBookings] = useState([]);
-  const [loading, setLoading] = useState(true);
-
-  // Fetch bookings on component mount
-  useEffect(() => {
-    const fetchBookings = async () => {
-      try {
-        const response = await bookingApi.getAllBookings();
-        if (response.success) {
-          // Map API data to component format
-          const mappedBookings = response.data.content.map((booking) => ({
-            id: booking.bookingId,
-            bookingRef: `BK${booking.bookingId.toString().padStart(4, "0")}`, // Generate booking ref
-            customer: booking.userEmail
-              ? booking.userEmail.split("@")[0]
-              : "Unknown", // Use email prefix as customer name, fallback to "Unknown" if null
-            email: booking.userEmail || "N/A", // Fallback to "N/A" if email is null
-            route: booking.flightNumber, // Use flight number as route for now
-            departure: booking.bookingDate,
-            passengers: booking.passengers.length,
-            class: booking.travelClass,
-            status:
-              booking.status === "CONFIRMED"
-                ? "Confirmed"
-                : booking.status === "PENDING"
-                ? "Pending"
-                : "Cancelled",
-            amount: `${booking.totalAmount.toLocaleString()} VNĐ`,
-            bookingDate: booking.createdAt,
-            // Additional fields for modal
-            passengersDetails: booking.passengers,
-            payment: booking.payment,
-            updatedAt: booking.updatedAt,
-          }));
-          setBookings(mappedBookings);
-        } else {
-          toast.error("Không thể tải danh sách đặt vé");
-        }
-      } catch (error) {
-        console.error("Error fetching bookings:", error);
-        toast.error("Lỗi khi tải danh sách đặt vé");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchBookings();
   }, []);
 
   // Status and class mapping
@@ -168,6 +128,56 @@ const AdminBookings = () => {
     Business: TEXT.classBusiness,
     First: TEXT.classFirst,
   };
+
+  // Fetch bookings on component mount
+  useEffect(() => {
+    const fetchBookings = async () => {
+      setState(prev => ({ ...prev, loading: true }));
+      try {
+        const response = await bookingApi.getAllBookings();
+        if (response.success) {
+          const mappedBookings = response.data.content.map((booking) => ({
+            id: booking.bookingId,
+            bookingRef: `BK${booking.bookingId.toString().padStart(4, "0")}`,
+            customer: booking.userEmail ? booking.userEmail.split("@")[0] : "Unknown",
+            email: booking.userEmail || "N/A",
+            route: booking.flightNumber,
+            departure: booking.bookingDate,
+            passengers: booking.passengers.length,
+            class: booking.travelClass,
+            status:
+              booking.status === "CONFIRMED"
+                ? "Confirmed"
+                : booking.status === "PENDING"
+                ? "Pending"
+                : "Cancelled",
+            amount: `${booking.totalAmount.toLocaleString()} VNĐ`,
+            bookingDate: booking.createdAt,
+            passengersDetails: booking.passengers,
+            payment: booking.payment,
+            updatedAt: booking.updatedAt,
+            cancellationReason: booking.cancellationReason,
+            isRefundable: booking.travelClassDetails?.refundable || false,
+            isChangeable: booking.travelClassDetails?.changeable || false,
+          }));
+          // Sort by newest booking first
+          mappedBookings.sort(
+            (a, b) => new Date(b.bookingDate) - new Date(a.bookingDate)
+          );
+          setState(prev => ({ ...prev, bookings: mappedBookings, loading: false }));
+        } else {
+          toast.error("Không thể tải danh sách đặt vé");
+          setState(prev => ({ ...prev, loading: false }));
+        }
+      } catch (error) {
+        console.error("Error fetching bookings:", error);
+        toast.error("Lỗi khi tải danh sách đặt vé");
+        setState(prev => ({ ...prev, loading: false }));
+      }
+    };
+
+    fetchBookings();
+  }, []);
 
   const getStatusBadge = (status) => {
     const variants = {
@@ -187,37 +197,6 @@ const AdminBookings = () => {
     return variants[flightClass] || "bg-gray-100 text-gray-800";
   };
 
-  const getAvailableStatusActions = (currentStatus) => {
-    const actions = [];
-
-    if (currentStatus === "Pending") {
-      actions.push(
-        {
-          status: "Confirmed",
-          label: TEXT.confirmBooking,
-          icon: CheckCircle,
-          color: "text-green-600",
-        },
-        {
-          status: "Cancelled",
-          label: TEXT.cancelBooking,
-          icon: XCircle,
-          color: "text-red-600",
-        }
-      );
-    } else if (currentStatus === "Confirmed") {
-      actions.push({
-        status: "Cancelled",
-        label: TEXT.cancelBooking,
-        icon: XCircle,
-        color: "text-red-600",
-      });
-    }
-    // If Cancelled, no actions available
-
-    return actions;
-  };
-
   // Event handlers
   const handleViewBooking = (booking) => {
     setState((prev) => ({
@@ -227,50 +206,7 @@ const AdminBookings = () => {
     }));
   };
 
-  const handleDeleteBooking = (booking) => {
-    if (window.confirm(`${TEXT.confirmDelete} ${booking.bookingRef}?`)) {
-      setBookings((prev) => prev.filter((b) => b.id !== booking.id));
-      toast.success(TEXT.deleteSuccess);
-    }
-  };
 
-  const handleUpdateStatus = async (booking, newStatus) => {
-    const statusText =
-      newStatus === "Confirmed" ? TEXT.statusConfirmed : TEXT.statusCancelled;
-    const actionText =
-      newStatus === "Confirmed" ? TEXT.confirmBooking : TEXT.cancelBooking;
-
-    if (
-      window.confirm(
-        `${TEXT.confirmStatusChange} ${actionText.toLowerCase()} ${
-          TEXT.statusChangeTo
-        }`
-      )
-    ) {
-      try {
-        const updateData = {
-          status: newStatus.toUpperCase(), // API expects uppercase: CONFIRMED, CANCELLED
-        };
-
-        const response = await bookingApi.updateBooking(booking.id, updateData);
-
-        if (response.success) {
-          // Update local state
-          setBookings((prev) =>
-            prev.map((b) =>
-              b.id === booking.id ? { ...b, status: newStatus } : b
-            )
-          );
-          toast.success(TEXT.statusUpdateSuccess);
-        } else {
-          toast.error(TEXT.statusUpdateError);
-        }
-      } catch (error) {
-        console.error("Error updating booking status:", error);
-        toast.error(TEXT.statusUpdateError);
-      }
-    }
-  };
 
   const handlePageChange = (page) => {
     setState((prev) => ({ ...prev, currentPage: page }));
@@ -284,39 +220,32 @@ const AdminBookings = () => {
     }));
   };
 
-  const handleExport = (format) => {
-    const filters = {
-      status: state.statusFilter,
-      searchQuery: state.searchQuery,
-    };
-    exportBookings(filteredBookings, format, filters);
-    toast.success(`${TEXT.exportSuccess} ${format.toUpperCase()}`);
-  };
-
-  const handleAdvancedSearch = (query) => {
+  const handleAdvancedSearch = useCallback((query) => {
     setState((prev) => ({
       ...prev,
       searchQuery: query,
       currentPage: 1,
     }));
-  };
+  }, []);
 
-  const handleAdvancedFilterChange = (filters) => {
+  const handleAdvancedFilterChange = useCallback((filters) => {
     setState((prev) => ({
       ...prev,
       advancedFilters: filters,
       currentPage: 1,
     }));
-  };
+  }, []);
 
   // Filter and pagination logic
   const filteredBookings = useMemo(() => {
-    return bookings.filter((booking) => {
+    return state.bookings.filter((booking) => {
       const searchFields = [
         booking.customer,
         booking.bookingRef,
         booking.email,
         booking.route,
+        booking.status,
+        booking.class,
       ]
         .join(" ")
         .toLowerCase();
@@ -324,10 +253,6 @@ const AdminBookings = () => {
       const matchesSearch =
         !state.searchQuery ||
         searchFields.includes(state.searchQuery.toLowerCase());
-
-      const matchesStatus =
-        state.statusFilter === "all" ||
-        booking.status.toLowerCase() === state.statusFilter.toLowerCase();
 
       const matchesAdvancedStatus =
         !state.advancedFilters.status ||
@@ -351,13 +276,12 @@ const AdminBookings = () => {
 
       return (
         matchesSearch &&
-        matchesStatus &&
         matchesAdvancedStatus &&
         matchesClass &&
         matchesPassengers
       );
     });
-  }, [bookings, state.searchQuery, state.statusFilter, state.advancedFilters]);
+  }, [state.bookings, state.searchQuery, state.advancedFilters]);
 
   const totalPages = Math.ceil(filteredBookings.length / state.itemsPerPage);
   const paginatedBookings = filteredBookings.slice(
@@ -376,7 +300,7 @@ const AdminBookings = () => {
       </div>
 
       {/* Metrics Cards */}
-      <BookingMetrics bookings={bookings} />
+      <BookingMetrics bookings={state.bookings} />
 
       {/* Filters and Search */}
       <Card>
@@ -404,14 +328,7 @@ const AdminBookings = () => {
 
           {/* Bookings Table */}
           <div className="border rounded-lg overflow-hidden">
-            {loading ? (
-              <div className="p-8 text-center">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-                <p className="mt-2 text-gray-600">
-                  Đang tải danh sách đặt vé...
-                </p>
-              </div>
-            ) : (
+            {state.loading ? <BookingTableSkeleton itemsPerPage={state.itemsPerPage} /> : (
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -500,50 +417,7 @@ const AdminBookings = () => {
                             <Eye className="h-4 w-4" />
                           </Button>
 
-                          {/* Status Update Dropdown */}
-                          {getAvailableStatusActions(booking.status).length >
-                            0 && (
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  title={TEXT.updateStatus}
-                                >
-                                  <MoreHorizontal className="h-4 w-4" />
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end">
-                                {getAvailableStatusActions(booking.status).map(
-                                  (action) => (
-                                    <DropdownMenuItem
-                                      key={action.status}
-                                      onClick={() =>
-                                        handleUpdateStatus(
-                                          booking,
-                                          action.status
-                                        )
-                                      }
-                                      className={`cursor-pointer ${action.color}`}
-                                    >
-                                      <action.icon className="h-4 w-4 mr-2" />
-                                      {action.label}
-                                    </DropdownMenuItem>
-                                  )
-                                )}
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          )}
-
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="text-red-600 hover:text-red-700"
-                            onClick={() => handleDeleteBooking(booking)}
-                            title={TEXT.deleteBooking}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+                         
                         </div>
                       </TableCell>
                     </TableRow>
@@ -553,20 +427,22 @@ const AdminBookings = () => {
             )}
           </div>
 
-          {/* Enhanced Pagination */}
-          <Pagination
-            currentPage={state.currentPage}
-            totalPages={totalPages}
-            itemsPerPage={state.itemsPerPage}
-            totalItems={filteredBookings.length}
-            onPageChange={handlePageChange}
-            onPageSizeChange={handlePageSizeChange}
-            showPageSizeSelector={true}
-            showFirstLast={true}
-            showInfo={true}
-            maxVisiblePages={5}
-            className="mt-6"
-          />
+          {/* Enhanced Pagination - only show if not loading and there are bookings */}
+          {!state.loading && filteredBookings.length > 0 && (
+            <Pagination
+              currentPage={state.currentPage}
+              totalPages={totalPages}
+              itemsPerPage={state.itemsPerPage}
+              totalItems={filteredBookings.length}
+              onPageChange={handlePageChange}
+              onPageSizeChange={handlePageSizeChange}
+              showPageSizeSelector={true}
+              showFirstLast={true}
+              showInfo={true}
+              maxVisiblePages={5}
+              className="mt-6"
+            />
+          )}
         </CardContent>
       </Card>
 
