@@ -1535,7 +1535,7 @@ export function FlightSearchResults() {
     <div className="mx-auto">
       <div className="relative">
         <div
-          className="h-64 bg-cover bg-center bg-no-repeat relative"
+          className="h-72 bg-cover bg-center bg-no-repeat relative"
           style={{
             backgroundImage: `url('https://images.unsplash.com/photo-1713396124163-21d4ea332d90?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1yZWxhdGVkfDIyfHx8ZW58MHx8fHx8')`,
           }}
@@ -1543,7 +1543,7 @@ export function FlightSearchResults() {
           <div className="absolute inset-0 bg-opacity-50"></div>
           <div className="relative z-10 h-full flex items-center justify-center">
             <div className="text-center text-white">
-              <h1 className="text-3xl font-bold mb-2">
+              <h1 className="text-3xl font-bold mb-2 pt-8">
                 Tìm chuyến bay của bạn
               </h1>
               <p className="text-lg opacity-90">
@@ -1564,7 +1564,7 @@ export function FlightSearchResults() {
 
 
       {searchCriteria && (
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-6 pt-16">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 mb-6 ">
           <FlightFlexSearch
             searchCriteria={searchCriteria}
             allFlights={allItineraries.flatMap((it) => it.legs)}
@@ -1593,7 +1593,7 @@ export function FlightSearchResults() {
 
       <div
         ref={resultsRef}
-        className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8"
+        className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-8"
       >
         <div className="flex flex-col lg:flex-row gap-4 lg:gap-6">
           <div className="hidden lg:block w-80 flex-shrink-0">
