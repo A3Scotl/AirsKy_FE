@@ -73,4 +73,15 @@ export const userApi = {
   toggleActive: async (id) => {
     return apiHandler("patch", `/users/${id}/toggle-active`);
   },
+
+  /**
+   * Cập nhật vai trò của người dùng (Admin only)
+   * @param {number} id - ID của người dùng
+   * @param {string} role - Vai trò mới (ví dụ: 'ADMIN', 'CUSTOMER')
+   * @returns {Promise<{ success: boolean, data?: any, message: string }>}
+   */
+  updateUserRole: async (id, role) => {
+    const endpoint = `/users/${id}/role?role=${role}`;
+    return apiHandler("patch", endpoint);
+  },
 };

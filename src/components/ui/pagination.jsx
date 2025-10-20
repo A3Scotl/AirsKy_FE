@@ -74,7 +74,7 @@ const Pagination = ({
   }
 
   return (
-    <div className={`flex flex-col gap-4 ${className} mt-4` }>
+    <div className={`flex flex-col gap-4 ${className} mt-4`}>
       {/* Top section with page size selector and info */}
       <div className="flex items-center justify-between text-sm text-gray-600">
         {showInfo && (
@@ -117,7 +117,11 @@ const Pagination = ({
                     variant={page === currentPage ? "default" : "outline"}
                     size="sm"
                     onClick={() => onPageChange(page)}
-                    className="h-8 w-8 p-0"
+                    className={`h-8 w-8 p-0 ${
+                      page === currentPage
+                        ? "bg-blue-700 text-white hover:bg-blue-700"
+                        : ""
+                    }`}
                   >
                     {page}
                   </Button>
@@ -131,7 +135,7 @@ const Pagination = ({
               size="sm"
               onClick={() => onPageChange(currentPage + 1)}
               disabled={currentPage === totalPages}
-              className="h-8 px-3"
+              className="h-8 px-3 bg-blue-white"
             >
               Sau
             </Button>

@@ -160,14 +160,14 @@ const AdminSidebar = ({ sidebarOpen, setSidebarOpen }) => {
         `}
       >
         {/* Logo */}
-        <div className="flex items-center justify-between h-16 px-4 bg-blue-600">
+        <div className="flex items-center justify-between h-16 px-4">
           <div className="flex items-center">
-            <img
+            {/* <img
               className="h-8 w-8"
               src="https://res.cloudinary.com/dzwjgfd7t/image_upload/v1755141382/flight%20booking/main_logo-removebg_xyofym.png"
               alt="AirsSky"
-            />
-            <span className="ml-2 text-xl font-bold text-white">AirSky</span>
+            /> */}
+            <span className="ml-2 text-xl font-bold text-black">AirSky</span>
           </div>
           <div className="flex items-center space-x-2">
             <Button
