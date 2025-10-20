@@ -106,17 +106,18 @@ const GoogleLoginButton = ({ className = "", disabled = false }) => {
         throw new Error("Không nhận được thông tin xác thực từ Google");
       }
 
-      const decoded = jwtDecode(response.credential);
+      // Decode Google credential token để lấy profile data
+      const googleDecoded = jwtDecode(response.credential);
 
       // Prepare data to send to backend including avatar URL
       const googleLoginData = {
         idToken: response.credential,
-        avatarUrl: decoded.picture, // Send Google avatar URL to backend
-        firstName: decoded.given_name,
-        lastName: decoded.family_name,
+        avatarUrl: googleDecoded.picture, // Send Google avatar URL to backend
+        firstName: googleDecoded.given_name,
+        lastName: googleDecoded.family_name,
       };
 
-      console.log("🚀 Sending Google login data to backend:", googleLoginData);
+      console.log("🚀 [DEBUG] Sending Google login data to backend");
 
       const result = await authApi.googleLogin(googleLoginData);
 
@@ -134,113 +135,122 @@ const GoogleLoginButton = ({ className = "", disabled = false }) => {
         localStorage.setItem("token", token);
 
         try {
-          const decoded = jwtDecode(token);
+          // Decode JWT token từ backend để lấy user ID
+          const backendDecoded = jwtDecode(token);
+          console.log("🔍 [DEBUG] Backend JWT decoded:", backendDecoded);
 
-          // Also decode Google credential to get profile picture
-          const googleDecoded = jwtDecode(response.credential);
-          console.log("🔍 Google Profile Data:", {
-            email: googleDecoded.email,
-            name: googleDecoded.name,
-            picture: googleDecoded.picture,
-            hasPicture: !!googleDecoded.picture,
-          });
+          // VALIDATION: JWT từ backend PHẢI có user ID số trong claim "id"
+          const jwtUserId = backendDecoded.id;
+          if (
+            !jwtUserId ||
+            isNaN(Number(jwtUserId)) ||
+            Number(jwtUserId) <= 0
+          ) {
+            console.error(
+              "❌ [DEBUG] JWT missing valid user ID in 'id' claim:",
+              jwtUserId
+            );
+            toast.error("Lỗi xác thực người dùng, vui lòng thử lại");
+            return;
+          }
 
+          console.log(
+            "✅ [DEBUG] JWT user ID validated:",
+            jwtUserId,
+            "Type:",
+            typeof jwtUserId
+          );
+
+          // Tạo userData cơ bản từ JWT và Google profile data
           const userData = {
-            id: decoded.id || decoded.sub,
-            email: decoded.sub || googleDecoded.email,
-            role: decoded.role,
-            exp: decoded.exp,
-            // Store Google profile information as fallback
+            id: Number(jwtUserId), // ID số từ JWT claim "id"
+            email: backendDecoded.sub || googleDecoded.email, // Email từ JWT subject
+            role: backendDecoded.role || "CUSTOMER",
+            exp: backendDecoded.exp,
+            // Profile data từ Google (sẽ được update từ database sau)
+            firstName: googleDecoded.given_name,
+            lastName: googleDecoded.family_name,
+            fullName: googleDecoded.name,
+            avatar: googleDecoded.picture, // Google avatar làm avatar chính
+            // Google avatar làm fallback
             googleAvatar: googleDecoded.picture,
-            // Use database data if available, otherwise Google data
-            firstName: result.data.firstName || googleDecoded.given_name,
-            lastName: result.data.lastName || googleDecoded.family_name,
-            fullName:
-              result.data.firstName && result.data.lastName
-                ? `${result.data.firstName} ${result.data.lastName}`.trim()
-                : googleDecoded.name,
-            // Avatar: prioritize database, fallback to Google
-            avatar: result.data.avatar || googleDecoded.picture,
+            // Auth provider
+            authProvider: "GOOGLE",
           };
 
-          console.log("💾 User Data to be saved:", userData);
-          console.log("🖼️ Google Avatar URL:", userData.googleAvatar);
-          console.log("🔍 Google decoded picture:", googleDecoded.picture);
-          console.log("📥 Backend avatar response:", result.data.avatar);
-
-          // Ensure googleAvatar is properly set
-          if (!userData.googleAvatar && googleDecoded.picture) {
-            userData.googleAvatar = googleDecoded.picture;
-            console.log("🔧 Fixed Google avatar:", userData.googleAvatar);
-          }
+          console.log("✅ [DEBUG] Initial user data from JWT + Google:", {
+            id: userData.id,
+            email: userData.email,
+            role: userData.role,
+            authProvider: userData.authProvider,
+            avatar: userData.avatar,
+            googleAvatar: userData.googleAvatar,
+          });
 
           login(userData);
           toast.success("Đăng nhập Google thành công!");
 
-          // After successful login, fetch complete user profile from database
-          // This ensures we get updated firstName, lastName, and avatar from database
+          // Sau login thành công, fetch profile đầy đủ từ database để update thông tin mới nhất
           try {
             console.log(
-              "🔄 Fetching complete user profile from database after Google login..."
+              "🔄 [DEBUG] Fetching complete user profile from database..."
             );
             const profileResult = await authApi.me();
 
             if (profileResult.success && profileResult.data) {
-              console.log("✅ Database profile fetched:", profileResult.data);
-              console.log("🔍 Database avatar:", profileResult.data.avatar);
               console.log(
-                "🔍 Database firstName:",
-                profileResult.data.firstName
+                "✅ [DEBUG] Database profile fetched:",
+                profileResult.data
               );
-              console.log("🔍 Database lastName:", profileResult.data.lastName);
 
-              // Update user data with database information, keeping Google avatar as fallback
-              const completeUserData = {
-                ...userData, // Keep existing data including googleAvatar
-                ...profileResult.data, // Override with database data
-                // Ensure database avatar takes priority, but keep googleAvatar for fallback
-                googleAvatar: googleDecoded.picture, // Keep Google avatar as fallback
+              // Update user data với thông tin từ database (firstName, lastName, avatar có thể khác)
+              const updatedUserData = {
+                ...userData, // Keep current data
+                ...profileResult.data, // Override với database data
+                // Preserve Google avatar as fallback
+                googleAvatar: userData.googleAvatar,
+                // Ensure authProvider is preserved
+                authProvider: "GOOGLE",
               };
 
-              console.log("� Data merge details:");
-              console.log("  - Google userData:", {
-                firstName: userData.firstName,
-                lastName: userData.lastName,
-                avatar: userData.avatar,
-                googleAvatar: userData.googleAvatar,
-              });
-              console.log("  - Database profileResult.data:", {
-                firstName: profileResult.data.firstName,
-                lastName: profileResult.data.lastName,
-                avatar: profileResult.data.avatar,
-              });
-              console.log("  - Final completeUserData:", {
-                firstName: completeUserData.firstName,
-                lastName: completeUserData.lastName,
-                avatar: completeUserData.avatar,
-                googleAvatar: completeUserData.googleAvatar,
-              });
-              login(completeUserData); // Update with complete data
+              console.log(
+                "🔄 [DEBUG] Updated user data with database profile:",
+                {
+                  id: updatedUserData.id,
+                  email: updatedUserData.email,
+                  firstName: updatedUserData.firstName,
+                  lastName: updatedUserData.lastName,
+                  avatar: updatedUserData.avatar,
+                  googleAvatar: updatedUserData.googleAvatar,
+                }
+              );
+
+              login(updatedUserData); // Update với data đầy đủ
             } else {
               console.warn(
-                "⚠️ Could not fetch database profile, using Google data only"
+                "⚠️ [DEBUG] Could not fetch database profile, using JWT + Google data only"
               );
             }
           } catch (profileError) {
-            console.error("❌ Error fetching database profile:", profileError);
-            // Continue with Google data only
+            console.error(
+              "❌ [DEBUG] Error fetching database profile:",
+              profileError
+            );
+            // Continue với JWT + Google data
           }
 
           setTimeout(() => {
             window.location.href = "/";
           }, 100);
         } catch (decodeError) {
+          console.error("❌ [DEBUG] Token decode error:", decodeError);
           toast.error("Định dạng token không hợp lệ");
         }
       } else {
         toast.error(result.message || "Đăng nhập Google thất bại");
       }
     } catch (error) {
+      console.error("❌ [DEBUG] Google login error:", error);
       toast.error("Xác thực thất bại. Vui lòng thử lại.");
     } finally {
       setLoading(false);

@@ -19,6 +19,7 @@ import {
   Sun,
   Star,
   Settings,
+  Bell,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/auth-context";
@@ -67,6 +68,7 @@ const AdminSidebar = ({ sidebarOpen, setSidebarOpen }) => {
   let baseNavigation = [
     { name: "Trang chính", href: "/admin/dashboard", icon: LayoutDashboard },
     { name: "Quản lý đặt vé", href: "/admin/bookings", icon: Calendar },
+    { name: "Quản lý thông báo", href: "/admin/notifications", icon: Bell },
     {
       name: "Quản lý chuyến bay",
       href: "/admin/flights",

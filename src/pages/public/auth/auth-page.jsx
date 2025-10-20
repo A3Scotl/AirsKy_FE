@@ -9,9 +9,8 @@ import { AnimatePresence } from "framer-motion";
 import PageTransition from "@/components/common/page-transition";
 
 export default function AuthPage() {
-  const [currentView, setCurrentView] = useState("login"); // "login" | "register" | "reset"
+  const [currentView, setCurrentView] = useState("login");
 
-  // Dynamic title based on current view
   const getTitleByView = (view) => {
     switch (view) {
       case "login":

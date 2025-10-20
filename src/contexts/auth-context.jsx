@@ -110,7 +110,7 @@ export function AuthProvider({ children }) {
         }
 
         const userData = {
-          id: decoded.id || decoded.sub,
+          id: decoded.id,
           email: decoded.sub,
           role: decoded.role,
           exp: decoded.exp,

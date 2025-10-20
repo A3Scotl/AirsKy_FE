@@ -5,7 +5,7 @@ import {
   Navigate,
   useLocation,
 } from "react-router-dom";
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, useEffect } from "react";
 import { HelmetProvider } from "@dr.pogodin/react-helmet";
 import { useScrollToTop } from "@/hooks/use-scroll-to-top";
 import { AnimatePresence } from "framer-motion";
@@ -14,10 +14,13 @@ import { ThemeProvider } from "@/contexts/theme-context";
 import { SearchProvider } from "@/contexts/search-context";
 import { TitleSync } from "@/components/common/seo";
 import { Toaster } from "sonner";
+import { ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 import LoadingPage from "@/pages/loading/loading-page";
 import PageTransition from "@/components/common/page-transition";
 import AdminRoute from "@/routes/admin-route";
 import ChatbotWidget from "@/components/common/chatbot-widget";
+import webSocketService from "@/services/websocket-service";
 
 const HomePage = lazy(() => import("@/pages/public/home-page"));
 const AuthPage = lazy(() => import("@/pages/public/auth/auth-page"));
@@ -72,11 +75,41 @@ const AdminReviews = lazy(() => import("@/pages/private/review-page"));
 const AdminAncillaryService = lazy(() =>
   import("@/pages/private/ancillary-service-page")
 );
+const AdminNotificationPage = lazy(() =>
+  import("@/pages/private/notification-page")
+);
 
 function AppRoutes() {
-  const { loading } = useAuth();
+  const { user, loading } = useAuth();
   const location = useLocation();
   useScrollToTop();
+
+  // WebSocket connection management
+  useEffect(() => {
+    if (user?.id && localStorage.getItem("token")) {
+      // Connect WebSocket when user is authenticated
+      console.log("🚀 Connecting WebSocket for user:", user.id);
+      webSocketService
+        .connect(user.id, localStorage.getItem("token"))
+        .then(() => {
+          console.log("✅ WebSocket connected successfully");
+        })
+        .catch((error) => {
+          console.error("❌ WebSocket connection failed:", error);
+        });
+    } else if (!user) {
+      // Disconnect WebSocket when user is not authenticated
+      console.log("🔌 Disconnecting WebSocket (user not authenticated)");
+      webSocketService.disconnect();
+    }
+
+    // Cleanup on component unmount
+    return () => {
+      if (!user) {
+        webSocketService.disconnect();
+      }
+    };
+  }, [user?.id, user]);
 
   if (loading) return <LoadingPage />;
 
@@ -252,6 +285,7 @@ function AppRoutes() {
                 path="ancillary-services"
                 element={<AdminAncillaryService />}
               />
+              <Route path="notifications" element={<AdminNotificationPage />} />
               <Route path="profile" element={<AdminProfile />} />
             </Route>
 
@@ -283,6 +317,18 @@ function App() {
                 richColors
                 closeButton
                 duration={3000}
+              />
+              <ToastContainer
+                position="top-right"
+                autoClose={5000}
+                hideProgressBar={false}
+                newestOnTop={false}
+                closeOnClick
+                rtl={false}
+                pauseOnFocusLoss
+                draggable
+                pauseOnHover
+                theme="light"
               />
               <AppRoutes />
             </SearchProvider>
