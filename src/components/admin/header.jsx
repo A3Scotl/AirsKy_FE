@@ -52,8 +52,6 @@ const AdminHeader = ({ setSidebarOpen }) => {
           >
             <Menu className="h-5 w-5" />
           </Button>
-
-         
         </div>
 
         {/* Right side - Theme toggle, Notifications and user menu */}
@@ -64,19 +62,19 @@ const AdminHeader = ({ setSidebarOpen }) => {
           </div>
 
           {/* Notifications */}
-          <div className="relative">
+          {/* <div className="relative">
             <Button
               variant="ghost"
               size="sm"
               className="relative hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg p-2 transition-colors"
             >
               <Bell className="h-5 w-5 text-gray-600 dark:text-gray-400" />
-              {/* Notification badge */}
+             
               <span className="absolute -top-1 -right-1 h-5 w-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-semibold animate-pulse">
                 3
               </span>
             </Button>
-          </div>
+          </div> */}
 
           {/* User menu */}
           <DropdownMenu>
@@ -110,7 +108,10 @@ const AdminHeader = ({ setSidebarOpen }) => {
                 <ChevronDown className="h-4 w-4 text-gray-400 dark:text-gray-500" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-64 p-2 shadow-xl border-gray-200/50 dark:border-gray-700/50">
+            <DropdownMenuContent
+              align="end"
+              className="w-64 p-2 shadow-xl border-gray-200/50 dark:border-gray-700/50"
+            >
               <DropdownMenuLabel className="flex items-center space-x-3 p-3 rounded-lg bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-950/50 dark:to-purple-950/50">
                 <Avatar className="h-12 w-12 border-2 border-white dark:border-gray-700 shadow-md">
                   <AvatarImage
@@ -128,21 +129,32 @@ const AdminHeader = ({ setSidebarOpen }) => {
                   <span className="text-sm text-gray-500 dark:text-gray-400">
                     {user?.email}
                   </span>
-                  
                 </div>
               </DropdownMenuLabel>
 
               <DropdownMenuSeparator className="my-2" />
 
-              <DropdownMenuItem asChild className="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md mx-1">
-                <Link to="/admin/profile" className="flex items-center w-full px-2 py-2">
+              <DropdownMenuItem
+                asChild
+                className="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md mx-1"
+              >
+                <Link
+                  to="/admin/profile"
+                  className="flex items-center w-full px-2 py-2"
+                >
                   <User className="mr-3 h-4 w-4 text-gray-600 dark:text-gray-400" />
                   <span>Quản lý tài khoản</span>
                 </Link>
               </DropdownMenuItem>
 
-              <DropdownMenuItem asChild className="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md mx-1">
-                <Link to="/admin/settings" className="flex items-center w-full px-2 py-2">
+              <DropdownMenuItem
+                asChild
+                className="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md mx-1"
+              >
+                <Link
+                  to="/admin/settings"
+                  className="flex items-center w-full px-2 py-2"
+                >
                   <Settings className="mr-3 h-4 w-4 text-gray-600 dark:text-gray-400" />
                   <span>Cài đặt hệ thống</span>
                 </Link>

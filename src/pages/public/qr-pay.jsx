@@ -136,8 +136,13 @@ export default function QRPay() {
             );
             setTimeout(() => {
               // Set flag to indicate payment status needs refresh
-              localStorage.setItem(`payment_return_${bookingBookingCodeForRedirect}`, Date.now().toString());
-              navigate(`/confirm-booking?paymentReturn=true&bookingCode=${bookingBookingCodeForRedirect}`);
+              localStorage.setItem(
+                `payment_return_${bookingBookingCodeForRedirect}`,
+                Date.now().toString()
+              );
+              navigate(
+                `/confirm-booking?paymentReturn=true&bookingCode=${bookingBookingCodeForRedirect}`
+              );
             }, 3000);
           } else if (isCheckinFlow && bookingCodeForRedirect) {
             console.log(
@@ -175,8 +180,13 @@ export default function QRPay() {
             setTimeout(() => {
               // Set flag for fallback case too
               if (bookingCode) {
-                localStorage.setItem(`payment_return_${bookingCode}`, Date.now().toString());
-                navigate(`/confirm-booking?paymentReturn=true&bookingCode=${bookingCode}`);
+                localStorage.setItem(
+                  `payment_return_${bookingCode}`,
+                  Date.now().toString()
+                );
+                navigate(
+                  `/confirm-booking?paymentReturn=true&bookingCode=${bookingCode}`
+                );
               } else {
                 navigate("/confirm-booking");
               }

@@ -19,9 +19,12 @@ import { Menu, User, LogOut, Calendar, Plane } from "lucide-react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/auth-context";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
+import NotificationDropdown from "@/components/ui/notification-dropdown";
+
 import { useEffect, useRef, useState } from "react";
 import { userProfileUtils } from "@/hooks/use-user-profile";
 import { authApi } from "@/apis/auth-api";
+import { useNotifications } from "@/hooks/use-notifications";
 
 const MENU_ITEMS = [
   { label: "Chuyến Bay", path: "flights" },
@@ -229,6 +232,9 @@ export function Header() {
           <div className="hidden md:flex items-center space-x-4 min-w-[200px]">
             {/* Theme Toggle - Always visible */}
             <ThemeToggle variant="ghost" size="sm" />
+
+            {/* Notifications - Only show when logged in */}
+            {user && <NotificationDropdown />}
 
             {user ? (
               <DropdownMenu>
