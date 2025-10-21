@@ -33,7 +33,7 @@ import { classesApi } from "@/apis/classes-api";
 const TRIP_TYPES = [
   { key: "ROUND_TRIP", label: "Khứ hồi" },
   { key: "ONE_WAY", label: "Một chiều" },
-  { key: "MULTI_CITY", label: "Đa thành phố" },
+  // { key: "MULTI_CITY", label: "Đa thành phố" },
 ];
 
 const PASSENGER_TYPES = [
