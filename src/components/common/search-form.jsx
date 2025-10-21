@@ -357,8 +357,8 @@ export function SearchForm({ onSearch, initialValues, onTripTypeChange }) {
   };
 
   return (
-    <Card className="bg-white/95 backdrop-blur-sm dark:bg-gray-400/100 p-6 max-w-6xl mx-auto">
-      <div className="space-y-6">
+    <Card className="bg-white/95 backdrop-blur-sm dark:bg-gray-400/100 p-6 mt-4  max-w-6xl mx-auto">
+      <div className="space-y-4">
         {/* Validation Errors */}
         {validationErrors.length > 0 && (
           <div className="bg-red-50 border border-red-200 rounded-lg p-4">
