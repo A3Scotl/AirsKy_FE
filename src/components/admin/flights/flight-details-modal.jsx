@@ -21,7 +21,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { flightApi } from "@/apis/flight-api";
 
 const TEXT = {
   flightDetails: "Chi Tiết Chuyến Bay",
@@ -78,7 +79,19 @@ const TEXT = {
 
 const FlightDetailsModal = ({ flight, open, onClose, onEdit, onDelete }) => {
   const [isSeatLayoutExpanded, setIsSeatLayoutExpanded] = useState(false);
+  const [detailedSeats, setDetailedSeats] = useState([]);
 
+  useEffect(() => {
+    if (open && flight) {
+      const fetchSeats = async () => {
+        const result = await flightApi.getSeatsByFlight(flight.flightId);
+        if (result.success) {
+          setDetailedSeats(result.data || []);
+        }
+      };
+      fetchSeats();
+    }
+  }, [open, flight]);
   if (!open || !flight) return null;
 
   const statusConfig = {
@@ -132,11 +145,11 @@ const FlightDetailsModal = ({ flight, open, onClose, onEdit, onDelete }) => {
   const departure = formatDateTime(flight.departureTime);
   const arrival = formatDateTime(flight.arrivalTime);
   const loadFactor = (
-    ((flight.totalSeats - flight.availableSeats) / flight.totalSeats) *
+    ((flight?.aircraft?.totalSeats - flight.availableSeats) / flight?.aircraft?.totalSeats) *
     100
   ).toFixed(1);
   const estimatedRevenue =
-    (flight.totalSeats - flight.availableSeats) * flight.basePrice;
+    (flight?.aircraft?.totalSeats - flight.availableSeats) * flight.basePrice;
 
   const getLoadFactorStyle = (factor) => {
     if (factor >= 90) return "bg-red-100 text-red-800";
@@ -413,7 +426,7 @@ const FlightDetailsModal = ({ flight, open, onClose, onEdit, onDelete }) => {
     return benefitsString.split(",").map((benefit) => benefit.trim());
   };
 
-  const generateSeats = (aircraft, bookedSeats = []) => {
+  const generateSeats = (aircraft) => {
     if (!aircraft || !aircraft.seatLayout || !aircraft.totalSeats) {
       return [];
     }
@@ -445,6 +458,7 @@ const FlightDetailsModal = ({ flight, open, onClose, onEdit, onDelete }) => {
     const rows = Math.ceil(aircraft.totalSeats / totalSeatsPerRow);
     const seats = [];
     let seatCounter = 1;
+     console.log(seats);
 
     for (let row = 1; row <= rows; row++) {
       const rowSeats = [];
@@ -452,13 +466,13 @@ const FlightDetailsModal = ({ flight, open, onClose, onEdit, onDelete }) => {
       // Left side seats
       for (let col = 1; col <= left; col++) {
         const seatId = `${row}${String.fromCharCode(64 + col)}`;
-        const isBooked = bookedSeats.includes(seatId);
+        const seatStatus = detailedSeats.find(s => s.seatNumber === seatId)?.status || 'AVAILABLE';
         rowSeats.push({
           id: seatId,
           row,
           col,
           side: "left",
-          booked: isBooked,
+          status: seatStatus,
           type: "seat",
         });
         seatCounter++;
@@ -470,13 +484,13 @@ const FlightDetailsModal = ({ flight, open, onClose, onEdit, onDelete }) => {
         // Middle seats
         for (let col = 1; col <= middle; col++) {
           const seatId = `${row}${String.fromCharCode(64 + left + col)}`;
-          const isBooked = bookedSeats.includes(seatId);
+          const seatStatus = detailedSeats.find(s => s.seatNumber === seatId)?.status || 'AVAILABLE';
           rowSeats.push({
             id: seatId,
             row,
             col: left + col,
             side: "middle",
-            booked: isBooked,
+            status: seatStatus,
             type: "seat",
           });
           seatCounter++;
@@ -491,13 +505,13 @@ const FlightDetailsModal = ({ flight, open, onClose, onEdit, onDelete }) => {
         const seatId = `${row}${String.fromCharCode(
           64 + left + (middle || 0) + col
         )}`;
-        const isBooked = bookedSeats.includes(seatId);
+        const seatStatus = detailedSeats.find(s => s.seatNumber === seatId)?.status || 'AVAILABLE';
         rowSeats.push({
           id: seatId,
           row,
           col: left + (middle || 0) + col,
           side: "right",
-          booked: isBooked,
+          status: seatStatus,
           type: "seat",
         });
         seatCounter++;
@@ -508,30 +522,31 @@ const FlightDetailsModal = ({ flight, open, onClose, onEdit, onDelete }) => {
 
     return seats;
   };
-
+  
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div className="absolute inset-0 bg-black/50" onClick={onClose} />
-      <div className="relative bg-white rounded-lg shadow-xl w-full max-w-4xl mx-4 max-h-[90vh] overflow-y-auto">
+      <div className="relative bg-white rounded-lg shadow-xl w-full max-w-7xl mx-4 max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between p-6 border-b border-gray-200">
           <div className="flex items-center space-x-3">
             <Plane className="h-6 w-6 text-blue-600" />
             <div>
-              <h2 className="text-xl font-bold text-gray-900">
-                {TEXT.flightDetails} {flight.flightNumber}
-              </h2>
-              {/* show tripType */}
-              {(() => {
+              <h2 className="text-xl font-bold text-gray-900 gap-3 flex">
+                {flight.flightNumber}
+                 {(() => {
                 const badgeConfig = getTripTypeBadge(flight.tripType);
                 return (
                   <Badge
                     variant="outline"
-                    className={`text-sm font-medium border ${badgeConfig.className}`}
+                    className={`text-sm font-bold border ${badgeConfig.className}`}
                   >
                     {badgeConfig.text}
                   </Badge>
                 );
               })()}
+              </h2>
+              {/* show tripType */}
+             
               <p className="text-xl text-gray-600">
                 {flight.departureAirport.airportName} (
                 {flight.departureAirport.airportCode})
@@ -829,8 +844,8 @@ const FlightDetailsModal = ({ flight, open, onClose, onEdit, onDelete }) => {
               </div>
               <div className="text-sm text-gray-600">
                 Layout: {flight.aircraft?.seatLayout || "N/A"} | Tổng ghế:{" "}
-                {flight.totalSeats} | Đã đặt:{" "}
-                {flight.totalSeats - flight.availableSeats} | Còn trống:{" "}
+                {flight?.aircraft?.totalSeats} | Đã đặt:{" "}
+                {flight?.aircraft?.totalSeats - flight.availableSeats} | Còn trống:{" "}
                 {flight.availableSeats}
               </div>
             </CardHeader>
@@ -855,50 +870,56 @@ const FlightDetailsModal = ({ flight, open, onClose, onEdit, onDelete }) => {
                 {/* Seat Layout - Only show when expanded */}
                 {isSeatLayoutExpanded && (
                   <>
-                    <div className="bg-gray-50 p-4 rounded-lg overflow-x-auto">
+                    <div className="bg-gray-50 p-4 rounded-lg overflow-x-auto flex flex-col items-center justify-center">
                       {/* Cockpit */}
-                      <div className="flex justify-center mb-4">
+                      <div className="flex justify-center mb-4 items-center">
                         <div className="bg-blue-600 text-white px-4 py-2 rounded-t-lg text-sm font-medium">
                           <Plane className="h-4 w-4 inline mr-1" />
                           {TEXT.cockpit}
                         </div>
                       </div>
 
-                      <div className="inline-block min-w-full">
+                      <div className="flex flex-col min-w-full justify-center items-center">
                         {generateSeats(
                           flight.aircraft,
-                          flight.bookedSeats || []
-                        ).map((row, rowIndex) => (
+                      
+                        ).map((row, rowIndex) => 
                           <div
                             key={rowIndex}
-                            className="flex items-center mb-2"
+                            className="flex items-center mb-2 mr-12"
                           >
                             <span className="w-8 text-xs font-mono text-gray-500 mr-2 text-right">
                               {rowIndex + 1}
                             </span>
-                            {row.map((seat, seatIndex) => (
+                            {row.map((seat, seatIndex) => 
+                            
+                            {
+                              console.log(seat);
+                              return(
                               <div
                                 key={seatIndex}
                                 className={`w-8 h-8 mx-1 rounded text-xs flex items-center justify-center font-mono text-[10px] border-2 ${
                                   seat.type === "aisle"
                                     ? "bg-gray-200 border-gray-300"
-                                    : seat.booked
+                                   : seat.status === 'OCCUPIED'
                                     ? "bg-red-100 border-red-400 text-red-800"
                                     : "bg-green-100 border-green-400 text-green-800"
                                 }`}
                                 title={
                                   seat.type === "aisle"
                                     ? "Lối đi"
-                                    : seat.booked
+                                    : seat.status === 'OCCUPIED'
                                     ? `Ghế ${seat.id} - Đã đặt`
                                     : `Ghế ${seat.id} - Còn trống`
                                 }
                               >
                                 {seat.type === "aisle" ? "" : seat.id}
                               </div>
-                            ))}
+                            )
+                            }
+                            )}
                           </div>
-                        ))}
+                        )}
                       </div>
                     </div>
 
@@ -912,7 +933,7 @@ const FlightDetailsModal = ({ flight, open, onClose, onEdit, onDelete }) => {
                         <div className="flex items-center">
                           <div className="w-4 h-4 bg-red-100 border-2 border-red-400 rounded mr-2"></div>
                           <span>
-                            Đã đặt: {flight.totalSeats - flight.availableSeats}
+                            Đã đặt: {flight?.aircraft?.totalSeats - flight.availableSeats}
                           </span>
                         </div>
                       </div>
@@ -921,7 +942,7 @@ const FlightDetailsModal = ({ flight, open, onClose, onEdit, onDelete }) => {
                         {
                           generateSeats(
                             flight.aircraft,
-                            flight.bookedSeats || []
+
                           ).length
                         }{" "}
                         hàng ghế
@@ -982,14 +1003,7 @@ const FlightDetailsModal = ({ flight, open, onClose, onEdit, onDelete }) => {
               <Edit className="h-4 w-4 mr-2" />
               {TEXT.editFlight}
             </Button>
-            <Button
-              variant="outline"
-              className="text-red-600 hover:text-red-700 hover:bg-red-50"
-              onClick={() => onDelete(flight)}
-            >
-              <Trash2 className="h-4 w-4 mr-2" />
-              {TEXT.cancelFlight}
-            </Button>
+            
           </div>
         </div>
       </div>

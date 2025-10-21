@@ -33,6 +33,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import FlightTable from "@/components/admin/flights/flight-table";
 import FlightSchedule from "@/components/admin/flights/flight-schedule";
 import FlightCalendar from "@/components/admin/flights/flight-calendar";
@@ -42,10 +52,11 @@ import { flightApi } from "@/apis/flight-api";
 import { aircraftApi } from "@/apis/aircraft-api";
 import { handleFetch } from "@/utils/fetch-helper.js";
 import { toast } from "sonner";
+import FlightTableSkeleton from "@/components/admin/flights/flight-table-skeleton";
 import ExportButton from "@/components/common/export-button";
 const AdminFlights = () => {
   const [searchQuery, setSearchQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState("on-time"); // Mặc định lọc chuyến bay "Đúng giờ"
   const [aircraftFilter, setAircraftFilter] = useState("all");
   const [showFlightModal, setShowFlightModal] = useState(false);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
@@ -56,28 +67,40 @@ const AdminFlights = () => {
   const [flights, setFlights] = useState([]);
   const [aircrafts, setAircrafts] = useState([]);
   const [previousFlights, setPreviousFlights] = useState([]); // Để tính % thay đổi
+  const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
+  const [flightToCancel, setFlightToCancel] = useState(null);
+  const [cancellationReason, setCancellationReason] = useState("");
   const storedUser = localStorage.getItem("user");
   const user = storedUser ? JSON.parse(storedUser) : null;
 
   useEffect(() => {
-    handleFetch({
-      apiCall: () => flightApi.getAllFlights({ size: 1000 }), // Lấy nhiều flights hơn
-      setData: (data) => {
-        const newFlights = data?.content || data;
-        setPreviousFlights(flights); // Lưu dữ liệu cũ để tính % thay đổi
-        setFlights(newFlights);
-      }, // Fallback nếu không có content
-      setLoading: setLoading,
-      errorMessage: "Failed to fetch flights",
-    });
-    handleFetch({
-      apiCall: aircraftApi.getAllAircrafts,
-      setData: (data) => {
-        setAircrafts(data);
-      },
-      setLoading: setLoading,
-      errorMessage: "Failed to fetch aircrafts",
-    });
+    const fetchData = async () => {
+      setLoading(true);
+      try {
+        const [flightsResult, aircraftsResult] = await Promise.all([
+          flightApi.getAllFlights({ size: 1000 }),
+          aircraftApi.getAllAircrafts(),
+        ]);
+
+        if (flightsResult && flightsResult.success) {
+          const newFlights = flightsResult.data?.content || flightsResult.data;
+          setFlights(newFlights);
+        } else {
+          toast.error(flightsResult?.message || "Không thể tải danh sách chuyến bay");
+        }
+
+        if (aircraftsResult && aircraftsResult.success) {
+          setAircrafts(aircraftsResult.data);
+        } else {
+          toast.error(aircraftsResult?.message || "Không thể tải danh sách máy bay");
+        }
+      } catch (error) {
+        toast.error("Đã xảy ra lỗi khi tải dữ liệu ban đầu.");
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
   }, []);
 
   // Hàm tính toán thống kê chuyến bay toàn diện
@@ -117,14 +140,6 @@ const AdminFlights = () => {
           icon: Users,
           color: "bg-purple-500",
         },
-        {
-          title: "Chuyến bay hôm nay",
-          value: "0",
-          change: "0%",
-          isPositive: true,
-          icon: Calendar,
-          color: "bg-orange-500",
-        },
       ];
     }
 
@@ -145,11 +160,11 @@ const AdminFlights = () => {
 
     // Tính tỷ lệ lấp đầy trung bình
     const totalSeats = currentFlights.reduce(
-      (sum, flight) => sum + (flight.totalSeats || 0),
+      (sum, flight) => sum + (flight?.aircraft?.totalSeats || 0),
       0
     );
     const bookedSeats = currentFlights.reduce((sum, flight) => {
-      return sum + (flight.totalSeats - (flight.availableSeats || 0));
+      return sum + (flight?.aircraft?.totalSeats - (flight.availableSeats || 0));
     }, 0);
     const occupancyRate =
       totalSeats > 0 ? ((bookedSeats / totalSeats) * 100).toFixed(1) : 0;
@@ -276,14 +291,6 @@ const AdminFlights = () => {
         icon: Users,
         color: "bg-purple-500",
       },
-      {
-        title: "Chuyến bay hôm nay",
-        value: todayFlightsCount.toString(),
-        change: `${todayChange > 0 ? "+" : ""}${todayChange}%`,
-        isPositive: todayChange >= 0,
-        icon: Calendar,
-        color: "bg-orange-500",
-      },
     ];
   };
 
@@ -308,28 +315,35 @@ const AdminFlights = () => {
     setShowDetailsModal(false);
   };
 
-  const handleDeleteFlight = async (flight) => {
-    if (
-      window.confirm(
-        `Are you sure you want to cancel flight ${flight.flightNumber}?`
-      )
-    ) {
-      try {
-        const result = await flightApi.deleteFlight(flight.flightId);
-        if (result.success) {
-          toast.success("Xóa chuyến bay thành công!");
-          // Xóa chuyến bay khỏi danh sách
-          setFlights((prevFlights) =>
-            prevFlights.filter((f) => f.flightId !== flight.flightId)
-          );
-        } else {
-          toast.error(`Lỗi xóa chuyến bay: ${result.message}`);
-        }
-        setShowDetailsModal(false);
-      } catch (error) {
-        console.error("Delete flight error:", error);
-        toast.error("Có lỗi xảy ra khi xóa chuyến bay");
+  const openCancelModal = (flight) => {
+    setFlightToCancel(flight);
+    setIsCancelModalOpen(true);
+    setCancellationReason(""); // Reset lý do mỗi khi mở modal
+  };
+
+  const handleConfirmCancel = async () => {
+    if (!flightToCancel) return;
+    if (!cancellationReason.trim()) {
+      toast.error("Vui lòng nhập lý do hủy chuyến bay.");
+      return;
+    }
+
+    try {
+      const result = await flightApi.cancelFlight(flightToCancel.flightId, {
+        reason: cancellationReason,
+      });
+      if (result.success) {
+        toast.success("Hủy chuyến bay và xử lý booking thành công!");
+        handleRefresh(); // Tải lại dữ liệu để cập nhật trạng thái
       }
+    } catch (error) {
+      console.error("Cancel flight error:", error);
+      toast.error(
+        `Lỗi khi hủy chuyến bay: ${error.response?.data?.error || error.message}`
+      );
+    } finally {
+      setIsCancelModalOpen(false);
+      setFlightToCancel(null);
     }
   };
 
@@ -509,7 +523,7 @@ const AdminFlights = () => {
       </div>
 
       {/* Flight Statistics */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
         {flightStats.map((stat, index) => {
           const Icon = stat.icon;
           return (
@@ -617,15 +631,19 @@ const AdminFlights = () => {
                 </Select>
               </div>
 
-              <FlightTable
-                flights={flights}
-                searchQuery={searchQuery}
-                statusFilter={statusFilter}
-                aircraftFilter={aircraftFilter}
-                onViewFlight={handleViewFlight}
-                onEditFlight={handleEditFlight}
-                onDeleteFlight={handleDeleteFlight}
-              />
+              {loading ? (
+                <FlightTableSkeleton />
+              ) : (
+                <FlightTable
+                  flights={flights}
+                  searchQuery={searchQuery}
+                  statusFilter={statusFilter}
+                  aircraftFilter={aircraftFilter}
+                  onViewFlight={handleViewFlight}
+                  onEditFlight={handleEditFlight}
+                  onDeleteFlight={openCancelModal} // Thay đổi ở đây
+                />
+              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -655,8 +673,40 @@ const AdminFlights = () => {
         open={showDetailsModal}
         onClose={() => setShowDetailsModal(false)}
         onEdit={handleEditFlight}
-        onDelete={handleDeleteFlight}
+        // onDelete={handleDeleteFlight}
       />
+
+      {/* Cancel Flight Confirmation Modal */}
+      <AlertDialog open={isCancelModalOpen} onOpenChange={setIsCancelModalOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Xác nhận hủy chuyến bay?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Hành động này sẽ hủy chuyến bay{" "}
+              <strong>{flightToCancel?.flightNumber}</strong> và tất cả các
+              booking liên quan. Các booking đã thanh toán sẽ được tự động hoàn
+              tiền. Hành động này không thể hoàn tác.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="space-y-2">
+            <label htmlFor="cancellationReason" className="font-medium">
+              Lý do hủy chuyến (bắt buộc)
+            </label>
+            <Input
+              id="cancellationReason"
+              value={cancellationReason}
+              onChange={(e) => setCancellationReason(e.target.value)}
+              placeholder="Ví dụ: Lý do kỹ thuật, thời tiết xấu..."
+            />
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Hủy bỏ</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmCancel}>
+              Xác nhận
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

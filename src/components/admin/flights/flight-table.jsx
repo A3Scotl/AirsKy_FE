@@ -41,7 +41,7 @@ const FlightTable = ({
   onDeleteFlight,
 }) => {
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [itemsPerPage, setItemsPerPage] = useState(5);
 
   // Màu sắc cho các nhóm khứ hồi
   const roundTripGroupColors = [
@@ -72,21 +72,25 @@ const FlightTable = ({
   const statusConfig = {
     ON_TIME: {
       variant: "outline",
+      label: "Đúng giờ",
       className: "bg-green-100 text-green-800 border-green-200",
       icon: CheckCircle,
     },
     DEPARTED: {
       variant: "outline",
+      label: "Đã khởi hành",
       className: "bg-gray-100 text-gray-800 border-gray-200",
       icon: Plane,
     },
     DELAYED: {
       variant: "secondary",
+      label: "Bị trễ",
       className: "bg-red-100 text-red-800 border-red-200",
       icon: AlertTriangle,
     },
     CANCELLED: {
       variant: "destructive",
+      label: "Đã hủy",
       className: "bg-red-100 text-red-800 border-red-200",
       icon: AlertTriangle,
     },
@@ -156,7 +160,12 @@ const FlightTable = ({
           flight.aircraft.aircraftCode.toLowerCase() === aircraftFilter);
 
       return matchesSearch && matchesStatus && matchesAircraft;
-    });
+    })
+    .sort(
+      (a, b) =>
+        new Date(a.departureTime).getTime() -
+        new Date(b.departureTime).getTime()
+    );
   }, [flights, searchQuery, statusFilter, aircraftFilter]);
 
   const totalPages = Math.ceil(filteredFlights.length / itemsPerPage);
@@ -187,9 +196,13 @@ const FlightTable = ({
       day: "numeric",
       year: "numeric",
     });
+      console.log(
+        flights
+  );
   const calculateLoadFactor = (flight) =>
+    
     Math.round(
-      ((flight.totalSeats - flight.availableSeats) / flight.totalSeats) * 100
+      ((flight?.aircraft?.totalSeats - flight?.availableSeats) / flight?.aircraft?.totalSeats) * 100
     );
 
   return (
@@ -215,8 +228,12 @@ const FlightTable = ({
               const {
                 variant,
                 className,
+                label,
                 icon: StatusIcon,
               } = statusConfig[flight.status] || statusConfig.ON_TIME;
+              // Chỉ cho phép hủy khi chuyến bay đang ON_TIME hoặc DELAYED
+              const canCancel =
+                flight.status === "ON_TIME" || flight.status === "DELAYED";
               const loadFactor = calculateLoadFactor(flight);
 
               // Xác định màu nền cho nhóm khứ hồi
@@ -298,7 +315,7 @@ const FlightTable = ({
                       className={`${className} flex items-center space-x-1 w-fit`}
                     >
                       <StatusIcon className="h-3 w-3" />
-                      <span>{flight.status}</span>
+                      <span>{label}</span>
                     </Badge>
                   </TableCell>
                   <TableCell>
@@ -318,7 +335,7 @@ const FlightTable = ({
                         </TooltipTrigger>
                         <TooltipContent>
                           <p>
-                            {flight.totalSeats - flight.availableSeats}/
+                            {flight.totalSeats - flight.availableSeats} /{" "}
                             {flight.totalSeats} passengers
                           </p>
                         </TooltipContent>
@@ -389,7 +406,7 @@ const FlightTable = ({
                             </Button>
                           </TooltipTrigger>
                           <TooltipContent>
-                            <p>View Details</p>
+                            <p>Xem chi tiết</p>
                           </TooltipContent>
                         </Tooltip>
                         <Tooltip>
@@ -404,7 +421,7 @@ const FlightTable = ({
                             </Button>
                           </TooltipTrigger>
                           <TooltipContent>
-                            <p>Edit Flight</p>
+                            <p>Chỉnh sửa</p>
                           </TooltipContent>
                         </Tooltip>
                         <Tooltip>
@@ -412,14 +429,15 @@ const FlightTable = ({
                             <Button
                               variant="ghost"
                               size="sm"
-                              className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
+                              className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50 disabled:opacity-50 disabled:cursor-not-allowed"
                               onClick={() => onDeleteFlight(flight)}
+                              disabled={!canCancel}
                             >
                               <Trash2 className="h-4 w-4" />
                             </Button>
                           </TooltipTrigger>
                           <TooltipContent>
-                            <p>Cancel Flight</p>
+                            <p>Hủy chuyến bay</p>
                           </TooltipContent>
                         </Tooltip>
                       </TooltipProvider>
@@ -447,17 +465,17 @@ const FlightTable = ({
         className="mt-4"
       />
 
-      {filteredFlights.length === 0 && (
+      {/* {filteredFlights.length === 0 && (
         <div className="text-center py-12">
           <Plane className="h-12 w-12 text-gray-400 mx-auto mb-4" />
           <h3 className="text-lg font-medium text-gray-900 mb-2">
-            No flights found
+            Không tìm thấy chuyến bay
           </h3>
           <p className="text-gray-600">
-            Try adjusting your search or filter criteria
+            Thử điều chỉnh lại bộ lọc hoặc từ khóa tìm kiếm
           </p>
         </div>
-      )}
+      )} */}
     </div>
   );
 };
