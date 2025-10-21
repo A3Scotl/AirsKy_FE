@@ -3,10 +3,20 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useLocation, useParams } from "react-router-dom";
 import { flightApi } from "@/apis/flight-api";
+import { reviewApi } from "@/apis/review-api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import FlightRouteMap from "@/components/common/flight-route-map";
 import {
   formatCurrencyVND,
@@ -35,7 +45,19 @@ import {
   Map,
   ArrowRightLeft,
   ChevronRight,
+  ChevronLeft,
+  Eye,
+  Filter,
+  SortAsc,
+  SortDesc,
+  X,
 } from "lucide-react";
+
+// Swiper imports
+import { Swiper, SwiperSlide } from "swiper/react";
+import { Autoplay, Pagination } from "swiper/modules";
+import "swiper/css";
+import "swiper/css/pagination";
 
 // Utility functions for flight data processing
 
@@ -82,15 +104,6 @@ const detectFlightType = (flight) => {
       (flight.legs?.length >= 2 &&
         (flight.tripType === "MULTI_CITY" || flight.isMultiCityDisplay))
   );
-
-  console.log("🔍 detectFlightType:", {
-    flight: flight,
-    tripType: flight.tripType,
-    isMultiCityDisplay: flight.isMultiCityDisplay,
-    isMultiCity: flight.isMultiCity,
-    legsLength: flight.legs?.length,
-    detected: { isItinerary, isRoundTrip, isRoundTripDirect, isMultiCity },
-  });
 
   return {
     isItinerary,
@@ -652,18 +665,6 @@ const normalizeFlightData = (flight) => {
     date: formatDateVN(processedFlight.arrivalTime),
   };
 
-  console.log("🔄 normalizeFlightData result:", {
-    id: processedFlight.id,
-    isMultiCity: processedFlight.isMultiCity,
-    isRoundTrip: processedFlight.isRoundTrip,
-    legsCount: processedFlight.legs?.length,
-    hasOutboundFlight: !!processedFlight.outboundFlight,
-    hasReturnFlight: !!processedFlight.returnFlight,
-    tripType: processedFlight.tripType,
-    from: processedFlight.from,
-    to: processedFlight.to,
-  });
-
   return processedFlight;
 };
 
@@ -837,26 +838,80 @@ const FlightDetail = () => {
   const [loading, setLoading] = useState(true);
   const [fareSelectionStep, setFareSelectionStep] = useState("outbound");
   const [_selectedFares, _setSelectedFares] = useState({});
+  const [routeReviews, setRouteReviews] = useState([]);
+  const [reviewsLoading, setReviewsLoading] = useState(false);
+  const [reviewsModalOpen, setReviewsModalOpen] = useState(false);
+  const [reviewFilter, setReviewFilter] = useState("all");
+  const [reviewSort, setReviewSort] = useState("newest");
+  const [reviewSearch, setReviewSearch] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(5);
+
+  // Filter and sort reviews for modal
+  const getFilteredAndSortedReviews = () => {
+    let filtered = [...routeReviews];
+
+    // Filter by rating
+    if (reviewFilter !== "all") {
+      const rating = parseInt(reviewFilter);
+      filtered = filtered.filter((review) => review.rating === rating);
+    }
+
+    // Filter by search term
+    if (reviewSearch.trim()) {
+      const searchTerm = reviewSearch.toLowerCase();
+      filtered = filtered.filter(
+        (review) =>
+          review.comment.toLowerCase().includes(searchTerm) ||
+          review.userName.toLowerCase().includes(searchTerm)
+      );
+    }
+
+    // Sort reviews
+    filtered.sort((a, b) => {
+      switch (reviewSort) {
+        case "newest":
+          return new Date(b.reviewDate) - new Date(a.reviewDate);
+        case "oldest":
+          return new Date(a.reviewDate) - new Date(b.reviewDate);
+        case "highest":
+          return b.rating - a.rating;
+        case "lowest":
+          return a.rating - b.rating;
+        default:
+          return 0;
+      }
+    });
+
+    return filtered;
+  };
+
+  // Get paginated reviews
+  const getPaginatedReviews = () => {
+    const filteredReviews = getFilteredAndSortedReviews();
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    return filteredReviews.slice(startIndex, endIndex);
+  };
+
+  // Get total pages
+  const getTotalPages = () => {
+    return Math.ceil(getFilteredAndSortedReviews().length / itemsPerPage);
+  };
+
+  // Reset to first page when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [reviewFilter, reviewSort, reviewSearch]);
 
   // Prepare data for FlightRouteMap component
   const prepareMapData = (flight) => {
-    console.log("🗺️ prepareMapData called with flight:", flight);
-
     if (!flight) {
-      console.log(
-        "🗺️ prepareMapData: flight is null/undefined, returning empty data"
-      );
       return { processedSearchData: null, legs: [], coordsMap: {} };
     }
 
     const flightType = detectFlightType(flight);
     const { isRoundTrip, isRoundTripDirect, isMultiCity } = flightType;
-
-    console.log("🗺️ prepareMapData: detected flight type:", {
-      isRoundTrip,
-      isRoundTripDirect,
-      isMultiCity,
-    });
 
     let processedSearchData = {
       tripType: isMultiCity
@@ -870,7 +925,6 @@ const FlightDetail = () => {
     let coordsMap = {};
 
     if (isMultiCity) {
-      console.log("🗺️ prepareMapData: processing multi-city flight");
       // Multi-city: each leg is a separate flight
       legs = flight.legs.map((leg, index) => ({
         flight: {
@@ -967,7 +1021,6 @@ const FlightDetail = () => {
         }
       });
     } else if (isRoundTrip) {
-      console.log("🗺️ prepareMapData: processing round-trip flight");
       // Round-trip: outbound and inbound legs
       const outboundFlight = flight.outboundFlight || flight.legs?.[0];
       const returnFlight = flight.returnFlight || flight.legs?.[1];
@@ -1127,7 +1180,6 @@ const FlightDetail = () => {
         }
       });
     } else {
-      console.log("🗺️ prepareMapData: processing one-way flight");
       // One-way flight
       legs = [
         {
@@ -1229,18 +1281,18 @@ const FlightDetail = () => {
       }
     }
 
-    console.log("🗺️ prepareMapData: final result:", {
-      processedSearchData,
-      legsCount: legs.length,
-      coordsCount: Object.keys(coordsMap).length,
-      legs: legs.map((leg) => ({
-        flightNumber: leg.flight?.flightNumber,
-        dep: leg.dep?.code,
-        arr: leg.arr?.code,
-        direction: leg.direction,
-      })),
-      coordsMap,
-    });
+    // console.log("🗺️ prepareMapData: final result:", {
+    //   processedSearchData,
+    //   legsCount: legs.length,
+    //   coordsCount: Object.keys(coordsMap).length,
+    //   legs: legs.map((leg) => ({
+    //     flightNumber: leg.flight?.flightNumber,
+    //     dep: leg.dep?.code,
+    //     arr: leg.arr?.code,
+    //     direction: leg.direction,
+    //   })),
+    //   coordsMap,
+    // });
 
     return { processedSearchData, legs, coordsMap };
   };
@@ -1261,49 +1313,21 @@ const FlightDetail = () => {
         // First try to get data from location state
         if (location.state && location.state.flight) {
           const flight = location.state.flight;
-          console.log("🚀 Flight data from location.state:", flight);
-          console.log(
-            "🚀 Is Multi-City?",
-            flight.isMultiCity || flight.isMultiCityDisplay
-          );
-          console.log("🚀 Legs count:", flight.legs?.length);
-          console.log("🚀 Original itinerary:", flight.originalItinerary);
 
           let flightToProcess = flight;
 
           // If flight has originalFlight, use that
           if (flight.originalFlight) {
             flightToProcess = flight.originalFlight;
-            console.log("🚀 Using originalFlight:", flightToProcess);
           }
 
           // If flight has originalItinerary, use that for multi-city
           if (flight.originalItinerary && flight.isMultiCity) {
             flightToProcess = flight.originalItinerary;
-            console.log(
-              "🚀 Using originalItinerary for multi-city:",
-              flightToProcess
-            );
           }
-
-          // Debug aircraft information
-          console.log("🛩️ Aircraft Debug Info:", {
-            rawFlight: flight.aircraft,
-            flightToProcess: flightToProcess.aircraft,
-            legs: flightToProcess.legs?.map((leg) => ({
-              aircraft: leg.aircraft,
-              aircraftName: leg.aircraftName,
-              seatLayout: leg.aircraft?.seatLayout,
-              totalSeats: leg.aircraft?.totalSeats,
-            })),
-            outbound: flightToProcess.outbound?.aircraft,
-            return: flightToProcess.return?.aircraft,
-            flight: flightToProcess.flight?.aircraft,
-          });
 
           // Transform flight data to match expected structure
           const transformedFlight = normalizeFlightData(flightToProcess);
-          console.log("🚀 Transformed flight data:", transformedFlight);
           setFlightData(transformedFlight);
           setLoading(false);
           return;
@@ -1311,8 +1335,6 @@ const FlightDetail = () => {
 
         // If no state data, try to fetch from API using flight ID
         if (id) {
-          console.log("Fetching flight data from API with ID:", id);
-
           try {
             const response = await flightApi.getFlightById(id);
 
@@ -1341,6 +1363,52 @@ const FlightDetail = () => {
 
     getFlightData();
   }, [id, location.state]);
+
+  // Fetch reviews for the route
+  useEffect(() => {
+    const fetchRouteReviews = async () => {
+      if (!flightData) return;
+
+      try {
+        setReviewsLoading(true);
+
+        // Get departure and arrival codes
+        let departureCode, arrivalCode;
+
+        if (flightData.isMultiCity && flightData.legs) {
+          // For multi-city, use the first leg's route
+          departureCode =
+            flightData.legs[0]?.departureAirport?.airportCode ||
+            flightData.legs[0]?.from;
+          arrivalCode =
+            flightData.legs[0]?.arrivalAirport?.airportCode ||
+            flightData.legs[0]?.to;
+        } else {
+          // For one-way or round-trip
+          departureCode =
+            flightData.departure?.code ||
+            flightData.departureAirport?.airportCode;
+          arrivalCode = flightData.arrivalAirport?.airportCode;
+        }
+
+        if (departureCode && arrivalCode) {
+          const response = await reviewApi.getReviewsByRoute(
+            departureCode,
+            arrivalCode
+          );
+
+          if (response.success && response.data) {
+            setRouteReviews(response.data);
+          }
+        }
+      } catch (error) {
+      } finally {
+        setReviewsLoading(false);
+      }
+    };
+
+    fetchRouteReviews();
+  }, [flightData]);
 
   // Load selected fares from localStorage when component mounts
   useEffect(() => {
@@ -1371,7 +1439,6 @@ const FlightDetail = () => {
     if (flightData?.isMultiCity) {
       // Multi-city uses individual segment selection now
       // This function is not used for multi-city anymore
-      console.log("Multi-city fare selection handled individually per segment");
     } else if (flightData?.isRoundTrip) {
       // Handle round-trip fare selection
       if (fareSelectionStep === "outbound") {
@@ -1395,20 +1462,6 @@ const FlightDetail = () => {
 
   const handleProceedToBooking = () => {
     try {
-      console.log("🚀 handleProceedToBooking - flightData:", flightData);
-      console.log("🚀 isMultiCity:", flightData?.isMultiCity);
-      console.log("🚀 legs:", flightData?.legs);
-      console.log("🚀 selectedFare:", selectedFare);
-      console.log("🚀 Aircraft Debug:", {
-        aircraft: flightData?.aircraft,
-        aircraftType: typeof flightData?.aircraft,
-        seatLayout: flightData?.aircraft?.seatLayout,
-        totalSeats: flightData?.aircraft?.totalSeats,
-        flightSeatLayout: flightData?.seatLayout,
-        flightTotalSeats: flightData?.totalSeats,
-        aircraftInfo: flightData?.aircraftInfo,
-      });
-
       let bookingData;
 
       if (flightData?.isMultiCity) {
@@ -1536,8 +1589,6 @@ const FlightDetail = () => {
           passengers: 1,
           bookingDate: formatDateTimeVN(new Date()),
         };
-
-        console.log("🚀 Multi-city bookingData created:", bookingData);
       } else if (flightData?.isRoundTrip) {
         // Handle round-trip booking
         if (!outboundFare || !returnFare) {
@@ -1897,7 +1948,6 @@ const FlightDetail = () => {
           <ArrowRight className="w-4 h-4 mr-2 rotate-180" />
           Quay lại
         </Button>
-
         {/* Flight Overview */}
         <Card className="mb-8">
           <CardHeader>
@@ -2178,15 +2228,13 @@ const FlightDetail = () => {
             )}
           </CardContent>
         </Card>
-
         {/* Main Content */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Flight Details */}
           <div className="lg:col-span-2">
             <Tabs defaultValue="details" className="w-full">
-              <TabsList className="grid w-full grid-cols-2">
+              <TabsList className="grid w-full grid-cols-1">
                 <TabsTrigger value="details">Chi tiết chuyến bay</TabsTrigger>
-                <TabsTrigger value="map">Bản đồ tuyến bay</TabsTrigger>
               </TabsList>
 
               <TabsContent value="details" className="mt-6">
@@ -2552,62 +2600,11 @@ const FlightDetail = () => {
                   </CardContent>
                 </Card>
               </TabsContent>
-
-              <TabsContent value="map" className="mt-6">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Bản đồ tuyến bay</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    {loading ? (
-                      <div className="flex items-center justify-center h-96">
-                        <div className="text-center">
-                          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-                          <p className="text-gray-600">
-                            Đang tải bản đồ tuyến bay...
-                          </p>
-                        </div>
-                      </div>
-                    ) : !flightData ? (
-                      <div className="flex items-center justify-center h-96">
-                        <div className="text-center">
-                          <Map className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                          <p className="text-gray-600">
-                            Không thể tải dữ liệu chuyến bay
-                          </p>
-                        </div>
-                      </div>
-                    ) : (
-                      (() => {
-                        const mapData = prepareMapData(flightData);
-                        console.log("🗺️ Map Data for FlightRouteMap:", {
-                          processedSearchData: mapData.processedSearchData,
-                          legsCount: mapData.legs.length,
-                          coordsCount: Object.keys(mapData.coordsMap).length,
-                          legs: mapData.legs,
-                          coordsMap: mapData.coordsMap,
-                        });
-                        return (
-                          <FlightRouteMap
-                            processedSearchData={mapData.processedSearchData}
-                            legs={mapData.legs}
-                            coordsMap={mapData.coordsMap}
-                            height="400px"
-                            showFlightPath={true}
-                            showAirportInfo={true}
-                            className="rounded-lg"
-                          />
-                        );
-                      })()
-                    )}
-                  </CardContent>
-                </Card>
-              </TabsContent>
             </Tabs>
           </div>
         </div>
         {/* Fare Selection */}
-        <div className="space-y-6 mt-10">
+        <div className="space-y-6 mt-10 mb-8">
           <Card>
             <CardHeader>
               <CardTitle>
@@ -3475,6 +3472,291 @@ const FlightDetail = () => {
               />
             )}
         </div>
+
+        {/* Route Reviews Section - Only show if there are reviews */}
+        {routeReviews.length > 0 && (
+          <Card className="mb-8 mt-">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle className="flex items-center gap-2">
+                  <Star className="h-5 w-5 text-yellow-500" />
+                  Đánh giá từ hành khách về tuyến bay này
+                </CardTitle>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setReviewsModalOpen(true);
+                    setCurrentPage(1);
+                  }}
+                  className="flex items-center gap-2"
+                >
+                  <Eye className="h-4 w-4" />
+                  Xem tất cả ({routeReviews.length})
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {reviewsLoading ? (
+                <div className="flex justify-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                </div>
+              ) : (
+                <Swiper
+                  modules={[Autoplay, Pagination]}
+                  spaceBetween={20}
+                  slidesPerView={1}
+                  breakpoints={{
+                    640: { slidesPerView: 2 },
+                    1024: { slidesPerView: 3 },
+                  }}
+                  autoplay={{
+                    delay: 3000,
+                    disableOnInteraction: false,
+                  }}
+                  pagination={{
+                    clickable: true,
+                    dynamicBullets: true,
+                  }}
+                  loop={routeReviews.length > 3}
+                  className="pb-8"
+                >
+                  {routeReviews.slice(0, 8).map((review) => (
+                    <SwiperSlide key={review.reviewId}>
+                      <div className="bg-gray-50 rounded-lg p-4 h-full">
+                        <div className="flex items-center gap-3 mb-3">
+                          <img
+                            src={review.userAvatar || "/placeholder-avatar.png"}
+                            alt={review.userName}
+                            className="w-10 h-10 rounded-full object-cover"
+                            onError={(e) => {
+                              e.target.src = "/placeholder-avatar.png";
+                            }}
+                          />
+                          <div>
+                            <p className="font-medium text-sm">
+                              {review.userName}
+                            </p>
+                            <div className="flex items-center gap-1">
+                              {[...Array(5)].map((_, i) => (
+                                <Star
+                                  key={i}
+                                  className={`h-3 w-3 ${
+                                    i < review.rating
+                                      ? "fill-yellow-400 text-yellow-400"
+                                      : "text-gray-300"
+                                  }`}
+                                />
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                        <p className="text-sm text-gray-700 line-clamp-3">
+                          {review.comment}
+                        </p>
+                        <p className="text-xs text-gray-500 mt-2">
+                          {new Date(review.reviewDate).toLocaleDateString(
+                            "vi-VN"
+                          )}
+                        </p>
+                      </div>
+                    </SwiperSlide>
+                  ))}
+                </Swiper>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Reviews Modal */}
+        {reviewsModalOpen && (
+          <>
+            {/* Overlay */}
+            <div
+              className="fixed inset-0 bg-black bg-opacity-50 z-40"
+              onClick={() => setReviewsModalOpen(false)}
+            />
+
+            {/* Modal */}
+            <div
+              className="fixed top-0 right-0 h-full w-1/3 bg-white border-l border-gray-200 shadow-2xl z-50 flex flex-col"
+              style={{
+                width: "33.333333%",
+                height: "100vh",
+              }}
+            >
+              {/* Header */}
+              <div className="p-6 border-b border-gray-200 flex-shrink-0">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Star className="h-5 w-5 text-yellow-500" />
+                    <h2 className="text-lg font-semibold">
+                      Tất cả đánh giá ({routeReviews.length})
+                    </h2>
+                  </div>
+                  <button
+                    onClick={() => setReviewsModalOpen(false)}
+                    className="p-1 hover:bg-gray-100 rounded-full transition-colors"
+                  >
+                    <X className="h-5 w-5 text-gray-500" />
+                  </button>
+                </div>
+              </div>
+
+              <div className="flex-1 overflow-hidden flex flex-col">
+                {/* Filters and Search */}
+                <div className="p-4 border-b bg-gray-50 space-y-3 flex-shrink-0">
+                  <div className="flex gap-2">
+                    <div className="flex-1">
+                      <Label className="text-xs text-gray-600 flex items-center gap-1">
+                        <Filter className="h-3 w-3" />
+                        Lọc theo sao
+                      </Label>
+                      <Select
+                        value={reviewFilter}
+                        onValueChange={setReviewFilter}
+                      >
+                        <SelectTrigger className="h-8 text-sm">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">Tất cả</SelectItem>
+                          <SelectItem value="5">5 sao</SelectItem>
+                          <SelectItem value="4">4 sao</SelectItem>
+                          <SelectItem value="3">3 sao</SelectItem>
+                          <SelectItem value="2">2 sao</SelectItem>
+                          <SelectItem value="1">1 sao</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="flex-1">
+                      <Label className="text-xs text-gray-600 flex items-center gap-1">
+                        <SortAsc className="h-3 w-3" />
+                        Sắp xếp
+                      </Label>
+                      <Select value={reviewSort} onValueChange={setReviewSort}>
+                        <SelectTrigger className="h-8 text-sm">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="newest">Mới nhất</SelectItem>
+                          <SelectItem value="oldest">Cũ nhất</SelectItem>
+                          <SelectItem value="highest">Sao cao nhất</SelectItem>
+                          <SelectItem value="lowest">Sao thấp nhất</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Reviews List */}
+                <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                  {getFilteredAndSortedReviews().length === 0 ? (
+                    <div className="text-center py-8 text-gray-500">
+                      <Star className="h-8 w-8 mx-auto mb-2 text-gray-300" />
+                      <p className="text-sm">Không tìm thấy đánh giá nào</p>
+                    </div>
+                  ) : (
+                    getPaginatedReviews().map((review) => (
+                      <div
+                        key={review.reviewId}
+                        className="bg-white border rounded-lg p-4 shadow-sm"
+                      >
+                        <div className="flex items-center gap-3 mb-3">
+                          <img
+                            src={review.userAvatar || "/placeholder-avatar.png"}
+                            alt={review.userName}
+                            className="w-10 h-10 rounded-full object-cover"
+                            onError={(e) => {
+                              e.target.src = "/placeholder-avatar.png";
+                            }}
+                          />
+                          <div className="flex-1">
+                            <p className="font-medium text-sm">
+                              {review.userName}
+                            </p>
+                            <div className="flex items-center gap-1">
+                              {[...Array(5)].map((_, i) => (
+                                <Star
+                                  key={i}
+                                  className={`h-3 w-3 ${
+                                    i < review.rating
+                                      ? "fill-yellow-400 text-yellow-400"
+                                      : "text-gray-300"
+                                  }`}
+                                />
+                              ))}
+                            </div>
+                          </div>
+                          <div className="text-xs text-gray-500">
+                            {new Date(review.reviewDate).toLocaleDateString(
+                              "vi-VN"
+                            )}
+                          </div>
+                        </div>
+                        <p className="text-sm text-gray-700 leading-relaxed">
+                          {review.comment}
+                        </p>
+                        {review.flightCode && (
+                          <div className="mt-2 text-xs text-gray-500">
+                            Chuyến bay: {review.flightCode}
+                          </div>
+                        )}
+                      </div>
+                    ))
+                  )}
+                </div>
+
+                {/* Pagination */}
+                {getTotalPages() > 1 && (
+                  <div className="border-t p-4 bg-gray-50 flex-shrink-0">
+                    <div className="flex items-center justify-end gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handlePageChange(currentPage - 1)}
+                        disabled={currentPage === 1}
+                        className="h-8 px-2"
+                      >
+                        <ChevronLeft className="h-4 w-4" />
+                      </Button>
+
+                      <div className="flex items-center gap-1">
+                        {Array.from(
+                          { length: getTotalPages() },
+                          (_, i) => i + 1
+                        ).map((page) => (
+                          <Button
+                            key={page}
+                            variant={
+                              currentPage === page ? "default" : "outline"
+                            }
+                            size="sm"
+                            onClick={() => handlePageChange(page)}
+                            className="h-8 w-8 p-0 text-xs"
+                          >
+                            {page}
+                          </Button>
+                        ))}
+                      </div>
+
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handlePageChange(currentPage + 1)}
+                        disabled={currentPage === getTotalPages()}
+                        className="h-8 px-2"
+                      >
+                        <ChevronRight className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </>
+        )}
       </div>
     </div>
   );

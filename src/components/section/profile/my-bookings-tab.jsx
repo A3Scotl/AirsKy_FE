@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
@@ -32,6 +33,7 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -45,10 +47,12 @@ import {
   MapPin,
   DollarSign,
   CreditCard,
+  Star,
 } from "lucide-react";
 import { userApi } from "@/apis/user-api";
 import { bookingApi } from "@/apis/booking-api";
 import { paymentApi } from "@/apis/payment-api";
+import { reviewApi } from "@/apis/review-api";
 import { useAuth } from "@/contexts/auth-context";
 import { formatCurrencyVND } from "@/utils/currency-utils";
 import { toast } from "sonner";
@@ -68,6 +72,14 @@ const MyBookingsTab = () => {
   const [error, setError] = useState(null);
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
   const [paymentError, setPaymentError] = useState(null);
+  const [bookingReviews, setBookingReviews] = useState([]);
+  const [myReview, setMyReview] = useState(null);
+  const [isReviewFormOpen, setIsReviewFormOpen] = useState(false);
+  const [reviewFormData, setReviewFormData] = useState({
+    rating: 5,
+    comment: "",
+  });
+  const [isSubmittingReview, setIsSubmittingReview] = useState(false);
   const itemsPerPage = 5;
 
   // Fetch bookings data
@@ -139,9 +151,34 @@ const MyBookingsTab = () => {
   };
 
   // Handle view booking details
-  const handleViewBooking = (booking) => {
+  const handleViewBooking = async (booking) => {
     setSelectedBooking(booking);
     setIsModalOpen(true);
+
+    // Fetch reviews for this booking
+    try {
+      const reviewsResponse = await reviewApi.getReviewsByBookingFlight(
+        booking.bookingId
+      );
+      if (reviewsResponse.success) {
+        setBookingReviews(reviewsResponse.data || []);
+      }
+
+      // Fetch user's review for this booking
+      const myReviewResponse = await reviewApi.getMyReviewForBooking(
+        booking.bookingId,
+        user.id
+      );
+      if (myReviewResponse.success && myReviewResponse.data) {
+        setMyReview(myReviewResponse.data);
+      } else {
+        setMyReview(null);
+      }
+    } catch (error) {
+      console.error("Error fetching reviews:", error);
+      setBookingReviews([]);
+      setMyReview(null);
+    }
   };
 
   // Handle cancel booking
@@ -248,6 +285,75 @@ const MyBookingsTab = () => {
     }
   };
 
+  // Check if booking is eligible for review
+  const isBookingEligibleForReview = (booking) => {
+    if (!booking) return false;
+
+    // Booking must be CONFIRMED
+    if (booking.status !== "CONFIRMED") return false;
+
+    // Payment must be COMPLETED
+    if (!booking.payment || booking.payment.status !== "COMPLETED")
+      return false;
+
+    // All passengers must have checkin COMPLETED
+    if (!booking.passengers || booking.passengers.length === 0) return false;
+
+    return booking.passengers.every(
+      (passenger) => passenger.checkinStatus === "COMPLETED"
+    );
+  };
+
+  // Handle create review
+  const handleCreateReview = async () => {
+    if (!selectedBooking || !user?.id) return;
+
+    setIsSubmittingReview(true);
+    try {
+      const reviewData = {
+        bookingId: selectedBooking.bookingId,
+        userId: user.id,
+        flightId: selectedBooking.flightId || selectedBooking.bookingId, // Assuming flightId is available or use bookingId
+        rating: reviewFormData.rating,
+        comment: reviewFormData.comment,
+        reviewDate: new Date().toISOString(),
+        isApproved: true,
+      };
+
+      const response = await reviewApi.createReview(reviewData);
+
+      if (response.success) {
+        toast.success("Đánh giá đã được gửi thành công!");
+        setIsReviewFormOpen(false);
+        setReviewFormData({ rating: 5, comment: "" });
+
+        // Refresh reviews
+        const reviewsResponse = await reviewApi.getReviewsByBookingFlight(
+          selectedBooking.bookingId
+        );
+        if (reviewsResponse.success) {
+          setBookingReviews(reviewsResponse.data || []);
+        }
+
+        // Refresh my review
+        const myReviewResponse = await reviewApi.getMyReviewForBooking(
+          selectedBooking.bookingId,
+          user.id
+        );
+        if (myReviewResponse.success && myReviewResponse.data) {
+          setMyReview(myReviewResponse.data);
+        }
+      } else {
+        toast.error(response.message || "Có lỗi xảy ra khi gửi đánh giá");
+      }
+    } catch (error) {
+      console.error("Error creating review:", error);
+      toast.error("Có lỗi xảy ra khi gửi đánh giá");
+    } finally {
+      setIsSubmittingReview(false);
+    }
+  };
+
   // Filter bookings based on search, status, and date range
   const filteredBookings = bookings.filter((booking) => {
     const matchesSearch =
@@ -329,9 +435,9 @@ const MyBookingsTab = () => {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Tất cả</SelectItem>
-                  <SelectItem value="CONFIRMED">Đã xác nhận</SelectItem>
-                  <SelectItem value="PENDING">Đang chờ</SelectItem>
-                  <SelectItem value="CANCELLED">Đã hủy</SelectItem>
+                  <SelectItem value="confirmed">Đã xác nhận</SelectItem>
+                  <SelectItem value="pending">Đang chờ</SelectItem>
+                  <SelectItem value="cancelled">Đã hủy</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -538,7 +644,6 @@ const MyBookingsTab = () => {
                       {selectedBooking.status}
                     </Badge>
                   </div>
-
                   {/* Flight Information */}
                   <Card>
                     <CardHeader>
@@ -651,7 +756,6 @@ const MyBookingsTab = () => {
                         )}
                     </CardContent>
                   </Card>
-
                   {/* Pricing Information */}
                   <Card>
                     <CardHeader>
@@ -747,7 +851,6 @@ const MyBookingsTab = () => {
                         )}
                     </CardContent>
                   </Card>
-
                   {/* Additional Information */}
                   <Card>
                     <CardHeader>
@@ -786,9 +889,125 @@ const MyBookingsTab = () => {
                       </div>
                     </CardContent>
                   </Card>
+                  {/* Reviews Section */}
+                  {selectedBooking.status !== "CANCELLED" && (
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="flex items-center justify-between">
+                          <span className="flex items-center gap-2">
+                            <Star className="h-5 w-5" />
+                            Đánh giá chuyến bay
+                          </span>
+                          {isBookingEligibleForReview(selectedBooking) &&
+                            !myReview && (
+                              <Button
+                                onClick={() => setIsReviewFormOpen(true)}
+                                size="sm"
+                                className="bg-blue-600 hover:bg-blue-700"
+                              >
+                                Viết đánh giá
+                              </Button>
+                            )}
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-4">
+                        {/* My Review */}
+                        {myReview && (
+                          <div className="border rounded-lg p-4 bg-blue-50">
+                            <div className="flex items-center justify-between mb-2">
+                              <h4 className="font-medium text-blue-900">
+                                Đánh giá của bạn
+                              </h4>
+                              <div className="flex items-center gap-1">
+                                {[...Array(5)].map((_, i) => (
+                                  <Star
+                                    key={i}
+                                    className={`h-4 w-4 ${
+                                      i < myReview.rating
+                                        ? "fill-yellow-400 text-yellow-400"
+                                        : "text-gray-300"
+                                    }`}
+                                  />
+                                ))}
+                              </div>
+                            </div>
+                            <p className="text-sm text-blue-800">
+                              {myReview.comment}
+                            </p>
+                            <p className="text-xs text-blue-600 mt-1">
+                              {new Date(myReview.reviewDate).toLocaleDateString(
+                                "vi-VN"
+                              )}
+                            </p>
+                          </div>
+                        )}
 
+                        {/* Other Reviews */}
+                        {bookingReviews.length > 0 && (
+                          <div className="space-y-3">
+                            <h4 className="font-medium">
+                              Đánh giá từ hành khách khác
+                            </h4>
+                            {bookingReviews
+                              .filter((review) => review.userId !== user?.id)
+                              .map((review) => (
+                                <div
+                                  key={review.reviewId}
+                                  className="border rounded-lg p-3"
+                                >
+                                  <div className="flex items-center justify-between mb-2">
+                                    <div className="flex items-center gap-1">
+                                      {[...Array(5)].map((_, i) => (
+                                        <Star
+                                          key={i}
+                                          className={`h-4 w-4 ${
+                                            i < review.rating
+                                              ? "fill-yellow-400 text-yellow-400"
+                                              : "text-gray-300"
+                                          }`}
+                                        />
+                                      ))}
+                                    </div>
+                                    <span className="text-xs text-gray-500">
+                                      {new Date(
+                                        review.reviewDate
+                                      ).toLocaleDateString("vi-VN")}
+                                    </span>
+                                  </div>
+                                  <p className="text-sm">{review.comment}</p>
+                                </div>
+                              ))}
+                          </div>
+                        )}
+
+                        {/* No reviews message */}
+                        {bookingReviews.length === 0 && !myReview && (
+                          <div className="text-center py-4 text-gray-500">
+                            <Star className="h-8 w-8 mx-auto mb-2 text-gray-300" />
+                            <p>Chưa có đánh giá nào cho chuyến bay này</p>
+                            {isBookingEligibleForReview(selectedBooking) && (
+                              <p className="text-sm mt-1">
+                                Hãy là người đầu tiên đánh giá!
+                              </p>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Eligibility message */}
+                        {!isBookingEligibleForReview(selectedBooking) &&
+                          !myReview && (
+                            <div className="text-center py-4 text-gray-500">
+                              <p className="text-sm">
+                                Bạn có thể đánh giá sau khi chuyến bay hoàn
+                                thành và check-in thành công
+                              </p>
+                            </div>
+                          )}
+                      </CardContent>
+                    </Card>
+                  )}{" "}
                   {/* Action Buttons */}
-                  <div className="flex gap-3 pt-4">
+                  {/* <div className="flex gap-3 pt-4">
                     {selectedBooking.status !== "CANCELLED" && (
                       <>
                         <Button variant="outline" className="flex-1">
@@ -802,11 +1021,90 @@ const MyBookingsTab = () => {
                     {selectedBooking.status === "CANCELLED" && (
                       <Button className="w-full">Đặt lại chuyến bay</Button>
                     )}
-                  </div>
+                  </div> */}
                 </div>
               )}
             </div>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Review Form Dialog */}
+      <Dialog open={isReviewFormOpen} onOpenChange={setIsReviewFormOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Đánh giá chuyến bay</DialogTitle>
+            <DialogDescription>
+              Chia sẻ trải nghiệm của bạn về chuyến bay này
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            {/* Rating */}
+            <div>
+              <Label className="text-sm font-medium">Đánh giá</Label>
+              <div className="flex items-center gap-1 mt-2">
+                {[1, 2, 3, 4, 5].map((star) => (
+                  <button
+                    key={star}
+                    type="button"
+                    onClick={() =>
+                      setReviewFormData((prev) => ({ ...prev, rating: star }))
+                    }
+                    className="focus:outline-none"
+                  >
+                    <Star
+                      className={`h-6 w-6 ${
+                        star <= reviewFormData.rating
+                          ? "fill-yellow-400 text-yellow-400"
+                          : "text-gray-300 hover:text-yellow-400"
+                      }`}
+                    />
+                  </button>
+                ))}
+                <span className="ml-2 text-sm text-gray-600">
+                  {reviewFormData.rating}/5
+                </span>
+              </div>
+            </div>
+
+            {/* Comment */}
+            <div>
+              <Label htmlFor="review-comment" className="text-sm font-medium">
+                Nhận xét
+              </Label>
+              <Textarea
+                id="review-comment"
+                placeholder="Chia sẻ trải nghiệm của bạn..."
+                value={reviewFormData.comment}
+                onChange={(e) =>
+                  setReviewFormData((prev) => ({
+                    ...prev,
+                    comment: e.target.value,
+                  }))
+                }
+                className="mt-2"
+                rows={4}
+              />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setIsReviewFormOpen(false)}
+              disabled={isSubmittingReview}
+            >
+              Hủy
+            </Button>
+            <Button
+              onClick={handleCreateReview}
+              disabled={isSubmittingReview || !reviewFormData.comment.trim()}
+              className="bg-blue-600 hover:bg-blue-700"
+            >
+              {isSubmittingReview ? "Đang gửi..." : "Gửi đánh giá"}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </>

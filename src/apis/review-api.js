@@ -82,12 +82,12 @@ export const reviewApi = {
   },
 
   /**
-   * Chấp nhận đánh giá
+   * Ẩn đánh giá
    * @param {number} id - ID của đánh giá
    * @returns {Promise<{ success: boolean, data?: any, message: string }>}
    */
-  approveReview: async (id) => {
-    return apiHandler("put", `/reviews/${id}/approve`);
+  hideReview: async (id) => {
+    return apiHandler("put", `/reviews/${id}/hide`);
   },
 
   /**
@@ -171,5 +171,40 @@ export const reviewApi = {
    */
   getReviewStats: async () => {
     return apiHandler("get", "/reviews/stats");
+  },
+
+  /**
+   * Lấy reviews theo chuyến bay của một booking
+   * @param {number} bookingId - ID của booking
+   * @returns {Promise<{ success: boolean, data?: any, message: string }>}
+   */
+  getReviewsByBookingFlight: async (bookingId) => {
+    return apiHandler("get", `/reviews/booking/${bookingId}`);
+  },
+
+  /**
+   * Lấy review request của user cho một booking cụ thể
+   * @param {number} bookingId - ID của booking
+   * @param {number} userId - ID của user
+   * @returns {Promise<{ success: boolean, data?: any, message: string }>}
+   */
+  getMyReviewForBooking: async (bookingId, userId) => {
+    return apiHandler(
+      "get",
+      `/reviews/booking/${bookingId}/my-review?userId=${userId}`
+    );
+  },
+
+  /**
+   * Lấy reviews theo tuyến bay (route: departureCode & arrivalCode)
+   * @param {string} departureCode - Mã sân bay khởi hành
+   * @param {string} arrivalCode - Mã sân bay đến
+   * @returns {Promise<{ success: boolean, data?: any, message: string }>}
+   */
+  getReviewsByRoute: async (departureCode, arrivalCode) => {
+    return apiHandler(
+      "get",
+      `/reviews/route?departureCode=${departureCode}&arrivalCode=${arrivalCode}`
+    );
   },
 };
