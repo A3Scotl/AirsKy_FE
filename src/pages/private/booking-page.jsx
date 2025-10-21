@@ -134,13 +134,19 @@ const AdminBookings = () => {
     const fetchBookings = async () => {
       setState(prev => ({ ...prev, loading: true }));
       try {
-        const response = await bookingApi.getAllBookings();
+        const response = await bookingApi.getAllBookings({
+          page: state.currentPage - 1,
+          size: state.itemsPerPage,
+        });
+        
         if (response.success) {
           const mappedBookings = response.data.content.map((booking) => ({
             id: booking.bookingId,
             bookingRef: `BK${booking.bookingId.toString().padStart(4, "0")}`,
-            customer: booking.userEmail ? booking.userEmail.split("@")[0] : "Unknown",
-            email: booking.userEmail || "N/A",
+            // customer: booking.contactName || "Unknow",
+            contactName: booking.contactName || "N/A",
+            contactEmail: booking.contactEmail || "N/A",
+            // email: booking.contactEmail || "N/A",
             route: booking.flightNumber,
             departure: booking.bookingDate,
             passengers: booking.passengers.length,
@@ -160,10 +166,7 @@ const AdminBookings = () => {
             isRefundable: booking.travelClassDetails?.refundable || false,
             isChangeable: booking.travelClassDetails?.changeable || false,
           }));
-          // Sort by newest booking first
-          mappedBookings.sort(
-            (a, b) => new Date(b.bookingDate) - new Date(a.bookingDate)
-          );
+          // Không cần sort ở client vì BE đã sắp xếp sẵn
           setState(prev => ({ ...prev, bookings: mappedBookings, loading: false }));
         } else {
           toast.error("Không thể tải danh sách đặt vé");
@@ -177,7 +180,7 @@ const AdminBookings = () => {
     };
 
     fetchBookings();
-  }, []);
+  }, [state.currentPage, state.itemsPerPage]);
 
   const getStatusBadge = (status) => {
     const variants = {
@@ -240,9 +243,9 @@ const AdminBookings = () => {
   const filteredBookings = useMemo(() => {
     return state.bookings.filter((booking) => {
       const searchFields = [
-        booking.customer,
+        booking.contactName,
         booking.bookingRef,
-        booking.email,
+        booking.contactEmail,
         booking.route,
         booking.status,
         booking.class,
@@ -288,7 +291,6 @@ const AdminBookings = () => {
     (state.currentPage - 1) * state.itemsPerPage,
     state.currentPage * state.itemsPerPage
   );
-
   return (
     <div className="space-y-6">
       {/* Page Header */}
@@ -351,9 +353,9 @@ const AdminBookings = () => {
                       </TableCell>
                       <TableCell>
                         <div>
-                          <div className="font-medium">{booking.customer}</div>
+                          <div className="font-medium">{booking.contactName}</div>
                           <div className="text-sm text-gray-500">
-                            {booking.email}
+                            {booking.contactEmail}
                           </div>
                         </div>
                       </TableCell>

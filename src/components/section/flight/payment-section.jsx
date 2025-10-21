@@ -1450,6 +1450,8 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
         userId: user?.id || null,
         totalAmount: finalAmount,
         passengers: [], // Will be populated with seatAssignments
+        contactName: formData.contactName,
+        contactEmail: formData.contactEmail,
         flightSegments: [],
         ancillaryServices: [],
         paymentMethod: currentPaymentMethod,

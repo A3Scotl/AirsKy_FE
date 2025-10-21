@@ -84,7 +84,6 @@ export function FlightSearchResults() {
       loadAllFlights();
     }
   }, [flightsLoaded, loading]);
-
   useEffect(() => {
     if (
       allFlights.length > 0 &&
@@ -477,6 +476,7 @@ export function FlightSearchResults() {
       setError(null);
 
       const response = await flightApi.getAllFlights({ size: 100 });
+
 
       if (response.success && response.data?.content) {
         setAllFlights(response.data.content);
@@ -1273,6 +1273,7 @@ export function FlightSearchResults() {
       return true;
     });
 
+
     const hasSearchResults = tripTypeFilter && allItineraries.length > 0;
     const hasMultiCityResults = allItineraries.some(
       (itinerary) => itinerary.tripType === "MULTI_CITY"
@@ -1417,6 +1418,8 @@ export function FlightSearchResults() {
     startIndex,
     startIndex + FLIGHTS_PER_PAGE
   );
+  console.log(filteredAndSortedItineraries);
+
 
   const handlePageChange = useCallback(
     (page) => {

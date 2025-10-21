@@ -44,6 +44,29 @@ import {
   createColumnHelper,
 } from "@tanstack/react-table";
 
+const PaymentTableSkeleton = ({ rows = 10 }) => (
+  <Table>
+    <TableHeader>
+      <TableRow>
+        {Array.from({ length: 7 }).map((_, i) => (
+          <TableHead key={i}>
+            <div className="h-5 w-full bg-gray-200 rounded animate-pulse" />
+          </TableHead>
+        ))}
+      </TableRow>
+    </TableHeader>
+    <TableBody>
+      {Array.from({ length: rows }).map((_, i) => (
+        <TableRow key={i}>
+          {Array.from({ length: 7 }).map((_, j) => (
+            <TableCell key={j}><div className="h-5 w-full bg-gray-200 rounded animate-pulse" /></TableCell>
+          ))}
+        </TableRow>
+      ))}
+    </TableBody>
+  </Table>
+);
+
 const PaymentTable = ({
   searchTerm,
   statusFilter,
@@ -57,7 +80,8 @@ const PaymentTable = ({
   limit,
   showActions = true,
 }) => {
-  const [allPayments, setAllPayments] = useState([]);
+  const [data, setData] = useState([]);
+  const [pageCount, setPageCount] = useState(0);
   const [loading, setLoading] = useState(true);
 
   // TanStack Table states
@@ -75,88 +99,36 @@ const PaymentTable = ({
   const fetchPayments = useCallback(async () => {
     setLoading(true);
     try {
-      // Fetch all payments for client-side filtering
       const params = {
-        page: 0,
-        size: 1000, // Fetch large amount for client-side filtering
+        page: pagination.pageIndex,
+        size: pagination.pageSize,
+        sortBy: sorting[0]?.id || 'paymentDate',
+        sortDir: sorting[0]?.desc ? 'desc' : 'asc',
+        search: searchTerm,
+        status: statusFilter !== 'all' ? statusFilter : undefined,
+        paymentMethod: methodFilter !== 'all' ? methodFilter : undefined,
+        startDate: dateRange === 'custom' && startDate ? startDate.toISOString().split("T")[0] : undefined,
+        endDate: dateRange === 'custom' && endDate ? endDate.toISOString().split("T")[0] : undefined,
       };
 
       const response = await paymentApi.getAllPayments(params);
 
       if (response.success) {
-        setAllPayments(response.data.content || response.data || []);
+        setData(response.data.content || []);
+        setPageCount(response.data.totalPages || 0);
       } else {
         console.error("Failed to fetch payments:", response.message);
-        setAllPayments([]);
+        setData([]);
         toast.error("Không thể tải danh sách thanh toán");
       }
     } catch (error) {
       console.error("Error fetching payments:", error);
-      setAllPayments([]);
+      setData([]);
       toast.error("Lỗi khi tải danh sách thanh toán");
     } finally {
       setLoading(false);
     }
-  }, [refreshKey]);
-
-  // Client-side filtering logic
-  const filteredPayments = useMemo(() => {
-    let filtered = [...allPayments];
-
-    // Search filter
-    if (searchTerm) {
-      filtered = filtered.filter(
-        (payment) =>
-          payment.paymentId?.toString().includes(searchTerm) ||
-          payment.bookingId?.toString().includes(searchTerm)
-      );
-    }
-
-    // Status filter
-    if (statusFilter && statusFilter !== "all") {
-      filtered = filtered.filter((payment) => payment.status === statusFilter);
-    }
-
-    // Method filter
-    if (methodFilter && methodFilter !== "all") {
-      filtered = filtered.filter(
-        (payment) => payment.paymentMethod === methodFilter
-      );
-    }
-
-    // Date filter
-    if (dateRange !== "all") {
-      const now = new Date();
-      let startFilterDate, endFilterDate;
-
-      if (dateRange === "custom" && startDate && endDate) {
-        startFilterDate = startDate;
-        endFilterDate = endDate;
-      } else if (dateRange !== "custom") {
-        const days = parseInt(dateRange);
-        endFilterDate = new Date();
-        startFilterDate = new Date();
-        startFilterDate.setDate(endFilterDate.getDate() - days);
-      }
-
-      if (startFilterDate && endFilterDate) {
-        filtered = filtered.filter((payment) => {
-          const paymentDate = new Date(payment.paymentDate);
-          return paymentDate >= startFilterDate && paymentDate <= endFilterDate;
-        });
-      }
-    }
-
-    return filtered;
-  }, [
-    allPayments,
-    searchTerm,
-    statusFilter,
-    methodFilter,
-    dateRange,
-    startDate,
-    endDate,
-  ]);
+  }, [pagination.pageIndex, pagination.pageSize, sorting, searchTerm, statusFilter, methodFilter, dateRange, startDate, endDate, refreshKey]);
 
   useEffect(() => {
     fetchPayments();
@@ -300,30 +272,22 @@ const PaymentTable = ({
     [onViewDetails, onRefund]
   );
 
-  // Reset page to 0 on filter changes to avoid empty pages
-  useEffect(() => {
-    setPagination((prev) => ({ ...prev, pageIndex: 0 }));
-  }, [searchTerm, statusFilter, methodFilter, dateRange, startDate, endDate]);
-
-  // Get paginated data manually
-  const paginatedData = useMemo(() => {
-    const startIndex = pagination.pageIndex * pagination.pageSize;
-    const endIndex = startIndex + pagination.pageSize;
-    return filteredPayments.slice(startIndex, endIndex);
-  }, [filteredPayments, pagination.pageIndex, pagination.pageSize]);
-
   // Create table instance with paginated data
   const table = useReactTable({
-    data: paginatedData,
+    data,
     columns,
+    pageCount,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
+    onPaginationChange: setPagination,
     onSortingChange: setSorting,
     onRowSelectionChange: setRowSelection,
     state: {
       sorting,
       rowSelection,
+      pagination,
     },
+    manualPagination: true,
     enableRowSelection: true,
   });
 
@@ -422,51 +386,42 @@ const PaymentTable = ({
 
       {/* Table */}
       <div className="border rounded-lg overflow-hidden">
-        <Table>
-          <TableHeader>
-            {table.getHeaderGroups().map((headerGroup) => (
-              <TableRow key={headerGroup.id} className="bg-gray-50">
-                {headerGroup.headers.map((header) => (
-                  <TableHead
-                    key={header.id}
-                    className={
-                      header.column.getCanSort()
-                        ? "cursor-pointer hover:bg-gray-50 select-none"
-                        : ""
-                    }
-                    onClick={header.column.getToggleSortingHandler()}
-                  >
-                    {header.isPlaceholder ? null : (
-                      <div className="flex items-center gap-2">
-                        {flexRender(
-                          header.column.columnDef.header,
-                          header.getContext()
-                        )}
-                        {{
-                          asc: "↑",
-                          desc: "↓",
-                        }[header.column.getIsSorted()] ?? null}
-                      </div>
-                    )}
-                  </TableHead>
-                ))}
-              </TableRow>
-            ))}
-          </TableHeader>
-          <TableBody>
-            {loading ? (
-              <TableRow>
-                <TableCell
-                  colSpan={columns.length}
-                  className="text-center py-8"
-                >
-                  <div className="flex items-center justify-center space-x-2">
-                    <RefreshCw className="h-4 w-4 animate-spin" />
-                    <span>Đang tải...</span>
-                  </div>
-                </TableCell>
-              </TableRow>
-            ) : table.getRowModel().rows?.length ? (
+        {loading ? (
+          <PaymentTableSkeleton rows={pagination.pageSize} />
+        ) : (
+          <Table>
+            <TableHeader>
+              {table.getHeaderGroups().map((headerGroup) => (
+                <TableRow key={headerGroup.id} className="bg-gray-50">
+                  {headerGroup.headers.map((header) => (
+                    <TableHead
+                      key={header.id}
+                      className={
+                        header.column.getCanSort()
+                          ? "cursor-pointer hover:bg-gray-50 select-none"
+                          : ""
+                      }
+                      onClick={header.column.getToggleSortingHandler()}
+                    >
+                      {header.isPlaceholder ? null : (
+                        <div className="flex items-center gap-2">
+                          {flexRender(
+                            header.column.columnDef.header,
+                            header.getContext()
+                          )}
+                          {{
+                            asc: "↑",
+                            desc: "↓",
+                          }[header.column.getIsSorted()] ?? null}
+                        </div>
+                      )}
+                    </TableHead>
+                  ))}
+                </TableRow>
+              ))}
+            </TableHeader>
+            <TableBody>
+              {table.getRowModel().rows?.length ? (
               table.getRowModel().rows.map((row) => (
                 <TableRow
                   key={row.id}
@@ -482,27 +437,28 @@ const PaymentTable = ({
                   ))}
                 </TableRow>
               ))
-            ) : (
-              <TableRow>
-                <TableCell
-                  colSpan={columns.length}
-                  className="text-center py-8 text-gray-500"
-                >
-                  Không có thanh toán nào
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
+              ) : (
+                <TableRow>
+                  <TableCell
+                    colSpan={columns.length}
+                    className="text-center py-8 text-gray-500"
+                  >
+                    Không có thanh toán nào
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        )}
       </div>
 
       {/* Pagination */}
-      {filteredPayments.length > 0 && (
+      {!loading && data.length > 0 && (
         <Pagination
           currentPage={pagination.pageIndex + 1}
-          totalPages={Math.ceil(filteredPayments.length / pagination.pageSize)}
+          totalPages={pageCount}
           itemsPerPage={pagination.pageSize}
-          totalItems={filteredPayments.length}
+          totalItems={pageCount * pagination.pageSize} // This is an approximation
           onPageChange={(page) =>
             setPagination((prev) => ({ ...prev, pageIndex: page - 1 }))
           }

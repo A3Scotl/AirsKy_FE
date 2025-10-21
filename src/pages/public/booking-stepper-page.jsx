@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import SEO from "@/components/common/seo";
 import Stepper from "@/lib/Stepper";
 import PassengerDetails from "@/components/section/flight/passenger-detail-section";
@@ -12,6 +12,16 @@ import Payment from "@/components/section/flight/payment-section";
 import PropTypes from "prop-types";
 import { Badge } from "@/components/ui/badge";
 import { toast, Toaster } from "sonner";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 const steps = [
   { title: "Chọn chuyến bay" },
@@ -23,6 +33,17 @@ const steps = [
 import { formatCurrencyVND } from "@/utils/currency-utils";
 
 const FlightInfo = ({ flightDetails, fare }) => {
+  // Helper to get airport code
+  const getAirportCode = (airport) => {
+    if (!airport) return "N/A";
+    return airport.airportCode || airport.code || "N/A";
+  };
+
+  // Helper to get airport name
+  const getAirportName = (airport) => {
+    if (!airport) return "N/A";
+    return airport.airportName || airport.name || "N/A";
+  };
   // Check flight type
   const isRoundTrip = flightDetails.type === "ROUND_TRIP";
   const isMultiCity =
@@ -37,14 +58,8 @@ const FlightInfo = ({ flightDetails, fare }) => {
       flightDetails.multiCity?.segments ||
       legs.length;
     const routeInfo =
-      flightDetails.multiCity?.routeInfo ||
-      legs.map((leg) => leg.from || leg.departureAirport?.code).join(" → ") +
-        (legs.length > 0
-          ? ` → ${
-              legs[legs.length - 1].to ||
-              legs[legs.length - 1].arrivalAirport?.code
-            }`
-          : "");
+      legs.map((leg) => getAirportCode(leg.departureAirport)).join(" → ") +
+      (legs.length > 0 ? ` → ${getAirportCode(legs[legs.length - 1].arrivalAirport)}` : "");
 
     return (
       <div className="my-6 sm:my-8 space-y-4">
@@ -86,21 +101,10 @@ const FlightInfo = ({ flightDetails, fare }) => {
               </div>
               <div className="text-sm space-y-1">
                 <div className="font-medium">
-                  {leg.from ||
-                    leg.departureAirport?.code ||
-                    leg.departureAirport?.airportCode ||
-                    "N/A"}{" "}
-                  →{" "}
-                  {leg.to ||
-                    leg.arrivalAirport?.code ||
-                    leg.arrivalAirport?.airportCode ||
-                    "N/A"}
+                  {getAirportCode(leg.departureAirport)} → {getAirportCode(leg.arrivalAirport)}
                 </div>
                 <div className="text-gray-600">
-                  {leg.departureAirport?.name ||
-                    leg.departureAirport?.airportName}{" "}
-                  →{" "}
-                  {leg.arrivalAirport?.name || leg.arrivalAirport?.airportName}
+                  {getAirportName(leg.departureAirport)} → {getAirportName(leg.arrivalAirport)}
                 </div>
                 <div className="text-gray-600">
                   {leg.departureDate || "N/A"}
@@ -170,8 +174,7 @@ const FlightInfo = ({ flightDetails, fare }) => {
             </div>
             <div className="text-sm space-y-1">
               <div className="font-medium">
-                {flightDetails.outbound?.from || "N/A"} →{" "}
-                {flightDetails.outbound?.arrivalAirport?.code || "N/A"}
+                {getAirportCode(flightDetails.outbound?.departureAirport)} → {getAirportCode(flightDetails.outbound?.arrivalAirport)}
               </div>
               <div className="text-gray-600">
                 {flightDetails.outbound?.departureDate || "N/A"}
@@ -200,8 +203,7 @@ const FlightInfo = ({ flightDetails, fare }) => {
             </div>
             <div className="text-sm space-y-1">
               <div className="font-medium">
-                {flightDetails.return?.from || "N/A"} →{" "}
-                {flightDetails.return?.arrivalAirport?.code || "N/A"}
+                {getAirportCode(flightDetails.return?.departureAirport)} → {getAirportCode(flightDetails.return?.arrivalAirport)}
               </div>
               <div className="text-gray-600">
                 {flightDetails.return?.departureDate || "N/A"}
@@ -253,10 +255,7 @@ const FlightInfo = ({ flightDetails, fare }) => {
         </div>
         <div className="text-sm space-y-1">
           <div className="font-medium">
-            {flightDetails.flight?.from || "N/A"} →{" "}
-            {flightDetails.flight?.to ||
-              flightDetails.flight?.arrivalAirport?.code ||
-              "N/A"}
+            {getAirportCode(flightDetails.flight?.departureAirport)} → {getAirportCode(flightDetails.flight?.arrivalAirport)}
           </div>
           <div className="text-gray-600">
             {flightDetails.flight?.departureDate || "N/A"}
@@ -274,16 +273,80 @@ const FlightInfo = ({ flightDetails, fare }) => {
   );
 };
 
+// --- BẮT ĐẦU: CÁC HÀM TIỆN ÍCH (Bạn có thể đặt trong file utils) ---
+
+// Hàm tính tuổi (cần thiết cho validation)
+const getAge = (dob, referenceDate = new Date()) => {
+  if (!dob) return null;
+  const refDate = new Date(referenceDate);
+  let age = refDate.getFullYear() - dob.getFullYear();
+  const m = refDate.getMonth() - dob.getMonth();
+  if (m < 0 || (m === 0 && refDate.getDate() < dob.getDate())) {
+    age--;
+  }
+  return age;
+};
+
+// Hàm xác thực dữ liệu form
+const validateForm = (formData, flightType, departureDate) => {
+  const errors = { passengers: {} };
+  let isValid = true;
+
+  // 1. Xác thực thông tin liên hệ
+
+  if (!formData.contactEmail) {
+    errors.contactEmail = "Email liên hệ là bắt buộc.";
+    isValid = false;
+  } else if (!/\S+@\S+\.\S+/.test(formData.contactEmail)) {
+    errors.contactEmail = "Email không hợp lệ.";
+  }
+ 
+  // 2. Xác thực thông tin từng hành khách
+  formData.passengers.forEach((p, index) => {
+    const passengerErrors = {};
+    if (!p.firstName?.trim()) passengerErrors.firstName = "Tên là bắt buộc.";
+    if (!p.dob) passengerErrors.dateOfBirth = "Ngày sinh là bắt buộc.";
+    if (!p.gender) passengerErrors.gender = "Giới tính là bắt buộc.";
+
+    const age = getAge(p.dob, departureDate);
+    const isInternational = flightType === "INTERNATIONAL";
+
+    if (!isInternational && age >= 14) {
+      if (!p.passportNumber) {
+        passengerErrors.passportNumber = "CCCD là bắt buộc cho người từ 14 tuổi.";
+      } else if (!/^\d{12}$/.test(p.passportNumber)) {
+        passengerErrors.passportNumber = "CCCD phải có đúng 12 chữ số.";
+      }
+    }
+
+    if (Object.keys(passengerErrors).length > 0) {
+      errors.passengers[`passenger_${index}`] = passengerErrors;
+      isValid = false;
+    }
+  });
+
+  return { isValid, errors };
+};
+
 function FlightBookingStepper() {
   const [flight, setFlight] = useState({});
   const [fare, setFare] = useState({});
   const [currentStep, setCurrentStep] = useState(2);
   const [formData, setFormData] = useState({
+    contactName: "", contactEmail: "", contactPhone: "",
     passengers: [],
   });
+
   const [extrasData, setExtrasData] = useState({});
   const [validationErrors, setValidationErrors] = useState({});
-  const [isStepValid, setIsStepValid] = useState(false);
+  const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
+
+  // Scroll to top when step changes
+  useEffect(
+    () => { window.scrollTo({ top: 0, behavior: "smooth" }); },
+    [currentStep]
+  );
+
   // Determine flight type based on departure and arrival airports
   const getFlightType = () => {
     if (!flight.departureAirport || !flight.arrivalAirport) return "DOMESTIC";
@@ -299,14 +362,29 @@ function FlightBookingStepper() {
 
   useEffect(() => {
     // Lấy dữ liệu từ localStorage theo cấu trúc mới
+    const flightId = flight.flightId || "defaultFlight";
+    const localStorageKey = `passengerFormData_${flightId}`;
     const storedFlight = localStorage.getItem("selectedFlight");
-    const storedSearchCriteria = localStorage.getItem("searchCriteria");
+    const storedFormData = localStorage.getItem(localStorageKey);
 
     console.log("Loading data from localStorage:", {
       flight: storedFlight,
-      searchCriteria: storedSearchCriteria,
+      formData: storedFormData,
     });
 
+    if (storedFormData) {
+      try {
+        const parsedData = JSON.parse(storedFormData);
+        // Chuyển đổi chuỗi ngày sinh thành đối tượng Date
+        parsedData.passengers = parsedData.passengers.map((p) => ({
+          ...p,
+          dob: p.dob ? new Date(p.dob) : null,
+        }));
+        setFormData(parsedData);
+      } catch (error) {
+        console.error("Error parsing stored form data:", error);
+      }
+    }
     // Set flight data
     if (
       storedFlight &&
@@ -355,301 +433,54 @@ function FlightBookingStepper() {
       }
     }
 
-    // Initialize passengers based on search criteria or default to 1 adult
-    const passengers = [];
-
-    if (
-      storedSearchCriteria &&
-      storedSearchCriteria !== "undefined" &&
-      storedSearchCriteria !== "null"
-    ) {
-      try {
-        // From search: create passengers based on search criteria
-        const searchCriteria = JSON.parse(storedSearchCriteria);
-
-        // Add adults
-        for (let i = 0; i < (searchCriteria.passengers?.adults || 1); i++) {
-          passengers.push({
-            type: "ADULT",
-            fullName: "",
-            dob: null,
-            gender: "",
-            phone: "",
-            email: "",
-            passport: "",
-            frequentFlyer: "",
-          });
+    // Initialize passengers if formData is empty
+    if (!storedFormData) {
+      const storedSearchCriteria = localStorage.getItem("searchCriteria");
+      const passengers = [];
+      if (storedSearchCriteria) {
+        try {
+          const searchCriteria = JSON.parse(storedSearchCriteria);
+          for (let i = 0; i < (searchCriteria.passengers?.adults || 1); i++) passengers.push({ type: "ADULT" });
+          for (let i = 0; i < (searchCriteria.passengers?.children || 0); i++) passengers.push({ type: "CHILD" });
+          for (let i = 0; i < (searchCriteria.passengers?.infants || 0); i++) passengers.push({ type: "INFANT" });
+        } catch (e) {
+          passengers.push({ type: "ADULT" });
         }
-
-        // Add children
-        for (let i = 0; i < (searchCriteria.passengers?.children || 0); i++) {
-          passengers.push({
-            type: "CHILD",
-            fullName: "",
-            dob: null,
-            gender: "",
-            passport: "",
-            frequentFlyer: "",
-          });
-        }
-
-        // Add infants
-        for (let i = 0; i < (searchCriteria.passengers?.infants || 0); i++) {
-          passengers.push({
-            type: "INFANT",
-            fullName: "",
-            dob: null,
-            gender: "",
-            passport: "",
-            frequentFlyer: "",
-          });
-        }
-      } catch (error) {
-        console.error("Error parsing search criteria:", error);
-        // Fallback to default 1 adult
-        passengers.push({
-          type: "ADULT",
-          fullName: "",
-          dob: null,
-          gender: "",
-          phone: "",
-          email: "",
-          passport: "",
-          frequentFlyer: "",
-        });
+      } else {
+        passengers.push({ type: "ADULT" });
       }
-    } else {
-      // From flight list: default to 1 adult based on flight type
-      passengers.push({
-        type: "ADULT",
-        fullName: "",
-        dob: null,
-        gender: "",
-        phone: "",
-        email: "",
-        passport: flightType === "INTERNATIONAL" ? "" : null,
-        frequentFlyer: "",
-      });
-    }
-
-    if (passengers.length > 0) {
-      setFormData((prev) => ({ ...prev, passengers }));
-    }
-
-    if (passengers.length > 0) {
       setFormData((prev) => ({ ...prev, passengers }));
     }
   }, []);
 
-  // Validate current step whenever formData changes
-  useEffect(() => {
-    validateCurrentStepRealtime();
-  }, [formData, currentStep, flightType]);
-
-  // Validate email format
-  const validateEmail = (email) => {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return emailRegex.test(email);
-  };
-
-  // Validate phone format (Vietnam)
-  const validatePhone = (phone) => {
-    const phoneRegex = /^(\+84|84|0)[3-9]\d{8}$/;
-    return phoneRegex.test(phone);
-  };
-
-  // Real-time validation for current step
-  const validateCurrentStepRealtime = () => {
-    const errors = {};
-    let isValid = true;
-
-    switch (currentStep) {
-      case 2: // Passenger Details
-        // Check passengers
-        if (!formData.passengers || formData.passengers.length === 0) {
-          errors.passengers = "Cần ít nhất 1 hành khách";
-          isValid = false;
-        } else {
-          formData.passengers.forEach((passenger, index) => {
-            const passengerErrors = {};
-
-            if (!passenger.firstName?.trim()) {
-              passengerErrors.firstName = "Tên không được để trống";
-              isValid = false;
-            }
-
-            if (!passenger.lastName?.trim()) {
-              passengerErrors.lastName = "Họ không được để trống";
-              isValid = false;
-            }
-
-            if (!passenger.dob) {
-              passengerErrors.dateOfBirth = "Ngày sinh không được để trống";
-              isValid = false;
-            }
-
-            if (!passenger.gender) {
-              passengerErrors.gender = "Vui lòng chọn giới tính";
-              isValid = false;
-            }
-
-            // For international flights, passport is required
-            if (flightType === "INTERNATIONAL" && !passenger.passport?.trim()) {
-              passengerErrors.passport =
-                "Số hộ chiếu bắt buộc cho chuyến bay quốc tế";
-              isValid = false;
-            }
-
-            if (Object.keys(passengerErrors).length > 0) {
-              errors[`passenger_${index}`] = passengerErrors;
-            }
-          });
-        }
-
-        // // Check contact information
-        // if (!formData.contactInfo?.email?.trim()) {
-        //   errors.contactEmail = "Email liên hệ không được để trống";
-        //   isValid = false;
-        // } else if (!validateEmail(formData.contactInfo.email)) {
-        //   errors.contactEmail = "Email không đúng định dạng";
-        //   isValid = false;
-        // }
-
-        // if (!formData.contactInfo?.phone?.trim()) {
-        //   errors.contactPhone = "Số điện thoại không được để trống";
-        //   isValid = false;
-        // } else if (!validatePhone(formData.contactInfo.phone)) {
-        //   errors.contactPhone = "Số điện thoại không đúng định dạng";
-        //   isValid = false;
-        // }
-
-        break;
-
-      case 3: // Extras
-        // Extras step is optional, always valid
-        isValid = true;
-        break;
-
-      default:
-        isValid = true;
-        break;
+  const proceedToNextStep = () => {
+    // Logic to actually change the step
+    if (currentStep < steps.length) {
+      setCurrentStep(currentStep + 1);
     }
-
-    setValidationErrors(errors);
-    setIsStepValid(isValid);
-    return isValid;
-  };
-
-  const validateCurrentStep = () => {
-    const isValid = validateCurrentStepRealtime();
-
-    if (!isValid) {
-      // Show toast with first error
-      const firstError = Object.values(validationErrors).find((error) =>
-        typeof error === "string" ? error : Object.values(error)[0]
-      );
-
-      if (typeof firstError === "string") {
-        toast.error(firstError);
-      } else if (typeof firstError === "object") {
-        const nestedError = Object.values(firstError)[0];
-        toast.error(nestedError);
-      }
-    }
-
-    return isValid;
+    setIsConfirmModalOpen(false);
   };
 
   const handleNext = () => {
-    if (validateCurrentStep() && currentStep < steps.length) {
-      // Auto-assign seats when leaving Extras step (step 3) if user hasn't selected all seats
-      if (currentStep === 3 && extrasData) {
-        const { selectedSeats, selectedReturnSeats } = extrasData;
-        const isRoundTrip = flight.type === "ROUND_TRIP";
+    switch (currentStep) {
+      case 2: // Passenger Details
+        const { isValid, errors } = validateForm(formData, flightType, flight.departureDate);
+        setValidationErrors(errors || {});
 
-        // Check if auto-assignment is needed for outbound seats
-        const needsOutboundAssignment = formData.passengers?.some(
-          (_, index) => {
-            const passengerKey = `passenger${index + 1}`;
-            const existingSeat = selectedSeats?.[passengerKey];
-            return (
-              !existingSeat ||
-              (typeof existingSeat === "object" && !existingSeat.seatNumber)
-            );
-          }
-        );
-
-        // Check if auto-assignment is needed for return seats (round-trip only)
-        const needsReturnAssignment =
-          isRoundTrip &&
-          formData.passengers?.some((_, index) => {
-            const passengerKey = `passenger${index + 1}`;
-            const existingSeat = selectedReturnSeats?.[passengerKey];
-            return (
-              !existingSeat ||
-              (typeof existingSeat === "object" && !existingSeat.seatNumber)
-            );
-          });
-
-        if (needsOutboundAssignment || needsReturnAssignment) {
-          console.log("🎯 Auto-assigning seats for unselected passengers");
-
-          // Auto-assign outbound seats if needed
-          if (
-            needsOutboundAssignment &&
-            extrasData.seats &&
-            extrasData.seats.length > 0
-          ) {
-            const autoAssignedOutbound = autoAssignStandardSeats(
-              extrasData.seats,
-              formData.passengers,
-              selectedSeats || {},
-              flight.type === "ROUND_TRIP"
-                ? flight.outbound?.selectedClass
-                : flight.selectedClass,
-              false
-            );
-
-            if (Object.keys(autoAssignedOutbound).length > 0) {
-              setExtrasData((prev) => ({
-                ...prev,
-                selectedSeats: {
-                  ...prev.selectedSeats,
-                  ...autoAssignedOutbound,
-                },
-              }));
-            }
-          }
-
-          // Auto-assign return seats if needed (round-trip only)
-          if (
-            needsReturnAssignment &&
-            isRoundTrip &&
-            extrasData.returnSeats &&
-            extrasData.returnSeats.length > 0
-          ) {
-            const autoAssignedReturn = autoAssignStandardSeats(
-              extrasData.returnSeats,
-              formData.passengers,
-              selectedReturnSeats || {},
-              flight.return?.selectedClass,
-              true
-            );
-
-            if (Object.keys(autoAssignedReturn).length > 0) {
-              setExtrasData((prev) => ({
-                ...prev,
-                selectedReturnSeats: {
-                  ...prev.selectedReturnSeats,
-                  ...autoAssignedReturn,
-                },
-              }));
-            }
-          }
+        if (!isValid) {
+          toast.error("Vui lòng kiểm tra lại các thông tin được đánh dấu màu đỏ.");
+        } else {
+          setIsConfirmModalOpen(true);
         }
-      }
+        break;
 
-      setCurrentStep(currentStep + 1);
+      case 3: // Extrasx  
+        proceedToNextStep();
+        break;
+
+      default:
+        proceedToNextStep();
+        break;
     }
   };
 
@@ -659,7 +490,7 @@ function FlightBookingStepper() {
 
   const updateFormData = (section, value, field = null) => {
     setFormData((prev) => {
-      if (field) {
+      if (field !== null) {
         return {
           ...prev,
           [section]: { ...prev[section], [field]: value },
@@ -691,6 +522,7 @@ function FlightBookingStepper() {
             updateFormData={updateFormData}
             updatePassenger={updatePassenger}
             flightType={flightType}
+            departureDate={flight.departureDate}
             validationErrors={validationErrors}
           />
         );
@@ -770,14 +602,25 @@ function FlightBookingStepper() {
               type="button"
               className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed order-1 sm:order-2"
               onClick={handleNext}
-              disabled={
-                currentStep === steps.length ||
-                (currentStep >= 2 && !isStepValid)
-              }
+              disabled={currentStep === steps.length}
             >
-              {currentStep === steps.length ? "Hoàn tất" : "Tiếp tục →"}
+              {currentStep === steps.length ? "" : "Tiếp tục →"}
             </button>
           </div>
+          <AlertDialog open={isConfirmModalOpen} onOpenChange={setIsConfirmModalOpen}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Xác nhận thông tin</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Bạn chắc chắn các thông tin đã nhập là chính xác? Thông tin sai có thể ảnh hưởng đến việc làm thủ tục chuyến bay.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Kiểm tra lại</AlertDialogCancel>
+                <AlertDialogAction onClick={proceedToNextStep}>Chính xác</AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </main>
       </div>
     </>

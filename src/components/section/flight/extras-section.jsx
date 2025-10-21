@@ -92,9 +92,6 @@ const getTravelClassName = (travelClassId) => {
   const id =
     typeof travelClassId === "string" ? parseInt(travelClassId) : travelClassId;
   const result = TRAVEL_CLASS_MAPPING[id]?.name || "Không xác định";
-  console.log(
-    `🏷️ getTravelClassName(${travelClassId}) -> id: ${id}, result: "${result}"`
-  );
   return result;
 };
 
@@ -109,11 +106,7 @@ const getSeatTypePricingFromApi = (seatData) => {
     ACCESSIBLE: { price: formatCurrencyVND(25000), priceValue: 25000 },
   };
 
-  console.log(
-    "🔧 getSeatTypePricingFromApi called with seatData:",
-    seatData?.length || 0,
-    "seats"
-  );
+
 
   const pricing = {};
   // For each seat type in our labels, use the fixed pricing
@@ -124,13 +117,10 @@ const getSeatTypePricingFromApi = (seatData) => {
         ...FIXED_SEAT_PRICING[seatType],
         description: SEAT_TYPE_LABELS[seatType]?.label || "Ghế tiêu chuẩn",
       };
-      console.log(
-        `💰 Fixed pricing for ${seatType}: ${FIXED_SEAT_PRICING[seatType].priceValue} VND`
-      );
+
     }
   });
 
-  console.log("📊 Final seat type pricing:", pricing);
   return pricing;
 };
 
@@ -342,10 +332,7 @@ const autoAssignStandardSeats = (
   selectedTravelClass,
   isReturn = false
 ) => {
-  console.log(
-    "� Auto-assigning STANDARD seats for",
-    isReturn ? "return flight" : "outbound flight"
-  );
+ 
 
   const prefix = isReturn ? "return_passenger" : "passenger";
   const autoAssigned = {};
@@ -365,7 +352,6 @@ const autoAssignStandardSeats = (
   });
 
   if (needsAssignment.length === 0) {
-    console.log("✅ All passengers have manually selected seats");
     return {};
   }
 
@@ -373,9 +359,6 @@ const autoAssignStandardSeats = (
   const userTravelClassId = selectedTravelClass?.travelClass?.id;
   const userClassName = selectedTravelClass?.travelClass?.className;
 
-  console.log(
-    `👤 User travel class: ${userClassName} (ID: ${userTravelClassId})`
-  );
 
   // Filter available STANDARD seats for the user's travel class only
   const availableStandardSeats = seats.filter((seat) => {
@@ -404,9 +387,6 @@ const autoAssignStandardSeats = (
     return !alreadySelected;
   });
 
-  console.log(
-    `🎯 Found ${availableStandardSeats.length} available STANDARD seats for ${userClassName} class`
-  );
 
   if (availableStandardSeats.length < needsAssignment.length) {
     const shortfall = needsAssignment.length - availableStandardSeats.length;
@@ -438,14 +418,6 @@ const autoAssignStandardSeats = (
         autoAssigned: true,
       };
 
-      console.log(
-        `🎲 Auto-assigned ${assignedSeat.seatNumber} (${
-          assignedSeat.seatType
-        }) to ${
-          passengerData.passenger.firstName ||
-          `Passenger ${passengerData.index + 1}`
-        }`
-      );
     });
 
   if (Object.keys(autoAssigned).length > 0) {
@@ -498,11 +470,6 @@ const convertSeatsToBookingFormat = (selectedSeats, passengers, flightId) => {
 
 // Function to process extras data and prepare for booking API
 const processExtrasDataForBooking = (extrasData, flight, passengers) => {
-  console.log("📋 Processing extras data for booking:", {
-    extrasData,
-    flight,
-    passengers,
-  });
 
   if (!extrasData) {
     console.warn("⚠️ No extras data provided for booking");
@@ -576,11 +543,6 @@ const processExtrasDataForBooking = (extrasData, flight, passengers) => {
     }
   }
 
-  console.log("✅ Processed extras data with seat assignments:", {
-    type: flight.type,
-    totalAssignments: finalExtrasData.seatAssignments?.length || 0,
-    seatAssignments: finalExtrasData.seatAssignments,
-  });
 
   return finalExtrasData;
 };
@@ -610,9 +572,6 @@ const loadCompleteSeatMapFromApi = async (flightId) => {
       { id: 3, name: "Hạng nhất", type: "FIRST" }, // First Class
     ];
 
-    console.log(
-      `🔄 Loading seats for flight ${flightId} across ${travelClassIds.length} travel classes...`
-    );
 
     // Load seats for all travel classes in parallel
     const seatPromises = travelClassIds.map(async (travelClass) => {
@@ -625,18 +584,8 @@ const loadCompleteSeatMapFromApi = async (flightId) => {
 
         if (response.success && response.data) {
           const seats = Array.isArray(response.data) ? response.data : [];
-          console.log(
-            `✅ Loaded ${seats.length} ${travelClass.name} seats (Travel Class ID: ${travelClass.id})`
-          );
 
           // Debug first seat structure
-          if (seats.length > 0) {
-            console.log(`🪑 Sample ${travelClass.name} seat structure:`, {
-              original: seats[0],
-              travelClassId: travelClass.id,
-              travelClassName: travelClass.name,
-            });
-          }
 
           // Ensure each seat has the correct travel class info
           return seats.map((seat) => ({
@@ -675,14 +624,8 @@ const loadCompleteSeatMapFromApi = async (flightId) => {
     const uniqueSeatNumbers = [...new Set(seatNumbers)];
     const hasOverlaps = seatNumbers.length !== uniqueSeatNumbers.length;
 
-    console.log(`🎯 Total loaded seats: ${allSeats.length}`);
-    console.log(`🔢 Unique seat numbers: ${uniqueSeatNumbers.length}`);
-    console.log(`⚠️ Has overlapping seats: ${hasOverlaps}`);
 
     if (hasOverlaps) {
-      console.log(
-        "� Overlapping seats detected - same physical seats available in multiple travel classes"
-      );
 
       // Group seats by seatNumber to see the overlap
       const seatGroups = allSeats.reduce((acc, seat) => {
@@ -694,19 +637,13 @@ const loadCompleteSeatMapFromApi = async (flightId) => {
       // Log overlapping seats for debugging
       Object.entries(seatGroups).forEach(([seatNum, seats]) => {
         if (seats.length > 1) {
-          console.log(
-            `🪑 Seat ${seatNum}:`,
-            seats.map((s) => `${s.className}(ID:${s.travelClassId})`).join(", ")
-          );
+          // console.log(
+          //   `🪑 Seat ${seatNum}:`,
+          //   seats.map((s) => `${s.className}(ID:${s.travelClassId})`).join(", ")
+          // );
         }
       });
 
-      // DISABLED: No longer creating unified seat map - keep all 50 seats
-      // const unifiedSeats = Object.entries(seatGroups).map(([seatNum, seats]) => { ... });
-
-      console.log(`✨ Keeping all ${allSeats.length} seats (not unifying)`);
-      // allSeats.length = 0; // Clear array - DISABLED
-      // allSeats.push(...unifiedSeats); // Replace with unified seats - DISABLED
     }
     // Count all 50 seats by their individual travel class
     const seatDistribution = {
@@ -725,12 +662,6 @@ const loadCompleteSeatMapFromApi = async (flightId) => {
       total: allSeats.length,
     };
 
-    console.log("Seat distribution:", seatDistribution);
-    console.log("📊 All 50 seats breakdown:");
-    console.log(`- Economy seats: ${seatDistribution.economy}`);
-    console.log(`- Business seats: ${seatDistribution.business}`);
-    console.log(`- First class seats: ${seatDistribution.first}`);
-    console.log(`- Total: ${seatDistribution.total}`);
 
     return allSeats;
   } catch (error) {
@@ -761,20 +692,11 @@ const AircraftLayout = ({
         setIsLoadingSeats(true);
         try {
           const apiSeats = await loadCompleteSeatMapFromApi(flightId);
-          console.log(
-            `🔄 AircraftLayout received ${apiSeats.length} seats from API`
-          );
           if (apiSeats.length > 0) {
             setCompleteSeatMap(apiSeats);
-            console.log(
-              `✅ AircraftLayout set completeSeatMap to ${apiSeats.length} seats`
-            );
           } else {
             // Fallback to provided seats if API returns empty
             setCompleteSeatMap(seats);
-            console.log(
-              `⚠️ AircraftLayout fallback to provided ${seats.length} seats`
-            );
           }
         } catch (error) {
           console.error("Error loading seats from API:", error);
@@ -784,9 +706,6 @@ const AircraftLayout = ({
         }
       } else {
         // No flightId, use provided seats
-        console.log(
-          `📄 AircraftLayout no flightId, using provided ${seats.length} seats`
-        );
         setCompleteSeatMap(seats);
       }
     };
@@ -794,19 +713,25 @@ const AircraftLayout = ({
     loadSeats();
   }, [flightId, seats]);
 
-  console.log("🛩️ AircraftLayout data:", {
-    flightId,
-    aircraftLayout,
-    totalSeats,
-    originalSeatsCount: seats.length,
-    completeSeatMapCount: completeSeatMap.length,
-    selectedTravelClass: selectedTravelClass?.travelClass?.className,
-    isLoadingSeats,
-    sampleSeats: completeSeatMap.slice(0, 5), // Show first 5 seats as sample
-  });
+
+  // Filter seats based on the user's selected travel class
+  const filteredSeats = useMemo(() => {
+    const userTravelClassId = selectedTravelClass?.travelClass?.id;
+    if (!userTravelClassId) {
+      console.warn("⚠️ No userTravelClassId, showing all seats.");
+      return completeSeatMap; // Fallback to show all if class is not selected
+    }
+
+    const seatsForClass = completeSeatMap.filter(
+      (seat) => seat.travelClassId === userTravelClassId
+    );
+
+
+    return seatsForClass;
+  }, [completeSeatMap, selectedTravelClass]);
 
   // Group seats by row number
-  const seatsByRow = completeSeatMap.reduce((acc, seat) => {
+  const seatsByRow = filteredSeats.reduce((acc, seat) => {
     const rowNum = seat.seatNumber.match(/\d+/)?.[0] || "1";
     if (!acc[rowNum]) acc[rowNum] = [];
     acc[rowNum].push(seat);
@@ -818,14 +743,6 @@ const AircraftLayout = ({
     (a, b) => parseInt(a) - parseInt(b)
   );
 
-  console.log("🔢 Seats by row debug:", {
-    totalSeats: completeSeatMap.length,
-    rowCount: sortedRowNumbers.length,
-    rowNumbers: sortedRowNumbers,
-    seatsPerRow: Object.entries(seatsByRow)
-      .map(([row, seats]) => `${row}:${seats.length}`)
-      .join(", "),
-  });
 
   // Parse seat layout (e.g., "3-3", "2-4-2", "3-4-3")
   const parseSeatLayout = (layout) => {
@@ -869,7 +786,7 @@ const AircraftLayout = ({
   }
 
   // Show empty state if no seats available
-  if (!completeSeatMap || completeSeatMap.length === 0) {
+  if (!filteredSeats || filteredSeats.length === 0) {
     return (
       <div className="aircraft-layout">
         <div className="flex justify-center items-center py-8">
@@ -1057,20 +974,6 @@ const renderSeatButton = (
     return false;
   });
 
-  // Debug seat and travel class data
-  if (seat.seatNumber === "1A") {
-    // Debug only first seat to avoid spam
-    console.log("🪑 Seat debug (1A):", {
-      seat,
-      seatClassName: seat.className,
-      seatTravelClassName: seat.travelClassName,
-      seatClassId: seat.classId,
-      seatTravelClassId: seat.travelClassId,
-      selectedTravelClass,
-      selectedTravelClassName: selectedTravelClass?.travelClass?.className,
-      selectedTravelClassId: selectedTravelClass?.travelClass?.id,
-    });
-  }
 
   // Check if seat belongs to selected travel class
   const getUserTravelClassId = () => {
@@ -1589,16 +1492,6 @@ const MultiCitySeatSelectionCard = ({
       const baseSeatPrice = seat?.priceVND || 0;
 
       // Debug seat type determination
-      console.log(
-        `🪑 Multi-city seat ${seatNumber} (segment ${segmentIndex}) pricing debug:`,
-        {
-          seatNumber,
-          seatFromAPI: seat,
-          seatTypeFromAPI: seat?.seatType,
-          seatTypeType: typeof seat?.seatType,
-          basePriceFromAPI: seat?.priceVND,
-        }
-      );
 
       // Use seat type from API first, only fallback if truly missing/empty
       let seatType = seat?.seatType;
@@ -1623,9 +1516,6 @@ const MultiCitySeatSelectionCard = ({
         } else {
           seatType = "STANDARD";
         }
-        console.log(
-          `� Fallback seatType for segment seat ${seatNumber}: ${seatType}`
-        );
       } else {
         console.log(
           `✅ Using API seatType for segment seat ${seatNumber}: ${seatType}`
@@ -1635,14 +1525,6 @@ const MultiCitySeatSelectionCard = ({
       // Get seat type price from segment's API pricing data
       const seatTypePrice = segmentSeatTypePricing[seatType]?.priceValue || 0;
 
-      console.log(
-        `✅ Using seatType for segment seat ${seatNumber}: ${seatType} (price: ${seatTypePrice})`
-      );
-      console.log(
-        `💰 Final pricing for ${seatNumber}: base=${baseSeatPrice} + type=${seatTypePrice} = ${
-          baseSeatPrice + seatTypePrice
-        }`
-      );
       return total + baseSeatPrice + seatTypePrice;
     }, 0);
   };
@@ -1758,7 +1640,6 @@ const MultiCitySeatSelectionCard = ({
 // Seat Selection Card
 const SeatSelectionCard = ({
   flight,
-  fare,
   formData,
   selectedSeats,
   setSelectedSeats,
@@ -1771,96 +1652,42 @@ const SeatSelectionCard = ({
   selectedReturnSeats,
   setSelectedReturnSeats,
   isRoundTrip = false,
-  // Collapsible state props
   showOutboundSeats,
   setShowOutboundSeats,
   showReturnSeats,
   setShowReturnSeats,
+  setIsUpdating,
 }) => {
   const passengers = formData.passengers;
 
+  // Filter seats based on the user's selected travel class
+  const filteredSeats = useMemo(() => {
+    const userTravelClassId =
+      flight?.isRoundTrip || flight?.type === "ROUND_TRIP"
+        ? flight.outbound?.selectedClass?.travelClass?.id
+        : flight?.flight?.selectedClass?.travelClass?.id ||
+          flight?.selectedClass?.travelClass?.id;
+
+    if (!userTravelClassId) {
+      return seats; // Fallback to show all if class is not selected
+    }
+    return seats.filter((seat) => seat.travelClassId === userTravelClassId);
+  }, [seats, flight]);
+
+
   // Function to auto-assign seats when user proceeds without manual selection
-  const autoAssignSeatsForUnselectedPassengers = () => {
-    let hasAutoAssigned = false;
 
-    // Auto-assign for outbound flight if seats available and some passengers don't have seats
-    if (seats && seats.length > 0 && passengers.length > 0) {
-      const needsAutoAssign = passengers.some((_, index) => {
-        const passengerKey = `passenger${index + 1}`;
-        const existingSeat = selectedSeats[passengerKey];
-        return (
-          !existingSeat ||
-          (typeof existingSeat === "object" && !existingSeat.seatNumber)
-        );
-      });
-
-      if (needsAutoAssign) {
-        const autoAssigned = autoAssignStandardSeats(
-          seats,
-          passengers,
-          selectedSeats,
-          flight?.isRoundTrip || flight?.type === "ROUND_TRIP"
-            ? flight.outbound?.selectedClass
-            : flight?.flight?.selectedClass || flight?.selectedClass,
-          false
-        );
-
-        if (Object.keys(autoAssigned).length > 0) {
-          setSelectedSeats((prev) => ({ ...prev, ...autoAssigned }));
-          hasAutoAssigned = true;
-        }
-      }
-    }
-
-    // Auto-assign for return flight (round-trip only)
-    if (
-      isRoundTrip &&
-      returnSeats &&
-      returnSeats.length > 0 &&
-      passengers.length > 0
-    ) {
-      const needsAutoAssign = passengers.some((_, index) => {
-        const passengerKey = `passenger${index + 1}`;
-        const existingSeat = selectedReturnSeats[passengerKey];
-        return (
-          !existingSeat ||
-          (typeof existingSeat === "object" && !existingSeat.seatNumber)
-        );
-      });
-
-      if (needsAutoAssign) {
-        const autoAssigned = autoAssignStandardSeats(
-          returnSeats,
-          passengers,
-          selectedReturnSeats,
-          flight.return?.selectedClass,
-          true
-        );
-
-        if (Object.keys(autoAssigned).length > 0) {
-          setSelectedReturnSeats((prev) => ({ ...prev, ...autoAssigned }));
-          hasAutoAssigned = true;
-        }
-      }
-    }
-
-    return hasAutoAssigned;
-  };
 
   const handleSeatSelect = (seatNumber, passengerIndex, isReturn = false) => {
-    console.log(
-      `🎯 handleSeatSelect called: seatNumber=${seatNumber}, passengerIndex=${passengerIndex}, isReturn=${isReturn}`
-    );
+    setIsUpdating(true);
 
     const seatList = isReturn ? returnSeats : seats;
     const setSeats = isReturn ? setSelectedReturnSeats : setSelectedSeats;
     const passengerKey = `passenger${passengerIndex + 1}`;
 
-    console.log(`🔑 Passenger key: ${passengerKey}`);
 
     const seat = seatList.find((s) => s.seatNumber === seatNumber);
     if (!seat) {
-      console.error(`❌ Seat ${seatNumber} not found in seat list`);
       return;
     }
 
@@ -1873,7 +1700,6 @@ const SeatSelectionCard = ({
 
     setSeats((prev) => {
       const newSeats = { ...prev };
-      console.log(`📊 Previous seats:`, prev);
 
       // Remove the seat from other passengers who might have it (within the same flight direction)
       Object.keys(newSeats).forEach((key) => {
@@ -1899,9 +1725,6 @@ const SeatSelectionCard = ({
         }
 
         if (hasSameSeat && key !== passengerKey) {
-          console.log(
-            `🔄 Removing seat ${seatNumber} (ID: ${seat?.seatId}) from ${key} (reassigning to ${passengerKey})`
-          );
           delete newSeats[key];
         }
       });
@@ -1913,7 +1736,6 @@ const SeatSelectionCard = ({
 
       if (currentSeatNumber === seatNumber) {
         // If clicking the same seat, deselect it
-        console.log(`🚫 Deselecting seat ${seatNumber} for ${passengerKey}`);
         delete newSeats[passengerKey];
       } else {
         // Get seat pricing info
@@ -1945,9 +1767,6 @@ const SeatSelectionCard = ({
         const totalPrice = baseSeatPrice + seatTypePrice;
 
         // Store detailed seat information including seatId for unique identification
-        console.log(
-          `✅ Selecting seat ${seatNumber} (${seatType}) for ${passengerKey} - Price: ${totalPrice}`
-        );
         newSeats[passengerKey] = {
           seatId: seat?.seatId || seat?.id, // Include seatId for unique identification
           seatNumber,
@@ -1958,7 +1777,6 @@ const SeatSelectionCard = ({
         };
       }
 
-      console.log(`📊 New seats after selection:`, newSeats);
       return newSeats;
     });
   };
@@ -1986,14 +1804,6 @@ const SeatSelectionCard = ({
 
       const baseSeatPrice = seat?.priceVND || 0;
 
-      // Debug seat type determination
-      console.log(`🪑 Seat ${seatNumber} pricing debug:`, {
-        seatNumber,
-        seatFromAPI: seat,
-        seatTypeFromAPI: seat?.seatType,
-        seatTypeType: typeof seat?.seatType,
-        basePriceFromAPI: seat?.priceVND,
-      });
 
       // Use seat type from API first, only fallback if truly missing/empty
       let seatType = seat?.seatType;
@@ -2018,17 +1828,11 @@ const SeatSelectionCard = ({
         } else {
           seatType = "STANDARD";
         }
-        console.log(`🔄 Fallback seatType for ${seatNumber}: ${seatType}`);
       } else {
         console.log(`✅ Using API seatType for ${seatNumber}: ${seatType}`);
       }
 
       const seatTypePrice = seatTypePricing[seatType]?.priceValue || 0;
-      console.log(
-        `💰 Final pricing for ${seatNumber}: base=${baseSeatPrice} + type=${seatTypePrice} = ${
-          baseSeatPrice + seatTypePrice
-        }`
-      );
       return total + baseSeatPrice + seatTypePrice;
     }, 0);
   };
@@ -2139,7 +1943,7 @@ const SeatSelectionCard = ({
                     </div>
                     <div className="max-w-6xl mx-auto">
                       <SeatSelectionWrapper
-                        seats={seats}
+                        seats={filteredSeats}
                         selectedSeats={selectedSeats}
                         passengers={passengers}
                         onSeatSelect={(seatNumber, passengerIndex, isReturn) =>
@@ -2164,13 +1968,6 @@ const SeatSelectionCard = ({
                               flight?.selectedClass?.travelClass?.id
                         }
                       />
-                      {console.log(
-                        `🚀 Extras - Outbound userTravelClassId:`,
-                        flight?.isRoundTrip || flight?.type === "ROUND_TRIP"
-                          ? flight.outbound?.selectedClass?.travelClass?.id
-                          : flight?.flight?.selectedClass?.travelClass?.id ||
-                              flight?.selectedClass?.travelClass?.id
-                      )}
                     </div>
                     <SelectedSeatsSummary
                       selectedSeats={selectedSeats}
@@ -2231,6 +2028,7 @@ const SeatSelectionCard = ({
                           Cuộn xuống để xem thêm hàng ghế
                         </p>
                       </div>
+
                       <div className="max-w-6xl mx-auto">
                         <SeatSelectionWrapper
                           seats={returnSeats}
@@ -2254,10 +2052,6 @@ const SeatSelectionCard = ({
                             flight.return?.selectedClass?.travelClass?.id
                           }
                         />
-                        {console.log(
-                          `🚀 Extras - Return userTravelClassId:`,
-                          flight.return?.selectedClass?.travelClass?.id
-                        )}
                       </div>
                       <SelectedSeatsSummary
                         selectedSeats={selectedReturnSeats}
@@ -2338,11 +2132,17 @@ const BaggagePackageOption = ({
 
 // Baggage Options Card
 const BaggageOptionsCard = ({ formData, baggage, setBaggage }) => {
+  const [isUpdating, setIsUpdating] = useState(false);
   const handlePackageChange = (passenger, packageKey) => {
     setBaggage((prev) => ({
       ...prev,
       [passenger]: packageKey,
     }));
+  };
+
+  const handlePackageChangeWithLoading = (passenger, packageKey) => {
+    setIsUpdating(true);
+    handlePackageChange(passenger, packageKey);
   };
 
   return (
@@ -2829,11 +2629,17 @@ const AdditionalServicesCard = ({
   additionalServices,
   setAdditionalServices,
 }) => {
+  const [isUpdating, setIsUpdating] = useState(false);
   const handleServiceChange = (service) => {
     setAdditionalServices((prev) => ({
       ...prev,
       [service]: !prev[service],
     }));
+  };
+
+  const handleServiceChangeWithLoading = (service) => {
+    setIsUpdating(true);
+    handleServiceChange(service);
   };
 
   return (
@@ -3067,48 +2873,8 @@ const BookingSummary = ({
 
 // Main Extras Component
 const Extras = ({ flight, fare, formData, setExtrasData }) => {
+  const [isUpdating, setIsUpdating] = useState(false);
   // Debug flight object structure
-  console.log("🛫 Flight object for seat selection:", {
-    flight,
-    type: flight.type,
-    outboundFlightId: flight.outbound?.id,
-    flightFlightId: flight.flight?.id,
-    flightId: flight.id,
-    returnFlightId: flight.return?.id,
-    // Fix: Different flight types have different structures
-    roundTripData:
-      flight.type === "ROUND_TRIP"
-        ? {
-            outbound: {
-              id: flight.outbound?.id,
-              flightId: flight.outbound?.flightId,
-            },
-            return: {
-              id: flight.return?.id,
-              flightId: flight.return?.flightId,
-            },
-          }
-        : null,
-    multiCityData:
-      flight.type === "MULTI_CITY"
-        ? {
-            legs: flight.legs?.map((leg) => ({
-              id: leg.id,
-              flightId: leg.flightId,
-            })),
-            segmentCount: flight.segmentCount,
-          }
-        : null,
-    oneWayData:
-      flight.type === "ONE_WAY"
-        ? {
-            flight: {
-              id: flight.flight?.id || flight.id,
-              flightId: flight.flight?.flightId || flight.flightId,
-            },
-          }
-        : null,
-  });
 
   // Check flight type
   const isRoundTrip = flight.type === "ROUND_TRIP";
@@ -3152,7 +2918,6 @@ const Extras = ({ flight, fare, formData, setExtrasData }) => {
     if (savedExtrasData) {
       try {
         const parsedData = JSON.parse(savedExtrasData);
-        console.log("Loading saved extras data:", parsedData);
 
         // Check if the saved data is for the current flight
         const currentFlightId =
@@ -3161,11 +2926,6 @@ const Extras = ({ flight, fare, formData, setExtrasData }) => {
 
         // Only restore data if it's for the same flight, otherwise clear it
         if (savedFlightId && savedFlightId === currentFlightId) {
-          console.log(
-            "✅ Restoring extras data for same flight:",
-            currentFlightId
-          );
-
           // Restore seat selections
           if (
             parsedData.selectedSeats &&
@@ -3174,10 +2934,6 @@ const Extras = ({ flight, fare, formData, setExtrasData }) => {
             setSelectedSeats(parsedData.selectedSeats);
           }
         } else {
-          console.log("🧹 Clearing extras data - different flight:", {
-            saved: savedFlightId,
-            current: currentFlightId,
-          });
           // Clear localStorage for different flight
           localStorage.removeItem("extrasData");
           // Reset all states to default
@@ -3322,6 +3078,12 @@ const Extras = ({ flight, fare, formData, setExtrasData }) => {
     priorityBoarding: false,
   });
 
+  const [legacyAdditionalServices, setLegacyAdditionalServices] = useState({
+    travelInsurance: false,
+    inFlightMeal: false,
+    priorityBoarding: false,
+  });
+
   // New ancillary services state
   const [availableServices, setAvailableServices] = useState([]);
   const [selectedServices, setSelectedServices] = useState({});
@@ -3338,7 +3100,7 @@ const Extras = ({ flight, fare, formData, setExtrasData }) => {
           setAvailableServices(response.data || []);
         } else {
           console.error(
-            "Failed to fetch ancillary services:",
+            "Không thể tải dịch vụ đi kèm:",
             response.message
           );
           toast.error("Không thể tải danh sách dịch vụ đi kèm");
@@ -3515,19 +3277,20 @@ const Extras = ({ flight, fare, formData, setExtrasData }) => {
             // Load all seats without filtering by travel class
             setSeats(
               data.map((seat) => {
-                console.log("🪑 Individual seat:", seat);
+                // console.log("🪑 Individual seat:", seat);
                 // Try different field names for travel class ID, with fallback logic
                 const travelClassId = getTravelClassIdFromSeat(seat);
-                console.log("🪑 Travel class ID extraction:", {
-                  seatNumber: seat.seatNumber,
-                  travelClassId: seat.travelClassId,
-                  classId: seat.classId,
-                  travelClassIdFromObject: seat.travelClass?.id,
-                  classIdFromObject: seat.class?.id,
-                  className: seat.className,
-                  finalTravelClassId: travelClassId,
-                });
+                // console.log("🪑 Travel class ID extraction:", {
+                //   seatNumber: seat.seatNumber,
+                //   travelClassId: seat.travelClassId,
+                //   classId: seat.classId,
+                //   travelClassIdFromObject: seat.travelClass?.id,
+                //   classIdFromObject: seat.class?.id,
+                //   className: seat.className,
+                //   finalTravelClassId: travelClassId,
+                // });
                 return {
+
                   seatId: seat.seatId,
                   seatNumber: seat.seatNumber,
                   className: seat.className,
@@ -3934,6 +3697,12 @@ const Extras = ({ flight, fare, formData, setExtrasData }) => {
     // Save to localStorage for persistence with flight tracking
     localStorage.setItem("extrasData", JSON.stringify(extrasData));
 
+    // Set loading to false after a short delay to ensure UI updates
+    const timer = setTimeout(() => {
+      setIsUpdating(false);
+    }, 200); // 200ms delay
+
+
     setExtrasData(extrasData);
   }, [
     selectedSeats,
@@ -3955,7 +3724,18 @@ const Extras = ({ flight, fare, formData, setExtrasData }) => {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-700">
-      <div className="max-w-7xl mx-auto py-8">
+      <div className="relative max-w-7xl mx-auto py-8">
+        {isUpdating && (
+          <div className="absolute inset-0 bg-white/70 dark:bg-gray-800/70 z-50 flex items-center justify-center rounded-lg">
+            <div className="flex flex-col items-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+              <p className="mt-3 text-sm font-medium text-gray-700 dark:text-gray-300">
+                Đang cập nhật...
+              </p>
+            </div>
+          </div>
+        )}
+
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900 mb-2 dark:text-white">
             Chọn Dịch Vụ Bổ Sung
@@ -4005,6 +3785,7 @@ const Extras = ({ flight, fare, formData, setExtrasData }) => {
                 // Collapsible state props
                 showOutboundSeats={showOutboundSeats}
                 setShowOutboundSeats={setShowOutboundSeats}
+                setIsUpdating={setIsUpdating}
                 showReturnSeats={showReturnSeats}
                 setShowReturnSeats={setShowReturnSeats}
               />
@@ -4026,7 +3807,7 @@ const Extras = ({ flight, fare, formData, setExtrasData }) => {
             )}
 
             <AncillaryServicesCard
-              selectedServices={selectedServices}
+              selectedServices={legacyAdditionalServices}
               setSelectedServices={setSelectedServices}
               availableServices={availableServices}
               loadingServices={loadingServices}

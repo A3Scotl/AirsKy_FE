@@ -31,9 +31,9 @@ import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { format } from "date-fns";
 import { vi } from "date-fns/locale";
 import PaymentAnalytics from "@/components/admin/payments/payment-analytics";
-import PaymentTable from "@/components/admin/payments/payment-table";
-import PaymentDetailsModal from "@/components/admin/payments/payment-details-modal";
-import RefundModal from "@/components/admin/payments/payment-refund-modal";
+import PaymentTable from "@/components/admin/payments/payment-table"; // Giữ lại
+import PaymentDetailsModal from "@/components/admin/payments/payment-details-modal"; // Giữ lại
+import RefundModal from "@/components/admin/payments/payment-refund-modal"; // Giữ lại
 import PaymentMethods from "@/components/admin/payments/payment-methods";
 import ExportButton from "@/components/common/export-button";
 import { paymentApi } from "@/apis/payment-api";
@@ -41,7 +41,6 @@ import { formatCurrencyVND } from "@/utils/currency-utils";
 import { toast } from "sonner";
 
 const AdminPaymentPage = () => {
-  const [activeTab, setActiveTab] = useState("transactions");
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [methodFilter, setMethodFilter] = useState("all");
@@ -52,13 +51,14 @@ const AdminPaymentPage = () => {
   const [selectedPayment, setSelectedPayment] = useState(null);
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
   const [isRefundModalOpen, setIsRefundModalOpen] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true); // Bật loading mặc định
   const [paymentsData, setPaymentsData] = useState([]);
 
   // Fetch payments data for statistics
   useEffect(() => {
     const fetchPaymentsData = async () => {
       try {
+        setIsLoading(true);
         // Build query parameters
         const params = {
           page: 0,
@@ -84,9 +84,11 @@ const AdminPaymentPage = () => {
         if (response.success) {
           setPaymentsData(response.data.content || response.data || []);
         }
+        setIsLoading(false);
       } catch (error) {
         console.error("Error fetching payments data:", error);
         setPaymentsData([]);
+        setIsLoading(false);
       }
     };
 
@@ -492,77 +494,27 @@ const AdminPaymentPage = () => {
       </Card>
 
       {/* Main Content Tabs */}
-      <Tabs
-        value={activeTab}
-        onValueChange={setActiveTab}
-        className="space-y-6"
-      >
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="transactions">Giao dịch</TabsTrigger>
-          <TabsTrigger value="methods">Phương thức thanh toán</TabsTrigger>
-          <TabsTrigger value="analytics">Phân tích</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="overview" className="space-y-6">
-          <div className="grid grid-cols-1 lg:grid-cols-1">
-            {/* Recent Transactions Summary */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Hoạt động gần đây</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <PaymentTable
-                  searchTerm={searchTerm}
-                  statusFilter={statusFilter}
-                  methodFilter={methodFilter}
-                  dateRange={dateRange}
-                  startDate={startDate}
-                  endDate={endDate}
-                  refreshKey={refreshKey}
-                  onViewDetails={handleViewDetails}
-                  onRefund={handleRefund}
-                  limit={5}
-                  showActions={false}
-                />
-              </CardContent>
-            </Card>
-          </div>
-        </TabsContent>
-
-        <TabsContent value="transactions" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Tất cả giao dịch</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <PaymentTable
-                searchTerm={searchTerm}
-                statusFilter={statusFilter}
-                methodFilter={methodFilter}
-                dateRange={dateRange}
-                startDate={startDate}
-                endDate={endDate}
-                refreshKey={refreshKey}
-                onViewDetails={handleViewDetails}
-                onRefund={handleRefund}
-                showActions={true}
-              />
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="methods" className="space-y-6">
-          <PaymentMethods />
-        </TabsContent>
-
-        <TabsContent value="analytics" className="space-y-6">
-          <PaymentAnalytics
-            dateRange={dateRange}
-            startDate={startDate}
-            endDate={endDate}
-          />
-        </TabsContent>
-      </Tabs>
+      <div className="space-y-6">
+        <Card>
+          <CardHeader>
+            <CardTitle>Tất cả giao dịch</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <PaymentTable
+              searchTerm={searchTerm}
+              statusFilter={statusFilter}
+              methodFilter={methodFilter}
+              dateRange={dateRange}
+              startDate={startDate}
+              endDate={endDate}
+              refreshKey={refreshKey}
+              onViewDetails={handleViewDetails}
+              onRefund={handleRefund}
+              showActions={true}
+            />
+          </CardContent>
+        </Card>
+      </div>
 
       {/* Modals */}
       <PaymentDetailsModal
@@ -581,3 +533,4 @@ const AdminPaymentPage = () => {
 };
 
 export default AdminPaymentPage;
+ 

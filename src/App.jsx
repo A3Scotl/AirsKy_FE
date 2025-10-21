@@ -19,7 +19,6 @@ import "react-toastify/dist/ReactToastify.css";
 import LoadingPage from "@/pages/loading/loading-page";
 import PageTransition from "@/components/common/page-transition";
 import AdminRoute from "@/routes/admin-route";
-import ChatbotWidget from "@/components/common/chatbot-widget";
 import webSocketService from "@/services/websocket-service";
 
 const HomePage = lazy(() => import("@/pages/public/home-page"));
@@ -332,7 +331,7 @@ function App() {
               />
               <AppRoutes />
             </SearchProvider>
-            <ChatbotWidget />
+           
           </AuthProvider>
         </ThemeProvider>
       </Router>

@@ -2,6 +2,7 @@ import { Outlet } from "react-router-dom";
 import { Header } from "@/components/header";
 import { Footer } from "@/components/footer";
 import ScrollToTop from "@/components/common/scroll-to-top";
+import ChatbotWidget from "@/components/common/chatbot-widget";
 
 const PublicLayout = () => {
   return (
@@ -12,6 +13,7 @@ const PublicLayout = () => {
       </main>
       <Footer />
       <ScrollToTop />
+       <ChatbotWidget />
     </div>
   );
 };

@@ -142,11 +142,11 @@ const SeatMap = ({
 
       console.log("🔍 Seats by position analysis:");
       Object.entries(seatsByPosition).forEach(([position, positionSeats]) => {
-        console.log(`Position ${position}: ${positionSeats.length} seats`);
+        // console.log(`Position ${position}: ${positionSeats.length} seats`);
         const seatNumbers = positionSeats.map((s) => s.seatNumber);
         const travelClasses = positionSeats.map((s) => s.travelClassId);
-        console.log(`  Seat numbers: ${seatNumbers.join(", ")}`);
-        console.log(`  Travel classes: ${travelClasses.join(", ")}`);
+        // console.log(`  Seat numbers: ${seatNumbers.join(", ")}`);
+        // console.log(`  Travel classes: ${travelClasses.join(", ")}`);
       });
 
       // Get all unique row numbers
@@ -240,12 +240,12 @@ const SeatMap = ({
   const renderSeat = (seat) => {
     // Use travelClassId directly from API data - no fallback logic needed
     // The API already provides correct travelClassId for each seat
-    console.log(`🪑 Seat ${seat.seatNumber} - API data:`, {
-      travelClassId: seat.travelClassId,
-      className: seat.className,
-      seatType: seat.seatType,
-      status: seat.status,
-    });
+    // console.log(`🪑 Seat ${seat.seatNumber} - API data:`, {
+    //   travelClassId: seat.travelClassId,
+    //   className: seat.className,
+    //   seatType: seat.seatType,
+    //   status: seat.status,
+    // });
 
     const isSelected = isSeatSelected(seat.seatNumber);
 
@@ -280,16 +280,16 @@ const SeatMap = ({
 
     // Debug logging - only for debugging
     if (seat.seatNumber === "4D") {
-      console.log(`🪑 Seat ${seat.seatNumber}:`, {
-        travelClassId: seat.travelClassId,
-        userTravelClassId,
-        isInUserTravelClass,
-        isDisabledByClass,
-        status: seat.status,
-        isDisabled,
-        seatColor,
-        className: seat.className,
-      });
+      // console.log(`🪑 Seat ${seat.seatNumber}:`, {
+      //   travelClassId: seat.travelClassId,
+      //   userTravelClassId,
+      //   isInUserTravelClass,
+      //   isDisabledByClass,
+      //   status: seat.status,
+      //   isDisabled,
+      //   seatColor,
+      //   className: seat.className,
+      // });
     }
 
     return (
