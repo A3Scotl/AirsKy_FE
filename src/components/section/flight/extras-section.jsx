@@ -106,8 +106,6 @@ const getSeatTypePricingFromApi = (seatData) => {
     ACCESSIBLE: { price: formatCurrencyVND(25000), priceValue: 25000 },
   };
 
-
-
   const pricing = {};
   // For each seat type in our labels, use the fixed pricing
   Object.keys(SEAT_TYPE_LABELS).forEach((seatType) => {
@@ -117,7 +115,6 @@ const getSeatTypePricingFromApi = (seatData) => {
         ...FIXED_SEAT_PRICING[seatType],
         description: SEAT_TYPE_LABELS[seatType]?.label || "Ghế tiêu chuẩn",
       };
-
     }
   });
 
@@ -332,8 +329,6 @@ const autoAssignStandardSeats = (
   selectedTravelClass,
   isReturn = false
 ) => {
- 
-
   const prefix = isReturn ? "return_passenger" : "passenger";
   const autoAssigned = {};
   let needsAssignment = [];
@@ -358,7 +353,6 @@ const autoAssignStandardSeats = (
   // Get user's travel class info
   const userTravelClassId = selectedTravelClass?.travelClass?.id;
   const userClassName = selectedTravelClass?.travelClass?.className;
-
 
   // Filter available STANDARD seats for the user's travel class only
   const availableStandardSeats = seats.filter((seat) => {
@@ -386,7 +380,6 @@ const autoAssignStandardSeats = (
 
     return !alreadySelected;
   });
-
 
   if (availableStandardSeats.length < needsAssignment.length) {
     const shortfall = needsAssignment.length - availableStandardSeats.length;
@@ -417,7 +410,6 @@ const autoAssignStandardSeats = (
         passengerIndex: passengerData.index,
         autoAssigned: true,
       };
-
     });
 
   if (Object.keys(autoAssigned).length > 0) {
@@ -470,7 +462,6 @@ const convertSeatsToBookingFormat = (selectedSeats, passengers, flightId) => {
 
 // Function to process extras data and prepare for booking API
 const processExtrasDataForBooking = (extrasData, flight, passengers) => {
-
   if (!extrasData) {
     console.warn("⚠️ No extras data provided for booking");
     return null;
@@ -543,7 +534,6 @@ const processExtrasDataForBooking = (extrasData, flight, passengers) => {
     }
   }
 
-
   return finalExtrasData;
 };
 
@@ -571,7 +561,6 @@ const loadCompleteSeatMapFromApi = async (flightId) => {
       { id: 2, name: "Thương gia", type: "BUSINESS" }, // Business
       { id: 3, name: "Hạng nhất", type: "FIRST" }, // First Class
     ];
-
 
     // Load seats for all travel classes in parallel
     const seatPromises = travelClassIds.map(async (travelClass) => {
@@ -624,9 +613,7 @@ const loadCompleteSeatMapFromApi = async (flightId) => {
     const uniqueSeatNumbers = [...new Set(seatNumbers)];
     const hasOverlaps = seatNumbers.length !== uniqueSeatNumbers.length;
 
-
     if (hasOverlaps) {
-
       // Group seats by seatNumber to see the overlap
       const seatGroups = allSeats.reduce((acc, seat) => {
         if (!acc[seat.seatNumber]) acc[seat.seatNumber] = [];
@@ -643,7 +630,6 @@ const loadCompleteSeatMapFromApi = async (flightId) => {
           // );
         }
       });
-
     }
     // Count all 50 seats by their individual travel class
     const seatDistribution = {
@@ -661,7 +647,6 @@ const loadCompleteSeatMapFromApi = async (flightId) => {
       pending: allSeats.filter((s) => s.status === "PENDING_PAYMENT").length,
       total: allSeats.length,
     };
-
 
     return allSeats;
   } catch (error) {
@@ -713,7 +698,6 @@ const AircraftLayout = ({
     loadSeats();
   }, [flightId, seats]);
 
-
   // Filter seats based on the user's selected travel class
   const filteredSeats = useMemo(() => {
     const userTravelClassId = selectedTravelClass?.travelClass?.id;
@@ -725,7 +709,6 @@ const AircraftLayout = ({
     const seatsForClass = completeSeatMap.filter(
       (seat) => seat.travelClassId === userTravelClassId
     );
-
 
     return seatsForClass;
   }, [completeSeatMap, selectedTravelClass]);
@@ -742,7 +725,6 @@ const AircraftLayout = ({
   const sortedRowNumbers = Object.keys(seatsByRow).sort(
     (a, b) => parseInt(a) - parseInt(b)
   );
-
 
   // Parse seat layout (e.g., "3-3", "2-4-2", "3-4-3")
   const parseSeatLayout = (layout) => {
@@ -973,7 +955,6 @@ const renderSeatButton = (
     }
     return false;
   });
-
 
   // Check if seat belongs to selected travel class
   const getUserTravelClassId = () => {
@@ -1674,9 +1655,7 @@ const SeatSelectionCard = ({
     return seats.filter((seat) => seat.travelClassId === userTravelClassId);
   }, [seats, flight]);
 
-
   // Function to auto-assign seats when user proceeds without manual selection
-
 
   const handleSeatSelect = (seatNumber, passengerIndex, isReturn = false) => {
     setIsUpdating(true);
@@ -1684,7 +1663,6 @@ const SeatSelectionCard = ({
     const seatList = isReturn ? returnSeats : seats;
     const setSeats = isReturn ? setSelectedReturnSeats : setSelectedSeats;
     const passengerKey = `passenger${passengerIndex + 1}`;
-
 
     const seat = seatList.find((s) => s.seatNumber === seatNumber);
     if (!seat) {
@@ -1803,7 +1781,6 @@ const SeatSelectionCard = ({
       if (!seat) return total;
 
       const baseSeatPrice = seat?.priceVND || 0;
-
 
       // Use seat type from API first, only fallback if truly missing/empty
       let seatType = seat?.seatType;
@@ -2361,6 +2338,11 @@ const AncillaryServicesCard = ({
     isSelected,
     passengerIndex = null
   ) => {
+    console.log("handleServiceChange called:", {
+      serviceId,
+      isSelected,
+      passengerIndex,
+    });
     setSelectedServices((prev) => {
       const newServices = { ...prev };
       const serviceKey =
@@ -2379,6 +2361,7 @@ const AncillaryServicesCard = ({
         delete newServices[serviceKey];
       }
 
+      console.log("Updated selectedServices:", newServices);
       return newServices;
     });
   };
@@ -2388,7 +2371,15 @@ const AncillaryServicesCard = ({
       passengerIndex !== null
         ? `${serviceId}_passenger${passengerIndex}`
         : `${serviceId}_booking`;
-    return !!selectedServices[serviceKey];
+    const result = !!selectedServices[serviceKey];
+    console.log("isServiceSelected called:", {
+      serviceId,
+      passengerIndex,
+      serviceKey,
+      result,
+      selectedServices,
+    });
+    return result;
   };
 
   if (loadingServices) {
@@ -2448,7 +2439,7 @@ const AncillaryServicesCard = ({
                       service={service}
                       passengers={formData.passengers}
                       onServiceChange={handleServiceChange}
-                      isSelected={isServiceSelected}
+                      isSelectedProp={isServiceSelected}
                       selectedServices={selectedServices}
                       setSelectedServices={setSelectedServices}
                     />
@@ -2474,12 +2465,19 @@ const AncillaryServiceOption = ({
   service,
   passengers,
   onServiceChange,
-  isSelected,
+  isSelectedProp,
   selectedServices,
   setSelectedServices,
 }) => {
   const [expandedPassengers, setExpandedPassengers] = useState(false);
   const [showNotes, setShowNotes] = useState(false);
+
+  console.log("AncillaryServiceOption render:", {
+    serviceId: service.serviceId,
+    serviceName: service.serviceName,
+    isSelectedProp: typeof isSelectedProp,
+    selectedServices,
+  });
 
   // Determine if service applies to individual passengers or entire booking
   const isPerPassenger = [
@@ -2549,7 +2547,17 @@ const AncillaryServiceOption = ({
                       <div className="flex items-center space-x-2">
                         <Checkbox
                           id={`service-${service.serviceId}-passenger-${index}`}
-                          checked={isSelected(service.serviceId, index)}
+                          checked={(() => {
+                            const checked = isSelectedProp(
+                              service.serviceId,
+                              index
+                            );
+                            console.log(
+                              `Passenger checkbox ${service.serviceId}-${index}: checked =`,
+                              checked
+                            );
+                            return checked;
+                          })()}
                           onCheckedChange={(checked) =>
                             onServiceChange(service.serviceId, checked, index)
                           }
@@ -2562,13 +2570,21 @@ const AncillaryServiceOption = ({
                           <span className="text-gray-500 ml-1">
                             ({passenger.type})
                           </span>
+                          {isSelectedProp(service.serviceId, index) && (
+                            <span className="ml-2 text-xs text-blue-600">
+                              📝 Có ghi chú
+                            </span>
+                          )}
                         </Label>
                       </div>
-                      {isSelected(service.serviceId, index) && (
-                        <div className="ml-6">
+                      {isSelectedProp(service.serviceId, index) && (
+                        <div className="ml-6 mt-2">
+                          <Label className="text-xs text-gray-600 block mb-1">
+                            Ghi chú đặc biệt (tùy chọn)
+                          </Label>
                           <textarea
-                            placeholder="Ghi chú đặc biệt (tùy chọn)..."
-                            className="w-full text-xs p-2 border rounded-md resize-none"
+                            placeholder="Nhập ghi chú cho dịch vụ này..."
+                            className="w-full text-xs p-2 border rounded-md resize-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                             rows={2}
                             value={getServiceNotes(service.serviceId, index)}
                             onChange={(e) =>
@@ -2591,7 +2607,14 @@ const AncillaryServiceOption = ({
               <div className="flex items-center space-x-2">
                 <Checkbox
                   id={`service-${service.serviceId}-booking`}
-                  checked={isSelected(service.serviceId)}
+                  checked={(() => {
+                    const checked = isSelectedProp(service.serviceId);
+                    console.log(
+                      `Booking checkbox ${service.serviceId}: checked =`,
+                      checked
+                    );
+                    return checked;
+                  })()}
                   onCheckedChange={(checked) =>
                     onServiceChange(service.serviceId, checked)
                   }
@@ -2601,13 +2624,21 @@ const AncillaryServiceOption = ({
                   className="text-sm"
                 >
                   Áp dụng cho toàn bộ booking
+                  {isSelectedProp(service.serviceId) && (
+                    <span className="ml-2 text-xs text-blue-600">
+                      📝 Có ghi chú
+                    </span>
+                  )}
                 </Label>
               </div>
-              {isSelected(service.serviceId) && (
-                <div className="ml-6">
+              {isSelectedProp(service.serviceId) && (
+                <div className="ml-6 mt-2">
+                  <Label className="text-xs text-gray-600 block mb-1">
+                    Ghi chú đặc biệt (tùy chọn)
+                  </Label>
                   <textarea
-                    placeholder="Ghi chú đặc biệt (tùy chọn)..."
-                    className="w-full text-xs p-2 border rounded-md resize-none"
+                    placeholder="Nhập ghi chú cho dịch vụ này..."
+                    className="w-full text-xs p-2 border rounded-md resize-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     rows={2}
                     value={getServiceNotes(service.serviceId)}
                     onChange={(e) =>
@@ -2985,7 +3016,45 @@ const Extras = ({ flight, fare, formData, setExtrasData }) => {
           parsedData.selectedAncillaryServices &&
           Object.keys(parsedData.selectedAncillaryServices).length > 0
         ) {
-          setSelectedServices(parsedData.selectedAncillaryServices);
+          // Check if the data structure is the old boolean format or new object format
+          const ancillaryData = parsedData.selectedAncillaryServices;
+          const isOldFormat = Object.values(ancillaryData).every(
+            (val) => typeof val === "boolean"
+          );
+
+          if (isOldFormat) {
+            // Convert old boolean format to new object format
+            console.log(
+              "Converting old ancillary services format to new format"
+            );
+            const convertedData = {};
+            Object.entries(ancillaryData).forEach(
+              ([serviceName, isSelected]) => {
+                if (isSelected) {
+                  // Map old service names to new service IDs (this is a temporary mapping)
+                  // You may need to adjust this based on your actual service IDs
+                  const serviceIdMap = {
+                    inFlightMeal: 1,
+                    priorityBoarding: 2,
+                    travelInsurance: 3,
+                  };
+                  const serviceId = serviceIdMap[serviceName];
+                  if (serviceId) {
+                    convertedData[`${serviceId}_booking`] = {
+                      serviceId: serviceId,
+                      passengerId: null,
+                      quantity: 1,
+                      notes: "",
+                    };
+                  }
+                }
+              }
+            );
+            setSelectedServices(convertedData);
+          } else {
+            // Use new object format directly
+            setSelectedServices(ancillaryData);
+          }
         }
 
         // Restore UI states
@@ -3097,12 +3166,10 @@ const Extras = ({ flight, fare, formData, setExtrasData }) => {
         const response = await ancillaryServiceApi.getAllActiveServices();
 
         if (response.success) {
+          console.log("Available ancillary services:", response.data);
           setAvailableServices(response.data || []);
         } else {
-          console.error(
-            "Không thể tải dịch vụ đi kèm:",
-            response.message
-          );
+          console.error("Không thể tải dịch vụ đi kèm:", response.message);
           toast.error("Không thể tải danh sách dịch vụ đi kèm");
         }
       } catch (error) {
@@ -3290,7 +3357,6 @@ const Extras = ({ flight, fare, formData, setExtrasData }) => {
                 //   finalTravelClassId: travelClassId,
                 // });
                 return {
-
                   seatId: seat.seatId,
                   seatNumber: seat.seatNumber,
                   className: seat.className,
@@ -3702,7 +3768,6 @@ const Extras = ({ flight, fare, formData, setExtrasData }) => {
       setIsUpdating(false);
     }, 200); // 200ms delay
 
-
     setExtrasData(extrasData);
   }, [
     selectedSeats,
@@ -3807,7 +3872,7 @@ const Extras = ({ flight, fare, formData, setExtrasData }) => {
             )}
 
             <AncillaryServicesCard
-              selectedServices={legacyAdditionalServices}
+              selectedServices={selectedServices}
               setSelectedServices={setSelectedServices}
               availableServices={availableServices}
               loadingServices={loadingServices}

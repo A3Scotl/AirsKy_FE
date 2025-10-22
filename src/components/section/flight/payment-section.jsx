@@ -15,6 +15,7 @@ import { CreditCard, Smartphone, Wallet } from "lucide-react";
 import { bookingApi } from "@/apis/booking-api";
 import { flightApi } from "@/apis/flight-api";
 import { dealApi } from "@/apis/deal-api";
+import { pointsApi } from "@/apis/points-api";
 import { handleFetch } from "@/utils/fetch-helper";
 import { toast } from "sonner";
 import PropTypes from "prop-types";
@@ -175,6 +176,16 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
   const [applyingDeal, setApplyingDeal] = useState(false);
   const [appliedDealInfo, setAppliedDealInfo] = useState(null); // Store deal details
 
+  // Points redemption states
+  const [pointsToRedeem, setPointsToRedeem] = useState("");
+  const [pointsDiscount, setPointsDiscount] = useState(0);
+  const [pointsApplied, setPointsApplied] = useState(false);
+  const [pointsError, setPointsError] = useState("");
+  const [redeemingPoints, setRedeemingPoints] = useState(false);
+  const [pointsRates, setPointsRates] = useState(null);
+  const [userPoints, setUserPoints] = useState(0);
+  const [canRedeem, setCanRedeem] = useState(false);
+
   // Load available seats on component mount
   useEffect(() => {
     const loadAvailableSeats = async () => {
@@ -216,6 +227,28 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
 
     loadAvailableSeats();
   }, [flight, fare]);
+
+  // Load points redemption rates and user points
+  useEffect(() => {
+    const loadPointsData = async () => {
+      if (!user?.id) return;
+
+      try {
+        // Load points rates
+        const ratesResponse = await pointsApi.getPointsRedemptionRates();
+        if (ratesResponse.success) {
+          setPointsRates(ratesResponse.data);
+        }
+
+        // Load user points (assuming user object has loyaltyPoints)
+        setUserPoints(user.loyaltyPoints || 0);
+      } catch (error) {
+        console.error("Error loading points data:", error);
+      }
+    };
+
+    loadPointsData();
+  }, [user]);
 
   // Calculate totals from real data
   const calculatePassengerTotal = () => {
@@ -415,6 +448,13 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
       setDealError("");
       setAppliedDealInfo(dealData);
 
+      // Reset points when applying deal
+      setPointsToRedeem("");
+      setPointsDiscount(0);
+      setPointsApplied(false);
+      setPointsError("");
+      setCanRedeem(false);
+
       toast.success(
         `Đã áp dụng mã giảm giá ${dealCode} - Giảm ${formatCurrencyVND(
           discountAmount
@@ -440,8 +480,107 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
     toast.info("Đã hủy áp dụng mã giảm giá");
   };
 
-  // Calculate final amount with deal discount
-  const finalAmount = Math.max(0, currentTotalAmount - dealDiscount);
+  // Points redemption handlers
+  const handlePointsChange = async (value) => {
+    const points = parseInt(value) || 0;
+    setPointsToRedeem(value);
+
+    if (points > 0) {
+      try {
+        // Check if user can redeem
+        const canRedeemResponse = await pointsApi.canRedeemPoints(
+          user.id,
+          points
+        );
+        setCanRedeem(canRedeemResponse.success && canRedeemResponse.data);
+
+        // Calculate discount
+        const discountResponse = await pointsApi.calculateDiscountFromPoints(
+          points
+        );
+        if (discountResponse.success) {
+          setPointsDiscount(discountResponse.data);
+        }
+      } catch (error) {
+        console.error("Error calculating points discount:", error);
+        setCanRedeem(false);
+        setPointsDiscount(0);
+      }
+    } else {
+      setCanRedeem(false);
+      setPointsDiscount(0);
+    }
+  };
+
+  const handleRedeemPoints = async () => {
+    if (!pointsToRedeem || !canRedeem) return;
+
+    // Check if deal is applied and warn user
+    if (dealApplied) {
+      const confirmReplace = window.confirm(
+        `Bạn đã áp dụng mã giảm giá "${dealCode}". Đổi điểm sẽ hủy mã giảm giá này. Bạn có muốn tiếp tục?`
+      );
+      if (!confirmReplace) return;
+    }
+
+    setRedeemingPoints(true);
+    try {
+      // Calculate discount directly without creating voucher
+      const discountResponse = await pointsApi.calculateDiscountFromPoints(
+        parseInt(pointsToRedeem)
+      );
+
+      if (discountResponse.success) {
+        const discountAmount = discountResponse.data;
+        setPointsDiscount(discountAmount);
+        setPointsApplied(true);
+        setPointsError("");
+
+        // Reset deal when applying points
+        setDealCode("");
+        setDealDiscount(0);
+        setDealApplied(false);
+        setDealError("");
+        setAppliedDealInfo(null);
+
+        // Update user points (simulate deduction)
+        setUserPoints((prev) => prev - parseInt(pointsToRedeem));
+
+        toast.success(
+          `Đã đổi ${pointsToRedeem} điểm thành ${formatCurrencyVND(
+            discountAmount
+          )} giảm giá`
+        );
+      } else {
+        setPointsError(
+          discountResponse.message || "Không thể tính giảm giá từ điểm"
+        );
+      }
+    } catch (error) {
+      console.error("Error redeeming points:", error);
+      setPointsError("Có lỗi xảy ra khi đổi điểm");
+    } finally {
+      setRedeemingPoints(false);
+    }
+  };
+
+  const handleRemovePoints = () => {
+    const redeemedPoints = parseInt(pointsToRedeem) || 0;
+    setPointsToRedeem("");
+    setPointsDiscount(0);
+    setPointsApplied(false);
+    setPointsError("");
+    setCanRedeem(false);
+    // Restore user points
+    setUserPoints((prev) => prev + redeemedPoints);
+    toast.info("Đã hủy đổi điểm");
+  };
+
+  // Calculate final amount with deal discount and points discount
+  const finalAmount = Math.max(
+    0,
+    currentTotalAmount - dealDiscount - pointsDiscount
+  );
 
   // Auto-assignment is now handled in extras-section automatically
   const autoAssignSeats = async () => {
@@ -1447,6 +1586,8 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
 
       const bookingData = {
         ...(dealApplied && dealCode && { dealCode: dealCode }),
+        ...(pointsApplied &&
+          pointsToRedeem && { pointsToRedeem: parseInt(pointsToRedeem) }),
         userId: user?.id || null,
         totalAmount: finalAmount,
         passengers: [], // Will be populated with seatAssignments
@@ -2411,6 +2552,14 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
           "bookingConfirmation",
           JSON.stringify({
             ...bookingResponse,
+            // Override discountAmount to prevent duplicate with pointsDiscountAmount
+            discountAmount: pointsApplied
+              ? 0
+              : bookingResponse.discountAmount || 0,
+            // Override appliedDealCode to prevent showing points voucher code
+            appliedDealCode: pointsApplied
+              ? ""
+              : bookingResponse.appliedDealCode || "",
             flightType:
               flight?.type ||
               (isMultiCity
@@ -2425,14 +2574,17 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
             formData,
             extrasData: { ...extrasData, selectedSeats: finalSelectedSeats },
             assignedSeats: finalSelectedSeats,
-            appliedDeal: dealApplied
-              ? {
-                  code: dealCode,
-                  discount: dealDiscount,
-                  originalAmount: currentTotalAmount,
-                  finalAmount: finalAmount,
-                }
-              : null,
+            appliedDeal:
+              dealApplied && !pointsApplied
+                ? {
+                    code: dealCode,
+                    discount: dealDiscount,
+                    originalAmount: currentTotalAmount,
+                    finalAmount: finalAmount,
+                  }
+                : null,
+            pointsRedeemed: pointsApplied ? parseInt(pointsToRedeem) : 0,
+            pointsDiscountAmount: pointsApplied ? pointsDiscount : 0,
           })
         );
 
@@ -3693,6 +3845,116 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
 
               <Separator className="my-4" />
 
+              {/* Points Redemption Section */}
+              {user && pointsRates && (
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="text-lg">🎁</span>
+                    <h3 className="font-semibold text-gray-700">
+                      Đổi điểm giảm giá
+                    </h3>
+                    <span className="text-sm text-gray-500">
+                      ({userPoints} điểm hiện có)
+                    </span>
+                  </div>
+
+                  {/* Points Rate Info */}
+                  <div className="bg-blue-50 p-3 rounded-lg text-sm text-blue-800">
+                    <p className="font-medium mb-1">
+                      Quy tắc đổi điểm: {pointsRates.pointsPer10kVnd} điểm ={" "}
+                      {formatCurrencyVND(pointsRates.vndPer100Points)} giảm giá
+                    </p>
+                    <p className="text-xs">
+                      Điểm tối thiểu: {pointsRates.minPointsRedemption} điểm
+                    </p>
+                    <div className="flex flex-wrap gap-1 mt-2">
+                      {pointsRates.suggestedTiers &&
+                        Object.entries(pointsRates.suggestedTiers).map(
+                          ([points, discount]) => (
+                            <span
+                              key={points}
+                              className="bg-blue-100 px-2 py-1 rounded text-xs"
+                            >
+                              {points}đ → {formatCurrencyVND(discount)}
+                            </span>
+                          )
+                        )}
+                    </div>
+                  </div>
+
+                  {/* Points Input */}
+                  <div className="flex gap-2">
+                    <Input
+                      type="number"
+                      placeholder={`Nhập số điểm để đổi giảm giá (tối thiểu ${pointsRates.minPointsRedemption})`}
+                      value={pointsToRedeem}
+                      onChange={(e) => handlePointsChange(e.target.value)}
+                      disabled={pointsApplied}
+                      min={pointsRates.minPointsRedemption}
+                      max={userPoints}
+                      className="flex-1"
+                    />
+                    {!pointsApplied ? (
+                      <Button
+                        onClick={handleRedeemPoints}
+                        disabled={
+                          redeemingPoints || !canRedeem || !pointsToRedeem
+                        }
+                        className="bg-orange-600 hover:bg-orange-700"
+                      >
+                        {redeemingPoints ? "Đang xử lý..." : "Đổi điểm"}
+                      </Button>
+                    ) : (
+                      <Button
+                        onClick={handleRemovePoints}
+                        variant="outline"
+                        className="text-red-600 border-red-600 hover:bg-red-50"
+                      >
+                        Hủy
+                      </Button>
+                    )}
+                  </div>
+
+                  {/* Points Preview */}
+                  {pointsToRedeem && (
+                    <div className="text-sm">
+                      {canRedeem ? (
+                        <div className="flex justify-between items-center text-green-600 bg-green-50 p-2 rounded">
+                          <span>
+                            ✓ {pointsToRedeem} điểm ={" "}
+                            {formatCurrencyVND(pointsDiscount)} giảm giá
+                          </span>
+                        </div>
+                      ) : (
+                        <div className="text-red-600 bg-red-50 p-2 rounded">
+                          {pointsError ||
+                            `Không đủ điểm hoặc ít hơn ${pointsRates.minPointsRedemption} điểm tối thiểu`}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Points Applied Success */}
+                  {pointsApplied && (
+                    <div className="bg-orange-50 p-3 rounded-lg border border-orange-200">
+                      <div className="flex justify-between text-sm text-orange-800 mb-2">
+                        <span>
+                          ✓ Đã đổi {pointsToRedeem} điểm thành giảm giá
+                        </span>
+                        <span className="font-bold">
+                          -{formatCurrencyVND(pointsDiscount)}
+                        </span>
+                      </div>
+                      <div className="text-xs text-gray-600">
+                        <p>Giảm giá trực tiếp cho đơn hàng này</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              <Separator className="my-4" />
+
               {/* Deal Code Section */}
               <div className="space-y-3">
                 <div className="flex gap-2">
@@ -3762,7 +4024,7 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
 
               <Separator className="my-4" />
 
-              {dealApplied && (
+              {(dealApplied || pointsApplied) && (
                 <div className="flex justify-between text-sm mb-2">
                   <span>Tạm tính</span>
                   <span>{formatCurrencyVND(currentTotalAmount)}</span>
@@ -3771,8 +4033,15 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
 
               {dealApplied && (
                 <div className="flex justify-between text-sm mb-2 text-green-600">
-                  <span>Giảm giá</span>
+                  <span>Giảm giá (mã {dealCode})</span>
                   <span>-{formatCurrencyVND(dealDiscount)}</span>
+                </div>
+              )}
+
+              {pointsApplied && (
+                <div className="flex justify-between text-sm mb-2 text-orange-600">
+                  <span>Giảm giá (đổi {pointsToRedeem} điểm)</span>
+                  <span>-{formatCurrencyVND(pointsDiscount)}</span>
                 </div>
               )}
 

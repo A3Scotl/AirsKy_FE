@@ -283,24 +283,38 @@ const BookingConfirmation = () => {
     assignedSeats:
       bookingData.assignedSeats || bookingData.extrasData?.selectedSeats || {},
     seatTypeDetails: bookingData.seatTypeDetails || [],
-    appliedDeal: bookingData.appliedDeal
-      ? {
-          code: bookingData.appliedDeal.code || bookingData.appliedDealCode,
-          name: bookingData.appliedDeal.code || bookingData.appliedDealCode,
-          discount:
-            bookingData.appliedDeal.discount || bookingData.discountAmount,
-          discountAmount:
-            bookingData.appliedDeal.discount || bookingData.discountAmount,
-          discountType: bookingData.discountPercentage ? "PERCENTAGE" : "FIXED",
-          discountValue:
-            bookingData.discountPercentage || bookingData.appliedDeal.discount,
-          originalAmount:
-            bookingData.appliedDeal.originalAmount || bookingData.totalAmount,
-          finalAmount:
-            bookingData.appliedDeal.finalAmount || bookingData.totalAmount,
-          description: `Giảm ${bookingData.discountPercentage || 0}%`,
-        }
-      : null,
+    appliedDeal:
+      bookingData.appliedDeal && bookingData.pointsRedeemed === 0
+        ? {
+            code:
+              bookingData.appliedDeal.code ||
+              (bookingData.pointsRedeemed === 0
+                ? bookingData.appliedDealCode
+                : ""),
+            name:
+              bookingData.appliedDeal.code ||
+              (bookingData.pointsRedeemed === 0
+                ? bookingData.appliedDealCode
+                : ""),
+            discount:
+              bookingData.appliedDeal.discount || bookingData.discountAmount,
+            discountAmount:
+              bookingData.appliedDeal.discount || bookingData.discountAmount,
+            discountType: bookingData.discountPercentage
+              ? "PERCENTAGE"
+              : "FIXED",
+            discountValue:
+              bookingData.discountPercentage ||
+              bookingData.appliedDeal.discount,
+            originalAmount:
+              bookingData.appliedDeal.originalAmount || bookingData.totalAmount,
+            finalAmount:
+              bookingData.appliedDeal.finalAmount || bookingData.totalAmount,
+            description: `Giảm ${bookingData.discountPercentage || 0}%`,
+          }
+        : null,
+    pointsRedeemed: bookingData.pointsRedeemed || 0,
+    pointsDiscountAmount: bookingData.pointsDiscountAmount || 0,
     price: {
       subtotal:
         bookingData.fare?.price ||
@@ -314,8 +328,7 @@ const BookingConfirmation = () => {
         bookingData.totalAmount ||
         bookingData.totalPrice ||
         bookingData.price?.total ||
-        bookingData.appliedDeal?.finalAmount ||
-        0,
+        bookingData.appliedDeal?.finalAmount,
     },
     payment: {
       method:
@@ -1144,6 +1157,20 @@ const BookingConfirmation = () => {
                           -
                           {formatCurrencyVND(
                             bookingDetails.appliedDeal.discountAmount
+                          )}
+                        </span>
+                      </div>
+                    )}
+
+                    {bookingDetails.pointsRedeemed > 0 && (
+                      <div className="flex justify-between text-orange-600">
+                        <span>
+                          Giảm giá (đổi {bookingDetails.pointsRedeemed} điểm)
+                        </span>
+                        <span>
+                          -
+                          {formatCurrencyVND(
+                            bookingDetails.pointsDiscountAmount
                           )}
                         </span>
                       </div>
