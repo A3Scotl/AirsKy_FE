@@ -116,21 +116,21 @@ const TEXT = {
   stopDuration: "Thời Gian Dừng (phút)",
   onTime: "Đúng Giờ",
 
-  businessId: "ID Doanh Nghiệp",
+  businessName: "Tên Doanh Nghiệp",
   tripType: "Loại Chuyến",
   gateId: "ID Cổng",
   airlineId: "ID Hãng Hàng Không",
   departureAirportId: "ID Sân Bay Đi",
   arrivalAirportId: "ID Sân Bay Đến",
   aircraftId: "ID Máy Bay",
-  selectAirline: "Chọn Hãng Hàng Không",
-  selectAircraft: "Chọn Máy Bay",
-  selectFlightType: "Chọn Loại Chuyến Bay",
-  selectDepartureAirport: "Chọn Sân Bay Đi",
-  selectArrivalAirport: "Chọn Sân Bay Đến",
+  selectAirline: "Hãng Hàng Không",
+  selectAircraft: "Máy Bay",
+  selectFlightType: "Loại Chuyến Bay",
+  selectDepartureAirport: "Sân Bay Đi",
+  selectArrivalAirport: "Sân Bay Đến",
   roundTripFlight: "Chuyến Bay Khứ Hồi",
   roundTripGroupId: "Mã Nhóm Khứ Hồi",
-  selectOutboundFlight: "Chọn Chuyến Bay Đi (Khứ Hồi)",
+  selectOutboundFlight: " Chuyến Bay Đi (Khứ Hồi)",
   outboundFlightInfo: "Thông Tin Chuyến Bay Đi",
   createReturnFlight: "Tạo Chuyến Bay Về",
   outboundFlight: "Chuyến Bay Đi",
@@ -338,7 +338,7 @@ const FlightFormModal = ({
       setFormData({
         ...initialFormData,
         airlineId: String(flight.airline?.airlineId || flight.airlineId || ""),
-        aircraftId: String(flight.aircraftId || ""),
+        aircraftId: String(flight.aircraft?.aircraftId || flight.aircraftId || ""),
         departureAirportId: String(
           flight.departureAirport?.airportId || flight.departureAirportId || ""
         ),
@@ -353,7 +353,7 @@ const FlightFormModal = ({
         basePrice: flight.basePrice || "",
         type: flight.type || "",
         status: flight.status || "ON_TIME",
-        businessId: String(flight.businessId || ""),
+        businessId: String(flight.business?.id || flight.businessId || ""),
         tripType: flight.tripType || "ONE_WAY",
         roundTripGroupId: flight.roundTripGroupId || "",
       });
@@ -361,6 +361,10 @@ const FlightFormModal = ({
       setIsRoundTrip(!!flight.roundTripGroupId);
     } else {
       setFormData(initialFormData);
+      // Mặc định chọn Vietnam Airlines (ID=1) khi thêm mới
+      setFormData((prev) => ({
+        ...prev, airlineId: "1"
+      }));
       setIsRoundTrip(false);
       setIsReturnFlight(false);
       setOutboundFlight(null);
@@ -409,7 +413,7 @@ const FlightFormModal = ({
         "aircraftId",
         "departureAirportId",
         "arrivalAirportId",
-        "businessId",
+        "businessName",
       ].includes(field)
     ) {
       return "";
@@ -456,7 +460,7 @@ const FlightFormModal = ({
         return "";
 
       case "businessId":
-        if (!value) return TEXT.requiredField;
+        // if (!value) return TEXT.requiredField; // businessId is optional now
         return "";
 
       case "gateId":
@@ -563,7 +567,7 @@ const FlightFormModal = ({
           selected.departureAirport?.airportId || selected.departureAirportId
         ),
         type: selected.type,
-        businessId: String(selected.businessId),
+        businessName: String(selected.businessName),
         roundTripGroupId: roundTripGroupId,
       }));
     }
@@ -601,10 +605,10 @@ const FlightFormModal = ({
       "departureAirportId",
       "arrivalAirportId",
       "departureDate",
-      "departureTime",
+      "departureTime", 
       "arrivalDate",
       "arrivalTime",
-      "businessId",
+      "businessName",
     ];
     if (!isEditMode) requiredFields.push("gateId");
 
@@ -710,7 +714,7 @@ const FlightFormModal = ({
         type: formData.type,
         status: formData.status,
         businessId:
-          parseInt(formData.businessId) > 0 ? parseInt(formData.businessId) : 1,
+          formData.businessId ? parseInt(formData.businessId) : null,
         tripType: formData.tripType,
         basePrice: parseFloat(formData.basePrice) || 0,
         // Only include roundTripGroupId if it's not empty
@@ -1023,12 +1027,14 @@ const FlightFormModal = ({
                     <Select
                       value={formData.airlineId}
                       onValueChange={(v) => handleInputChange("airlineId", v)}
+                      disabled={!isEditMode} // Chỉ cho phép sửa khi edit
                     >
                       <SelectTrigger
                         className={errors.airlineId ? "border-red-500" : ""}
                       >
                         <SelectValue placeholder={TEXT.selectAirline} />
                       </SelectTrigger>
+                      
                       <SelectContent>
                         {airlines.map((a) => (
                           <SelectItem
@@ -1039,6 +1045,11 @@ const FlightFormModal = ({
                           </SelectItem>
                         ))}
                       </SelectContent>
+                      {!isEditMode && (
+                        <p className="text-xs text-gray-500 mt-1">
+                          Mặc định là Vietnam Airlines.
+                        </p>
+                      )}
                     </Select>
                     {errors.airlineId && (
                       <p className="text-red-500 text-xs">{errors.airlineId}</p>
@@ -1115,7 +1126,7 @@ const FlightFormModal = ({
                     </Select>
                   </div>
                   <div>
-                    <Label>{TEXT.businessId} *</Label>
+                    <Label>{TEXT.businessName}</Label>
                     <Input
                       type="number"
                       value={formData.businessId}
