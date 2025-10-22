@@ -71,6 +71,9 @@ const DealFormModal = ({
     isActive: true,
     departureAirportId: "all",
     arrivalAirportId: "all",
+    isGuestOnly: false,
+    requiredLoyaltyTier: "",
+    isLoyaltyExclusive: false,
   };
 
   const [formData, setFormData] = useState(initialFormData);
@@ -134,6 +137,13 @@ const DealFormModal = ({
         isActive: typeof deal.isActive === "boolean" ? deal.isActive : true,
         departureAirportId: deal.departureAirportId?.toString() || "all",
         arrivalAirportId: deal.arrivalAirportId?.toString() || "all",
+        isGuestOnly:
+          typeof deal.isGuestOnly === "boolean" ? deal.isGuestOnly : false,
+        requiredLoyaltyTier: deal.requiredLoyaltyTier || "",
+        isLoyaltyExclusive:
+          typeof deal.isLoyaltyExclusive === "boolean"
+            ? deal.isLoyaltyExclusive
+            : false,
       });
     } else {
       setFormData(initialFormData);
@@ -755,7 +765,7 @@ const DealFormModal = ({
                     Cài đặt
                   </CardTitle>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="space-y-4">
                   <div className="flex items-center justify-between">
                     <div className="space-y-0.5">
                       <Label htmlFor="isActive">Kích hoạt deal</Label>
@@ -770,6 +780,67 @@ const DealFormModal = ({
                         handleInputChange("isActive", checked)
                       }
                     />
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-0.5">
+                      <Label htmlFor="isGuestOnly">
+                        Chỉ dành cho khách vãng lai
+                      </Label>
+                      <p className="text-sm text-muted-foreground">
+                        Deal chỉ áp dụng cho khách hàng chưa đăng ký tài khoản
+                      </p>
+                    </div>
+                    <Switch
+                      id="isGuestOnly"
+                      checked={formData.isGuestOnly}
+                      onCheckedChange={(checked) =>
+                        handleInputChange("isGuestOnly", checked)
+                      }
+                    />
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-0.5">
+                      <Label htmlFor="isLoyaltyExclusive">
+                        Độc quyền loyalty
+                      </Label>
+                      <p className="text-sm text-muted-foreground">
+                        Deal chỉ dành riêng cho thành viên loyalty
+                      </p>
+                    </div>
+                    <Switch
+                      id="isLoyaltyExclusive"
+                      checked={formData.isLoyaltyExclusive}
+                      onCheckedChange={(checked) =>
+                        handleInputChange("isLoyaltyExclusive", checked)
+                      }
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="requiredLoyaltyTier">
+                      Hạng thành viên yêu cầu
+                    </Label>
+                    <Select
+                      value={formData.requiredLoyaltyTier}
+                      onValueChange={(value) =>
+                        handleInputChange("requiredLoyaltyTier", value)
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Chọn hạng thành viên" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="NONE">Không yêu cầu</SelectItem>
+                        <SelectItem value="SILVER">Silver</SelectItem>
+                        <SelectItem value="GOLD">Gold</SelectItem>
+                        <SelectItem value="PLATINUM">Platinum</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <p className="text-sm text-muted-foreground">
+                      Chỉ thành viên từ hạng này trở lên mới có thể sử dụng deal
+                    </p>
                   </div>
                 </CardContent>
               </Card>

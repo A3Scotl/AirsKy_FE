@@ -399,7 +399,7 @@ const AirportAutocomplete = ({
 
       {/* Dropdown */}
       {isOpen && !disabled && (
-        <div className="absolute w-96 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-999999 max-h-80 overflow-y-auto">
+        <div className="absolute w-96 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-999 max-h-80 overflow-y-auto">
           {/* Header */}
           {searchTerm === "" && (
             <div className="p-3 border-b bg-gray-50">

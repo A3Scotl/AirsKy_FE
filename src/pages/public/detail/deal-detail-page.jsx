@@ -222,7 +222,7 @@ const DealDetailPage = () => {
                     <div>
                       <div className="text-sm text-gray-500 mb-1">Thời hạn</div>
                       <div className="text-xl font-semibold">
-                        {formatDate(deal.validFrom)}{" "}
+                        {formatDate(deal.validFrom)}{" "} - {formatDate(deal.validTo)}
                         <Badge
                           variant="outline"
                           className="border-red-500 text-red-500"

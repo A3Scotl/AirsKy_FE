@@ -12,6 +12,8 @@ import {
   XCircle,
   Clock,
   TrendingUp,
+  Award,
+  Shield,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -361,6 +363,89 @@ const DealDetailModal = ({ open, onClose, deal }) => {
             </CardContent>
           </Card>
         </div>
+
+        {/* Loyalty Settings */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Award className="h-5 w-5 text-purple-600" />
+              Cài đặt Loyalty
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <Users className="h-4 w-4 text-muted-foreground" />
+                  <span className="font-medium">Khách vãng lai</span>
+                </div>
+                <Badge variant={deal.isGuestOnly ? "success" : "secondary"}>
+                  {deal.isGuestOnly
+                    ? "Chỉ dành cho khách vãng lai"
+                    : "Cho tất cả khách hàng"}
+                </Badge>
+                <p className="text-sm text-muted-foreground">
+                  {deal.isGuestOnly
+                    ? "Deal chỉ áp dụng cho khách hàng chưa đăng ký tài khoản"
+                    : "Deal áp dụng cho cả khách hàng đã đăng ký và chưa đăng ký"}
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <Award className="h-4 w-4 text-muted-foreground" />
+                  <span className="font-medium">Hạng thành viên yêu cầu</span>
+                </div>
+                {deal.requiredLoyaltyTier ? (
+                  <Badge
+                    variant="outline"
+                    className="text-purple-600 border-purple-600"
+                  >
+                    {deal.requiredLoyaltyTier === "PLATINUM"
+                      ? "Platinum"
+                      : deal.requiredLoyaltyTier === "GOLD"
+                      ? "Gold"
+                      : deal.requiredLoyaltyTier === "SILVER"
+                      ? "Silver"
+                      : deal.requiredLoyaltyTier}
+                  </Badge>
+                ) : (
+                  <Badge variant="secondary">Không yêu cầu</Badge>
+                )}
+                <p className="text-sm text-muted-foreground">
+                  {deal.requiredLoyaltyTier
+                    ? `Chỉ thành viên từ hạng ${
+                        deal.requiredLoyaltyTier === "PLATINUM"
+                          ? "Platinum"
+                          : deal.requiredLoyaltyTier === "GOLD"
+                          ? "Gold"
+                          : deal.requiredLoyaltyTier === "SILVER"
+                          ? "Silver"
+                          : deal.requiredLoyaltyTier
+                      } trở lên`
+                    : "Không yêu cầu hạng thành viên cụ thể"}
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <Shield className="h-4 w-4 text-muted-foreground" />
+                  <span className="font-medium">Độc quyền loyalty</span>
+                </div>
+                <Badge
+                  variant={deal.isLoyaltyExclusive ? "success" : "secondary"}
+                >
+                  {deal.isLoyaltyExclusive ? "Độc quyền" : "Công khai"}
+                </Badge>
+                <p className="text-sm text-muted-foreground">
+                  {deal.isLoyaltyExclusive
+                    ? "Deal chỉ dành riêng cho thành viên loyalty"
+                    : "Deal công khai cho tất cả khách hàng đủ điều kiện"}
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
         <div className="flex justify-end pt-4">
           <Button variant="outline" onClick={onClose}>

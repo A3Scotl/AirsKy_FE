@@ -9,6 +9,9 @@ import {
   TrendingUp,
   Loader2,
   RotateCcw,
+  Award,
+  Star,
+  Plane,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -48,6 +51,7 @@ import UserTable from "@/components/admin/users/user-table";
 import UserFormModal from "@/components/admin/users/user-form-modal";
 import UserDetailsModal from "@/components/admin/users/user-details-modal";
 import { userApi } from "@/apis/user-api";
+import { loyaltyApi } from "@/apis/loyalty-api";
 import { toast } from "sonner";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/contexts/auth-context";
@@ -71,6 +75,9 @@ const AdminUsers = () => {
     description: "",
     onConfirm: () => {},
   });
+  const [showLoyaltyModal, setShowLoyaltyModal] = useState(false);
+  const [loyaltyStats, setLoyaltyStats] = useState(null);
+  const [loyaltyLoading, setLoyaltyLoading] = useState(false);
   const [pagination, setPagination] = useState({
     page: 0,
     size: 10,
@@ -107,7 +114,11 @@ const AdminUsers = () => {
                   </div>
                 </div>
               </TableCell>
-              {Array.from({ length: 7 }).map((_, j) => (<TableCell key={j}><Skeleton className="h-5 w-full" /></TableCell>))}
+              {Array.from({ length: 7 }).map((_, j) => (
+                <TableCell key={j}>
+                  <Skeleton className="h-5 w-full" />
+                </TableCell>
+              ))}
             </TableRow>
           ))}
         </TableBody>
@@ -340,10 +351,17 @@ const AdminUsers = () => {
         try {
           const response = await userApi.toggleActive(user.id);
           if (response.success) {
-            toast.success(`${action.charAt(0).toUpperCase() + action.slice(1)} tài khoản thành công`);
+            toast.success(
+              `${
+                action.charAt(0).toUpperCase() + action.slice(1)
+              } tài khoản thành công`
+            );
             fetchUsers();
           } else {
-            toast.error(`Không thể ${action} tài khoản: ` + (response.message || "Lỗi không xác định"));
+            toast.error(
+              `Không thể ${action} tài khoản: ` +
+                (response.message || "Lỗi không xác định")
+            );
           }
         } catch (error) {
           toast.error(`Lỗi khi ${action} tài khoản`);
@@ -368,7 +386,10 @@ const AdminUsers = () => {
             toast.success("Cập nhật vai trò người dùng thành công!");
             fetchUsers();
           } else {
-            toast.error("Không thể cập nhật vai trò: " + (response.message || "Lỗi không xác định"));
+            toast.error(
+              "Không thể cập nhật vai trò: " +
+                (response.message || "Lỗi không xác định")
+            );
           }
         } catch (error) {
           toast.error("Lỗi khi cập nhật vai trò người dùng.");
@@ -411,6 +432,43 @@ const AdminUsers = () => {
       success: "Đã cập nhật danh sách người dùng!",
       error: "Lỗi khi tải lại danh sách",
     });
+  };
+
+  // Loyalty handlers
+  const handleViewLoyalty = async (user) => {
+    setSelectedUser(user);
+    setLoyaltyLoading(true);
+    setShowLoyaltyModal(true);
+    try {
+      const stats = await loyaltyApi.adminGetLoyaltyStats(user.id);
+      setLoyaltyStats(stats);
+    } catch (error) {
+      console.error("Failed to fetch loyalty stats:", error);
+      toast.error("Không thể tải thông tin điểm thưởng");
+      setShowLoyaltyModal(false);
+    } finally {
+      setLoyaltyLoading(false);
+    }
+  };
+
+  const handleCheckUpgrade = async () => {
+    if (!selectedUser) return;
+
+    try {
+      setLoyaltyLoading(true);
+      await loyaltyApi.adminCheckUpgrade(selectedUser.id);
+      // Refresh loyalty stats after upgrade check
+      const updatedStats = await loyaltyApi.adminGetLoyaltyStats(
+        selectedUser.id
+      );
+      setLoyaltyStats(updatedStats);
+      toast.success("Đã kiểm tra và cập nhật hạng thành viên!");
+    } catch (error) {
+      console.error("Failed to check tier upgrade:", error);
+      toast.error("Không thể kiểm tra nâng hạng");
+    } finally {
+      setLoyaltyLoading(false);
+    }
   };
 
   return (
@@ -581,6 +639,7 @@ const AdminUsers = () => {
               onDeleteUser={handleDeleteUser}
               onSuspendUser={handleSuspendUser}
               onUpdateRole={handleUpdateRole}
+              onViewLoyalty={handleViewLoyalty}
               pagination={pagination}
               onPageChange={(newPage) => fetchUsers({ page: newPage })}
               onPageSizeChange={(newSize) =>
@@ -610,12 +669,178 @@ const AdminUsers = () => {
         currentUser={currentUser}
       />
 
+      {/* Loyalty Modal */}
+      <AlertDialog
+        open={showLoyaltyModal}
+        onOpenChange={(isOpen) => {
+          setShowLoyaltyModal(isOpen);
+          if (!isOpen) {
+            setLoyaltyStats(null);
+            setSelectedUser(null);
+          }
+        }}
+      >
+        <AlertDialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center">
+              <Award className="mr-2 h-5 w-5 text-yellow-500" />
+              Thông tin điểm thưởng - {selectedUser?.name}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Xem và quản lý điểm thưởng và hạng thành viên
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+
+          <div className="space-y-6">
+            {loyaltyLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-6 w-6 animate-spin mr-2" />
+                <span>Đang tải...</span>
+              </div>
+            ) : loyaltyStats ? (
+              <>
+                {/* Current Tier */}
+                <div className="flex items-center justify-between p-4 border rounded-lg bg-gradient-to-r from-blue-50 to-purple-50">
+                  <div className="flex items-center space-x-3">
+                    <div className="p-2 rounded-full bg-blue-100">
+                      <Award className="h-6 w-6 text-blue-600" />
+                    </div>
+                    <div>
+                      <p className="font-semibold text-lg">
+                        {loyaltyStats.currentTier === "PLATINUM"
+                          ? "Platinum"
+                          : loyaltyStats.currentTier === "GOLD"
+                          ? "Gold"
+                          : loyaltyStats.currentTier === "SILVER"
+                          ? "Silver"
+                          : "Standard"}
+                      </p>
+                      <p className="text-sm text-gray-600">
+                        Hạng thành viên hiện tại
+                      </p>
+                    </div>
+                  </div>
+                  <Button
+                    onClick={handleCheckUpgrade}
+                    disabled={loyaltyLoading}
+                    size="sm"
+                    className="bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600"
+                  >
+                    {loyaltyLoading ? (
+                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    ) : (
+                      <Award className="h-4 w-4 mr-2" />
+                    )}
+                    Kiểm tra nâng hạng
+                  </Button>
+                </div>
+
+                {/* Points and Bookings */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="p-4 border rounded-lg">
+                    <div className="flex items-center space-x-2 mb-2">
+                      <Star className="h-5 w-5 text-yellow-500" />
+                      <span className="font-medium">Điểm thưởng</span>
+                    </div>
+                    <p className="text-2xl font-bold text-blue-600">
+                      {loyaltyStats.currentPoints?.toLocaleString() || 0}
+                    </p>
+                  </div>
+
+                  <div className="p-4 border rounded-lg">
+                    <div className="flex items-center space-x-2 mb-2">
+                      <Plane className="h-5 w-5 text-blue-500" />
+                      <span className="font-medium">Chuyến bay hoàn thành</span>
+                    </div>
+                    <p className="text-2xl font-bold text-green-600">
+                      {loyaltyStats.completedBookings?.toLocaleString() || 0}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Next Tier Progress */}
+                {loyaltyStats.nextTier && loyaltyStats.nextTierRequirements && (
+                  <div className="p-4 border rounded-lg bg-gray-50">
+                    <h4 className="font-semibold mb-3">
+                      Tiến độ nâng hạng tiếp theo
+                    </h4>
+                    <div className="space-y-3">
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm">
+                          Hạng{" "}
+                          {loyaltyStats.nextTier === "PLATINUM"
+                            ? "Platinum"
+                            : loyaltyStats.nextTier === "GOLD"
+                            ? "Gold"
+                            : loyaltyStats.nextTier === "SILVER"
+                            ? "Silver"
+                            : "Standard"}
+                        </span>
+                        <span className="text-sm font-medium">
+                          {Math.round(
+                            (loyaltyStats.overallProgress || 0) * 100
+                          )}
+                          %
+                        </span>
+                      </div>
+
+                      <div className="w-full bg-gray-200 rounded-full h-2">
+                        <div
+                          className="bg-purple-500 h-2 rounded-full"
+                          style={{
+                            width: `${Math.min(
+                              (loyaltyStats.overallProgress || 0) * 100,
+                              100
+                            )}%`,
+                          }}
+                        ></div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4 text-sm">
+                        <div>
+                          <span className="text-gray-600">Điểm cần thêm:</span>
+                          <span className="font-medium ml-1">
+                            {Math.max(
+                              0,
+                              (loyaltyStats.nextTierRequirements.points || 0) -
+                                (loyaltyStats.currentPoints || 0)
+                            )}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-gray-600">
+                            Chuyến bay cần thêm:
+                          </span>
+                          <span className="font-medium ml-1">
+                            {Math.max(
+                              0,
+                              (loyaltyStats.nextTierRequirements.bookings ||
+                                0) - (loyaltyStats.completedBookings || 0)
+                            )}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </>
+            ) : (
+              <div className="text-center py-8 text-gray-500">
+                Không thể tải thông tin điểm thưởng
+              </div>
+            )}
+          </div>
+
+          <AlertDialogFooter>
+            <AlertDialogCancel>Đóng</AlertDialogCancel>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       {/* Confirmation Modal */}
       <AlertDialog
         open={confirmModal.isOpen}
-        onOpenChange={(isOpen) =>
-          setConfirmModal({ ...confirmModal, isOpen })
-        }
+        onOpenChange={(isOpen) => setConfirmModal({ ...confirmModal, isOpen })}
       >
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -625,7 +850,9 @@ const AdminUsers = () => {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={isActionLoading}>Hủy</AlertDialogCancel>
+            <AlertDialogCancel disabled={isActionLoading}>
+              Hủy
+            </AlertDialogCancel>
             <AlertDialogAction
               onClick={confirmModal.onConfirm}
               disabled={isActionLoading}

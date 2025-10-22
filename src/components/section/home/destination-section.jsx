@@ -61,18 +61,58 @@ export function DestinationSection() {
             response.data &&
             response.data?.content.length > 0
           ) {
-            // ✅ CẬP NHẬT: Lấy giá thấp nhất từ flightTravelClasses
-            const flightPrices = response.data?.content
+            // Lọc chỉ lấy chuyến bay còn hoạt động (cách hiện tại ít nhất 24 giờ)
+            const now = new Date();
+            const minBookingLeadTime = 24 * 60 * 60 * 1000; // 24 giờ
+
+            const activeFlights = response.data.content.filter((flight) => {
+              try {
+                // Xử lý departureTime - có thể là ISO string hoặc date + time
+                let departureDateTime;
+                if (
+                  flight.departureTime &&
+                  flight.departureTime.includes("T")
+                ) {
+                  // ISO string format: "2025-10-31T06:00:00"
+                  departureDateTime = new Date(flight.departureTime);
+                } else if (flight.departureDate && flight.departureTime) {
+                  // Legacy format: separate date and time
+                  departureDateTime = new Date(
+                    `${flight.departureDate} ${flight.departureTime}`
+                  );
+                } else {
+                  return false; // Invalid datetime format
+                }
+
+                // Chỉ lấy chuyến bay có thời gian khởi hành cách hiện tại ít nhất 24 giờ
+                return (
+                  departureDateTime.getTime() - now.getTime() >=
+                  minBookingLeadTime
+                );
+              } catch (error) {
+                console.warn("Error parsing flight datetime:", flight, error);
+                return false;
+              }
+            });
+
+            // Nếu không có chuyến bay hoạt động, bỏ qua quốc gia này
+            if (activeFlights.length === 0) {
+              continue;
+            }
+
+            // ✅ CẬP NHẬT: Lấy giá thấp nhất từ price trong flightTravelClasses
+            const flightPrices = activeFlights
               .map((flight) => {
-                // Lấy tất cả customPrice từ flightTravelClasses
+                // Lấy tất cả price từ flightTravelClasses
                 const prices =
-                  flight.flightTravelClasses?.map((ftc) => ftc.customPrice) ||
-                  [];
+                  flight.flightTravelClasses?.map(
+                    (ftc) => ftc.price || ftc.basePrice
+                  ) || [];
 
                 // Trả về giá thấp nhất của chuyến bay này
                 return prices.length > 0 ? Math.min(...prices) : Infinity;
               })
-              .filter((price) => price !== Infinity); // Loại bỏ các chuyến bay không có giá
+              .filter((price) => price !== Infinity && price > 0); // Loại bỏ các chuyến bay không có giá
 
             // Nếu không có chuyến bay nào có giá, bỏ qua quốc gia này
             if (flightPrices.length === 0) {
@@ -94,10 +134,10 @@ export function DestinationSection() {
               countryCode: country.countryCode,
               image: country.thumbnail,
               price: formattedPrice,
-              flightCount: response.data.content.length,
-              departureAirport: response.data.content[0].departureAirport,
-              arrivalAirport: response.data.content[0].arrivalAirport,
-              flights: response.data.content, // Lưu toàn bộ data chuyến bay
+              flightCount: activeFlights.length, // Số chuyến bay còn hoạt động
+              departureAirport: activeFlights[0].departureAirport,
+              arrivalAirport: activeFlights[0].arrivalAirport,
+              flights: activeFlights, // Chỉ lưu các chuyến bay còn hoạt động
             });
 
             // Cập nhật state ngay lập tức khi có data cho quốc gia này

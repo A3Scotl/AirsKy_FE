@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -41,10 +41,12 @@ import {
   Star,
   Shield,
   Award,
+  Plane,
 } from "lucide-react";
 import { toast } from "sonner";
 import { authApi } from "@/apis/auth-api";
 import { userApi } from "@/apis/user-api";
+import { loyaltyApi } from "@/apis/loyalty-api";
 import { userProfileUtils } from "@/hooks/use-user-profile";
 import { useAuth } from "@/contexts/auth-context";
 import { useNavigate } from "react-router-dom";
@@ -99,6 +101,10 @@ const AccountTab = ({ userProfile, onProfileUpdate }) => {
     { name: "Instagram", icon: Instagram, connected: false, username: "" },
   ]);
 
+  // Loyalty state
+  const [loyaltyStats, setLoyaltyStats] = useState(null);
+  const [loyaltyLoading, setLoyaltyLoading] = useState(false);
+
   // Get loyalty tier display info based on enum value
   const getLoyaltyTierDisplay = (tier) => {
     switch (tier) {
@@ -134,6 +140,24 @@ const AccountTab = ({ userProfile, onProfileUpdate }) => {
     }
   };
 
+  // Fetch loyalty stats on component mount
+  useEffect(() => {
+    const fetchLoyaltyStats = async () => {
+      try {
+        setLoyaltyLoading(true);
+        const stats = await loyaltyApi.getLoyaltyStats();
+        setLoyaltyStats(stats);
+      } catch (error) {
+        console.error("Failed to fetch loyalty stats:", error);
+        toast.error("Không thể tải thông tin điểm thưởng");
+      } finally {
+        setLoyaltyLoading(false);
+      }
+    };
+
+    fetchLoyaltyStats();
+  }, []);
+
   // Optimized handlers
   const handleInputChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -149,6 +173,21 @@ const AccountTab = ({ userProfile, onProfileUpdate }) => {
 
   const togglePasswordVisibility = (field) => {
     setShowPasswords((prev) => ({ ...prev, [field]: !prev[field] }));
+  };
+
+  // Loyalty handlers
+  const handleCheckTierUpgrade = async () => {
+    try {
+      setLoyaltyLoading(true);
+      const updatedStats = await loyaltyApi.checkAndUpgradeTier();
+      setLoyaltyStats(updatedStats);
+      toast.success("Đã kiểm tra và cập nhật hạng thành viên!");
+    } catch (error) {
+      console.error("Failed to check tier upgrade:", error);
+      toast.error("Không thể kiểm tra nâng hạng");
+    } finally {
+      setLoyaltyLoading(false);
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -798,6 +837,212 @@ const AccountTab = ({ userProfile, onProfileUpdate }) => {
           </div>
         </CardContent>
       </Card> */}
+
+      {/* Loyalty Program Card */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg flex items-center">
+            <Award className="mr-2 h-5 w-5 text-yellow-500" />
+            Chương trình tích điểm
+          </CardTitle>
+          <CardDescription>
+            Xem điểm thưởng và hạng thành viên của bạn
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {loyaltyLoading ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-6 w-6 animate-spin mr-2" />
+              <span>Đang tải thông tin...</span>
+            </div>
+          ) : loyaltyStats ? (
+            <div className="space-y-6">
+              {/* Current Tier */}
+              <div className="flex items-center justify-between p-4 border rounded-lg bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20">
+                <div className="flex items-center space-x-3">
+                  {(() => {
+                    const tierInfo = getLoyaltyTierDisplay(
+                      loyaltyStats.currentTier
+                    );
+                    const IconComponent = tierInfo.icon;
+                    return (
+                      <>
+                        <div className={`p-2 rounded-full ${tierInfo.bgColor}`}>
+                          <IconComponent
+                            className={`h-6 w-6 ${tierInfo.color}`}
+                          />
+                        </div>
+                        <div>
+                          <p className="font-semibold text-lg">
+                            {tierInfo.name}
+                          </p>
+                          <p className="text-sm text-gray-600">
+                            Hạng thành viên hiện tại
+                          </p>
+                        </div>
+                      </>
+                    );
+                  })()}
+                </div>
+                <Button
+                  onClick={handleCheckTierUpgrade}
+                  disabled={loyaltyLoading}
+                  size="sm"
+                  className="bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600"
+                >
+                  {loyaltyLoading ? (
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  ) : (
+                    <Award className="h-4 w-4 mr-2" />
+                  )}
+                  Kiểm tra nâng hạng
+                </Button>
+              </div>
+
+              {/* Points and Bookings */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="p-4 border rounded-lg">
+                  <div className="flex items-center space-x-2 mb-2">
+                    <Star className="h-5 w-5 text-yellow-500" />
+                    <span className="font-medium">Điểm thưởng</span>
+                  </div>
+                  <p className="text-2xl font-bold text-blue-600">
+                    {loyaltyStats.currentPoints?.toLocaleString() || 0}
+                  </p>
+                  <p className="text-sm text-gray-600">điểm</p>
+                </div>
+
+                <div className="p-4 border rounded-lg">
+                  <div className="flex items-center space-x-2 mb-2">
+                    <Plane className="h-5 w-5 text-blue-500" />
+                    <span className="font-medium">Chuyến bay hoàn thành</span>
+                  </div>
+                  <p className="text-2xl font-bold text-green-600">
+                    {loyaltyStats.completedBookings?.toLocaleString() || 0}
+                  </p>
+                  <p className="text-sm text-gray-600">chuyến</p>
+                </div>
+              </div>
+
+              {/* Next Tier Progress */}
+              {loyaltyStats.nextTier && loyaltyStats.nextTierRequirements && (
+                <div className="p-4 border rounded-lg bg-gray-50 dark:bg-gray-800/50">
+                  <h4 className="font-semibold mb-3 flex items-center">
+                    <Award className="h-5 w-5 mr-2 text-purple-500" />
+                    Tiến độ nâng hạng tiếp theo
+                  </h4>
+
+                  <div className="space-y-3">
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm">
+                        Hạng {getLoyaltyTierDisplay(loyaltyStats.nextTier).name}
+                      </span>
+                      <span className="text-sm font-medium">
+                        {Math.round((loyaltyStats.overallProgress || 0) * 100)}%
+                      </span>
+                    </div>
+
+                    <div className="w-full bg-gray-200 rounded-full h-2">
+                      <div
+                        className="bg-purple-500 h-2 rounded-full transition-all duration-300"
+                        style={{
+                          width: `${Math.min(
+                            (loyaltyStats.overallProgress || 0) * 100,
+                            100
+                          )}%`,
+                        }}
+                      ></div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4 text-sm">
+                      <div>
+                        <span className="text-gray-600">Điểm cần thêm:</span>
+                        <span className="font-medium ml-1">
+                          {Math.max(
+                            0,
+                            (loyaltyStats.nextTierRequirements.points || 0) -
+                              (loyaltyStats.currentPoints || 0)
+                          )}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-gray-600">
+                          Chuyến bay cần thêm:
+                        </span>
+                        <span className="font-medium ml-1">
+                          {Math.max(
+                            0,
+                            (loyaltyStats.nextTierRequirements.bookings || 0) -
+                              (loyaltyStats.completedBookings || 0)
+                          )}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Tier Benefits */}
+              <div className="p-4 border rounded-lg">
+                <h4 className="font-semibold mb-3">
+                  Quyền lợi hạng{" "}
+                  {getLoyaltyTierDisplay(loyaltyStats.currentTier).name}
+                </h4>
+                <div className="space-y-2 text-sm">
+                  {loyaltyStats.currentTier === "PLATINUM" && (
+                    <>
+                      <div className="flex items-center space-x-2">
+                        <Star className="h-4 w-4 text-blue-500" />
+                        <span>Ưu tiên check-in và chọn ghế</span>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <Star className="h-4 w-4 text-blue-500" />
+                        <span>Miễn phí hành lý ký gửi</span>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <Star className="h-4 w-4 text-blue-500" />
+                        <span>Phòng chờ hạng thương gia</span>
+                      </div>
+                    </>
+                  )}
+                  {loyaltyStats.currentTier === "GOLD" && (
+                    <>
+                      <div className="flex items-center space-x-2">
+                        <Star className="h-4 w-4 text-yellow-500" />
+                        <span>Ưu tiên check-in</span>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <Star className="h-4 w-4 text-yellow-500" />
+                        <span>Giảm 20% hành lý thêm</span>
+                      </div>
+                    </>
+                  )}
+                  {loyaltyStats.currentTier === "SILVER" && (
+                    <>
+                      <div className="flex items-center space-x-2">
+                        <Star className="h-4 w-4 text-gray-500" />
+                        <span>Giảm 10% hành lý thêm</span>
+                      </div>
+                    </>
+                  )}
+                  {loyaltyStats.currentTier === "STANDARD" && (
+                    <>
+                      <div className="flex items-center space-x-2">
+                        <Star className="h-4 w-4 text-orange-500" />
+                        <span>Tích điểm cho mỗi chuyến bay</span>
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="text-center py-8 text-gray-500">
+              Không thể tải thông tin điểm thưởng
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Delete Account Card */}
       <Card className="border-red-200 dark:border-red-800">

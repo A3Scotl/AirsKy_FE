@@ -78,19 +78,51 @@ const statusConfig = {
 };
 
 const roleConfig = {
-  CUSTOMER: { label: "Khách hàng", badge: "bg-blue-100 text-blue-800", icon: User },
-  BUSINESS: { label: "Doanh nghiệp", badge: "bg-purple-100 text-purple-800", icon: Crown },
-  FLIGHT_MANAGER: { label: "Quản lý bay", badge: "bg-green-100 text-green-800", icon: Plane },
-  ADMIN: { label: "Quản trị viên", badge: "bg-red-100 text-red-800", icon: Shield },
-  STAFF: { label: "Nhân viên", badge: "bg-yellow-100 text-yellow-800", icon: Users },
-  default: { label: "Không xác định", badge: "bg-gray-100 text-gray-800", icon: User },
+  CUSTOMER: {
+    label: "Khách hàng",
+    badge: "bg-blue-100 text-blue-800",
+    icon: User,
+  },
+  BUSINESS: {
+    label: "Doanh nghiệp",
+    badge: "bg-purple-100 text-purple-800",
+    icon: Crown,
+  },
+  FLIGHT_MANAGER: {
+    label: "Quản lý bay",
+    badge: "bg-green-100 text-green-800",
+    icon: Plane,
+  },
+  ADMIN: {
+    label: "Quản trị viên",
+    badge: "bg-red-100 text-red-800",
+    icon: Shield,
+  },
+  STAFF: {
+    label: "Nhân viên",
+    badge: "bg-yellow-100 text-yellow-800",
+    icon: Users,
+  },
+  default: {
+    label: "Không xác định",
+    badge: "bg-gray-100 text-gray-800",
+    icon: User,
+  },
 };
 
 const loyaltyConfig = {
-  STANDARD: { label: "Tiêu chuẩn", badge: "bg-gray-100 text-gray-800", icon: User },
+  STANDARD: {
+    label: "Tiêu chuẩn",
+    badge: "bg-gray-100 text-gray-800",
+    icon: User,
+  },
   SILVER: { label: "Bạc", badge: "bg-slate-200 text-slate-800", icon: Shield },
   GOLD: { label: "Vàng", badge: "bg-amber-200 text-amber-800", icon: Crown },
-  PLATINUM: { label: "Bạch kim", badge: "bg-cyan-200 text-cyan-800", icon: Crown },
+  PLATINUM: {
+    label: "Bạch kim",
+    badge: "bg-cyan-200 text-cyan-800",
+    icon: Crown,
+  },
   default: { label: "-", badge: "bg-gray-100 text-gray-800", icon: User },
 };
 
@@ -104,6 +136,7 @@ const UserTable = ({
   onDeleteUser,
   onSuspendUser,
   onUpdateRole,
+  onViewLoyalty,
   pagination,
   onPageChange,
   onPageSizeChange,
@@ -283,6 +316,12 @@ const UserTable = ({
                           Xem chi tiết
                         </DropdownMenuItem>
                         <DropdownMenuItem
+                          onClick={() => onViewLoyalty && onViewLoyalty(user)}
+                        >
+                          <Crown className="mr-2 h-4 w-4" />
+                          Xem điểm thưởng
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
                           onClick={() => onEditUser && onEditUser(user)}
                         >
                           <Edit className="mr-2 h-4 w-4" />
@@ -315,7 +354,9 @@ const UserTable = ({
                             <span>Thay đổi vai trò</span>
                           </DropdownMenuSubTrigger>
                           <DropdownMenuSubContent>
-                            <DropdownMenuLabel>Chọn vai trò mới</DropdownMenuLabel>
+                            <DropdownMenuLabel>
+                              Chọn vai trò mới
+                            </DropdownMenuLabel>
                             <DropdownMenuSeparator />
                             {Object.keys(roleConfig)
                               .filter((role) => role !== "default")
@@ -323,7 +364,10 @@ const UserTable = ({
                                 <DropdownMenuItem
                                   key={roleKey}
                                   disabled={user.role === roleKey}
-                                  onClick={() => onUpdateRole && onUpdateRole(user.id, roleKey)}
+                                  onClick={() =>
+                                    onUpdateRole &&
+                                    onUpdateRole(user.id, roleKey)
+                                  }
                                 >
                                   {roleConfig[roleKey].label}
                                 </DropdownMenuItem>

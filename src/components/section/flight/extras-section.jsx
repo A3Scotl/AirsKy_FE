@@ -666,25 +666,72 @@ const AircraftLayout = ({
   totalSeats = null, // Total seats from aircraft info
   flight = null, // Flight data for additional info
   flightId = null, // Flight ID for API loading
+  userTravelClassId = null, // Travel class ID của user để disable ghế không phù hợp
 }) => {
   const [completeSeatMap, setCompleteSeatMap] = useState(seats);
   const [isLoadingSeats, setIsLoadingSeats] = useState(false);
 
-  // Load complete seat map from API when flightId is available
+  // Load complete seat map from API when flightId is available (load all travel classes like SeatMap)
   useEffect(() => {
-    const loadSeats = async () => {
+    const loadCompleteSeats = async () => {
       if (flightId && flightId !== "N/A") {
         setIsLoadingSeats(true);
         try {
-          const apiSeats = await loadCompleteSeatMapFromApi(flightId);
-          if (apiSeats.length > 0) {
-            setCompleteSeatMap(apiSeats);
-          } else {
-            // Fallback to provided seats if API returns empty
-            setCompleteSeatMap(seats);
-          }
+          // Define travel class IDs
+          const travelClassIds = [
+            { id: 1, name: "Phổ thông", type: "ECONOMY" },
+            { id: 2, name: "Thương gia", type: "BUSINESS" },
+            { id: 3, name: "Hạng nhất", type: "FIRST" },
+          ];
+
+          console.log(
+            `🔄 Loading complete seats for multi-city flight ${flightId}...`
+          );
+
+          // Load seats for all travel classes in parallel
+          const seatPromises = travelClassIds.map(async (travelClass) => {
+            try {
+              const response =
+                await flightApi.getSeatsFlightByFlightIdAndTravelClassId(
+                  flightId,
+                  travelClass.id
+                );
+
+              if (response.success && response.data) {
+                const seatsData = Array.isArray(response.data)
+                  ? response.data
+                  : [];
+                console.log(
+                  `✅ Loaded ${seatsData.length} ${travelClass.name} seats for multi-city`
+                );
+
+                // Ensure each seat has correct travel class info
+                return seatsData.map((seat) => ({
+                  ...seat,
+                  className: seat.className || travelClass.name,
+                  travelClassId: seat.travelClassId || travelClass.id,
+                  travelClassName: seat.travelClassName || travelClass.name,
+                }));
+              }
+              return [];
+            } catch (error) {
+              console.error(
+                `❌ Error loading ${travelClass.name} seats for multi-city:`,
+                error
+              );
+              return [];
+            }
+          });
+
+          const seatResults = await Promise.all(seatPromises);
+          const allSeats = seatResults.flat();
+
+          console.log(
+            `🎯 Loaded ${allSeats.length} total seats for multi-city flight`
+          );
+          setCompleteSeatMap(allSeats);
         } catch (error) {
-          console.error("Error loading seats from API:", error);
+          console.error("Error loading complete seats for multi-city:", error);
           setCompleteSeatMap(seats); // Fallback to provided seats
         } finally {
           setIsLoadingSeats(false);
@@ -695,26 +742,16 @@ const AircraftLayout = ({
       }
     };
 
-    loadSeats();
+    loadCompleteSeats();
   }, [flightId, seats]);
 
-  // Filter seats based on the user's selected travel class
-  const filteredSeats = useMemo(() => {
-    const userTravelClassId = selectedTravelClass?.travelClass?.id;
-    if (!userTravelClassId) {
-      console.warn("⚠️ No userTravelClassId, showing all seats.");
-      return completeSeatMap; // Fallback to show all if class is not selected
-    }
+  // Don't filter seats - show all seats like SeatMap, but disable non-matching travel class seats
+  const allSeats = useMemo(() => {
+    return completeSeatMap; // Show all seats, disable logic will be in render
+  }, [completeSeatMap]);
 
-    const seatsForClass = completeSeatMap.filter(
-      (seat) => seat.travelClassId === userTravelClassId
-    );
-
-    return seatsForClass;
-  }, [completeSeatMap, selectedTravelClass]);
-
-  // Group seats by row number
-  const seatsByRow = filteredSeats.reduce((acc, seat) => {
+  // Group seats by row number (use allSeats instead of filteredSeats)
+  const seatsByRow = allSeats.reduce((acc, seat) => {
     const rowNum = seat.seatNumber.match(/\d+/)?.[0] || "1";
     if (!acc[rowNum]) acc[rowNum] = [];
     acc[rowNum].push(seat);
@@ -768,7 +805,7 @@ const AircraftLayout = ({
   }
 
   // Show empty state if no seats available
-  if (!filteredSeats || filteredSeats.length === 0) {
+  if (!allSeats || allSeats.length === 0) {
     return (
       <div className="aircraft-layout">
         <div className="flex justify-center items-center py-8">
@@ -956,28 +993,10 @@ const renderSeatButton = (
     return false;
   });
 
-  // Check if seat belongs to selected travel class
-  const getUserTravelClassId = () => {
-    if (typeof selectedTravelClass === "string") return null;
-    return selectedTravelClass?.travelClass?.id;
-  };
-
-  const userTravelClassId = getUserTravelClassId();
-
-  const isAllowedClass = selectedTravelClass
-    ? // Handle both string and object formats for selectedTravelClass
-      typeof selectedTravelClass === "string"
-      ? seat.className === selectedTravelClass ||
-        seat.travelClassName === selectedTravelClass
-      : // Compare seat's travel class with user's selected class
-        seat.seatClassId === userTravelClassId ||
-        seat.travelClassId === userTravelClassId ||
-        seat.classId === userTravelClassId ||
-        seat.className === selectedTravelClass?.travelClass?.className ||
-        seat.travelClassName === selectedTravelClass?.travelClass?.className
-    : true; // If no class selected, allow all seats
-
-  const isDisabledByClass = selectedTravelClass && !isAllowedClass;
+  // Check if seat belongs to user's travel class (use userTravelClassId from props)
+  const isInUserTravelClass =
+    userTravelClassId && seat.travelClassId === userTravelClassId;
+  const isDisabledByClass = userTravelClassId && !isInUserTravelClass;
 
   // Get seat price for tooltip
   const getSeatPrice = () => {
@@ -998,14 +1017,12 @@ const renderSeatButton = (
           <button
             onClick={() => {
               if (isDisabledByClass) {
-                const userClassName =
-                  typeof selectedTravelClass === "string"
-                    ? selectedTravelClass
-                    : selectedTravelClass?.travelClass?.className;
                 toast.error(
-                  `Ghế này thuộc hạng ${
-                    seat.className || seat.travelClassName
-                  }. Bạn chỉ có thể chọn ghế hạng ${userClassName}.`
+                  `Ghế này thuộc hạng ${getTravelClassName(
+                    seat.travelClassId
+                  )}. Bạn chỉ có thể chọn ghế hạng ${getTravelClassName(
+                    userTravelClassId
+                  )}.`
                 );
                 return;
               }
@@ -1069,7 +1086,7 @@ const renderSeatButton = (
                     seat,
                     false,
                     true
-                  )} opacity-40 cursor-not-allowed border-gray-300 shadow-sm`
+                  )} opacity-30 cursor-not-allowed border-gray-400 shadow-sm grayscale`
                 : isOccupied || isPending
                 ? `${getSeatDisplayColor(
                     seat,
@@ -1278,10 +1295,7 @@ const renderSeatButton = (
                   Không thể chọn
                 </p>
                 <p className="text-xs text-orange-600 mt-1">
-                  Vé của bạn:{" "}
-                  {typeof selectedTravelClass === "string"
-                    ? selectedTravelClass
-                    : selectedTravelClass?.travelClass?.className}
+                  Vé của bạn: {getTravelClassName(userTravelClassId)}
                 </p>
               </div>
             )}
@@ -1314,6 +1328,7 @@ AircraftLayout.propTypes = {
   totalSeats: PropTypes.number,
   flight: PropTypes.object,
   flightId: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+  userTravelClassId: PropTypes.number,
 };
 
 // Selected Seats Summary
@@ -1598,7 +1613,10 @@ const MultiCitySeatSelectionCard = ({
                             selectedTravelClass={leg?.selectedClass}
                             totalSeats={leg?.totalSeats}
                             flight={leg}
-                            flightId={leg?.id}
+                            flightId={leg?.id || leg?.flightId}
+                            userTravelClassId={
+                              leg?.selectedClass?.travelClass?.id
+                            }
                           />
                         </div>
                         <SelectedSeatsSummary
@@ -1920,7 +1938,7 @@ const SeatSelectionCard = ({
                     </div>
                     <div className="max-w-6xl mx-auto">
                       <SeatSelectionWrapper
-                        seats={filteredSeats}
+                        seats={seats}
                         selectedSeats={selectedSeats}
                         passengers={passengers}
                         onSeatSelect={(seatNumber, passengerIndex, isReturn) =>

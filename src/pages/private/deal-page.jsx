@@ -37,7 +37,7 @@ const AdminDealPage = () => {
   useEffect(() => {
     fetchDeals();
     fetchTotalDealsCount();
-  }, [currentPage, itemsPerPage, statusFilter]);
+  }, [currentPage, itemsPerPage, statusFilter, searchQuery]);
 
   const fetchTotalDealsCount = async () => {
     try {
@@ -69,6 +69,19 @@ const AdminDealPage = () => {
       if (res.success && res.data && res.data.content) {
         let apiDeals = res.data.content;
         let filteredDeals = apiDeals;
+
+        // Filter by search query
+        if (searchQuery.trim()) {
+          const query = searchQuery.toLowerCase().trim();
+          filteredDeals = filteredDeals.filter(
+            (deal) =>
+              deal.dealCode?.toLowerCase().includes(query) ||
+              deal.title?.toLowerCase().includes(query) ||
+              deal.description?.toLowerCase().includes(query)
+          );
+        }
+
+        // Filter by status
         if (statusFilter !== "all") {
           let statusMap = {
             active: "ĐANG HOẠT ĐỘNG",
@@ -77,7 +90,7 @@ const AdminDealPage = () => {
             soon: "SẮP HOẠT ĐỘNG",
             usedup: "HẾT LƯỢT SỬ DỤNG",
           };
-          filteredDeals = apiDeals.filter(
+          filteredDeals = filteredDeals.filter(
             (deal) => getDealStatus(deal) === statusMap[statusFilter]
           );
         }

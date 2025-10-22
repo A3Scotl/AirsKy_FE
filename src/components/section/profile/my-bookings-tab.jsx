@@ -890,7 +890,7 @@ const MyBookingsTab = () => {
                     </CardContent>
                   </Card>
                   {/* Reviews Section */}
-                  {selectedBooking.status !== "CANCELLED" && (
+                  {(selectedBooking.status !== "CANCELLED" || selectedBooking.status !== "PENDING") && (
                     <Card>
                       <CardHeader>
                         <CardTitle className="flex items-center justify-between">

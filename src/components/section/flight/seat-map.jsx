@@ -249,11 +249,10 @@ const SeatMap = ({
 
     const isSelected = isSeatSelected(seat.seatNumber);
 
-    // Check if seat is in user's travel class - only disable click, don't hide
+    // Check if seat is in user's travel class - disable all seats not in user's class
     const isInUserTravelClass =
       userTravelClassId && seat.travelClassId === userTravelClassId;
-    const isDisabledByClass =
-      userTravelClassId && !isInUserTravelClass && seat.status === "AVAILABLE";
+    const isDisabledByClass = userTravelClassId && !isInUserTravelClass; // Disable all seats not in user's travel class
     const isDisabled =
       disabled || seat.status !== "AVAILABLE" || isDisabledByClass;
 
@@ -305,7 +304,7 @@ const SeatMap = ({
                       seat,
                       false,
                       true
-                    )} opacity-40 cursor-not-allowed border-gray-300 shadow-sm`
+                    )} opacity-30 cursor-not-allowed border-gray-400 shadow-sm grayscale`
                   : seat.status === "BOOKED" || seat.status === "OCCUPIED"
                   ? `${getSeatStatusColor(
                       seat,

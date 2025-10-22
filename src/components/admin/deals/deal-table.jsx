@@ -15,6 +15,7 @@ import {
   TrendingUp,
   Eye,
   MoreHorizontal,
+  Trash,
 } from "lucide-react";
 import DealFormModal from "./deal-form-modal";
 import DealDetailModal from "./deal-detail-modal";
@@ -44,6 +45,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
+import { Checkbox } from "@/components/ui/checkbox";
 import Pagination from "@/components/ui/pagination";
 
 const DealTable = ({
@@ -63,16 +65,7 @@ const DealTable = ({
   const [showFormModal, setShowFormModal] = useState(false);
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [formMode, setFormMode] = useState("add");
-
-  const filteredDeals =
-    deals?.filter((deal) => {
-      const query = searchQuery.toLowerCase();
-      return (
-        deal.title?.toLowerCase().includes(query) ||
-        deal.dealCode?.toLowerCase().includes(query) ||
-        deal.description?.toLowerCase().includes(query)
-      );
-    }) || [];
+  const [selectedDeals, setSelectedDeals] = useState([]);
 
   const handleAddDeal = () => {
     setSelectedDeal(null);
@@ -171,6 +164,41 @@ const DealTable = ({
     return (deal.usedCount / deal.totalUsageLimit) * 100;
   };
 
+  const handleSelectDeal = (deal, checked) => {
+    if (checked) {
+      setSelectedDeals((prev) => [...prev, deal]);
+    } else {
+      setSelectedDeals((prev) => prev.filter((d) => d.dealId !== deal.dealId));
+    }
+  };
+
+  const handleSelectAll = (checked) => {
+    if (checked) {
+      setSelectedDeals(deals || []);
+    } else {
+      setSelectedDeals([]);
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedDeals.length === 0) return;
+
+    const confirmDelete = window.confirm(
+      `Bạn có chắc chắn muốn xóa ${selectedDeals.length} deal đã chọn?`
+    );
+
+    if (!confirmDelete) return;
+
+    try {
+      for (const deal of selectedDeals) {
+        await onDelete?.(deal.dealId);
+      }
+      setSelectedDeals([]);
+    } catch (error) {
+      console.error("Error bulk deleting deals:", error);
+    }
+  };
+
   return (
     <div className="space-y-4">
       <Card>
@@ -179,16 +207,38 @@ const DealTable = ({
             <Tag className="h-5 w-5" />
             Quản lý Deal
           </CardTitle>
-          <Button onClick={handleAddDeal} className="flex items-center gap-2">
-            <Plus className="h-4 w-4" />
-            Thêm Deal
-          </Button>
+          <div className="flex items-center gap-2">
+            {selectedDeals.length > 0 && (
+              <Button
+                variant="destructive"
+                onClick={handleBulkDelete}
+                className="flex items-center gap-2"
+              >
+                <Trash className="h-4 w-4" />
+                Xóa ({selectedDeals.length})
+              </Button>
+            )}
+            <Button onClick={handleAddDeal} className="flex items-center gap-2">
+              <Plus className="h-4 w-4" />
+              Thêm Deal
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
           <div className="rounded-md border">
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead className="w-12">
+                    <Checkbox
+                      checked={
+                        selectedDeals.length === deals?.length &&
+                        deals?.length > 0
+                      }
+                      onCheckedChange={handleSelectAll}
+                      aria-label="Select all"
+                    />
+                  </TableHead>
                   <TableHead>Mã Deal</TableHead>
                   <TableHead>Tiêu đề</TableHead>
                   <TableHead>Giảm giá</TableHead>
@@ -196,51 +246,51 @@ const DealTable = ({
                   <TableHead>Sử dụng</TableHead>
                   <TableHead>Thời hạn</TableHead>
                   <TableHead>Trạng thái</TableHead>
-                  <TableHead>Thao tác</TableHead>
+                  <TableHead className="w-12">Thao tác</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {loading ? (
                   <TableRow>
-                    <TableCell colSpan={8} className="text-center py-8">
+                    <TableCell colSpan={9} className="text-center py-8">
                       Đang tải...
                     </TableCell>
                   </TableRow>
-                ) : filteredDeals.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={8} className="text-center py-8">
-                      Không có deal nào
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  filteredDeals.map((deal) => (
-                    <TableRow key={deal.dealId}>
+                ) : deals && deals.length > 0 ? (
+                  deals.map((deal) => (
+                    <TableRow
+                      key={deal.dealId}
+                      className={
+                        selectedDeals.some((d) => d.dealId === deal.dealId)
+                          ? "bg-muted/50"
+                          : ""
+                      }
+                    >
                       <TableCell>
-                        <div className="space-y-1">
-                          <div className="font-mono font-medium">
-                            {deal.dealCode}
-                          </div>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="space-y-1">
-                          <div className="font-medium">{deal.title}</div>
-                          <div className="text-sm text-muted-foreground truncate max-w-xs">
-                            {deal.description}
-                          </div>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="space-y-1">
-                          <div className="flex items-center gap-1 text-green-600 font-medium">
-                            <Percent className="h-4 w-4" />
-                            {deal.discountPercentage}%
-                          </div>
-                          {deal.maxDiscountAmount && (
-                            <div className="text-sm text-muted-foreground">
-                              Tối đa: {formatCurrency(deal.maxDiscountAmount)}
-                            </div>
+                        <Checkbox
+                          checked={selectedDeals.some(
+                            (d) => d.dealId === deal.dealId
                           )}
+                          onCheckedChange={(checked) =>
+                            handleSelectDeal(deal, checked)
+                          }
+                          aria-label="Select row"
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <div className="font-mono font-medium text-gray-900">
+                          {deal.dealCode}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="font-medium text-gray-900">
+                          {deal.title}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-1 text-green-600 font-medium">
+                          <Percent className="h-4 w-4" />
+                          {deal.discountPercentage}%
                         </div>
                       </TableCell>
                       <TableCell>
@@ -280,7 +330,7 @@ const DealTable = ({
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <Button variant="ghost" className="h-8 w-8 p-0">
-                              <span className="sr-only">Mở menu</span>
+                              <span className="sr-only">Open menu</span>
                               <MoreHorizontal className="h-4 w-4" />
                             </Button>
                           </DropdownMenuTrigger>
@@ -313,18 +363,30 @@ const DealTable = ({
                       </TableCell>
                     </TableRow>
                   ))
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={9} className="text-center py-8">
+                      Không có deal nào
+                    </TableCell>
+                  </TableRow>
                 )}
               </TableBody>
             </Table>
           </div>
+
           {/* Pagination */}
+
           <Pagination
             currentPage={currentPage}
-            totalPages={Math.max(1, Math.ceil(totalItems / itemsPerPage))}
+            totalPages={Math.ceil(totalItems / itemsPerPage)}
             itemsPerPage={itemsPerPage}
             totalItems={totalItems}
             onPageChange={onPageChange}
             onPageSizeChange={onItemsPerPageChange}
+            showPageSizeSelector={true}
+            showFirstLast={true}
+            showInfo={true}
+            maxVisiblePages={5}
           />
         </CardContent>
       </Card>

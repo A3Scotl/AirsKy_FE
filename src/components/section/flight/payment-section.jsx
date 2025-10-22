@@ -375,16 +375,35 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
         return;
       }
 
-      // Check usage limit
-      if (
-        dealData.totalUsageLimit &&
-        dealData.usedCount >= dealData.totalUsageLimit
-      ) {
-        setDealError("Mã giảm giá đã hết lượt sử dụng");
-        setDealDiscount(0);
-        setDealApplied(false);
-        setAppliedDealInfo(null);
-        return;
+      // Check if deal has airport restrictions and if they match the current flight
+      if (dealData.departureAirportCode && dealData.arrivalAirportCode) {
+        // Deal has airport restrictions, check if they match the current flight
+        const flightDepartureAirportCode =
+          flight?.flight?.departureAirport?.code ||
+          flight?.departureAirportCode;
+        const flightArrivalAirportCode =
+          flight?.flight?.arrivalAirport?.code || flight?.arrivalAirportCode;
+
+        console.log("🔍 Deal airport check:", {
+          dealDeparture: dealData.departureAirportCode,
+          dealArrival: dealData.arrivalAirportCode,
+          flightDeparture: flightDepartureAirportCode,
+          flightArrival: flightArrivalAirportCode,
+          flight: flight,
+        });
+
+        if (
+          dealData.departureAirportCode !== flightDepartureAirportCode ||
+          dealData.arrivalAirportCode !== flightArrivalAirportCode
+        ) {
+          setDealError(
+            "Deal này hiện không khả dụng cho chuyến bay này hoặc không tồn tại"
+          );
+          setDealDiscount(0);
+          setDealApplied(false);
+          setAppliedDealInfo(null);
+          return;
+        }
       }
 
       // Check if user can use this deal (if logged in)
@@ -399,6 +418,24 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
             setDealApplied(false);
             setAppliedDealInfo(null);
             return;
+          }
+
+          // Check if user has already used this deal code
+          const usageHistoryResponse = await dealApi.getMyDealUsageHistory();
+          if (usageHistoryResponse.success && usageHistoryResponse.data) {
+            const hasUsedDeal = usageHistoryResponse.data.content?.some(
+              (usage) => usage.dealCode === dealCode.trim()
+            );
+
+            if (hasUsedDeal) {
+              setDealError(
+                "Bạn đã sử dụng mã giảm giá này rồi. Mỗi mã chỉ được sử dụng 1 lần."
+              );
+              setDealDiscount(0);
+              setDealApplied(false);
+              setAppliedDealInfo(null);
+              return;
+            }
           }
         } catch (error) {
           console.warn("Could not check user eligibility for deal:", error);
@@ -2559,6 +2596,8 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
             // Override appliedDealCode to prevent showing points voucher code
             appliedDealCode: pointsApplied
               ? ""
+              : dealApplied
+              ? dealCode
               : bookingResponse.appliedDealCode || "",
             flightType:
               flight?.type ||

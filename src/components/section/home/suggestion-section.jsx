@@ -212,8 +212,39 @@ const SuggestionSection = () => {
         });
 
         if (response.success && response.data) {
+          // Lọc chỉ lấy chuyến bay còn hoạt động (cách hiện tại ít nhất 24 giờ)
+          const now = new Date();
+          const minBookingLeadTime = 24 * 60 * 60 * 1000; // 24 giờ
+
+          const activeFlights = response.data.content.filter((flight) => {
+            try {
+              // Xử lý departureTime - có thể là ISO string hoặc date + time
+              let departureDateTime;
+              if (flight.departureTime && flight.departureTime.includes("T")) {
+                // ISO string format: "2025-10-31T06:00:00"
+                departureDateTime = new Date(flight.departureTime);
+              } else if (flight.departureDate && flight.departureTime) {
+                // Legacy format: separate date and time
+                departureDateTime = new Date(
+                  `${flight.departureDate} ${flight.departureTime}`
+                );
+              } else {
+                return false; // Invalid datetime format
+              }
+
+              // Chỉ lấy chuyến bay có thời gian khởi hành cách hiện tại ít nhất 24 giờ
+              return (
+                departureDateTime.getTime() - now.getTime() >=
+                minBookingLeadTime
+              );
+            } catch (error) {
+              console.warn("Error parsing flight datetime:", flight, error);
+              return false;
+            }
+          });
+
           // Map API response to component format
-          const mappedFlights = response.data.content.map((flight, index) => ({
+          const mappedFlights = activeFlights.map((flight, index) => ({
             id:
               flight.flight?.flightId?.toString() ||
               flight.flightId?.toString() ||
@@ -244,13 +275,14 @@ const SuggestionSection = () => {
                 flight.flightTravelClasses.length > 0
               ) {
                 const prices = flight.flightTravelClasses
-                  .map((tc) => tc.customPrice || tc.price || 0)
+                  .map((tc) => tc.price || tc.basePrice || 0)
                   .filter((price) => price > 0);
                 return prices.length > 0 ? Math.min(...prices).toString() : "0";
               }
-              // Fallback to existing logic
+              // Fallback to flight basePrice
               return (
-                flight.flight?.priceNumeric ||
+                flight.basePrice ||
+                flight.flight?.basePrice ||
                 flight.priceNumeric ||
                 0
               ).toString();

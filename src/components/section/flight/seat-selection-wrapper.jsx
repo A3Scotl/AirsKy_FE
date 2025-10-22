@@ -91,18 +91,24 @@ const SeatSelectionWrapper = ({
   };
 
   // Transform seats for SeatMap component
-  const transformedSeats = seats.map((seat) => ({
-    seatNumber: seat.seatNumber,
-    status: getSeatStatus(seat),
-    price: seat.priceVND || seat.price || 0,
-    seatType: seat.seatType || "ECONOMY",
-    // Preserve travel class information for SeatMap
-    travelClassId: seat.travelClassId,
-    classId: seat.classId,
-    className: seat.className,
-    travelClassName: seat.travelClassName,
-    seatClassId: seat.seatClassId,
-  }));
+  const transformedSeats = seats
+    .filter((seat) => {
+      // For all flight types: show all seats from all travel classes
+      // SeatMap will handle disabling seats not matching user's travel class
+      return true; // Show all seats
+    })
+    .map((seat) => ({
+      seatNumber: seat.seatNumber,
+      status: getSeatStatus(seat),
+      price: seat.priceVND || seat.price || 0,
+      seatType: seat.seatType || "ECONOMY",
+      // Preserve travel class information for SeatMap
+      travelClassId: seat.travelClassId,
+      classId: seat.classId,
+      className: seat.className,
+      travelClassName: seat.travelClassName,
+      seatClassId: seat.seatClassId,
+    }));
 
   console.log(
     `🎫 SeatSelectionWrapper - userTravelClassId:`,

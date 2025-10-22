@@ -453,7 +453,7 @@ export function FlightFilters({ filters, onFiltersChange, onReset }) {
         </div>
 
         {/* Stops */}
-        <div>
+        {/* <div>
           <Label className="text-xs sm:text-sm font-medium mb-2 sm:mb-3 block">
             Số điểm dừng
           </Label>
@@ -477,7 +477,7 @@ export function FlightFilters({ filters, onFiltersChange, onReset }) {
               </div>
             ))}
           </div>
-        </div>
+        </div> */}
 
         {/* Departure Time */}
         <div>

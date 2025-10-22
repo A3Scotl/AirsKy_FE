@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useContext } from "react";
 import SEO from "@/components/common/seo";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -34,26 +34,53 @@ import {
   ChevronRight,
   Copy,
   Eye,
+  User,
+  Users,
+  Crown,
+  Shield,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Swiper, SwiperSlide } from "swiper/react";
 import { dealApi } from "@/apis/deal-api";
+import { loyaltyApi } from "@/apis/loyalty-api";
+import { useAuth } from "@/contexts/auth-context";
+import {
+  formatCurrencyVND,
+  formatDateVN,
+  formatDateTimeVN,
+} from "@/utils/currency-utils";
 
 import { Autoplay } from "swiper/modules";
 import "swiper/css";
 
 const DealsPage = () => {
+  const { user } = useAuth();
   const [searchTerm, setSearchTerm] = useState("");
   const [filterType, setFilterType] = useState("all");
   const [sortBy, setSortBy] = useState("discount");
   const [currentPage, setCurrentPage] = useState(1);
+
+  // States for "All Discount Codes" section
+  const [allDealsSearchTerm, setAllDealsSearchTerm] = useState("");
+  const [allDealsSortBy, setAllDealsSortBy] = useState("discount");
+  const [allDealsCurrentPage, setAllDealsCurrentPage] = useState(1);
+  const [allDealsFiltered, setAllDealsFiltered] = useState([]);
+
+  // States for "Flash Sale Chuyến Bay" section
+  const [flashSaleDeals, setFlashSaleDeals] = useState([]);
+  const [flashSaleCurrentPage, setFlashSaleCurrentPage] = useState(1);
 
   const [flightDeals, setFlightDeals] = useState([]);
   const [featuredDeals, setFeaturedDeals] = useState([]);
   const [filteredDeals, setFilteredDeals] = useState([]);
   const [flightLoading, setFlightLoading] = useState(true);
 
+  // User loyalty information
+  const [userLoyalty, setUserLoyalty] = useState(null);
+  const [loyaltyLoading, setLoyaltyLoading] = useState(false);
+
   const itemsPerPage = 8;
+  const allDealsItemsPerPage = 12; // More items per page for the modal
 
   useEffect(() => {
     const fetchFlightDeals = async () => {
@@ -66,26 +93,44 @@ const DealsPage = () => {
       if (res.success && res.data && res.data.content) {
         const deals = res.data.content;
         setFlightDeals(deals);
-
-        // Lọc 3 voucher
-        const sortedForFeatured = [...deals].sort((a, b) => {
-          const dateDiff = new Date(a.validTo) - new Date(b.validTo);
-          if (dateDiff !== 0) return dateDiff; // Ưu tiên ngày hết hạn gần nhất
-          return a.remainingUsage - b.remainingUsage; // Sau đó lượt sử dụng còn lại thấp nhất
-        });
-        setFeaturedDeals(sortedForFeatured.slice(0, 3));
       } else {
         setFlightDeals([]);
-        setFeaturedDeals([]);
       }
       setFlightLoading(false);
     };
     fetchFlightDeals();
   }, []);
 
+  // Fetch user loyalty information when user is logged in
   useEffect(() => {
+    const fetchUserLoyalty = async () => {
+      if (user) {
+        setLoyaltyLoading(true);
+        try {
+          const loyaltyData = await loyaltyApi.getLoyaltyStats();
+          setUserLoyalty(loyaltyData);
+        } catch (error) {
+          console.error("Error fetching user loyalty:", error);
+          setUserLoyalty(null);
+        } finally {
+          setLoyaltyLoading(false);
+        }
+      } else {
+        setUserLoyalty(null);
+      }
+    };
+
+    fetchUserLoyalty();
+  }, [user]);
+
+  useEffect(() => {
+    const searchLower = searchTerm.toLowerCase();
     let filtered = flightDeals.filter((deal) => {
-      const searchLower = searchTerm.toLowerCase();
+      // Apply user-specific filtering
+      if (!isDealApplicable(deal)) {
+        return false;
+      }
+
       return (
         deal.title.toLowerCase().includes(searchLower) ||
         deal.dealCode.toLowerCase().includes(searchLower) ||
@@ -112,7 +157,201 @@ const DealsPage = () => {
 
     setFilteredDeals(filtered);
     setCurrentPage(1); // Reset page khi filter/sort thay đổi
-  }, [flightDeals, searchTerm, filterType, sortBy]);
+  }, [flightDeals, searchTerm, filterType, sortBy, user, userLoyalty]);
+
+  // Calculate featured deals from filtered deals - only show 3 deals with highest discount or closest to expiry
+  useEffect(() => {
+    if (filteredDeals.length > 0) {
+      const sortedForFeatured = [...filteredDeals].sort((a, b) => {
+        // First priority: highest discount percentage
+        const discountDiff = b.discountPercentage - a.discountPercentage;
+        if (discountDiff !== 0) return discountDiff;
+
+        // Second priority: closest to expiry
+        const dateDiff = new Date(a.validTo) - new Date(b.validTo);
+        if (dateDiff !== 0) return dateDiff;
+
+        // Third priority: lowest remaining usage (most used/popular)
+        return a.remainingUsage - b.remainingUsage;
+      });
+      setFeaturedDeals(sortedForFeatured.slice(0, 3));
+    } else {
+      // If no deals match user's tier, show some deals anyway (public deals or deals for higher tiers)
+      // This ensures featured deals section is not empty
+      const fallbackDeals = flightDeals
+        .filter((deal) => {
+          // Filter out points deals
+          if (
+            deal.dealCode &&
+            deal.dealCode.toUpperCase().startsWith("POINTS")
+          ) {
+            return false;
+          }
+          // Show public deals (treat null as false for boolean fields)
+          const isGuestOnly = deal.isGuestOnly === true;
+          const isLoyaltyExclusive = deal.isLoyaltyExclusive === true;
+          return !isGuestOnly && !isLoyaltyExclusive;
+        })
+        .sort((a, b) => {
+          // Sort by discount percentage descending
+          return b.discountPercentage - a.discountPercentage;
+        })
+        .slice(0, 3);
+
+      setFeaturedDeals(fallbackDeals);
+    }
+  }, [filteredDeals, flightDeals]);
+
+  // Filter and sort for "All Discount Codes" section
+  useEffect(() => {
+    const searchLower = allDealsSearchTerm.toLowerCase();
+    let filtered = flightDeals.filter((deal) => {
+      // Filter out points redemption deals
+      if (deal.dealCode && deal.dealCode.toUpperCase().startsWith("POINTS")) {
+        return false;
+      }
+
+      return (
+        deal.title.toLowerCase().includes(searchLower) ||
+        deal.dealCode.toLowerCase().includes(searchLower) ||
+        deal.description.toLowerCase().includes(searchLower)
+      );
+    });
+
+    // Sort
+    filtered.sort((a, b) => {
+      if (allDealsSortBy === "discount") {
+        return b.discountPercentage - a.discountPercentage; // Giảm dần
+      } else if (allDealsSortBy === "expiry") {
+        return new Date(a.validTo) - new Date(b.validTo); // Gần hết hạn trước
+      } else if (allDealsSortBy === "usage") {
+        return a.remainingUsage - b.remainingUsage; // Remaining thấp trước (used nhiều)
+      }
+      return 0;
+    });
+
+    setAllDealsFiltered(filtered);
+    setAllDealsCurrentPage(1); // Reset page khi filter/sort thay đổi
+  }, [flightDeals, allDealsSearchTerm, allDealsSortBy]);
+
+  // Filter and sort for "Flash Sale Chuyến Bay" section - show deals with airport information
+  useEffect(() => {
+    let filtered = flightDeals.filter((deal) => {
+      // Filter out points redemption deals
+      if (deal.dealCode && deal.dealCode.toUpperCase().startsWith("POINTS")) {
+        return false;
+      }
+
+      // Show deals that have airport information (departure and arrival airports are not null/undefined)
+      return (
+        deal.departureAirportId !== null &&
+        deal.departureAirportId !== undefined &&
+        deal.departureAirportName &&
+        deal.departureAirportCode &&
+        deal.arrivalAirportId !== null &&
+        deal.arrivalAirportId !== undefined &&
+        deal.arrivalAirportName &&
+        deal.arrivalAirportCode
+      );
+    });
+
+    // Sort by discount percentage descending
+    filtered.sort((a, b) => b.discountPercentage - a.discountPercentage);
+
+    setFlashSaleDeals(filtered);
+    setFlashSaleCurrentPage(1); // Reset page
+  }, [flightDeals]);
+
+  // Function to check if a deal is applicable for current user
+  const isDealApplicable = (deal) => {
+    // Filter out points redemption deals
+    if (deal.dealCode && deal.dealCode.toUpperCase().startsWith("POINTS")) {
+      return false;
+    }
+
+    // Helper function to treat null as false for boolean fields
+    const isGuestOnly = deal.isGuestOnly === true;
+    const isLoyaltyExclusive = deal.isLoyaltyExclusive === true;
+
+    // If user is not logged in
+    if (!user) {
+      // Show guest-only deals or public deals (not loyalty exclusive)
+      return isGuestOnly || (!isGuestOnly && !isLoyaltyExclusive);
+    }
+
+    // If user is logged in, show all applicable deals
+    if (user) {
+      // Don't show guest-only deals
+      if (isGuestOnly) {
+        return false;
+      }
+
+      // If deal is loyalty exclusive, check user's tier
+      if (isLoyaltyExclusive && deal.requiredLoyaltyTier) {
+        const userTier = userLoyalty?.currentTier || "STANDARD";
+        const tierHierarchy = { STANDARD: 0, SILVER: 1, GOLD: 2, PLATINUM: 3 };
+        const userTierLevel = tierHierarchy[userTier] || 0;
+        const requiredTierLevel = tierHierarchy[deal.requiredLoyaltyTier] || 0;
+
+        // Allow user to see deals for their tier and lower tiers
+        // For STANDARD users, show STANDARD deals
+        // For SILVER users, show STANDARD and SILVER deals
+        // etc.
+        return userTierLevel >= requiredTierLevel;
+      }
+
+      // Show public deals (not guest-only and not loyalty exclusive)
+      return !isGuestOnly && !isLoyaltyExclusive;
+    }
+
+    return false;
+  };
+
+  // Function to get deal type badge
+  const getDealTypeBadge = (deal) => {
+    if (deal.isGuestOnly) {
+      return (
+        <Badge
+          variant="outline"
+          className="flex items-center gap-1 bg-blue-50 text-blue-700 border-blue-200"
+        >
+          <User className="h-3 w-3" />
+          Khách vãng lai
+        </Badge>
+      );
+    }
+
+    if (deal.isLoyaltyExclusive) {
+      const tierColors = {
+        SILVER: "bg-gray-50 text-gray-700 border-gray-200",
+        GOLD: "bg-yellow-50 text-yellow-700 border-yellow-200",
+        PLATINUM: "bg-purple-50 text-purple-700 border-purple-200",
+      };
+
+      return (
+        <Badge
+          variant="outline"
+          className={`flex items-center gap-1 ${
+            tierColors[deal.requiredLoyaltyTier] ||
+            "bg-green-50 text-green-700 border-green-200"
+          }`}
+        >
+          <Crown className="h-3 w-3" />
+          {deal.requiredLoyaltyTier || "Thành viên"}
+        </Badge>
+      );
+    }
+
+    return (
+      <Badge
+        variant="outline"
+        className="flex items-center gap-1 bg-green-50 text-green-700 border-green-200"
+      >
+        <Users className="h-3 w-3" />
+        Tất cả
+      </Badge>
+    );
+  };
 
   const totalPages = Math.ceil(filteredDeals.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
@@ -121,17 +360,25 @@ const DealsPage = () => {
     startIndex + itemsPerPage
   );
 
+  const allDealsTotalPages = Math.ceil(
+    allDealsFiltered.length / allDealsItemsPerPage
+  );
+  const allDealsStartIndex = (allDealsCurrentPage - 1) * allDealsItemsPerPage;
+  const allDealsPaginated = allDealsFiltered.slice(
+    allDealsStartIndex,
+    allDealsStartIndex + allDealsItemsPerPage
+  );
+
+  const flashSaleTotalPages = Math.ceil(flashSaleDeals.length / itemsPerPage);
+  const flashSaleStartIndex = (flashSaleCurrentPage - 1) * itemsPerPage;
+  const flashSalePaginated = flashSaleDeals.slice(
+    flashSaleStartIndex,
+    flashSaleStartIndex + itemsPerPage
+  );
+
   const copyToClipboard = (code) => {
     navigator.clipboard.writeText(code);
     // You can add a toast notification here
-  };
-
-  const formatPrice = (price) => {
-    return new Intl.NumberFormat("vi-VN").format(price) + "đ";
-  };
-
-  const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleDateString("vi-VN");
   };
 
   const getDaysRemaining = (validUntil) => {
@@ -161,23 +408,11 @@ const DealsPage = () => {
                 đãi flash sale và các chương trình khuyến mãi hấp dẫn
               </p>
             </div>
-
-            {/* Search bar */}
-            {/* <div className="max-w-md relative flex w-full items-center">
-              <input
-                type="text"
-                placeholder="Tìm kiếm mã giảm giá..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 py-3 rounded-xl border-0 bg-gray-50/55 text-white placeholder-gray-500 focus:ring-4 focus:ring-white/20 pr-12"
-              />
-              <Search className="text-white w-8 h-8 rounded-full absolute right-2 cursor-pointer" />
-            </div> */}
           </div>
         </section>
 
         <div className="container mx-auto px-4 max-w-6xl py-16">
-          {/* Featured Deals Section - Sử dụng 3 deals filtered đặc biệt */}
+          {/* Featured Deals Section - Sử dụng featuredDeals (3 deals được ưu tiên) */}
           <section className="mb-16">
             <div className="flex items-center justify-between mb-8">
               <div>
@@ -197,7 +432,7 @@ const DealsPage = () => {
                 </div>
               ) : featuredDeals.length === 0 ? (
                 <div className="col-span-3 text-center py-12 text-gray-500">
-                  Không có ưu đãi nào
+                  Không có ưu đãi nào phù hợp với bạn
                 </div>
               ) : (
                 featuredDeals.map((deal, index) => (
@@ -224,6 +459,7 @@ const DealsPage = () => {
                         {/* Badges */}
                         <div className="flex items-center justify-between mb-3">
                           <div className="flex items-center space-x-2">
+                            {getDealTypeBadge(deal)}
                             <Badge
                               variant="outline"
                               className="bg-white/20 text-white border-white/30"
@@ -275,7 +511,7 @@ const DealsPage = () => {
                         <div className="text-white/80 text-sm">
                           Áp dụng đơn từ{" "}
                           {deal.minimumOrderAmount
-                            ? formatPrice(deal.minimumOrderAmount)
+                            ? formatCurrencyVND(deal.minimumOrderAmount)
                             : "-"}
                         </div>
                         <Link to={`/deals/${deal.dealId}`}>
@@ -326,8 +562,50 @@ const DealsPage = () => {
                       </SheetDescription>
                     </SheetHeader>
 
+                    {/* Filter and Sort Controls */}
+                    <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
+                      <div className="flex items-center space-x-4 w-full">
+                        <div className="relative">
+                          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                          <input
+                            type="text"
+                            placeholder="Tìm kiếm mã giảm giá..."
+                            value={allDealsSearchTerm}
+                            onChange={(e) =>
+                              setAllDealsSearchTerm(e.target.value)
+                            }
+                            className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent flex-1"
+                          />
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <label className="text-gray-700 font-medium">
+                            Sắp xếp:
+                          </label>
+                          <Select
+                            value={allDealsSortBy}
+                            onValueChange={setAllDealsSortBy}
+                          >
+                            <SelectTrigger className="w-48 h-10">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="discount">
+                                Giảm giá cao nhất
+                              </SelectItem>
+                              <SelectItem value="expiry">
+                                Hết hạn sớm nhất
+                              </SelectItem>
+                              <SelectItem value="usage">
+                                Sử dụng nhiều nhất
+                              </SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                    </div>
+
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                      {flightDeals.map((deal) => (
+                      {allDealsPaginated.map((deal) => (
                         <Card
                           key={deal.dealId}
                           className="p-4 hover:shadow-md transition-shadow"
@@ -348,7 +626,7 @@ const DealsPage = () => {
                           </p>
                           <div className="flex items-center justify-between">
                             <span className="text-xs text-gray-500">
-                              Hết hạn: {formatDate(deal.validTo)}
+                              Hết hạn: {formatDateVN(deal.validTo)}
                             </span>
                             <Button
                               size="sm"
@@ -363,12 +641,66 @@ const DealsPage = () => {
                         </Card>
                       ))}
                     </div>
+
+                    {/* Pagination for All Deals */}
+                    {allDealsTotalPages > 1 && (
+                      <div className="flex items-center justify-center space-x-2 mt-6">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() =>
+                            setAllDealsCurrentPage((prev) =>
+                              Math.max(prev - 1, 1)
+                            )
+                          }
+                          disabled={allDealsCurrentPage === 1}
+                        >
+                          <ChevronLeft className="w-4 h-4" />
+                          Trước
+                        </Button>
+
+                        <div className="flex items-center space-x-1">
+                          {Array.from(
+                            { length: allDealsTotalPages },
+                            (_, i) => i + 1
+                          ).map((page) => (
+                            <Button
+                              key={page}
+                              variant={
+                                allDealsCurrentPage === page
+                                  ? "default"
+                                  : "outline"
+                              }
+                              size="sm"
+                              onClick={() => setAllDealsCurrentPage(page)}
+                              className="w-8 h-8 p-0"
+                            >
+                              {page}
+                            </Button>
+                          ))}
+                        </div>
+
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() =>
+                            setAllDealsCurrentPage((prev) =>
+                              Math.min(prev + 1, allDealsTotalPages)
+                            )
+                          }
+                          disabled={allDealsCurrentPage === allDealsTotalPages}
+                        >
+                          Sau
+                          <ChevronRight className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 </SheetContent>
               </Sheet>
             </div>
 
-            {/* Quick preview of discount codes - Sử dụng Swiper với toàn bộ flightDeals */}
+            {/* Quick preview of discount codes - Sử dụng allDealsFiltered */}
             <Swiper
               modules={[Autoplay]}
               spaceBetween={30}
@@ -386,7 +718,7 @@ const DealsPage = () => {
               }}
               className="deals-slider"
             >
-              {flightDeals.map((deal, index) => (
+              {allDealsFiltered.slice(0, 8).map((deal, index) => (
                 <SwiperSlide
                   key={index}
                   className="p-4 hover:shadow-md transition-shadow border-1 border-gray-200 rounded-sm"
@@ -407,7 +739,7 @@ const DealsPage = () => {
                   </p>
                   <div className="flex items-center justify-between">
                     <span className="text-xs text-gray-500 dark:text-gray-300">
-                      Hết hạn: {formatDate(deal.validTo)}
+                      Hết hạn: {formatDateVN(deal.validTo)}
                     </span>
                     <Button
                       size="sm"
@@ -472,12 +804,12 @@ const DealsPage = () => {
                 <div className="col-span-4 text-center py-12 text-gray-500">
                   Đang tải ưu đãi chuyến bay...
                 </div>
-              ) : paginatedDeals.length === 0 ? (
+              ) : flashSalePaginated.length === 0 ? (
                 <div className="col-span-4 text-center py-12 text-gray-500">
                   Không có ưu đãi chuyến bay nào
                 </div>
               ) : (
-                paginatedDeals.map((deal) => (
+                flashSalePaginated.map((deal) => (
                   <Card
                     key={deal.dealId}
                     className="relative overflow-hidden group hover:shadow-xl transition-all duration-300 border-0 shadow-lg"
@@ -535,7 +867,7 @@ const DealsPage = () => {
                           </div>
                           <div className="text-xs text-yellow-600 mt-1">
                             Hết hạn:{" "}
-                            {deal.validTo ? formatDate(deal.validTo) : "-"}
+                            {deal.validTo ? formatDateVN(deal.validTo) : "-"}
                           </div>
                         </div>
 
@@ -555,43 +887,48 @@ const DealsPage = () => {
             </div>
 
             {/* Pagination */}
-            {totalPages > 1 && (
+            {flashSaleTotalPages > 1 && (
               <div className="flex items-center justify-end space-x-2 mt-8">
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={() =>
-                    setCurrentPage((prev) => Math.max(prev - 1, 1))
+                    setFlashSaleCurrentPage((prev) => Math.max(prev - 1, 1))
                   }
-                  disabled={currentPage === 1}
+                  disabled={flashSaleCurrentPage === 1}
                 >
                   <ChevronLeft className="w-4 h-4" />
                   Trước
                 </Button>
 
                 <div className="flex items-center space-x-1">
-                  {Array.from({ length: totalPages }, (_, i) => i + 1).map(
-                    (page) => (
-                      <Button
-                        key={page}
-                        variant={currentPage === page ? "default" : "outline"}
-                        size="sm"
-                        onClick={() => setCurrentPage(page)}
-                        className="w-8 h-8 p-0"
-                      >
-                        {page}
-                      </Button>
-                    )
-                  )}
+                  {Array.from(
+                    { length: flashSaleTotalPages },
+                    (_, i) => i + 1
+                  ).map((page) => (
+                    <Button
+                      key={page}
+                      variant={
+                        flashSaleCurrentPage === page ? "default" : "outline"
+                      }
+                      size="sm"
+                      onClick={() => setFlashSaleCurrentPage(page)}
+                      className="w-8 h-8 p-0"
+                    >
+                      {page}
+                    </Button>
+                  ))}
                 </div>
 
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={() =>
-                    setCurrentPage((prev) => Math.min(prev + 1, totalPages))
+                    setFlashSaleCurrentPage((prev) =>
+                      Math.min(prev + 1, flashSaleTotalPages)
+                    )
                   }
-                  disabled={currentPage === totalPages}
+                  disabled={flashSaleCurrentPage === flashSaleTotalPages}
                 >
                   Sau
                   <ChevronRight className="w-4 h-4" />
