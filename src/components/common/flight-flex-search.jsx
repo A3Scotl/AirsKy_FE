@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { useSearch } from "@/contexts/search-context";
 import { Swiper, SwiperSlide } from "swiper/react";
 import { Pagination } from "swiper/modules";
 import "swiper/css";
@@ -16,253 +17,280 @@ export function FlightFlexSearch({
   searchCriteria,
   allFlights = [],
   onDateSelect,
+  isReturnSelection = false, // New prop to indicate if selecting return flight
 }) {
-  // Early return check before any hooks to prevent "Rendered fewer hooks than expected" error
-  const hasValidCriteria = (() => {
+  const { updateSearchCriteria } = useSearch();
+  // Optimized validation check
+  const hasValidCriteria = useMemo(() => {
     if (!searchCriteria) return false;
-    const hasDep =
+
+    const extractAirportId = (source) => {
+      if (!source) return null;
+      return (
+        source?.airportId ||
+        (typeof source === "string" && source?.match?.(/\b([A-Z]{3})\b/)?.[1])
+      );
+    };
+
+    const departureId =
       searchCriteria.departureAirportId ||
-      searchCriteria.fromLocations?.[0]?.airportId ||
-      searchCriteria.from?.airportId ||
-      (searchCriteria.fromLocations?.[0] || searchCriteria.from)?.match?.(
-        /\b([A-Z]{3})\b/
-      );
-    const hasArr =
+      extractAirportId(searchCriteria.from) ||
+      extractAirportId(searchCriteria.fromLocations?.[0]);
+
+    const arrivalId =
       searchCriteria.arrivalAirportId ||
-      searchCriteria.toLocations?.[0]?.airportId ||
-      searchCriteria.to?.airportId ||
-      (searchCriteria.toLocations?.[0] || searchCriteria.to)?.match?.(
-        /\b([A-Z]{3})\b/
-      );
-    return hasDep && hasArr;
-  })();
+      extractAirportId(searchCriteria.to) ||
+      extractAirportId(searchCriteria.toLocations?.[0]);
+
+    const hasValidIds = Boolean(departureId && arrivalId);
+    // console.log('Validation check:', { departureId, arrivalId, hasValidIds, searchCriteria }); // Reduced logging
+    return hasValidIds;
+  }, [searchCriteria]);
 
   if (!hasValidCriteria) return null;
 
+  // Optimized state management
   const [dates, setDates] = useState([]);
   const [selectedDate, setSelectedDate] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [dateOffset, setDateOffset] = useState(0);
-  const [airportIds, setAirportIds] = useState(null);
   const [pricesByDate, setPricesByDate] = useState({});
 
-  // Refs for optimization
-  const searchCriteriaRef = useRef(searchCriteria);
-  const allFlightsRef = useRef(allFlights);
+  // Optimized refs for performance
   const priceCache = useRef(new Map());
   const pendingRequests = useRef(new Set());
+  const apiRequests = useRef(new Map());
   const abortController = useRef(new AbortController());
   const swiperRef = useRef(null);
-  const hasFetchedRef = useRef(new Set()); // Track fetched dates
+  const lastFetchedCriteria = useRef(null);
 
-  const isRoundTrip =
-    searchCriteria?.tripType?.toLowerCase() === "roundtrip" ||
-    searchCriteria?.tripType?.toUpperCase() === "ROUND_TRIP";
+  // Simplified trip type detection
+  const isRoundTrip = useMemo(() => {
+    const tripType = searchCriteria?.tripType?.toUpperCase();
+    return (
+      tripType === "ROUND_TRIP" ||
+      tripType === "ROUNDTRIP" ||
+      Boolean(searchCriteria?.returnDate)
+    );
+  }, [searchCriteria?.tripType, searchCriteria?.returnDate]);
 
-  // Format price helper
+  // Optimized price formatter with memoization
   const formatPrice = useCallback((price) => {
     if (price == null || price === 0) return "N/A";
     return new Intl.NumberFormat("vi-VN", {
       style: "currency",
       currency: "VND",
+      maximumFractionDigits: 0,
     }).format(price);
   }, []);
 
-  // Extract airport IDs - memoized
-  const getAirportIds = useCallback(async () => {
-    if (airportIds) return airportIds;
+  // ENHANCED: Get airport IDs from both searchCriteria AND allFlights for accuracy
+  const getAirportIds = useMemo(() => {
+    const extractAirportData = (source) => {
+      if (!source) return null;
 
-    let departureId = searchCriteria?.departureAirportId;
-    let arrivalId = searchCriteria?.arrivalAirportId;
+      // Direct ID access - prioritize airportId field
+      if (source.airportId) {
+        return {
+          id: source.airportId,
+          code: source.airportCode,
+          name: source.airportName || source.city,
+        };
+      }
 
-    if (!departureId) {
-      departureId =
-        searchCriteria?.fromLocations?.[0]?.airportId ||
-        searchCriteria?.from?.airportId;
-    }
+      // Extract from string format "City Name (CODE)"
+      if (typeof source === "string") {
+        const match =
+          source.match(/\(([A-Z]{3})\)/) || source.match(/\b([A-Z]{3})\b/);
+        return match ? { code: match[1] } : null;
+      }
 
-    if (!arrivalId) {
-      arrivalId =
-        searchCriteria?.toLocations?.[0]?.airportId ||
-        searchCriteria?.to?.airportId;
-    }
+      return null;
+    };
 
-    const extractCode = (str) => str?.match?.(/\b([A-Z]{3})\b/)?.[1];
+    // ENHANCED: Try to get airport IDs from actual flights first (more reliable)
+    let originalDeparture, originalArrival;
 
-    if (!departureId || !arrivalId) {
-      try {
-        if (!departureId) {
-          const code =
-            extractCode(searchCriteria?.fromLocations?.[0]) ||
-            extractCode(searchCriteria?.from);
-          if (code) {
-            const response = await airportApi.getAirportByCode(code);
-            if (response.success) departureId = response.data.airportId;
-          }
-        }
+    if (allFlights && allFlights.length > 0) {
+      // Get from first outbound flight (most reliable source)
+      const outboundFlight =
+        allFlights.find(
+          (f) => f.direction === "outbound" || !f.direction // If no direction, assume it's the main flight
+        ) || allFlights[0];
 
-        if (!arrivalId) {
-          const code =
-            extractCode(searchCriteria?.toLocations?.[0]) ||
-            extractCode(searchCriteria?.to);
-          if (code) {
-            const response = await airportApi.getAirportByCode(code);
-            if (response.success) arrivalId = response.data.airportId;
-          }
-        }
-      } catch (err) {
-        console.error("Error fetching airport IDs:", err);
+      if (outboundFlight) {
+        originalDeparture = {
+          id:
+            outboundFlight.departureAirport?.airportId ||
+            outboundFlight.departureAirportId,
+          code: outboundFlight.departureAirport?.airportCode,
+          name: outboundFlight.departureAirport?.airportName,
+        };
+
+        originalArrival = {
+          id:
+            outboundFlight.arrivalAirport?.airportId ||
+            outboundFlight.arrivalAirportId,
+          code: outboundFlight.arrivalAirport?.airportCode,
+          name: outboundFlight.arrivalAirport?.airportName,
+        };
+
+        console.log("Got airport IDs from flights:", {
+          originalDeparture,
+          originalArrival,
+        });
       }
     }
 
-    const result = { departureId, arrivalId };
-    setAirportIds(result);
-    return result;
-  }, [searchCriteria, airportIds]);
+    // Fallback to searchCriteria if no flights available
+    if (!originalDeparture || !originalArrival) {
+      originalDeparture = searchCriteria?.departureAirportId
+        ? { id: searchCriteria.departureAirportId }
+        : extractAirportData(searchCriteria?.from) ||
+          extractAirportData(searchCriteria?.fromLocations?.[0]);
 
-  // Parse date helper function
+      originalArrival = searchCriteria?.arrivalAirportId
+        ? { id: searchCriteria.arrivalAirportId }
+        : extractAirportData(searchCriteria?.to) ||
+          extractAirportData(searchCriteria?.toLocations?.[0]);
+
+      console.log("Got airport IDs from searchCriteria:", {
+        originalDeparture,
+        originalArrival,
+      });
+    }
+
+    // Swap airports if selecting return flight
+    let departureData, arrivalData;
+    if (isReturnSelection) {
+      departureData = originalArrival; // SGN becomes departure
+      arrivalData = originalDeparture; // HAN becomes arrival
+      console.log("Return selection - swapped airports:", {
+        original: `${originalDeparture?.id}-${originalArrival?.id}`,
+        swapped: `${departureData?.id}-${arrivalData?.id}`,
+      });
+    } else {
+      departureData = originalDeparture;
+      arrivalData = originalArrival;
+      console.log("Outbound selection - normal airports:", {
+        departureData,
+        arrivalData,
+      });
+    }
+
+    return { departureData, arrivalData };
+  }, [searchCriteria, isReturnSelection, allFlights]);
+
+  // Optimized date parser
   const parseDate = useCallback((dateValue) => {
     if (!dateValue) return new Date();
 
-    let parsed;
-    if (typeof dateValue === "string") {
-      if (/^\d{4}-\d{2}-\d{2}$/.test(dateValue)) {
-        const [year, month, day] = dateValue.split("-").map(Number);
-        parsed = new Date(year, month - 1, day);
-      } else {
-        parsed = new Date(dateValue);
-      }
-    } else if (dateValue instanceof Date) {
-      parsed = dateValue;
-    } else {
-      parsed = new Date();
+    // Handle string format YYYY-MM-DD
+    if (
+      typeof dateValue === "string" &&
+      /^\d{4}-\d{2}-\d{2}$/.test(dateValue)
+    ) {
+      const [year, month, day] = dateValue.split("-").map(Number);
+      return new Date(year, month - 1, day, 12, 0, 0, 0);
     }
 
-    return new Date(parsed.getFullYear(), parsed.getMonth(), parsed.getDate());
+    // Handle Date object or string
+    const parsed = new Date(dateValue);
+    if (isNaN(parsed.getTime())) {
+      console.warn("Invalid date value:", dateValue);
+      return new Date();
+    }
+
+    return new Date(
+      parsed.getFullYear(),
+      parsed.getMonth(),
+      parsed.getDate(),
+      12,
+      0,
+      0,
+      0
+    );
   }, []);
 
-  // Generate dates - optimized for local time, and restore prices from cache
+  // Optimized date generation - always 7 days with search date in center
   const generateDates = useMemo(() => {
-    const baseDate = parseDate(searchCriteria?.departDate);
-    const returnDate = parseDate(searchCriteria?.returnDate);
+    // Use returnDate as baseDate when selecting return flight
+    const baseDate =
+      isReturnSelection && searchCriteria?.returnDate
+        ? parseDate(searchCriteria.returnDate)
+        : parseDate(searchCriteria?.departDate);
 
-    const dates = [];
+    const returnDate = isRoundTrip
+      ? parseDate(searchCriteria?.returnDate)
+      : null;
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    if (isRoundTrip && searchCriteria?.returnDate) {
-      // For round-trip, generate date pairs around the selected dates
-      // Calculate the gap between selected dates
-      const selectedGap = Math.max(
-        1,
-        Math.ceil((returnDate - baseDate) / (1000 * 60 * 60 * 24))
-      );
+    console.log("Generate dates with:", {
+      isReturnSelection,
+      departDate: searchCriteria?.departDate,
+      returnDate: searchCriteria?.returnDate,
+      selectedBaseDate: baseDate,
+      isRoundTrip,
+    });
 
-      // Generate 7 date ranges centered around the selected dates
-      const centerIndex = 3; // Index of the selected date range in the 7 ranges
-      const startDate = new Date(baseDate);
-      startDate.setDate(baseDate.getDate() - centerIndex + dateOffset * 7);
+    const dates = [];
+    const centerIndex = 3; // Search date always in center
 
-      for (let i = 0; i < 7; i++) {
-        const outboundDate = new Date(startDate);
-        outboundDate.setDate(startDate.getDate() + i);
+    // Calculate start date (3 days before search date + offset)
+    const startDate = new Date(baseDate);
+    startDate.setDate(baseDate.getDate() - centerIndex + dateOffset * 7);
 
-        if (outboundDate < today) continue;
+    // Ensure startDate is not before today
+    if (startDate < today) {
+      const daysToAdd = Math.ceil((today - startDate) / (1000 * 60 * 60 * 24));
+      startDate.setDate(startDate.getDate() + daysToAdd);
+    }
 
-        // Calculate return date using the same gap as selected
-        const returnDateForRange = new Date(outboundDate);
-        returnDateForRange.setDate(outboundDate.getDate() + selectedGap);
+    for (let i = 0; i < 7; i++) {
+      const currentDate = new Date(startDate);
+      currentDate.setDate(startDate.getDate() + i);
 
-        const outboundYear = outboundDate.getFullYear();
-        const outboundMonth = String(outboundDate.getMonth() + 1).padStart(
-          2,
-          "0"
+      const formatted = currentDate.toISOString().split("T")[0];
+      const display = currentDate.toLocaleDateString("vi-VN", {
+        weekday: "short",
+        day: "numeric",
+        month: "short",
+      });
+
+      // For round-trip, calculate return date maintaining the gap (for display only)
+      let returnFormatted = null;
+      if (isRoundTrip && returnDate) {
+        // Calculate original gap between depart and return dates
+        const originalGap = Math.ceil(
+          (returnDate - baseDate) / (1000 * 60 * 60 * 24)
         );
-        const outboundDay = String(outboundDate.getDate()).padStart(2, "0");
-        const outboundFormatted = `${outboundYear}-${outboundMonth}-${outboundDay}`;
-
-        const returnYear = returnDateForRange.getFullYear();
-        const returnMonth = String(returnDateForRange.getMonth() + 1).padStart(
-          2,
-          "0"
-        );
-        const returnDay = String(returnDateForRange.getDate()).padStart(2, "0");
-        const returnFormatted = `${returnYear}-${returnMonth}-${returnDay}`;
-
-        // Use range key for caching and identification
-        const rangeKey = `${outboundFormatted}_${returnFormatted}`;
-
-        // Format display dates in Vietnamese
-        const outboundDisplay = outboundDate.toLocaleDateString("vi-VN", {
-          day: "numeric",
-          month: "short",
-        });
-        const returnDisplay = returnDateForRange.toLocaleDateString("vi-VN", {
-          day: "numeric",
-          month: "short",
-        });
-
-        const display = `${outboundDisplay} - ${returnDisplay}`;
-
-        // Check if this is the selected date range - compare with searchCriteria dates
-        const searchDepartFormatted = baseDate.toISOString().split("T")[0];
-        const searchReturnFormatted = returnDate.toISOString().split("T")[0];
-        const isSelectedRange =
-          outboundFormatted === searchDepartFormatted &&
-          returnFormatted === searchReturnFormatted;
-
-        const cachedPrice = pricesByDate[rangeKey] ?? null;
-        const cachedError = cachedPrice == null;
-
-        dates.push({
-          date: outboundDate,
-          formatted: rangeKey,
-          outboundDate: outboundFormatted,
-          returnDate: returnFormatted,
-          display,
-          isToday: outboundDate.getTime() === today.getTime(),
-          isSelected: isSelectedRange,
-          price: cachedPrice,
-          loading: false,
-          error: cachedError,
-        });
+        const calculatedReturnDate = new Date(currentDate);
+        calculatedReturnDate.setDate(currentDate.getDate() + originalGap);
+        returnFormatted = calculatedReturnDate.toISOString().split("T")[0];
       }
-    } else {
-      // For one-way, keep existing logic
-      const startDate = new Date(baseDate);
-      startDate.setDate(baseDate.getDate() - 3 + dateOffset * 7);
 
-      for (let i = 0; i < 7; i++) {
-        const currentDate = new Date(startDate);
-        currentDate.setDate(startDate.getDate() + i);
+      // Check if selected
+      const baseFormatted = baseDate.toISOString().split("T")[0];
+      const isSelected = formatted === baseFormatted;
 
-        if (currentDate < today) continue;
+      // Always use simple date key for one-way pricing
+      const priceKey = formatted;
+      const cachedPrice = pricesByDate[priceKey];
 
-        const year = currentDate.getFullYear();
-        const month = String(currentDate.getMonth() + 1).padStart(2, "0");
-        const day = String(currentDate.getDate()).padStart(2, "0");
-        const formatted = `${year}-${month}-${day}`;
-
-        const display = currentDate.toLocaleDateString("vi-VN", {
-          weekday: "short",
-          day: "numeric",
-          month: "short",
-        });
-
-        const cachedPrice = pricesByDate[formatted] ?? null;
-        const cachedError = cachedPrice == null;
-
-        dates.push({
-          date: currentDate,
-          formatted,
-          display,
-          isToday: currentDate.getTime() === today.getTime(),
-          price: cachedPrice,
-          loading: false,
-          error: cachedError,
-        });
-      }
+      dates.push({
+        date: currentDate,
+        formatted,
+        returnFormatted,
+        display,
+        isToday: currentDate.getTime() === today.getTime(),
+        isSelected,
+        price: cachedPrice,
+        loading: false,
+        error: cachedPrice === undefined,
+        priceKey,
+      });
     }
 
     return dates;
@@ -270,441 +298,508 @@ export function FlightFlexSearch({
     searchCriteria?.departDate,
     searchCriteria?.returnDate,
     dateOffset,
-    isRoundTrip,
     pricesByDate,
     parseDate,
+    isRoundTrip,
   ]);
 
-  // Extract price from flight - prioritize customPrice from flightTravelClasses
+  // Optimized flight price extraction with availability filter
   const extractFlightPrice = useCallback((flight) => {
-    // First try to get price from flightTravelClasses
-    if (flight.flightTravelClasses && flight.flightTravelClasses.length > 0) {
-      const prices = flight.flightTravelClasses
-        .map((tc) => tc.customPrice || tc.price)
-        .filter((price) => price != null && price > 0);
-      if (prices.length > 0) {
-        return Math.min(...prices);
-      }
+    // Check if flight is still available (not in the past)
+    const now = new Date();
+    const flightDateTime = new Date(
+      flight.departureTime || flight.departureDate
+    );
+
+    // Skip flights that have already departed
+    if (flightDateTime <= now) {
+      return null;
     }
 
-    // Fallback to other price fields
-    const price =
-      flight.priceNumeric ||
-      flight.price ||
-      flight.totalPrice ||
-      flight.pricing?.priceNumeric ||
-      flight.pricing?.price ||
-      flight.pricing?.totalPrice;
+    // Priority: flightTravelClasses > direct price fields
+    if (flight?.flightTravelClasses?.length > 0) {
+      const validPrices = flight.flightTravelClasses
+        .map((tc) => tc.customPrice || tc.price)
+        .filter((price) => price > 0);
 
-    return typeof price === "string"
-      ? parseFloat(price.replace(/[^\d.]/g, ""))
-      : price > 0
-      ? price
-      : null;
+      if (validPrices.length > 0) return Math.min(...validPrices);
+    }
+
+    // Fallback to direct price fields
+    const price = flight?.priceNumeric || flight?.price || flight?.totalPrice;
+
+    if (typeof price === "string") {
+      const numPrice = parseFloat(price.replace(/[^\d.]/g, ""));
+      return numPrice > 0 ? numPrice : null;
+    }
+
+    return price > 0 ? price : null;
   }, []);
 
-  // Manual parse date from departureTime assuming "DD/MM/YYYY [HH:mm:ss]" format
+  // Optimized flight date parser
   const parseFlightDateStr = useCallback((departureTime) => {
     if (!departureTime) return null;
+
     const datePart = departureTime.split(" ")[0];
     const parts = datePart.split(/[/.-]/);
+
     if (parts.length !== 3) return null;
+
     const [day, month, year] = parts.map(Number);
-    if (
-      isNaN(day) ||
-      isNaN(month) ||
-      isNaN(year) ||
-      day < 1 ||
-      day > 31 ||
-      month < 1 ||
-      month > 12
-    )
-      return null;
-    return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(
-      2,
-      "0"
-    )}`;
+
+    if (day >= 1 && day <= 31 && month >= 1 && month <= 12 && year >= 2020) {
+      return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(
+        2,
+        "0"
+      )}`;
+    }
+
+    return null;
   }, []);
 
-  // Get price from allFlights
+  // Optimized price extraction from existing flights - always one-way logic
   const getPriceFromAllFlights = useCallback(
-    (dateObj, departureId, arrivalId) => {
-      // For round-trip, we can't easily calculate total price from allFlights
-      // since we need both outbound and return flights. Skip for now.
-      if (isRoundTrip) return null;
+    (dateObj) => {
+      if (!getAirportIds.departureData?.id || !getAirportIds.arrivalData?.id)
+        return null;
 
-      const cacheKey = `${dateObj.formatted}_${departureId}_${arrivalId}`;
-      if (priceCache.current.has(cacheKey))
+      const cacheKey = dateObj.priceKey;
+      if (priceCache.current.has(cacheKey)) {
         return priceCache.current.get(cacheKey);
+      }
 
-      const targetDateStr = dateObj.formatted;
+      // Always use one-way logic - filter flights for the specific route and date
       const matchingFlights = allFlights.filter((flight) => {
-        const flightDateStr = parseFlightDateStr(flight.departureTime);
-        if (!flightDateStr) return false;
-        const dateMatch = flightDateStr === targetDateStr;
+        const flightDate = parseFlightDateStr(flight.departureTime);
         const depId =
           flight.departureAirport?.airportId || flight.departureAirportId;
         const arrId =
           flight.arrivalAirport?.airportId || flight.arrivalAirportId;
-        const airportMatch =
-          String(depId) === String(departureId) &&
-          String(arrId) === String(arrivalId);
-        return dateMatch && airportMatch;
+
+        return (
+          flightDate === dateObj.formatted &&
+          String(depId) === String(getAirportIds.departureData.id) &&
+          String(arrId) === String(getAirportIds.arrivalData.id)
+        );
       });
 
-      const prices = matchingFlights.map(extractFlightPrice).filter(Boolean);
-      const minPrice = prices.length > 0 ? Math.min(...prices) : null;
-      priceCache.current.set(cacheKey, minPrice);
+      console.log(
+        `Found ${matchingFlights.length} flights for ${dateObj.formatted} from ${getAirportIds.departureData.id} to ${getAirportIds.arrivalData.id}`
+      );
+
+      const availablePrices = matchingFlights
+        .map(extractFlightPrice)
+        .filter(Boolean);
+      const minPrice =
+        availablePrices.length > 0 ? Math.min(...availablePrices) : null;
+
+      if (minPrice) {
+        priceCache.current.set(cacheKey, minPrice);
+        console.log(`Min price for ${dateObj.formatted}: ${minPrice} VND`);
+      }
+
       return minPrice;
     },
-    [allFlights, extractFlightPrice, parseFlightDateStr, isRoundTrip]
+    [allFlights, extractFlightPrice, parseFlightDateStr, getAirportIds]
   );
 
-  // Fetch price from API using compare-prices endpoint
+  // Optimized API price fetching with batch requests
   const fetchPriceFromAPI = useCallback(
-    async (dateObj, departureId, arrivalId) => {
-      const requestKey = `${dateObj.formatted}_${departureId}_${arrivalId}`;
-      if (pendingRequests.current.has(requestKey)) return null;
+    async (dateObj) => {
+      if (!getAirportIds.departureData?.id || !getAirportIds.arrivalData?.id) {
+        console.log("Missing airport IDs for API fetch");
+        return null;
+      }
+
+      const requestKey = dateObj.priceKey;
+
+      // Prevent duplicate requests
+      if (apiRequests.current.has(requestKey)) {
+        console.log("Using cached API request for:", requestKey);
+        return apiRequests.current.get(requestKey);
+      }
+      if (pendingRequests.current.has(requestKey)) {
+        console.log("Request already pending for:", requestKey);
+        return null;
+      }
+
       pendingRequests.current.add(requestKey);
 
       try {
         let requestBody;
 
-        if (isRoundTrip && searchCriteria?.returnDate) {
-          // For round-trip, create request with both outbound and return routes
-          requestBody = {
-            type: "round-trip",
-            routes: [
-              {
-                departureAirportId: parseInt(departureId),
-                arrivalAirportId: parseInt(arrivalId),
-                date: dateObj.outboundDate || dateObj.formatted,
-              },
-              {
-                departureAirportId: parseInt(arrivalId),
-                arrivalAirportId: parseInt(departureId),
-                date: dateObj.returnDate || searchCriteria.returnDate,
-              },
-            ],
-            dateRangeDays: 2,
-          };
-        } else {
-          // For one-way
-          requestBody = {
-            type: "one-way",
-            routes: [
-              {
-                departureAirportId: parseInt(departureId),
-                arrivalAirportId: parseInt(arrivalId),
-                date: dateObj.formatted,
-              },
-            ],
-            dateRangeDays: 0,
-          };
-        }
+        // Always use one-way API calls - even for round-trip, handle each direction separately
+        requestBody = {
+          routes: [
+            {
+              departureAirportId: parseInt(getAirportIds.departureData.id),
+              arrivalAirportId: parseInt(getAirportIds.arrivalData.id),
+              date: dateObj.formatted,
+            },
+          ],
+          dateRangeDays: 0,
+        };
 
+        console.log("Calling compare-prices API with:", requestBody);
         const response = await flightApi.compareFlightPrices(requestBody);
+        console.log("API response for", dateObj.formatted, ":", response);
 
-        if (response.success && response.data?.prices) {
-          if (isRoundTrip) {
-            // For round-trip, find the price with matching outbound and return dates
-            const matchingPrice = response.data.prices.find(
-              (price) =>
-                price.outboundDate === dateObj.outboundDate &&
-                price.returnDate === dateObj.returnDate
-            );
+        if (response?.success && response.data?.prices?.length > 0) {
+          // Always extract one-way price - get minPrice for the specific route and date
+          const matchingPrice = response.data.prices.find(
+            (p) =>
+              p.date === dateObj.formatted &&
+              p.departureAirportId ===
+                parseInt(getAirportIds.departureData.id) &&
+              p.arrivalAirportId === parseInt(getAirportIds.arrivalData.id)
+          );
 
-            // If exact match not found, try to find by outbound date only
-            if (!matchingPrice) {
-              const fallbackPrice = response.data.prices.find(
-                (price) => price.outboundDate === dateObj.outboundDate
-              );
+          const price =
+            matchingPrice?.minPrice ||
+            response.data.prices[0]?.minPrice ||
+            null;
 
-              return fallbackPrice ? fallbackPrice.totalPrice : null;
-            }
+          console.log(
+            "Extracted one-way price for",
+            dateObj.formatted,
+            ":",
+            price
+          );
 
-            return matchingPrice ? matchingPrice.totalPrice : null;
-          } else {
-            // For one-way, find matching price
-            const matchingPrice = response.data.prices.find(
-              (price) =>
-                price.departureAirportId === parseInt(departureId) &&
-                price.arrivalAirportId === parseInt(arrivalId) &&
-                price.date === dateObj.formatted
-            );
-            return matchingPrice ? matchingPrice.minPrice : null;
+          // Cache the result
+          if (price !== null) {
+            apiRequests.current.set(requestKey, price);
           }
+          return price;
         }
 
+        console.log("No prices found in API response");
         return null;
       } catch (error) {
-        console.error("Error fetching price from API:", error);
+        console.error("API price fetch error:", error);
         return null;
       } finally {
         pendingRequests.current.delete(requestKey);
       }
     },
-    [isRoundTrip, searchCriteria?.returnDate, parseDate]
+    [isRoundTrip, getAirportIds]
   );
 
-  // Update prices
+  // Optimized price update function
   const updatePrices = useCallback(async () => {
-    if (!dates.length || loading) return;
-
-    const ids = await getAirportIds();
-    if (!ids.departureId || !ids.arrivalId) {
-      setError(
-        "Thiếu thông tin sân bay. Vui lòng chọn lại điểm đi và điểm đến."
-      );
+    if (
+      !dates.length ||
+      loading ||
+      !getAirportIds.departureData?.id ||
+      !getAirportIds.arrivalData?.id
+    ) {
+      if (!getAirportIds.departureData?.id || !getAirportIds.arrivalData?.id) {
+        setError(
+          "Thiếu thông tin sân bay. Vui lòng chọn lại điểm đi và điểm đến."
+        );
+      }
       return;
     }
 
+    // console.log('Starting price update for dates:', dates.map(d => d.formatted)); // Reduced logging
     setLoading(true);
     setError(null);
+
+    // Cancel previous requests
     abortController.current.abort();
     abortController.current = new AbortController();
 
-    const updatedDates = [...dates];
-    let hasChanges = false;
+    // Set all dates to loading first
+    const loadingDates = dates.map((dateObj) => ({
+      ...dateObj,
+      loading: dateObj.price === undefined,
+      error: false,
+    }));
+    setDates(loadingDates);
 
-    for (let i = 0; i < updatedDates.length; i++) {
-      const dateObj = updatedDates[i];
-      if (dateObj.price != null || hasFetchedRef.current.has(dateObj.formatted))
-        continue;
+    // Prioritize API calls for accurate pricing - fetch all dates from API
+    const datesToFetch = dates.filter((d) => d.price === undefined);
 
-      const priceFromFlights = getPriceFromAllFlights(
-        dateObj,
-        ids.departureId,
-        ids.arrivalId
+    if (datesToFetch.length > 0) {
+      console.log(
+        "Fetching prices from API for dates:",
+        datesToFetch.map((d) => d.formatted)
       );
-      if (priceFromFlights != null) {
-        updatedDates[i] = {
-          ...dateObj,
-          price: priceFromFlights,
-          loading: false,
-          error: false,
-        };
-        setPricesByDate((prev) => ({
-          ...prev,
-          [dateObj.formatted]: priceFromFlights,
-        }));
-        hasFetchedRef.current.add(dateObj.formatted);
-        hasChanges = true;
-      } else {
-        updatedDates[i] = { ...dateObj, loading: true };
-        hasChanges = true;
-      }
-    }
 
-    if (hasChanges) setDates(updatedDates);
-
-    const datesToFetch = updatedDates.filter(
-      (d) => d.price == null && !hasFetchedRef.current.has(d.formatted)
-    );
-    if (datesToFetch.length) {
+      // Process in smaller batches for better performance
       const batchSize = 3;
+
       for (let i = 0; i < datesToFetch.length; i += batchSize) {
         const batch = datesToFetch.slice(i, i + batchSize);
-        const results = await Promise.all(
+        console.log(
+          `Processing batch ${i / batchSize + 1}:`,
+          batch.map((d) => d.formatted)
+        );
+
+        const batchResults = await Promise.all(
           batch.map(async (dateObj) => {
-            const price = await fetchPriceFromAPI(
-              dateObj,
-              ids.departureId,
-              ids.arrivalId
-            );
-            hasFetchedRef.current.add(dateObj.formatted);
+            try {
+              console.log("Fetching price for:", dateObj.formatted);
+              const price = await fetchPriceFromAPI(dateObj);
+
+              // Fallback to existing flights if API fails
+              if (price === null) {
+                console.log(
+                  "API failed, trying existing flights for:",
+                  dateObj.formatted
+                );
+                const fallbackPrice = getPriceFromAllFlights(dateObj);
+                return {
+                  priceKey: dateObj.priceKey,
+                  price: fallbackPrice,
+                  error: fallbackPrice === null,
+                };
+              }
+
+              return { priceKey: dateObj.priceKey, price, error: false };
+            } catch (error) {
+              console.error(
+                "Price fetch error for",
+                dateObj.formatted,
+                ":",
+                error
+              );
+              // Try fallback
+              const fallbackPrice = getPriceFromAllFlights(dateObj);
+              return {
+                priceKey: dateObj.priceKey,
+                price: fallbackPrice,
+                error: fallbackPrice === null,
+              };
+            }
+          })
+        );
+
+        console.log("Batch results:", batchResults);
+
+        // Update state with batch results
+        setDates((prev) =>
+          prev.map((d) => {
+            const result = batchResults.find((r) => r.priceKey === d.priceKey);
+            if (!result) return d;
+
+            if (result.price !== null) {
+              setPricesByDate((prevPrices) => ({
+                ...prevPrices,
+                [d.priceKey]: result.price,
+              }));
+            }
+
             return {
-              formatted: dateObj.formatted,
-              price,
-              error: price == null,
+              ...d,
+              price: result.price,
+              loading: false,
+              error: result.error,
             };
           })
         );
 
-        setDates((prev) => {
-          const newDates = prev.map((d) => {
-            const res = results.find((r) => r.formatted === d.formatted);
-            return res
-              ? { ...d, price: res.price, loading: false, error: res.error }
-              : d;
-          });
-          results.forEach((res) => {
-            if (res.price != null) {
-              setPricesByDate((prevPrices) => ({
-                ...prevPrices,
-                [res.formatted]: res.price,
-              }));
-            }
-          });
-          return newDates;
-        });
-
-        if (i + batchSize < datesToFetch.length)
-          await new Promise((res) => setTimeout(res, 300));
+        // Small delay between batches
+        if (i + batchSize < datesToFetch.length) {
+          await new Promise((resolve) => setTimeout(resolve, 300));
+        }
       }
+    } else {
+      // console.log('No dates to fetch, all prices already cached'); // Reduced logging
     }
 
     setLoading(false);
   }, [
     dates,
-    getAirportIds,
+    loading,
     getPriceFromAllFlights,
     fetchPriceFromAPI,
-    loading,
+    getAirportIds,
   ]);
 
-  // Validate criteria
-  const hasValidSearchCriteria = useMemo(() => {
-    if (!searchCriteria) return false;
-    const hasDep =
-      searchCriteria.departureAirportId ||
-      searchCriteria.fromLocations?.[0]?.airportId ||
-      searchCriteria.from?.airportId ||
-      (searchCriteria.fromLocations?.[0] || searchCriteria.from)?.match?.(
-        /\b([A-Z]{3})\b/
-      );
-    const hasArr =
-      searchCriteria.arrivalAirportId ||
-      searchCriteria.toLocations?.[0]?.airportId ||
-      searchCriteria.to?.airportId ||
-      (searchCriteria.toLocations?.[0] || searchCriteria.to)?.match?.(
-        /\b([A-Z]{3})\b/
-      );
-    return hasDep && hasArr;
-  }, [searchCriteria]);
+  // Improved validation with stable comparison
+  const shouldUpdatePrices = useMemo(() => {
+    if (!dates.length) return false;
 
-  // Initialize dates and auto-select
-  useEffect(() => {
-    const newDates = generateDates;
+    // Create stable criteria object
+    const criteriaObj = {
+      dep: getAirportIds.departureData?.id,
+      arr: getAirportIds.arrivalData?.id,
+      departDate:
+        searchCriteria?.departDate?.toISOString?.()?.split("T")[0] ||
+        searchCriteria?.departDate,
+      returnDate:
+        searchCriteria?.returnDate?.toISOString?.()?.split("T")[0] ||
+        searchCriteria?.returnDate,
+      tripType: searchCriteria?.tripType,
+      isReturn: isReturnSelection,
+    };
 
-    setDates(newDates);
+    const criteriaStr = JSON.stringify(criteriaObj);
 
-    if (
-      searchCriteria?.departDate &&
-      searchCriteria?.returnDate &&
-      newDates.length &&
-      isRoundTrip
-    ) {
-      // For round-trip, find the date range that matches the selected dates
-      const baseDate = parseDate(searchCriteria.departDate);
-      const returnDate = parseDate(searchCriteria.returnDate);
+    // Check if criteria actually changed
+    const criteriaChanged = criteriaStr !== lastFetchedCriteria.current;
+    const hasMissingPrices = dates.some((d) => d.price === undefined);
 
-      const baseFormatted = `${baseDate.getFullYear()}-${String(
-        baseDate.getMonth() + 1
-      ).padStart(2, "0")}-${String(baseDate.getDate()).padStart(2, "0")}`;
-
-      const returnFormatted = `${returnDate.getFullYear()}-${String(
-        returnDate.getMonth() + 1
-      ).padStart(2, "0")}-${String(returnDate.getDate()).padStart(2, "0")}`;
-
-      const selectedRangeKey = `${baseFormatted}_${returnFormatted}`;
-
-      const selected = newDates.find((d) => d.formatted === selectedRangeKey);
-
-      setSelectedDate(selected || null);
-
-      const selectedIndex = newDates.findIndex(
-        (d) => d.formatted === selectedRangeKey
-      );
-      if (selectedIndex !== -1 && swiperRef.current) {
-        swiperRef.current.slideTo(selectedIndex);
-      }
-    } else if (searchCriteria?.departDate && newDates.length && !isRoundTrip) {
-      // For one-way, keep existing logic
-      const baseDate = parseDate(searchCriteria.departDate);
-      const formatted = `${baseDate.getFullYear()}-${String(
-        baseDate.getMonth() + 1
-      ).padStart(2, "0")}-${String(baseDate.getDate()).padStart(2, "0")}`;
-
-      const selected = newDates.find((d) => d.formatted === formatted);
-      setSelectedDate(selected || null);
-
-      const selectedIndex = newDates.findIndex(
-        (d) => d.formatted === formatted
-      );
-      if (selectedIndex !== -1 && swiperRef.current) {
-        swiperRef.current.slideTo(selectedIndex);
-      }
+    if (criteriaChanged) {
+      console.log("Criteria changed - should update prices");
+      // console.log('Old:', lastFetchedCriteria.current); // Reduced logging
+      // console.log('New:', criteriaStr); // Reduced logging
+      lastFetchedCriteria.current = criteriaStr;
+      return true;
     }
+
+    if (hasMissingPrices) {
+      console.log("Missing prices detected - should update");
+      return true;
+    }
+
+    return false;
   }, [
-    generateDates,
+    dates.length,
+    getAirportIds,
     searchCriteria?.departDate,
     searchCriteria?.returnDate,
-    parseDate,
-    isRoundTrip,
+    searchCriteria?.tripType,
+    isReturnSelection,
   ]);
 
-  // Trigger price update when search criteria, flights, or dates change
+  // Initialize dates and handle selection - use ref to prevent loops
+  const prevIsReturnSelectionRef = useRef(isReturnSelection);
+
   useEffect(() => {
-    if (!dates.length || !hasValidSearchCriteria) return;
+    console.log(
+      "Generating new dates for selection mode:",
+      isReturnSelection ? "return" : "outbound"
+    );
+    setDates(generateDates);
 
-    const criteriaChanged =
-      JSON.stringify(searchCriteria) !==
-      JSON.stringify(searchCriteriaRef.current);
-    const flightsChanged = allFlights.length !== allFlightsRef.current.length;
+    // Auto-select based on search criteria
+    const targetDate = generateDates.find((d) => d.isSelected);
+    if (targetDate) {
+      setSelectedDate(targetDate);
 
-    if (
-      criteriaChanged ||
-      flightsChanged ||
-      dates.some(
-        (d) => d.price == null && !hasFetchedRef.current.has(d.formatted)
-      )
-    ) {
-      searchCriteriaRef.current = searchCriteria;
-      allFlightsRef.current = allFlights;
-
-      if (criteriaChanged) {
-        priceCache.current.clear();
-        setPricesByDate({});
-        hasFetchedRef.current.clear();
-        setSelectedDate(null); // Reset selected date when criteria change
+      // Auto-scroll to selected date
+      const selectedIndex = generateDates.findIndex((d) => d.isSelected);
+      if (selectedIndex !== -1 && swiperRef.current) {
+        setTimeout(() => swiperRef.current?.slideTo(selectedIndex), 100);
       }
-
-      updatePrices();
     }
-  }, [
-    dates,
-    searchCriteria,
-    allFlights.length,
-    hasValidSearchCriteria,
-    updatePrices,
-  ]);
 
-  useEffect(() => () => abortController.current.abort(), []);
+    // Reset date offset when switching selection modes
+    if (prevIsReturnSelectionRef.current !== isReturnSelection) {
+      setDateOffset(0);
+      prevIsReturnSelectionRef.current = isReturnSelection;
+    }
+  }, [generateDates]); // Remove isReturnSelection from deps to prevent loop
+
+  // Update prices when criteria changes - with debounce
+  useEffect(() => {
+    if (shouldUpdatePrices) {
+      const timer = setTimeout(() => {
+        updatePrices();
+      }, 100); // Small debounce to prevent rapid calls
+
+      return () => clearTimeout(timer);
+    }
+  }, [shouldUpdatePrices, updatePrices]);
+
+  // CRITICAL: Handle return selection changes - clear cache and refresh
+  useEffect(() => {
+    console.log("Selection mode effect triggered:", isReturnSelection);
+
+    // Clear all caches when switching between outbound/return selection
+    priceCache.current.clear();
+    apiRequests.current.clear();
+    pendingRequests.current.clear();
+    setPricesByDate({});
+
+    // DON'T call updatePrices directly here to avoid infinite loop
+    // Let shouldUpdatePrices handle the refresh logic
+  }, [isReturnSelection]); // Remove updatePrices from dependencies
+
+  // Handle search criteria changes - this is handled by shouldUpdatePrices already
+  // Removed to prevent infinite loops
+
+  // Cleanup on unmount
+  useEffect(() => () => abortController.current?.abort(), []);
 
   // Find overall min price for highlighting
-  const minOverallPrice = Math.min(
-    ...dates.map((d) => d.price || Infinity).filter(Boolean)
-  );
+  const minOverallPrice = useMemo(() => {
+    const validPrices = dates.map((d) => d.price).filter((price) => price > 0);
+    return validPrices.length > 0 ? Math.min(...validPrices) : null;
+  }, [dates]);
 
+  // Optimized refresh handler
   const handleRefresh = useCallback(() => {
+    console.log("Refreshing prices - clearing all caches");
     priceCache.current.clear();
+    apiRequests.current.clear();
+    pendingRequests.current.clear();
     setPricesByDate({});
-    hasFetchedRef.current.clear();
     setError(null);
     updatePrices();
   }, [updatePrices]);
 
-  // Handle date selection
+  // Optimized date selection handler - handles both outbound and return selection
   const handleDateSelect = useCallback(
     (dateObj) => {
       setSelectedDate(dateObj);
 
+      console.log("Date selected:", {
+        date: dateObj.formatted,
+        isReturnSelection,
+        direction: isReturnSelection ? "return" : "outbound",
+      });
+
+      const newCriteria = { ...searchCriteria };
+
+      if (isReturnSelection) {
+        // Selecting return flight date
+        newCriteria.returnDate = new Date(dateObj.formatted + "T12:00:00");
+        console.log("Updated return date to:", dateObj.formatted);
+      } else {
+        // Selecting outbound flight date
+        newCriteria.departDate = new Date(dateObj.formatted + "T12:00:00");
+        console.log("Updated departure date to:", dateObj.formatted);
+
+        // Maintain return date if it exists for round-trip
+        if (isRoundTrip && dateObj.returnFormatted) {
+          newCriteria.returnDate = new Date(
+            dateObj.returnFormatted + "T12:00:00"
+          );
+        }
+      }
+
+      console.log("Final search criteria:", newCriteria);
+      updateSearchCriteria(newCriteria);
+      localStorage.setItem("searchCriteria", JSON.stringify(newCriteria));
+
+      // Callback with appropriate data structure
       if (isRoundTrip) {
         onDateSelect?.({
-          departDate: dateObj.outboundDate,
-          returnDate: dateObj.returnDate,
+          departDate: newCriteria.departDate
+            ? newCriteria.departDate.toISOString().split("T")[0]
+            : searchCriteria.departDate,
+          returnDate: newCriteria.returnDate
+            ? newCriteria.returnDate.toISOString().split("T")[0]
+            : null,
+          isReturnSelection,
         });
       } else {
-        // For one-way, pass single date
-
         onDateSelect?.(dateObj.date);
       }
     },
-    [isRoundTrip, onDateSelect]
+    [
+      isRoundTrip,
+      onDateSelect,
+      searchCriteria,
+      updateSearchCriteria,
+      isReturnSelection,
+    ]
   );
 
-  // Navigation
+  // Optimized navigation with bounds checking
   const moveDateRange = useCallback(
     (direction) => {
       const newOffset = dateOffset + (direction === "prev" ? -1 : 1);
@@ -726,10 +821,14 @@ export function FlightFlexSearch({
             </div>
             <div>
               <h3 className="text-xl font-bold text-gray-900 dark:text-white">
-                Chọn {isRoundTrip ? "khoảng ngày" : "ngày"} khởi hành linh hoạt
+                {isReturnSelection
+                  ? "Chọn ngày về linh hoạt"
+                  : "Chọn ngày khởi hành linh hoạt"}
               </h3>
               <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                So sánh giá vé theo ngày để tìm chuyến bay giá rẻ nhất
+                {isReturnSelection
+                  ? "So sánh giá vé ngày về để tìm chuyến bay giá rẻ nhất"
+                  : "So sánh giá vé theo ngày để tìm chuyến bay giá rẻ nhất"}
               </p>
             </div>
           </div>

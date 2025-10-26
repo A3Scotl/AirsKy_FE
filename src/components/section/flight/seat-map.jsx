@@ -677,7 +677,7 @@ const SeatMap = ({
         <CardHeader>
           <CardTitle className="text-xl flex items-center gap-2">
             <Plane className="w-6 h-6 text-blue-600" />
-            Aircraft Seat Map
+            Bản đồ ghế ngồi trên máy bay
           </CardTitle>
         </CardHeader>
         <CardContent>

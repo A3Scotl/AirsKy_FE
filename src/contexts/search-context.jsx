@@ -189,6 +189,14 @@ export function SearchProvider({ children }) {
   const updateSearchCriteria = (criteria) => {
     console.log("🔄 Updating search criteria:", criteria);
 
+    // Check if trip type is changing and clear related localStorage data
+    if (searchCriteria && criteria.tripType !== searchCriteria.tripType) {
+      console.log("🧹 Trip type changed, clearing flight selection data");
+      localStorage.removeItem("selectedFlight");
+      localStorage.removeItem("selectedReturn");
+      localStorage.removeItem("bookedFlights");
+    }
+
     // Ensure dates are Date objects before storing
     const processedCriteria = { ...criteria };
     if (

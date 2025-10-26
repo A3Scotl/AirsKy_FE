@@ -57,15 +57,17 @@ export const bookingApi = {
   },
 
   /**
-   * Tìm booking theo mã booking và tên hành khách
+   * Tìm booking theo mã booking và tên hành khách (tên hành khách không bắt buộc)
    * @param {string} bookingCode - Mã booking
-   * @param {string} fullName - Họ tên đầy đủ của hành khách
+   * @param {string} fullName - Họ tên đầy đủ của hành khách (optional)
    * @returns {Promise<{ success: boolean, data?: any, message: string }>}
    */
-  lookupBooking: async (bookingCode, fullName) => {
+  lookupBooking: async (bookingCode, fullName = null) => {
     const queryParams = new URLSearchParams();
     queryParams.append("bookingCode", bookingCode);
-    queryParams.append("fullName", fullName);
+    if (fullName) {
+      queryParams.append("fullName", fullName);
+    }
     const queryString = queryParams.toString();
     return apiHandler("get", `/bookings/lookup?${queryString}`);
   },

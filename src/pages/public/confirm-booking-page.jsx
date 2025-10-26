@@ -27,6 +27,7 @@ import {
   formatDateVN,
   formatTimeVN,
 } from "@/utils/currency-utils";
+import { getPassengerMultiplier } from "@/utils/flight-booking-utils";
 import { paymentApi } from "@/apis/payment-api";
 
 const BookingConfirmation = () => {
@@ -1093,58 +1094,259 @@ const BookingConfirmation = () => {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-3">
-                    <div className="flex justify-between">
-                      <span>Vé máy bay</span>
-                      <span>
-                        {formatCurrencyVND(bookingDetails.price.subtotal)}
-                      </span>
+                    {/* Flight fare breakdown */}
+                    <div className="space-y-1">
+                      <div className="flex justify-between font-medium">
+                        <span>✈️ Vé máy bay</span>
+                        <span>
+                          {formatCurrencyVND(bookingDetails.price.subtotal)}
+                        </span>
+                      </div>
+                      {/* Passenger breakdown */}
+                      <div className="ml-4 text-sm text-gray-600 space-y-1">
+                        {(() => {
+                          const passengers = bookingDetails.passengers || [];
+                          const passengerCounts = passengers.reduce(
+                            (counts, passenger) => {
+                              const type =
+                                passenger.passengerType || passenger.type;
+                              counts[type] = (counts[type] || 0) + 1;
+                              return counts;
+                            },
+                            {}
+                          );
+
+                          const isRoundTrip =
+                            bookingDetails.flight?.isRoundTrip ||
+                            bookingDetails.flight?.type === "ROUND_TRIP" ||
+                            bookingData?.flight?.isRoundTrip;
+
+                          return Object.entries(passengerCounts).map(
+                            ([type, count]) => {
+                              const typeLabel =
+                                type === "ADULT"
+                                  ? "Người lớn"
+                                  : type === "CHILD"
+                                  ? "Trẻ em"
+                                  : "Em bé";
+                              return (
+                                <div
+                                  key={type}
+                                  className="flex justify-between"
+                                >
+                                  <span>
+                                    {count} {typeLabel}
+                                  </span>
+                                  <span>Đã bao gồm</span>
+                                </div>
+                              );
+                            }
+                          );
+                        })()}
+                      </div>
                     </div>
 
                     {/* Ancillary Services charges */}
                     {bookingDetails.ancillaryServices.length > 0 && (
-                      <div className="flex justify-between text-sm">
-                        <span>Dịch vụ bổ sung</span>
-                        <span>
-                          {formatCurrencyVND(
-                            bookingDetails.ancillaryServices.reduce(
-                              (total, service) => total + service.totalPrice,
-                              0
-                            )
+                      <div className="space-y-1">
+                        <div className="flex justify-between text-sm font-medium">
+                          <span>🛎️ Dịch vụ bổ sung</span>
+                          <span>
+                            {formatCurrencyVND(
+                              bookingDetails.ancillaryServices.reduce(
+                                (total, service) => total + service.totalPrice,
+                                0
+                              )
+                            )}
+                          </span>
+                        </div>
+                        {/* Services breakdown */}
+                        <div className="ml-4 space-y-1">
+                          {bookingDetails.ancillaryServices.map(
+                            (service, index) => {
+                              const passenger = bookingDetails.passengers?.find(
+                                (p) =>
+                                  p.id === service.passengerId ||
+                                  p.passengerId === service.passengerId
+                              );
+                              const passengerName = passenger
+                                ? `${passenger.firstName} ${passenger.lastName}`.trim()
+                                : service.passengerId
+                                ? `Hành khách ${service.passengerId}`
+                                : "Toàn booking";
+
+                              const isRoundTrip =
+                                bookingDetails.flight?.isRoundTrip ||
+                                bookingDetails.flight?.type === "ROUND_TRIP" ||
+                                bookingData?.flight?.isRoundTrip;
+
+                              const segmentCount = isRoundTrip ? 2 : 1;
+                              const isPerSegment = service.isPerSegment;
+                              const isPerPassenger = service.isPerPassenger;
+                              const hasSpecificPassenger =
+                                service.passengerId !== null &&
+                                service.passengerId !== undefined;
+                              const totalPassengers =
+                                bookingDetails.passengers?.length || 0;
+
+                              return (
+                                <div
+                                  key={index}
+                                  className="text-xs text-gray-600"
+                                >
+                                  <div className="flex justify-between">
+                                    <span>
+                                      <span className="font-medium">
+                                        {service.serviceName || service.name}
+                                      </span>
+                                      {service.quantity > 1 &&
+                                        ` (×${service.quantity})`}
+                                      {hasSpecificPassenger &&
+                                        isPerSegment &&
+                                        segmentCount > 1 && (
+                                          <span className="text-orange-600">
+                                            {" "}
+                                            (×{segmentCount} chặng)
+                                          </span>
+                                        )}
+                                      {!hasSpecificPassenger &&
+                                        isPerPassenger && (
+                                          <span className="text-blue-600">
+                                            {" "}
+                                            (×{totalPassengers} người)
+                                          </span>
+                                        )}
+                                      {!hasSpecificPassenger &&
+                                        isPerSegment &&
+                                        segmentCount > 1 && (
+                                          <span className="text-orange-600">
+                                            {" "}
+                                            (×{segmentCount} chặng)
+                                          </span>
+                                        )}
+                                    </span>
+                                    <span>
+                                      {formatCurrencyVND(service.totalPrice)}
+                                    </span>
+                                  </div>
+                                  <div className="text-xs text-gray-500 mt-1">
+                                    {passengerName}
+                                    {hasSpecificPassenger
+                                      ? isPerSegment
+                                        ? " - Tính theo chặng cho hành khách này"
+                                        : " - Dịch vụ cho hành khách này"
+                                      : isPerPassenger && isPerSegment
+                                      ? " - Tính theo hành khách và chặng"
+                                      : isPerPassenger
+                                      ? " - Tính theo số hành khách"
+                                      : isPerSegment
+                                      ? " - Tính theo chặng"
+                                      : " - Giá cố định cho booking"}
+                                    {service.notes && ` - ${service.notes}`}
+                                  </div>
+                                </div>
+                              );
+                            }
                           )}
-                        </span>
+                        </div>
                       </div>
                     )}
 
                     {/* Baggage charges */}
                     {bookingDetails.baggage.length > 0 && (
-                      <div className="flex justify-between text-sm">
-                        <span>Hành lý</span>
-                        <span>
-                          {formatCurrencyVND(
-                            bookingData.baggageTotal ||
-                              bookingDetails.baggage.reduce(
-                                (total, bag) =>
-                                  total + (bag.packagePrice || bag.price || 0),
+                      <div className="space-y-1">
+                        <div className="flex justify-between text-sm font-medium">
+                          <span>🧳 Hành lý</span>
+                          <span>
+                            {formatCurrencyVND(
+                              bookingData.baggageTotal ||
+                                bookingDetails.baggage.reduce(
+                                  (total, bag) =>
+                                    total +
+                                    (bag.packagePrice || bag.price || 0),
+                                  0
+                                ) ||
                                 0
-                              ) ||
-                              0
-                          )}
-                        </span>
+                            )}
+                          </span>
+                        </div>
+                        {/* Baggage breakdown */}
+                        <div className="ml-4 space-y-1">
+                          {bookingDetails.baggage.map((bag, index) => {
+                            const passenger = bookingDetails.passengers?.find(
+                              (p) =>
+                                p.id === bag.passengerId ||
+                                p.passengerId === bag.passengerId
+                            );
+                            const passengerName = passenger
+                              ? `${passenger.firstName} ${passenger.lastName}`.trim()
+                              : `Hành khách ${index + 1}`;
+
+                            const isRoundTrip =
+                              bookingDetails.flight?.isRoundTrip ||
+                              bookingDetails.flight?.type === "ROUND_TRIP" ||
+                              bookingData?.flight?.isRoundTrip;
+
+                            const segmentCount = isRoundTrip ? 2 : 1;
+                            const totalPrice =
+                              bag.packagePrice || bag.price || 0;
+
+                            return (
+                              <div
+                                key={index}
+                                className="text-xs text-gray-600"
+                              >
+                                <span className="font-medium">
+                                  {passengerName}:
+                                </span>{" "}
+                                {bag.weight}kg
+                                <span className="ml-1">
+                                  ({formatCurrencyVND(totalPrice)})
+                                </span>
+                                {segmentCount > 1 && (
+                                  <span className="text-orange-600 ml-1">
+                                    (× {segmentCount} chặng)
+                                  </span>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
                       </div>
                     )}
 
                     {/* Seat charges */}
                     {(bookingData.seatTotal > 0 ||
                       bookingData.seatTypeAmount > 0) && (
-                      <div className="flex justify-between text-sm">
-                        <span>Phụ phí ghế</span>
-                        <span>
-                          {formatCurrencyVND(
-                            bookingData.seatTotal ||
-                              bookingData.seatTypeAmount ||
-                              0
-                          )}
-                        </span>
+                      <div className="space-y-1">
+                        <div className="flex justify-between text-sm font-medium">
+                          <span>💺 Phụ phí ghế</span>
+                          <span>
+                            {formatCurrencyVND(
+                              bookingData.seatTotal ||
+                                bookingData.seatTypeAmount ||
+                                0
+                            )}
+                          </span>
+                        </div>
+                        <div className="ml-4 text-xs text-gray-600">
+                          {(() => {
+                            const passengerCount =
+                              bookingDetails.passengers?.length || 0;
+                            const isRoundTrip =
+                              bookingDetails.flight?.isRoundTrip ||
+                              bookingDetails.flight?.type === "ROUND_TRIP" ||
+                              bookingData?.flight?.isRoundTrip;
+                            const segmentText = isRoundTrip ? " × Khứ hồi" : "";
+
+                            return (
+                              <div>
+                                {passengerCount} hành khách{segmentText} - Ghế
+                                đã chọn và tự động
+                              </div>
+                            );
+                          })()}
+                        </div>
                       </div>
                     )}
 

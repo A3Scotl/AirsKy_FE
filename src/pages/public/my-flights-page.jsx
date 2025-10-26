@@ -15,7 +15,6 @@ export default function MyFlightsPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const [autoSearched, setAutoSearched] = useState(false);
-  const [passengerName, setPassengerName] = useState(""); // Store passenger name for payment flow
 
   // Handle automatic search when coming from "Pay Later" booking
   useEffect(() => {
@@ -48,33 +47,10 @@ export default function MyFlightsPage() {
       }
 
       // Try to get passenger name from localStorage payment info
-      const myFlightsPaymentInfo = localStorage.getItem(
-        "my_flights_payment_info_backup"
-      );
-      let storedPassengerName = "";
-
-      if (myFlightsPaymentInfo) {
-        try {
-          const paymentInfo = JSON.parse(myFlightsPaymentInfo);
-          storedPassengerName = paymentInfo.passengerName || "";
-        } catch (error) {
-          console.error("Error parsing my flights payment info:", error);
-        }
-      }
-
       // Auto-search for the booking to show success page
-      if (storedPassengerName) {
-        handleSearchBooking({
-          bookingCode: state.bookingCode,
-          passengerName: storedPassengerName,
-        });
-      } else {
-        // If no passenger name stored, just show success with minimal info
-        setCurrentStep("success");
-        setBooking({
-          bookingCode: state.bookingCode,
-        });
-      }
+      handleSearchBooking({
+        bookingCode: state.bookingCode,
+      });
     }
   }, [location.state, autoSearched]);
 
@@ -83,14 +59,21 @@ export default function MyFlightsPage() {
     setError("");
 
     try {
+      // Validate input data
+      if (!searchData || !searchData.bookingCode) {
+        const errorMessage = "Vui lòng nhập mã đặt chỗ.";
+        setError(errorMessage);
+        toast.error(errorMessage);
+        return;
+      }
+
       const response = await bookingApi.lookupBooking(
         searchData.bookingCode.trim(),
-        searchData.passengerName.trim()
+        null
       );
 
       if (response.success && response.data) {
         setBooking(response.data);
-        setPassengerName(searchData.passengerName.trim()); // Store passenger name for payment flow
         setCurrentStep("details");
       } else {
         const errorMessage =
@@ -175,7 +158,6 @@ export default function MyFlightsPage() {
             booking={booking}
             onProceed={handleProceedToPayment}
             onBack={handleBack}
-            passengerName={passengerName}
           />
         );
 

@@ -11,7 +11,14 @@ import {
   Plane,
   X,
 } from "lucide-react";
-import { useState, useMemo, useEffect, useCallback, useRef, useReducer } from "react";
+import {
+  useState,
+  useMemo,
+  useEffect,
+  useCallback,
+  useRef,
+  useReducer,
+} from "react";
 import { useNavigate, useLocation, useSearchParams } from "react-router-dom";
 import { SearchForm } from "../../common/search-form";
 import { FlightFilters } from "./filter-section";
@@ -29,8 +36,6 @@ import {
   getDepartureTimeSlot,
 } from "./flight-constants.jsx";
 import { EmptyState } from "./flight-components.jsx";
-
-const MIN_BOOKING_LEAD_TIME = 24 * 60 * 60 * 1000;
 
 const FlightCardSkeleton = () => (
   <Card className="p-4">
@@ -54,7 +59,6 @@ const FlightCardSkeleton = () => (
   </Card>
 );
 
-
 export function FlightSearchResults() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -67,9 +71,14 @@ export function FlightSearchResults() {
   const [tripTypeFilter, setTripTypeFilter] = useState(null);
   const [tabExpandedFlights, setTabExpandedFlights] = useState({});
   const [selectedFares, setSelectedFares] = useState({});
+  const [selectedOutboundFares, setSelectedOutboundFares] = useState({});
+  const [selectedReturnFares, setSelectedReturnFares] = useState({});
   const [showMobileFilters, setShowMobileFilters] = useState(false);
   const [tabPages, setTabPages] = useState({});
   const [showAllCombinations, setShowAllCombinations] = useState(false);
+
+  const [roundTripStep, setRoundTripStep] = useState("outbound"); // 'outbound' or 'return'
+  const [selectedOutboundFlight, setSelectedOutboundFlight] = useState(null);
 
   const [allItineraries, setAllItineraries] = useState([]);
   const [allFlights, setAllFlights] = useState([]);
@@ -77,13 +86,11 @@ export function FlightSearchResults() {
   const [error, setError] = useState(null);
   const [flightsLoaded, setFlightsLoaded] = useState(false);
 
+  // Track if we're in flex search update mode
+  const [isFlexSearchUpdate, setIsFlexSearchUpdate] = useState(false);
+
   const resultsRef = useRef(null);
 
-  useEffect(() => {
-    if (!flightsLoaded && !loading) {
-      loadAllFlights();
-    }
-  }, [flightsLoaded, loading]);
   useEffect(() => {
     if (
       allFlights.length > 0 &&
@@ -91,7 +98,7 @@ export function FlightSearchResults() {
       !loading &&
       allItineraries.length === 0
     ) {
-      filterFlightsByTripType(allFlights, "ALL");
+      filterFlightsByTripType(allFlights, "ALL", searchCriteria);
     }
   }, [allFlights, flightsLoaded, loading, allItineraries.length]);
 
@@ -206,249 +213,101 @@ export function FlightSearchResults() {
     return flight.priceNumeric || 0;
   }, []);
 
-  const filterFlightsByTripType = useCallback((flights, tripType) => {
-    let filteredFlights = [];
-    const normalizedTripType = tripType.toUpperCase();
+  const filterFlightsByTripType = useCallback(
+    (flights, tripType, searchCriteria) => {
+      // Filter flights that depart at least 1 hour from now
+      const now = new Date();
+      const fourHoursFromNow = new Date(now.getTime() + 4 * 60 * 60 * 1000);
+      let filteredFlights = flights.filter((flight) => {
+        const departureTime = new Date(flight.departureTime);
+        return departureTime >= fourHoursFromNow;
+      });
 
-    if (normalizedTripType === "ONE_WAY") {
-      filteredFlights = flights.filter(
-        (flight) => (flight.tripType || "").toUpperCase() === "ONE_WAY"
-      );
-    } else if (normalizedTripType === "ROUND_TRIP") {
-      const roundTripFlights = flights.filter(
-        (flight) =>
-          (flight.tripType || "").toUpperCase() === "ROUND_TRIP" ||
-          (flight.type || "").toUpperCase() === "ROUND_TRIP"
-      );
+      const normalizedTripType = tripType.toUpperCase();
 
-      if (roundTripFlights.length === 0) {
-        const oneWayFlights = flights.filter(
-          (flight) =>
-            (flight.tripType || "").toUpperCase() === "ONE_WAY" ||
-            (flight.type || "").toUpperCase() === "ONE_WAY" ||
-            (!flight.tripType && !flight.type)
+      if (normalizedTripType === "ONE_WAY") {
+        filteredFlights = filteredFlights.filter(
+          (flight) => (flight.tripType || "").toUpperCase() === "ONE_WAY"
+        );
+      } else if (normalizedTripType === "ROUND_TRIP") {
+        // For round trip, show flights based on current step
+        if (roundTripStep === "outbound") {
+          filteredFlights = filteredFlights.filter(
+            (flight) => flight.direction === "outbound"
+          );
+        } else if (roundTripStep === "return") {
+          filteredFlights = filteredFlights.filter(
+            (flight) => flight.direction === "return"
+          );
+        }
+      } else if (normalizedTripType === "MULTI_CITY") {
+        filteredFlights = filteredFlights.filter(
+          (flight) => (flight.tripType || "").toUpperCase() === "MULTI_CITY"
+        );
+      } else if (normalizedTripType === "ALL") {
+        // For ALL, include all filtered flights
+      }
+
+      let itineraries = [];
+
+      if (normalizedTripType === "ROUND_TRIP") {
+        // Create separate itineraries for outbound and return flights
+        itineraries = filteredFlights.map((flight, index) => ({
+          itineraryId: `${flight.direction}-${flight.flightId || index}`,
+          tripType: "ROUND_TRIP",
+          direction: flight.direction,
+          legs: [flight],
+          totalPrice: getLowestPrice(flight),
+          totalDuration: flight.duration || 0,
+          totalStops: flight.stopsList?.length || 0,
+        }));
+      } else if (normalizedTripType === "ALL") {
+        const oneWayFlights = filteredFlights.filter(
+          (flight) => (flight.tripType || "").toUpperCase() === "ONE_WAY"
         );
 
-        const routeGroups = {};
-        oneWayFlights.forEach((flight) => {
-          const routeKey = `${flight.departureAirport?.airportCode}-${flight.arrivalAirport?.airportCode}`;
-          if (!routeGroups[routeKey]) {
-            routeGroups[routeKey] = [];
-          }
-          routeGroups[routeKey].push(flight);
-        });
+        const roundTripFlights = filteredFlights.filter(
+          (flight) =>
+            (flight.tripType || "").toUpperCase() === "ROUND_TRIP" ||
+            (flight.type || "").toUpperCase() === "ROUND_TRIP"
+        );
 
-        const flightPairs = [];
-        Object.keys(routeGroups).forEach((routeKey) => {
-          const [dep, arr] = routeKey.split("-");
-          const returnRouteKey = `${arr}-${dep}`;
+        const oneWayItineraries = oneWayFlights.map((flight, index) => ({
+          itineraryId: `oneway-${flight.flightId || index}`,
+          tripType: "ONE_WAY",
+          legs: [flight],
+          totalPrice: getLowestPrice(flight),
+          totalDuration: flight.duration || 0,
+          totalStops: flight.stopsList?.length || 0,
+        }));
 
-          if (
-            routeGroups[returnRouteKey] &&
-            routeGroups[routeKey].length > 0 &&
-            routeGroups[returnRouteKey].length > 0
-          ) {
-            const outbound = routeGroups[routeKey][0];
-            const inbound = routeGroups[returnRouteKey][0];
+        const roundTripItineraries = roundTripFlights.map((flight, index) => ({
+          itineraryId: `roundtrip-${flight.flightId || index}`,
+          tripType: "ROUND_TRIP",
+          legs: [flight],
+          totalPrice: getLowestPrice(flight),
+          totalDuration: flight.duration || 0,
+          totalStops: flight.stopsList?.length || 0,
+        }));
 
-            flightPairs.push({
-              outbound,
-              inbound,
-            });
-          }
-        });
-
-        filteredFlights = flightPairs;
+        itineraries = [...oneWayItineraries, ...roundTripItineraries];
       } else {
-        const flightPairs = [];
-        const processedFlights = new Set();
-
-        for (const flight of roundTripFlights) {
-          if (processedFlights.has(flight.flightId)) continue;
-
-          let matchingReturnFlight = null;
-
-          if (flight.roundTripGroupId) {
-            matchingReturnFlight = roundTripFlights.find(
-              (f) =>
-                f.roundTripGroupId === flight.roundTripGroupId &&
-                f.flightId !== flight.flightId &&
-                !processedFlights.has(f.flightId)
-            );
-          } else {
-            matchingReturnFlight = roundTripFlights.find(
-              (f) =>
-                f.departureAirport?.airportCode ===
-                  flight.arrivalAirport?.airportCode &&
-                f.arrivalAirport?.airportCode ===
-                  flight.departureAirport?.airportCode &&
-                f.flightId !== flight.flightId &&
-                !processedFlights.has(f.flightId)
-            );
-          }
-
-          if (matchingReturnFlight) {
-            const outbound =
-              flight.departureTime < matchingReturnFlight.departureTime
-                ? flight
-                : matchingReturnFlight;
-            const inbound =
-              flight.departureTime < matchingReturnFlight.departureTime
-                ? matchingReturnFlight
-                : flight;
-
-            flightPairs.push({
-              outbound,
-              inbound,
-            });
-
-            processedFlights.add(flight.flightId);
-            processedFlights.add(matchingReturnFlight.flightId);
-          } else {
-            flightPairs.push({
-              outbound: flight,
-              inbound: null,
-            });
-            processedFlights.add(flight.flightId);
-          }
-        }
-
-        filteredFlights = flightPairs;
-      }
-    } else if (normalizedTripType === "ALL") {
-      filteredFlights = flights;
-    } else {
-      filteredFlights = flights.filter(
-        (flight) => (flight.tripType || "").toUpperCase() === "ONE_WAY"
-      );
-    }
-
-    let itineraries = [];
-
-    if (normalizedTripType === "ROUND_TRIP") {
-      itineraries = filteredFlights.map((pair, index) => {
-        if (pair.inbound) {
-          return {
-            itineraryId: `roundtrip-${pair.outbound.flightId}-${pair.inbound.flightId}`,
-            tripType: "ROUND_TRIP",
-            legs: [pair.outbound, pair.inbound],
-            totalPrice:
-              getLowestPrice(pair.outbound) + getLowestPrice(pair.inbound),
-            totalDuration:
-              (pair.outbound.duration || 0) + (pair.inbound.duration || 0),
-            totalStops:
-              (pair.outbound.stopsList?.length || 0) +
-              (pair.inbound.stopsList?.length || 0),
-          };
-        } else {
-          return {
-            itineraryId: `roundtrip-incomplete-${pair.outbound.flightId}`,
-            tripType: "ROUND_TRIP",
-            legs: [pair.outbound],
-            totalPrice: getLowestPrice(pair.outbound),
-            totalDuration: pair.outbound.duration || 0,
-            totalStops: pair.outbound.stopsList?.length || 0,
-          };
-        }
-      });
-    } else if (normalizedTripType === "ALL") {
-      const oneWayFlights = flights.filter(
-        (flight) => (flight.tripType || "").toUpperCase() === "ONE_WAY"
-      );
-
-      const roundTripFlights = flights.filter(
-        (flight) =>
-          (flight.tripType || "").toUpperCase() === "ROUND_TRIP" ||
-          (flight.type || "").toUpperCase() === "ROUND_TRIP"
-      );
-
-      const oneWayItineraries = oneWayFlights.map((flight, index) => ({
-        itineraryId: `oneway-${flight.flightId || index}`,
-        tripType: "ONE_WAY",
-        legs: [flight],
-        totalPrice: getLowestPrice(flight),
-        totalDuration: flight.duration || 0,
-        totalStops: flight.stopsList?.length || 0,
-      }));
-
-      const roundTripItineraries = [];
-      const processedFlights = new Set();
-
-      for (const flight of roundTripFlights) {
-        if (processedFlights.has(flight.flightId)) continue;
-
-        let matchingReturnFlight = null;
-        if (flight.roundTripGroupId) {
-          matchingReturnFlight = roundTripFlights.find(
-            (f) =>
-              f.roundTripGroupId === flight.roundTripGroupId &&
-              f.flightId !== flight.flightId &&
-              !processedFlights.has(f.flightId)
-          );
-        } else {
-          matchingReturnFlight = roundTripFlights.find(
-            (f) =>
-              f.departureAirport?.airportCode ===
-                flight.arrivalAirport?.airportCode &&
-              f.arrivalAirport?.airportCode ===
-                flight.departureAirport?.airportCode &&
-              f.flightId !== flight.flightId &&
-              !processedFlights.has(f.flightId)
-          );
-        }
-
-        if (matchingReturnFlight) {
-          const outbound =
-            flight.departureTime < matchingReturnFlight.departureTime
-              ? flight
-              : matchingReturnFlight;
-          const inbound =
-            flight.departureTime < matchingReturnFlight.departureTime
-              ? matchingReturnFlight
-              : flight;
-
-          roundTripItineraries.push({
-            itineraryId: `roundtrip-${outbound.flightId}-${inbound.flightId}`,
-            tripType: "ROUND_TRIP",
-            legs: [outbound, inbound],
-            totalPrice: getLowestPrice(outbound) + getLowestPrice(inbound),
-            totalDuration: (outbound.duration || 0) + (inbound.duration || 0),
-            totalStops:
-              (outbound.stopsList?.length || 0) +
-              (inbound.stopsList?.length || 0),
-          });
-
-          processedFlights.add(flight.flightId);
-          processedFlights.add(matchingReturnFlight.flightId);
-        } else {
-          roundTripItineraries.push({
-            itineraryId: `roundtrip-single-${flight.flightId}`,
-            tripType: "ROUND_TRIP",
-            legs: [flight],
-            totalPrice: getLowestPrice(flight),
-            totalDuration: flight.duration || 0,
-            totalStops: flight.stopsList?.length || 0,
-          });
-          processedFlights.add(flight.flightId);
-        }
+        itineraries = filteredFlights.map((flight, index) => ({
+          itineraryId: `${normalizedTripType.toLowerCase()}-${
+            flight.flightId || index
+          }`,
+          tripType: normalizedTripType,
+          legs: [flight],
+          totalPrice: getLowestPrice(flight),
+          totalDuration: flight.duration || 0,
+          totalStops: flight.stopsList?.length || 0,
+        }));
       }
 
-      itineraries = [...oneWayItineraries, ...roundTripItineraries];
-    } else {
-      itineraries = filteredFlights.map((flight, index) => ({
-        itineraryId: `${normalizedTripType.toLowerCase()}-${
-          flight.flightId || index
-        }`,
-        tripType: normalizedTripType,
-        legs: [flight],
-        totalPrice: getLowestPrice(flight),
-        totalDuration: flight.duration || 0,
-        totalStops: flight.stopsList?.length || 0,
-      }));
-    }
-
-    setAllItineraries(itineraries);
-  }, []);
+      setAllItineraries(itineraries);
+    },
+    [getLowestPrice, searchCriteria]
+  );
 
   const handleTripTypeChange = useCallback((newTripType) => {
     setActiveTab((prevActiveTab) => {
@@ -476,7 +335,6 @@ export function FlightSearchResults() {
       setError(null);
 
       const response = await flightApi.getAllFlights({ size: 100 });
-
 
       if (response.success && response.data?.content) {
         setAllFlights(response.data.content);
@@ -515,9 +373,214 @@ export function FlightSearchResults() {
     [activeTab]
   );
 
-  const handleSelectFare = useCallback((itineraryId, fareId) => {
-    setSelectedFares((prev) => ({ ...prev, [itineraryId]: fareId }));
-  }, []);
+  const handleSelectFare = useCallback(
+    (itineraryId, fareId) => {
+      const itinerary = allItineraries.find(
+        (i) => i.itineraryId === itineraryId
+      );
+      if (itinerary && itinerary.direction === "outbound") {
+        setSelectedOutboundFares((prev) => ({
+          ...prev,
+          [itineraryId]: fareId,
+        }));
+      } else if (itinerary && itinerary.direction === "return") {
+        setSelectedReturnFares((prev) => ({ ...prev, [itineraryId]: fareId }));
+      } else {
+        setSelectedFares((prev) => ({ ...prev, [itineraryId]: fareId }));
+      }
+    },
+    [allItineraries]
+  );
+
+  const handleRoundTripBooking = useCallback(() => {
+    const outboundItineraryId = Object.keys(selectedOutboundFares)[0];
+    const returnItineraryId = Object.keys(selectedReturnFares)[0];
+    const outboundItinerary = allItineraries.find(
+      (i) => i.itineraryId === outboundItineraryId
+    );
+    const returnItinerary = allItineraries.find(
+      (i) => i.itineraryId === returnItineraryId
+    );
+    const outboundFareId = selectedOutboundFares[outboundItineraryId];
+    const returnFareId = selectedReturnFares[returnItineraryId];
+
+    if (!outboundItinerary || !returnItinerary) return;
+
+    // Create combined round trip flight
+    const formatTimeVN = (dateTime) => {
+      if (!dateTime) return "";
+      const date = new Date(dateTime);
+      return date.toLocaleTimeString("vi-VN", {
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: false,
+      });
+    };
+
+    const formatDateVN = (dateTime) => {
+      if (!dateTime) return "";
+      const date = new Date(dateTime);
+      return date.toLocaleDateString("vi-VN");
+    };
+
+    const formatDateTimeVN = (dateTime) => {
+      if (!dateTime) return "";
+      const date = new Date(dateTime);
+      return date.toLocaleString("vi-VN");
+    };
+
+    const formatCurrencyVND = (amount) => {
+      return new Intl.NumberFormat("vi-VN", {
+        style: "currency",
+        currency: "VND",
+      }).format(amount);
+    };
+
+    const outboundFlight = outboundItinerary.legs[0];
+    const returnFlight = returnItinerary.legs[0];
+
+    const selectedFlight = {
+      type: "ROUND_TRIP",
+      tripType: "ROUND_TRIP",
+      flightId: `roundtrip-${outboundFlight.flightId}-${returnFlight.flightId}`,
+      flightNumber: `${outboundFlight.flightNumber} / ${returnFlight.flightNumber}`,
+      airline: outboundFlight.airline?.airlineName || outboundFlight.airline,
+      airlineName:
+        outboundFlight.airline?.airlineName || outboundFlight.airline,
+      airlineLogo:
+        outboundFlight.airline?.thumbnail || outboundFlight.airline?.logo,
+
+      outboundFlight: {
+        id: outboundFlight.flightId,
+        flightId: outboundFlight.flightId,
+        flightNumber: outboundFlight.flightNumber,
+        airline: outboundFlight.airline?.airlineName || outboundFlight.airline,
+        airlineName:
+          outboundFlight.airline?.airlineName || outboundFlight.airline,
+        airlineLogo:
+          outboundFlight.airline?.thumbnail || outboundFlight.airline?.logo,
+        selectedClass: FARE_OPTIONS.find((fare) => fare.id === outboundFareId),
+        departureTime: formatTimeVN(outboundFlight.departureTime),
+        arrivalTime: formatTimeVN(outboundFlight.arrivalTime),
+        departureDate: formatDateVN(outboundFlight.departureTime),
+        arrivalDate: formatDateVN(outboundFlight.arrivalTime),
+        from:
+          outboundFlight.departureAirport?.airportCode || outboundFlight.from,
+        to: outboundFlight.arrivalAirport?.airportCode || outboundFlight.to,
+        departureAirport: {
+          code:
+            outboundFlight.departureAirport?.airportCode || outboundFlight.from,
+          name:
+            outboundFlight.departureAirport?.airportName ||
+            outboundFlight.departureAirport?.name,
+          city:
+            outboundFlight.departureAirport?.city ||
+            outboundFlight.departureAirport?.cityNames?.[0],
+          airportName:
+            outboundFlight.departureAirport?.airportName ||
+            outboundFlight.departureAirport?.name,
+        },
+        arrivalAirport: {
+          code: outboundFlight.arrivalAirport?.airportCode || outboundFlight.to,
+          name:
+            outboundFlight.arrivalAirport?.airportName ||
+            outboundFlight.arrivalAirport?.name,
+          city:
+            outboundFlight.arrivalAirport?.city ||
+            outboundFlight.arrivalAirport?.cityNames?.[0],
+          airportName:
+            outboundFlight.arrivalAirport?.airportName ||
+            outboundFlight.arrivalAirport?.name,
+        },
+        duration: outboundFlight.duration,
+        aircraft: outboundFlight.aircraft || outboundFlight.aircraftName,
+        aircraftName: outboundFlight.aircraftName || outboundFlight.aircraft,
+        aircraftInfo:
+          outboundFlight.aircraft && typeof outboundFlight.aircraft === "object"
+            ? outboundFlight.aircraft
+            : null,
+        seatLayout: outboundFlight.aircraft?.seatLayout || null,
+        totalSeats: outboundFlight.aircraft?.totalSeats || null,
+        aircraftId: outboundFlight.aircraft?.aircraftId || null,
+        aircraftCode: outboundFlight.aircraft?.aircraftCode || null,
+        stops: outboundFlight.stops || 0,
+        segmentIndex: 0,
+        segmentLabel: "Chuyến đi",
+      },
+
+      returnFlight: {
+        id: returnFlight.flightId,
+        flightId: returnFlight.flightId,
+        flightNumber: returnFlight.flightNumber,
+        airline: returnFlight.airline?.airlineName || returnFlight.airline,
+        airlineName: returnFlight.airline?.airlineName || returnFlight.airline,
+        airlineLogo:
+          returnFlight.airline?.thumbnail || returnFlight.airline?.logo,
+        selectedClass: FARE_OPTIONS.find((fare) => fare.id === returnFareId),
+        departureTime: formatTimeVN(returnFlight.departureTime),
+        arrivalTime: formatTimeVN(returnFlight.arrivalTime),
+        departureDate: formatDateVN(returnFlight.departureTime),
+        arrivalDate: formatDateVN(returnFlight.arrivalTime),
+        from: returnFlight.departureAirport?.airportCode || returnFlight.from,
+        to: returnFlight.arrivalAirport?.airportCode || returnFlight.to,
+        departureAirport: {
+          code: returnFlight.departureAirport?.airportCode || returnFlight.from,
+          name:
+            returnFlight.departureAirport?.airportName ||
+            returnFlight.departureAirport?.name,
+          city:
+            returnFlight.departureAirport?.city ||
+            returnFlight.departureAirport?.cityNames?.[0],
+          airportName:
+            returnFlight.departureAirport?.airportName ||
+            returnFlight.departureAirport?.name,
+        },
+        arrivalAirport: {
+          code: returnFlight.arrivalAirport?.airportCode || returnFlight.to,
+          name:
+            returnFlight.arrivalAirport?.airportName ||
+            returnFlight.arrivalAirport?.name,
+          city:
+            returnFlight.arrivalAirport?.city ||
+            returnFlight.arrivalAirport?.cityNames?.[0],
+          airportName:
+            returnFlight.arrivalAirport?.airportName ||
+            returnFlight.arrivalAirport?.name,
+        },
+        duration: returnFlight.duration,
+        aircraft: returnFlight.aircraft || returnFlight.aircraftName,
+        aircraftName: returnFlight.aircraftName || returnFlight.aircraft,
+        aircraftInfo:
+          returnFlight.aircraft && typeof returnFlight.aircraft === "object"
+            ? returnFlight.aircraft
+            : null,
+        seatLayout: returnFlight.aircraft?.seatLayout || null,
+        totalSeats: returnFlight.aircraft?.totalSeats || null,
+        aircraftId: returnFlight.aircraft?.aircraftId || null,
+        aircraftCode: returnFlight.aircraft?.aircraftCode || null,
+        stops: returnFlight.stops || 0,
+        segmentIndex: 1,
+        segmentLabel: "Chuyến về",
+      },
+
+      totalDuration:
+        (outboundFlight.duration || 0) + (returnFlight.duration || 0),
+      segmentCount: 2,
+
+      selectedClass: FARE_OPTIONS.find((fare) => fare.id === outboundFareId), // Use outbound fare for display
+      totalPrice:
+        (outboundItinerary.totalPrice || 0) + (returnItinerary.totalPrice || 0),
+      formattedTotalPrice: formatCurrencyVND(
+        (outboundItinerary.totalPrice || 0) + (returnItinerary.totalPrice || 0)
+      ),
+      currency: "VND",
+      passengers: 1,
+      bookingDate: formatDateTimeVN(new Date()),
+    };
+
+    localStorage.setItem("selectedFlight", JSON.stringify(selectedFlight));
+    navigate("/booking");
+  }, [selectedOutboundFares, selectedReturnFares, allItineraries, navigate]);
 
   const handleProceedToBooking = useCallback(
     (itinerary, fareData) => {
@@ -690,10 +753,265 @@ export function FlightSearchResults() {
     [navigate]
   );
 
+  const handleRoundTripFlightSelection = useCallback(
+    (itinerary) => {
+      if (roundTripStep === "outbound") {
+        // Select outbound flight and move to return step
+        setSelectedOutboundFlight(itinerary);
+        setRoundTripStep("return");
+
+        // Filter and show return flights
+        const returnItineraries = allFlights
+          .filter((flight) => flight.direction === "return")
+          .map((flight, index) => {
+            const lowestPrice = getLowestPrice(flight);
+            console.log(
+              "Return flight:",
+              flight.flightId,
+              "lowest price:",
+              lowestPrice,
+              "travel classes:",
+              flight.flightTravelClasses
+            );
+            return {
+              itineraryId: `return-${flight.flightId || index}`,
+              tripType: "ROUND_TRIP",
+              direction: "return",
+              legs: [flight],
+              totalPrice: lowestPrice,
+              totalDuration: flight.duration || 0,
+              totalStops: flight.stopsList?.length || 0,
+            };
+          });
+
+        setAllItineraries(returnItineraries);
+        setTabPages((prev) => ({ ...prev, [activeTab]: 1 }));
+      } else if (roundTripStep === "return") {
+        // Select return flight and proceed to booking
+        const outboundItinerary = selectedOutboundFlight;
+        const returnItinerary = itinerary;
+
+        // Create combined round trip flight data
+        const formatTimeVN = (dateTime) => {
+          if (!dateTime) return "";
+          const date = new Date(dateTime);
+          return date.toLocaleTimeString("vi-VN", {
+            hour: "2-digit",
+            minute: "2-digit",
+            hour12: false,
+          });
+        };
+
+        const formatDateVN = (dateTime) => {
+          if (!dateTime) return "";
+          const date = new Date(dateTime);
+          return date.toLocaleDateString("vi-VN");
+        };
+
+        const formatCurrencyVND = (amount) => {
+          return new Intl.NumberFormat("vi-VN", {
+            style: "currency",
+            currency: "VND",
+          }).format(amount);
+        };
+
+        const outboundFlight = outboundItinerary.legs[0];
+        const returnFlight = returnItinerary.legs[0];
+
+        const selectedFlight = {
+          type: "ROUND_TRIP",
+          tripType: "ROUND_TRIP",
+          flightId: `roundtrip-${outboundFlight.flightId}-${returnFlight.flightId}`,
+          flightNumber: `${outboundFlight.flightNumber} / ${returnFlight.flightNumber}`,
+          airline:
+            outboundFlight.airline?.airlineName || outboundFlight.airline,
+          airlineName:
+            outboundFlight.airline?.airlineName || outboundFlight.airline,
+          airlineLogo:
+            outboundFlight.airline?.thumbnail || outboundFlight.airline?.logo,
+
+          outboundFlight: {
+            id: outboundFlight.flightId,
+            flightId: outboundFlight.flightId,
+            flightNumber: outboundFlight.flightNumber,
+            airline:
+              outboundFlight.airline?.airlineName || outboundFlight.airline,
+            airlineName:
+              outboundFlight.airline?.airlineName || outboundFlight.airline,
+            airlineLogo:
+              outboundFlight.airline?.thumbnail || outboundFlight.airline?.logo,
+            departureTime: formatTimeVN(outboundFlight.departureTime),
+            arrivalTime: formatTimeVN(outboundFlight.arrivalTime),
+            departureDate: formatDateVN(outboundFlight.departureTime),
+            arrivalDate: formatDateVN(outboundFlight.arrivalTime),
+            from:
+              outboundFlight.departureAirport?.airportCode ||
+              outboundFlight.from,
+            to: outboundFlight.arrivalAirport?.airportCode || outboundFlight.to,
+            departureAirport: {
+              code:
+                outboundFlight.departureAirport?.airportCode ||
+                outboundFlight.from,
+              name:
+                outboundFlight.departureAirport?.airportName ||
+                outboundFlight.departureAirport?.name,
+              city:
+                outboundFlight.departureAirport?.city ||
+                outboundFlight.departureAirport?.cityNames?.[0],
+              airportName:
+                outboundFlight.departureAirport?.airportName ||
+                outboundFlight.departureAirport?.name,
+            },
+            arrivalAirport: {
+              code:
+                outboundFlight.arrivalAirport?.airportCode || outboundFlight.to,
+              name:
+                outboundFlight.arrivalAirport?.airportName ||
+                outboundFlight.arrivalAirport?.name,
+              city:
+                outboundFlight.arrivalAirport?.city ||
+                outboundFlight.arrivalAirport?.cityNames?.[0],
+              airportName:
+                outboundFlight.arrivalAirport?.airportName ||
+                outboundFlight.arrivalAirport?.name,
+            },
+            duration: outboundFlight.duration,
+            aircraft: outboundFlight.aircraft || outboundFlight.aircraftName,
+            aircraftName:
+              outboundFlight.aircraftName || outboundFlight.aircraft,
+            aircraftInfo:
+              outboundFlight.aircraft &&
+              typeof outboundFlight.aircraft === "object"
+                ? outboundFlight.aircraft
+                : null,
+            seatLayout: outboundFlight.aircraft?.seatLayout || null,
+            totalSeats: outboundFlight.aircraft?.totalSeats || null,
+            aircraftId: outboundFlight.aircraft?.aircraftId || null,
+            aircraftCode: outboundFlight.aircraft?.aircraftCode || null,
+            stops: outboundFlight.stops || 0,
+            segmentIndex: 0,
+            segmentLabel: "Chuyến đi",
+            flightTravelClasses: outboundFlight.flightTravelClasses || [],
+          },
+
+          returnFlight: {
+            id: returnFlight.flightId,
+            flightId: returnFlight.flightId,
+            flightNumber: returnFlight.flightNumber,
+            airline: returnFlight.airline?.airlineName || returnFlight.airline,
+            airlineName:
+              returnFlight.airline?.airlineName || returnFlight.airline,
+            airlineLogo:
+              returnFlight.airline?.thumbnail || returnFlight.airline?.logo,
+            departureTime: formatTimeVN(returnFlight.departureTime),
+            arrivalTime: formatTimeVN(returnFlight.arrivalTime),
+            departureDate: formatDateVN(returnFlight.departureTime),
+            arrivalDate: formatDateVN(returnFlight.arrivalTime),
+            from:
+              returnFlight.departureAirport?.airportCode || returnFlight.from,
+            to: returnFlight.arrivalAirport?.airportCode || returnFlight.to,
+            departureAirport: {
+              code:
+                returnFlight.departureAirport?.airportCode || returnFlight.from,
+              name:
+                returnFlight.departureAirport?.airportName ||
+                returnFlight.departureAirport?.name,
+              city:
+                returnFlight.departureAirport?.city ||
+                returnFlight.departureAirport?.cityNames?.[0],
+              airportName:
+                returnFlight.departureAirport?.airportName ||
+                returnFlight.departureAirport?.name,
+            },
+            arrivalAirport: {
+              code: returnFlight.arrivalAirport?.airportCode || returnFlight.to,
+              name:
+                returnFlight.arrivalAirport?.airportName ||
+                returnFlight.arrivalAirport?.name,
+              city:
+                returnFlight.arrivalAirport?.city ||
+                returnFlight.arrivalAirport?.cityNames?.[0],
+              airportName:
+                returnFlight.arrivalAirport?.airportName ||
+                returnFlight.arrivalAirport?.name,
+            },
+            duration: returnFlight.duration,
+            aircraft: returnFlight.aircraft || returnFlight.aircraftName,
+            aircraftName: returnFlight.aircraftName || returnFlight.aircraft,
+            aircraftInfo:
+              returnFlight.aircraft && typeof returnFlight.aircraft === "object"
+                ? returnFlight.aircraft
+                : null,
+            seatLayout: returnFlight.aircraft?.seatLayout || null,
+            totalSeats: returnFlight.aircraft?.totalSeats || null,
+            aircraftId: returnFlight.aircraft?.aircraftId || null,
+            aircraftCode: returnFlight.aircraft?.aircraftCode || null,
+            stops: returnFlight.stops || 0,
+            segmentIndex: 1,
+            segmentLabel: "Chuyến về",
+            flightTravelClasses: returnFlight.flightTravelClasses || [],
+          },
+
+          totalDuration:
+            (outboundFlight.duration || 0) + (returnFlight.duration || 0),
+          segmentCount: 2,
+          totalPrice:
+            (outboundItinerary.totalPrice || 0) +
+            (returnItinerary.totalPrice || 0),
+          formattedTotalPrice: formatCurrencyVND(
+            (outboundItinerary.totalPrice || 0) +
+              (returnItinerary.totalPrice || 0)
+          ),
+          currency: "VND",
+          passengers: searchCriteria?.passengers || {
+            adults: 1,
+            children: 0,
+            infants: 0,
+          },
+          bookingDate: formatDateVN(new Date()),
+        };
+
+        localStorage.setItem("selectedFlight", JSON.stringify(selectedFlight));
+        navigate("/detail/flight-detail-page", {
+          state: { flightData: selectedFlight },
+        });
+      }
+    },
+    [
+      roundTripStep,
+      selectedOutboundFlight,
+      allFlights,
+      getLowestPrice,
+      searchCriteria,
+      navigate,
+    ]
+  );
+
   const handleSearch = useCallback(
     async (searchData) => {
       setLoading(true);
       setError(null);
+
+      // CRITICAL: Don't reset round trip state during flex-search date changes
+      // Only reset when starting completely new search from search form
+      const isFlexSearchUpdate =
+        searchData?.isFlexSearchUpdate ||
+        searchData?.departDate === searchCriteria?.departDate ||
+        searchData?.returnDate === searchCriteria?.returnDate;
+
+      // Update the state variable for use in filtering
+      setIsFlexSearchUpdate(isFlexSearchUpdate);
+
+      if (!isFlexSearchUpdate) {
+        console.log("New search started - resetting round trip state");
+        setRoundTripStep("outbound");
+        setSelectedOutboundFlight(null);
+      } else {
+        console.log(
+          "Flex search update - maintaining round trip state:",
+          roundTripStep
+        );
+      }
 
       const formatDateForAPI = (dateInput) => {
         if (!dateInput) return null;
@@ -703,6 +1021,21 @@ export function FlightSearchResults() {
         const day = String(date.getDate()).padStart(2, "0");
         const formatted = `${year}-${month}-${day}`;
         return formatted;
+      };
+
+      // Map Vietnamese travel class names to English API values
+      const mapTravelClass = (travelClass) => {
+        const classMapping = {
+          "Phổ thông": "ECONOMY",
+          "Phổ thông cơ bản": "ECONOMY",
+          "Phổ thông tiêu chuẩn": "ECONOMY",
+          "Thương gia": "BUSINESS",
+          "Hạng nhất": "FIRST",
+          ECONOMY: "ECONOMY",
+          BUSINESS: "BUSINESS",
+          FIRST: "FIRST",
+        };
+        return classMapping[travelClass] || "ECONOMY";
       };
 
       try {
@@ -719,6 +1052,12 @@ export function FlightSearchResults() {
                 fromAirports[0]?.airportId || fromAirports[0]?.id,
               arrivalAirportId: toAirports[0]?.airportId || toAirports[0]?.id,
               outboundDepartureDate: formatDateForAPI(searchData.departDate),
+              passengers: searchData.passengers || {
+                adults: 1,
+                children: 0,
+                infants: 0,
+              },
+              travelClass: mapTravelClass(searchData.travelClass),
             };
           } else {
             const combinations = [];
@@ -739,42 +1078,152 @@ export function FlightSearchResults() {
             requestData = {
               tripType: "ONE_WAY",
               combinations: combinations,
+              passengers: searchData.passengers || {
+                adults: 1,
+                children: 0,
+                infants: 0,
+              },
+              travelClass: mapTravelClass(searchData.travelClass),
             };
           }
         } else if (searchData.tripType === "ROUND_TRIP") {
+          // For round trip, search outbound and return flights separately like one-way
           const fromAirports = searchData.fromLocations || [searchData.from];
           const toAirports = searchData.toLocations || [searchData.to];
 
-          if (fromAirports.length === 1 && toAirports.length === 1) {
-            requestData = {
-              tripType: "ROUND_TRIP",
-              departureAirportId:
-                fromAirports[0]?.airportId || fromAirports[0]?.id,
-              arrivalAirportId: toAirports[0]?.airportId || toAirports[0]?.id,
-              outboundDepartureDate: formatDateForAPI(searchData.departDate),
-              returnDate: formatDateForAPI(searchData.returnDate),
-            };
-          } else {
-            const combinations = [];
-            fromAirports.forEach((from) => {
-              toAirports.forEach((to) => {
-                if (from?.airportId !== to?.airportId) {
-                  combinations.push({
-                    departureAirportId: from?.airportId || from?.id,
-                    arrivalAirportId: to?.airportId || to?.id,
-                    outboundDepartureDate: formatDateForAPI(
-                      searchData.departDate
-                    ),
-                    returnDate: formatDateForAPI(searchData.returnDate),
-                  });
-                }
-              });
+          // Search outbound flights
+          const outboundPromises = [];
+          fromAirports.forEach((from) => {
+            toAirports.forEach((to) => {
+              if (from?.airportId !== to?.airportId) {
+                const outboundRequestData = {
+                  tripType: "ONE_WAY",
+                  departureAirportId: from?.airportId || from?.id,
+                  arrivalAirportId: to?.airportId || to?.id,
+                  outboundDepartureDate: formatDateForAPI(
+                    searchData.departDate
+                  ),
+                  passengers: searchData.passengers || {
+                    adults: 1,
+                    children: 0,
+                    infants: 0,
+                  },
+                  travelClass: mapTravelClass(searchData.travelClass),
+                };
+                outboundPromises.push(
+                  flightApi.searchUnifiedFlights(outboundRequestData)
+                );
+              }
+            });
+          });
+
+          // Search return flights
+          const returnPromises = [];
+          fromAirports.forEach((from) => {
+            toAirports.forEach((to) => {
+              if (from?.airportId !== to?.airportId) {
+                const returnRequestData = {
+                  tripType: "ONE_WAY",
+                  departureAirportId: to?.airportId || to?.id, // Reverse direction for return
+                  arrivalAirportId: from?.airportId || from?.id,
+                  outboundDepartureDate: formatDateForAPI(
+                    searchData.returnDate
+                  ),
+                  passengers: searchData.passengers || {
+                    adults: 1,
+                    children: 0,
+                    infants: 0,
+                  },
+                  travelClass: mapTravelClass(searchData.travelClass),
+                };
+                returnPromises.push(
+                  flightApi.searchUnifiedFlights(returnRequestData)
+                );
+              }
+            });
+          });
+
+          try {
+            const [outboundResponses, returnResponses] = await Promise.all([
+              Promise.all(outboundPromises),
+              Promise.all(returnPromises),
+            ]);
+
+            const outboundFlights = outboundResponses
+              .filter(
+                (response) =>
+                  response.success && response.data.oneWayFlights?.content
+              )
+              .flatMap((response) => response.data.oneWayFlights.content)
+              .map((flight) => ({ ...flight, direction: "outbound" }));
+
+            const returnFlights = returnResponses
+              .filter(
+                (response) =>
+                  response.success && response.data.oneWayFlights?.content
+              )
+              .flatMap((response) => response.data.oneWayFlights.content)
+              .map((flight) => ({ ...flight, direction: "return" }));
+
+            // Store flights in state for step-by-step selection
+            setAllFlights([...outboundFlights, ...returnFlights]);
+
+            // Create itineraries for outbound flights first
+            const outboundItineraries = outboundFlights.map((flight, index) => {
+              const lowestPrice = getLowestPrice(flight);
+              console.log(
+                "Outbound flight:",
+                flight.flightId,
+                "lowest price:",
+                lowestPrice,
+                "travel classes:",
+                flight.flightTravelClasses
+              );
+              return {
+                itineraryId: `outbound-${flight.flightId || index}`,
+                tripType: "ROUND_TRIP",
+                direction: "outbound",
+                legs: [flight],
+                totalPrice: lowestPrice,
+                totalDuration: flight.duration || 0,
+                totalStops: flight.stopsList?.length || 0,
+              };
             });
 
-            requestData = {
-              tripType: "ROUND_TRIP",
-              combinations: combinations,
+            setAllItineraries(outboundItineraries);
+            setFlightsLoaded(true);
+
+            const updatedSearchCriteria = {
+              ...searchData,
+              fromLocations:
+                searchData.fromLocations ||
+                (searchData.from ? [searchData.from] : []),
+              toLocations:
+                searchData.toLocations ||
+                (searchData.to ? [searchData.to] : []),
+              from: searchData.fromLocations?.[0] || searchData.from,
+              to: searchData.toLocations?.[0] || searchData.to,
             };
+
+            updateSearchCriteria(updatedSearchCriteria);
+            setTripTypeFilter(searchData.tripType);
+
+            setTabExpandedFlights({});
+            setTabPages({});
+
+            setTimeout(() => {
+              if (resultsRef.current) {
+                resultsRef.current.scrollIntoView({
+                  behavior: "smooth",
+                  block: "start",
+                });
+              }
+            }, 100);
+
+            return;
+          } catch (error) {
+            setError("Lỗi khi tìm kiếm chuyến bay khứ hồi: " + error.message);
+            return;
           }
         } else if (searchData.tripType === "MULTI_CITY") {
           if (
@@ -812,6 +1261,12 @@ export function FlightSearchResults() {
                         outboundDepartureDate: formatDateForAPI(
                           trip.departDate
                         ),
+                        passengers: searchData.passengers || {
+                          adults: 1,
+                          children: 0,
+                          infants: 0,
+                        },
+                        travelClass: mapTravelClass(searchData.travelClass),
                       };
 
                       const segmentResponse =
@@ -988,25 +1443,6 @@ export function FlightSearchResults() {
                 } → ${flight.arrivalAirport?.airportCode || "N/A"}`,
               })
             );
-          } else if (
-            searchData.tripType === "ROUND_TRIP" &&
-            response.data.roundTripPairs
-          ) {
-            itineraries = response.data.roundTripPairs.map((pair, index) => ({
-              itineraryId: `roundtrip-${pair.outbound.flightId || index}`,
-              tripType: "ROUND_TRIP",
-              legs: [pair.outbound, pair.inbound],
-              totalPrice:
-                getLowestPrice(pair.outbound) + getLowestPrice(pair.inbound),
-              totalDuration:
-                (pair.outbound.duration || 0) + (pair.inbound.duration || 0),
-              totalStops:
-                (pair.outbound.stopsList?.length || 0) +
-                (pair.inbound.stopsList?.length || 0),
-              routeInfo: `${
-                pair.outbound.departureAirport?.airportCode || "N/A"
-              } ↔ ${pair.outbound.arrivalAirport?.airportCode || "N/A"}`,
-            }));
           } else if (
             searchData.tripType === "MULTI_CITY" &&
             response.data.multiCityFlights
@@ -1266,13 +1702,15 @@ export function FlightSearchResults() {
         itinerary.legs[0]?.departureTime
       ).getTime();
       const currentTime = new Date().getTime();
-      if (departureTime - currentTime < MIN_BOOKING_LEAD_TIME) {
+
+      // Filter flights based on departure time - show flights 4+ hours from now
+      if (departureTime - currentTime < 4 * 60 * 60 * 1000) {
+        // Filter out flights departing within 4 hours from now
         return false;
       }
 
       return true;
     });
-
 
     const hasSearchResults = tripTypeFilter && allItineraries.length > 0;
     const hasMultiCityResults = allItineraries.some(
@@ -1355,7 +1793,7 @@ export function FlightSearchResults() {
     });
 
     return filtered;
-  }, [allItineraries, filters, activeTab, tripTypeFilter]);
+  }, [allItineraries, filters, activeTab, tripTypeFilter, isFlexSearchUpdate]);
 
   const currentTabs = useMemo(() => {
     if (allItineraries.length > 0 && tripTypeFilter) {
@@ -1420,7 +1858,6 @@ export function FlightSearchResults() {
   );
   console.log(filteredAndSortedItineraries);
 
-
   const handlePageChange = useCallback(
     (page) => {
       setTabPages((prev) => ({
@@ -1441,6 +1878,69 @@ export function FlightSearchResults() {
             : "Tìm chuyến bay phù hợp",
         showExpandButton: false,
       };
+    }
+
+    // Handle round-trip step-specific titles
+    if (searchCriteria.tripType === "ROUND_TRIP") {
+      if (roundTripStep === "outbound") {
+        const from = (() => {
+          if (typeof searchCriteria.from === "string")
+            return searchCriteria.from;
+          if (
+            searchCriteria.from &&
+            typeof searchCriteria.from === "object" &&
+            searchCriteria.from.city
+          ) {
+            return searchCriteria.from.city;
+          }
+          return "";
+        })();
+        const to = (() => {
+          if (typeof searchCriteria.to === "string") return searchCriteria.to;
+          if (
+            searchCriteria.to &&
+            typeof searchCriteria.to === "object" &&
+            searchCriteria.to.city
+          ) {
+            return searchCriteria.to.city;
+          }
+          return "";
+        })();
+
+        return {
+          title: `Chọn chuyến bay đi: ${from} → ${to}`,
+          showExpandButton: false,
+        };
+      } else if (roundTripStep === "return") {
+        const from = (() => {
+          if (typeof searchCriteria.from === "string")
+            return searchCriteria.from;
+          if (
+            searchCriteria.from &&
+            typeof searchCriteria.from === "object" &&
+            searchCriteria.from.city
+          ) {
+            return searchCriteria.from.city;
+          }
+          return "";
+        })();
+        const to = (() => {
+          if (typeof searchCriteria.to === "string") return searchCriteria.to;
+          if (
+            searchCriteria.to &&
+            typeof searchCriteria.to === "object" &&
+            searchCriteria.to.city
+          ) {
+            return searchCriteria.to.city;
+          }
+          return "";
+        })();
+
+        return {
+          title: `Chọn chuyến bay về: ${to} → ${from}`,
+          showExpandButton: false,
+        };
+      }
     }
 
     const from = (() => {
@@ -1532,7 +2032,7 @@ export function FlightSearchResults() {
       title: "Khám phá các chuyến bay giá tốt",
       showExpandButton: false,
     };
-  }, [searchCriteria, totalItineraries, showAllCombinations]);
+  }, [searchCriteria, totalItineraries, showAllCombinations, roundTripStep]);
 
   return (
     <div className="mx-auto">
@@ -1565,13 +2065,23 @@ export function FlightSearchResults() {
         </div>
       </div>
 
-
       {searchCriteria && (
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 mb-6 ">
           <FlightFlexSearch
+            key={`flex-search-${roundTripStep}-${searchCriteria?.departDate}-${searchCriteria?.returnDate}`}
             searchCriteria={searchCriteria}
-            allFlights={allItineraries.flatMap((it) => it.legs)}
+            allFlights={
+              allFlights.length > 0
+                ? allFlights
+                : allItineraries.flatMap((it) => it.legs)
+            }
+            isReturnSelection={roundTripStep === "return"}
             onDateSelect={(dateSelection) => {
+              console.log("FlexSearch date selected:", {
+                dateSelection,
+                currentRoundTripStep: roundTripStep,
+              });
+
               if (
                 typeof dateSelection === "object" &&
                 dateSelection.departDate
@@ -1580,12 +2090,14 @@ export function FlightSearchResults() {
                   ...searchCriteria,
                   departDate: dateSelection.departDate,
                   returnDate: dateSelection.returnDate,
+                  isFlexSearchUpdate: true, // Mark as flex search update
                 };
                 handleSearch(updatedCriteria);
               } else {
                 const updatedCriteria = {
                   ...searchCriteria,
                   departDate: dateSelection,
+                  isFlexSearchUpdate: true, // Mark as flex search update
                 };
                 handleSearch(updatedCriteria);
               }
@@ -1679,6 +2191,128 @@ export function FlightSearchResults() {
                 </div>
               </div>
 
+              {/* Round-trip flight selection UI - only show for ROUND_TRIP searches */}
+              {searchCriteria?.tripType === "ROUND_TRIP" &&
+                totalItineraries > 0 && (
+                  <div className="mb-6 p-6 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/20 dark:to-indigo-950/20 rounded-xl border border-blue-200 dark:border-blue-800">
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 bg-blue-600 rounded-lg shadow-sm">
+                          <Plane className="h-5 w-5 text-white" />
+                        </div>
+                        <div>
+                          <h3 className="text-lg font-bold text-gray-900 dark:text-white">
+                            Chọn chuyến bay khứ hồi
+                          </h3>
+                          <p className="text-sm text-gray-600 dark:text-gray-400">
+                            Chọn chuyến bay đi và về theo từng bước
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Step indicator */}
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-4 flex-1">
+                        <div
+                          className={`flex items-center space-x-2 ${
+                            roundTripStep === "outbound"
+                              ? "text-blue-600 font-semibold"
+                              : "text-gray-500"
+                          }`}
+                        >
+                          <div
+                            className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
+                              roundTripStep === "outbound"
+                                ? "bg-blue-600 text-white"
+                                : selectedOutboundFlight
+                                ? "bg-green-600 text-white"
+                                : "bg-gray-200 text-gray-600"
+                            }`}
+                          >
+                            {selectedOutboundFlight ? "✓" : "1"}
+                          </div>
+                          <span>Chọn chuyến đi</span>
+                        </div>
+                        <div className="flex-1 h-0.5 bg-gray-300 mx-2"></div>
+                        <div
+                          className={`flex items-center space-x-2 ${
+                            roundTripStep === "return"
+                              ? "text-blue-600 font-semibold"
+                              : "text-gray-500"
+                          }`}
+                        >
+                          <div
+                            className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
+                              roundTripStep === "return"
+                                ? "bg-blue-600 text-white"
+                                : "bg-gray-200 text-gray-600"
+                            }`}
+                          >
+                            2
+                          </div>
+                          <span>Chọn chuyến về</span>
+                        </div>
+                      </div>
+                      {roundTripStep === "return" && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            console.log(
+                              "Quay lại button clicked - switching to outbound"
+                            );
+                            setRoundTripStep("outbound");
+                            // Reset return flights and show outbound flights again
+                            setAllItineraries(
+                              allFlights
+                                .filter(
+                                  (flight) => flight.direction === "outbound"
+                                )
+                                .map((flight, index) => ({
+                                  itineraryId: `outbound-${
+                                    flight.flightId || index
+                                  }`,
+                                  tripType: "ROUND_TRIP",
+                                  direction: "outbound",
+                                  legs: [flight],
+                                  totalPrice: getLowestPrice(flight),
+                                  totalDuration: flight.duration || 0,
+                                  totalStops: flight.stopsList?.length || 0,
+                                }))
+                            );
+                            setTabPages((prev) => ({
+                              ...prev,
+                              [activeTab]: 1,
+                            }));
+                          }}
+                          className="ml-4 text-blue-600 border-blue-200 hover:bg-blue-50"
+                        >
+                          ← Quay lại
+                        </Button>
+                      )}
+                    </div>
+
+                    {selectedOutboundFlight && roundTripStep === "return" && (
+                      <div className="mt-4 p-3 bg-green-50 dark:bg-green-950/20 rounded-lg border border-green-200 dark:border-green-800">
+                        <p className="text-sm text-green-800 dark:text-green-200">
+                          <strong>Chuyến đi đã chọn:</strong>{" "}
+                          {selectedOutboundFlight.legs[0]?.flightNumber} -{" "}
+                          {
+                            selectedOutboundFlight.legs[0]?.departureAirport
+                              ?.airportCode
+                          }{" "}
+                          →{" "}
+                          {
+                            selectedOutboundFlight.legs[0]?.arrivalAirport
+                              ?.airportCode
+                          }
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
+
               <div className="flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
                 <div className="lg:hidden">
                   <Button
@@ -1732,17 +2366,96 @@ export function FlightSearchResults() {
                   <FlightCardSkeleton />
                 </>
               ) : totalItineraries > 0 ? (
-                currentItineraries.map((itinerary) => (
-                  <FlightCard
-                    key={itinerary.itineraryId}
-                    flight={itinerary}
-                    expandedFlights={tabExpandedFlights[activeTab] || new Set()}
-                    selectedFares={selectedFares}
-                    onToggleDetails={toggleDetails}
-                    onSelectFare={handleSelectFare}
-                    onProceedToBooking={handleProceedToBooking}
-                  />
-                ))
+                searchCriteria?.tripType === "ROUND_TRIP" ? (
+                  <>
+                    {/* Show flights based on current step */}
+                    {roundTripStep === "outbound" ? (
+                      <div className="mb-6">
+                        <h3 className="text-lg font-semibold mb-4 text-gray-800">
+                          Chọn Chuyến Bay Đi
+                        </h3>
+                        <div className="space-y-3 sm:space-y-4">
+                          {currentItineraries.map((itinerary) => (
+                            <div
+                              key={itinerary.itineraryId}
+                              className="relative flex flex-row "
+                            >
+                              <FlightCard
+                                flight={itinerary}
+                                expandedFlights={
+                                  tabExpandedFlights[activeTab] || new Set()
+                                }
+                                selectedFares={selectedOutboundFares}
+                                onToggleDetails={toggleDetails}
+                                onSelectFare={handleSelectFare}
+                              />
+                              {/* Separate select button */}
+                              <div className="">
+                                <Button
+                                  onClick={() =>
+                                    handleRoundTripFlightSelection(itinerary)
+                                  }
+                                  className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 h-full rounded-lg shadow-lg"
+                                >
+                                  Chọn
+                                </Button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="mb-6">
+                        <h3 className="text-lg font-semibold mb-4 text-gray-800">
+                          Chọn Chuyến Bay Về
+                        </h3>
+                        <div className="space-y-3 sm:space-y-4">
+                          {currentItineraries.map((itinerary) => (
+                            <div
+                              key={itinerary.itineraryId}
+                              className="relative flex flex-row"
+                            >
+                              <FlightCard
+                                flight={itinerary}
+                                expandedFlights={
+                                  tabExpandedFlights[activeTab] || new Set()
+                                }
+                                selectedFares={selectedReturnFares}
+                                onToggleDetails={toggleDetails}
+                                onSelectFare={handleSelectFare}
+                              />
+                              {/* Separate select button */}
+                              <div className="">
+                                <Button
+                                  onClick={() =>
+                                    handleRoundTripFlightSelection(itinerary)
+                                  }
+                                  className="bg-blue-600 hover:bg-blue-700 text-white px-4 h-full py-2 rounded-lg shadow-lg"
+                                >
+                                  Chọn
+                                </Button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  currentItineraries.map((itinerary) => (
+                    <FlightCard
+                      key={itinerary.itineraryId}
+                      flight={itinerary}
+                      expandedFlights={
+                        tabExpandedFlights[activeTab] || new Set()
+                      }
+                      selectedFares={selectedFares}
+                      onToggleDetails={toggleDetails}
+                      onSelectFare={handleSelectFare}
+                      onProceedToBooking={handleProceedToBooking}
+                    />
+                  ))
+                )
               ) : !searchCriteria ? (
                 <EmptyState
                   type="noSearch"

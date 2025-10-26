@@ -27,7 +27,6 @@ import { authApi } from "@/apis/auth-api";
 import { useNotifications } from "@/hooks/use-notifications";
 
 const MENU_ITEMS = [
-  { label: "Chuyến Bay", path: "flights" },
   { label: "Ưu Đãi", path: "deals" },
   { label: "Tin Tức", path: "blog" },
   { label: "Check-in", path: "check-in" },

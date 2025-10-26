@@ -20,12 +20,11 @@ const MyFlightsSearchForm = ({
 }) => {
   const [formData, setFormData] = useState({
     bookingCode: initialBookingCode,
-    passengerName: "",
   });
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (!formData.bookingCode.trim() || !formData.passengerName.trim()) {
+    if (!formData.bookingCode.trim()) {
       return;
     }
     onSearch(formData);
@@ -55,8 +54,8 @@ const MyFlightsSearchForm = ({
         <Alert>
           <FileText className="h-4 w-4" />
           <AlertDescription>
-            Nhập mã đặt chỗ và họ tên để tìm kiếm thông tin chuyến bay và thực
-            hiện thanh toán.
+            Nhập mã đặt chỗ để tìm kiếm thông tin chuyến bay và thực hiện thanh
+            toán.
           </AlertDescription>
         </Alert>
 
@@ -81,36 +80,17 @@ const MyFlightsSearchForm = ({
             </p>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="passengerName" className="text-sm font-medium">
-              Họ và tên hành khách <span className="text-red-500">*</span>
-            </Label>
-            <Input
-              id="passengerName"
-              type="text"
-              placeholder="Nhập đầy đủ họ tên như trên vé"
-              value={formData.passengerName}
-              onChange={(e) => handleChange("passengerName", e.target.value)}
-              required
-              className="text-sm"
-            />
-          </div>
-
-          {error && (
+          {/* {error && (
             <Alert variant="destructive">
               <AlertCircle className="h-4 w-4" />
               <AlertDescription>{error}</AlertDescription>
             </Alert>
-          )}
+          )} */}
 
           <Button
             type="submit"
             className="w-full"
-            disabled={
-              isLoading ||
-              !formData.bookingCode.trim() ||
-              !formData.passengerName.trim()
-            }
+            disabled={isLoading || !formData.bookingCode.trim()}
           >
             {isLoading ? (
               "Đang tìm kiếm..."

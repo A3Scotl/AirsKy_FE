@@ -23,6 +23,8 @@ export default function CheckInPage() {
   const [additionalCost, setAdditionalCost] = useState(0);
   const [selectedServices, setSelectedServices] = useState([]);
   const [fromPaymentSuccess, setFromPaymentSuccess] = useState(false);
+  const [selectedSegment, setSelectedSegment] = useState(null); // Thêm state để lưu segment được chọn
+  const [searchedPassengerName, setSearchedPassengerName] = useState(""); // Lưu tên hành khách được tìm kiếm
 
   // Initialize hasUpdatedTotal from localStorage
   const bookingCodeFromUrl = new URLSearchParams(window.location.search).get(
@@ -246,6 +248,45 @@ export default function CheckInPage() {
           setSelectedSeat(seatData);
           setSelectedServices(servicesData);
 
+          // ✅ Sửa logic tự động chọn segment để áp dụng quy tắc sequential check-in
+          const eligibleSegments =
+            updatedBookingData.checkinEligiblePassengers?.filter(
+              (passenger) => passenger.checkinStatus === "ELIGIBLE"
+            );
+
+          if (eligibleSegments?.length > 0) {
+            // Áp dụng quy tắc sequential check-in
+            const sortedEligibleSegments = eligibleSegments.sort(
+              (a, b) => a.segmentOrder - b.segmentOrder
+            );
+
+            // Tìm segment có thể check-in đầu tiên theo quy tắc
+            let selectableSegment = null;
+
+            for (const segment of sortedEligibleSegments) {
+              // Segment 1 luôn có thể check-in nếu eligible
+              if (segment.segmentOrder === 1) {
+                selectableSegment = segment;
+                break;
+              }
+              // Segment 2+ chỉ có thể check-in nếu segment trước đó đã check-in
+              else {
+                const previousSegment =
+                  updatedBookingData.checkinEligiblePassengers.find(
+                    (p) => p.segmentOrder === segment.segmentOrder - 1
+                  );
+                if (previousSegment?.checkinStatus === "COMPLETED") {
+                  selectableSegment = segment;
+                  break;
+                }
+              }
+            }
+
+            if (selectableSegment) {
+              setSelectedSegment(selectableSegment);
+            }
+          }
+
           // Proceed with check-in after a short delay
           setTimeout(() => {
             proceedWithCheckinAfterPaymentWithData(
@@ -306,6 +347,9 @@ export default function CheckInPage() {
     setIsLoading(true);
     setError("");
 
+    // Store the searched passenger name for filtering purposes
+    setSearchedPassengerName(searchData.passengerName.trim());
+
     // Only reset hasUpdatedTotal if this is NOT a redirect from payment success
     // and if it's a different booking code than current one
     const currentUrlParams = new URLSearchParams(window.location.search);
@@ -365,25 +409,109 @@ export default function CheckInPage() {
         setBooking(bookingData);
         setPassengers(bookingData.checkinEligiblePassengers);
 
+        // ✅ Kiểm tra tất cả segments để tìm segment có thể check-in
+        const allSegments = bookingData.checkinEligiblePassengers;
+        const eligibleSegments = allSegments.filter(
+          (passenger) => passenger.checkinStatus === "ELIGIBLE"
+        );
+
+        // Kiểm tra xem có segment nào đã check-in chưa
+        const checkedInSegments = allSegments.filter(
+          (passenger) =>
+            passenger.checkinStatus === "ALREADY_CHECKED_IN" ||
+            passenger.checkinStatus === "COMPLETED"
+        );
+
+        // ✅ Nếu có ít nhất một segment đã check-in, hiển thị booking details để xem thông tin
+        if (checkedInSegments.length > 0) {
+          setCurrentStep("details");
+          toast.info(
+            "Một số chuyến bay đã được check-in. Xem thông tin chi tiết bên dưới."
+          );
+          return;
+        }
+
+        // Nếu có segments eligible, áp dụng quy tắc sequential check-in
+        if (eligibleSegments.length > 0) {
+          // ✅ Xử lý one-way flight trước (segmentOrder là null)
+          const oneWaySegments = eligibleSegments.filter(
+            (passenger) => passenger.segmentOrder === null
+          );
+
+          if (oneWaySegments.length > 0) {
+            // Với one-way, có thể check-in ngay lập tức
+            setSelectedSegment(oneWaySegments[0]);
+            setCurrentStep("details");
+            toast.success(
+              `Tìm thấy chuyến bay ${oneWaySegments[0].flightNumber} đủ điều kiện check-in`
+            );
+            return;
+          }
+
+          // ✅ Cho roundtrip: Kiểm tra quy tắc sequential check-in
+          // Segment 1 (outbound) có thể check-in luôn
+          // Segment 2 (return) chỉ có thể check-in sau khi segment 1 đã check-in
+          const roundtripSegments = eligibleSegments.filter(
+            (passenger) => passenger.segmentOrder !== null
+          );
+
+          if (roundtripSegments.length > 0) {
+            const sortedEligibleSegments = roundtripSegments.sort(
+              (a, b) => a.segmentOrder - b.segmentOrder
+            );
+
+            // Tìm segment có thể check-in đầu tiên theo quy tắc
+            let selectableSegment = null;
+
+            for (const segment of sortedEligibleSegments) {
+              // Segment 1 luôn có thể check-in nếu eligible
+              if (segment.segmentOrder === 1) {
+                selectableSegment = segment;
+                break;
+              }
+              // Segment 2+ chỉ có thể check-in nếu segment trước đó đã check-in
+              else {
+                const previousSegment = allSegments.find(
+                  (p) => p.segmentOrder === segment.segmentOrder - 1
+                );
+                if (
+                  previousSegment?.checkinStatus === "ALREADY_CHECKED_IN" ||
+                  previousSegment?.checkinStatus === "COMPLETED"
+                ) {
+                  selectableSegment = segment;
+                  break;
+                }
+              }
+            }
+
+            if (selectableSegment) {
+              setSelectedSegment(selectableSegment);
+              setCurrentStep("details");
+              toast.success(
+                `Tìm thấy chuyến bay ${selectableSegment.flightNumber} đủ điều kiện check-in`
+              );
+              return;
+            }
+          }
+        }
+
+        // Nếu không có segment nào eligible theo quy tắc, kiểm tra trạng thái cụ thể
         switch (firstPassenger.checkinStatus) {
-          case "ALREADY_CHECKED_IN":
-          case true: // checkedIn boolean
-            setCurrentStep("already-done");
-            toast.info("Hành khách đã check-in trước đó");
-            break;
           case "PAYMENT_PENDING":
             setError(
               "Vé chưa được thanh toán. Vui lòng thanh toán trước khi check-in."
             );
             toast.error("Vé chưa được thanh toán");
             break;
-          case "ELIGIBLE":
-            setCurrentStep("details");
-            toast.success("Tìm thấy hành khách đủ điều kiện check-in");
+          case "PREVIOUS_SEGMENT_NOT_CHECKED_IN":
+            setError(
+              "Vui lòng check-in chuyến bay đi trước khi check-in chuyến bay về."
+            );
+            toast.error("Vui lòng check-in chuyến bay đi trước");
             break;
           default:
-            setError("Trạng thái check-in không hợp lệ.");
-            toast.error("Trạng thái check-in không hợp lệ");
+            setError("Không có chuyến bay nào đủ điều kiện check-in lúc này.");
+            toast.error("Không có chuyến bay đủ điều kiện check-in");
         }
       } else {
         const errorMessage =
@@ -400,6 +528,63 @@ export default function CheckInPage() {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  // Helper function to get the searched passenger from eligible passengers
+  const getSearchedPassenger = () => {
+    if (!booking?.checkinEligiblePassengers || !searchedPassengerName) {
+      return booking?.checkinEligiblePassengers?.[0] || null;
+    }
+
+    // Find the exact passenger that was searched for
+    const searchedPassenger = booking.checkinEligiblePassengers.find(
+      (passenger) => {
+        const passengerFullName =
+          passenger.fullName ||
+          `${passenger.firstName} ${passenger.lastName}`.trim();
+        return (
+          passengerFullName.toLowerCase() ===
+          searchedPassengerName.toLowerCase()
+        );
+      }
+    );
+
+    return searchedPassenger || booking.checkinEligiblePassengers[0];
+  };
+
+  // Helper function to filter booking data for the searched passenger
+  const getFilteredBookingData = () => {
+    if (!booking) return null;
+
+    const searchedPassenger = getSearchedPassenger();
+    if (!searchedPassenger) return booking;
+
+    // Filter checkinEligiblePassengers to show only the searched passenger
+    const filteredBooking = {
+      ...booking,
+      checkinEligiblePassengers: [searchedPassenger],
+      // Filter seatTypeDetails to show only seats for the searched passenger
+      seatTypeDetails:
+        booking.seatTypeDetails?.filter((seatDetail) => {
+          const passengerFullName =
+            searchedPassenger.fullName ||
+            `${searchedPassenger.firstName} ${searchedPassenger.lastName}`.trim();
+          return seatDetail.passengerName === passengerFullName;
+        }) || [],
+      // Filter ancillary services to show only services for the searched passenger
+      ancillaryServices:
+        booking.ancillaryServices?.filter((service) => {
+          const passengerFullName =
+            searchedPassenger.fullName ||
+            `${searchedPassenger.firstName} ${searchedPassenger.lastName}`.trim();
+          return (
+            !service.passengerName ||
+            service.passengerName === passengerFullName
+          );
+        }) || [],
+    };
+
+    return filteredBooking;
   };
 
   const handleProceedToSeatSelection = () => {
@@ -440,8 +625,32 @@ export default function CheckInPage() {
     setError("");
 
     try {
-      const selectedPassenger = passengers[0];
-      const newSeatId = resolveSeatId(booking, selectedSeat, selectedPassenger);
+      // Validate payment status for the entire booking (not per segment)
+      // For roundtrip bookings, if at least one segment is already checked-in,
+      // we can assume payment was completed for the entire booking
+      const hasCheckedInSegments = booking?.flightSegments?.some(
+        (segment) => segment.checkinStatus === "COMPLETED"
+      );
+
+      const isBookingPaid =
+        booking?.paymentStatus === "COMPLETED" ||
+        booking?.status === "CONFIRMED" ||
+        hasCheckedInSegments; // Roundtrip: if any segment checked-in, payment is valid
+
+      if (!isBookingPaid) {
+        throw new Error(
+          "Payment not completed or insufficient. Please complete payment before check-in."
+        );
+      }
+
+      const filteredBooking = getFilteredBookingData();
+      const selectedPassenger =
+        filteredBooking?.checkinEligiblePassengers?.[0] || passengers[0];
+      const newSeatId = resolveSeatId(
+        filteredBooking || booking,
+        selectedSeat,
+        selectedPassenger
+      );
 
       if (typeof newSeatId === "string" || !newSeatId) {
         throw new Error(`Seat ID không hợp lệ: ${newSeatId}`);
@@ -450,10 +659,40 @@ export default function CheckInPage() {
       const checkinData = {
         bookingCode: booking.bookingCode,
         passengerId: selectedPassenger.passengerId,
+        segmentId: selectedSegment?.segmentId, // ✅ Thêm segmentId cho roundtrip check-in
         newSeatId: newSeatId,
       };
 
+      console.log("📤 [CHECK-IN] Form data gửi về backend:", {
+        checkinData,
+        bookingInfo: {
+          bookingCode: booking.bookingCode,
+          status: booking.status,
+          paymentStatus: booking.paymentStatus,
+          hasCheckedInSegments: hasCheckedInSegments,
+          isBookingPaid: isBookingPaid,
+          selectedSegment: selectedSegment,
+          flightSegments: booking.flightSegments?.map((s) => ({
+            segmentOrder: s.segmentOrder,
+            checkinStatus: s.checkinStatus,
+            flightNumber: s.flightNumber,
+          })),
+        },
+        passengerInfo: {
+          passengerId: selectedPassenger.passengerId,
+          fullName: selectedPassenger.fullName,
+          seatNumber: selectedPassenger.seatNumber,
+        },
+      });
+
       const response = await bookingApi.processCheckin(checkinData);
+
+      console.log("📥 [CHECK-IN] Response từ backend:", {
+        success: response.success,
+        data: response.data,
+        message: response.message,
+        fullResponse: response,
+      });
 
       if (response.success && response.data) {
         const checkinResponse = response.data;
@@ -591,6 +830,110 @@ export default function CheckInPage() {
     }
   };
 
+  // const proceedWithCheckinAfterPaymentWithData = async (
+  //   bookingData,
+  //   seatData,
+  //   servicesData
+  // ) => {
+  //   try {
+  //     console.log("🎫 Starting auto check-in after payment with data:", {
+  //       bookingCode: bookingData.bookingCode,
+  //       seatData,
+  //       servicesData,
+  //     });
+
+  //     const selectedPassenger = bookingData.checkinEligiblePassengers?.[0];
+  //     if (!selectedPassenger) {
+  //       throw new Error("Không tìm thấy thông tin hành khách");
+  //     }
+
+  //     // ✅ Sử dụng selectedSegment để lấy segmentId cho check-in
+  //     const segmentId = selectedSegment?.segmentId || selectedPassenger.segmentId;
+
+  //     const newSeatId = resolveSeatId(bookingData, seatData, selectedPassenger);
+
+  //     const checkinData = {
+  //       bookingCode: bookingData.bookingCode,
+  //       passengerId: selectedPassenger.passengerId,
+  //       segmentId: segmentId, // ✅ Thêm segmentId cho roundtrip check-in
+  //       newSeatId,
+  //       servicesToAdd: servicesData.map((service) => ({
+  //         serviceId: service.id || service.serviceId,
+  //         quantity: service.quantity || 1,
+  //       })),
+  //     };
+
+  //     console.log("📝 Submitting check-in data:", checkinData);
+
+  //     const response = await bookingApi.processCheckin(checkinData);
+
+  //     if (response.success && response.data) {
+  //       console.log("✅ Auto check-in successful:", response.data);
+
+  //       // Check-in is now complete after payment - no additional payment required
+  //       const updatedBooking = {
+  //         ...bookingData,
+  //         ...response.data,
+  //         isCheckedIn: true,
+  //         checkinStatus: "COMPLETED",
+  //         checkInTime: new Date().toISOString(),
+  //         boardingPassUrl: response.data.boardingPassUrl,
+  //       };
+
+  //       setBooking(updatedBooking);
+  //       setCurrentStep("success");
+  //       toast.success("Check-in hoàn tất thành công!");
+  //     } else {
+  //       console.warn("⚠️ Auto check-in failed:", response);
+  //       throw new Error(response.message || "Lỗi check-in");
+  //     }
+  //   } catch (error) {
+  //     console.error("❌ Auto check-in failed:", error);
+
+  //     // If auto check-in fails, redirect to completion page for manual check-in
+  //     console.log("🔄 Redirecting to completion page for manual check-in");
+
+  //     toast.info("Vui lòng hoàn tất check-in thủ công");
+
+  //     // Set data for manual check-in
+  //     setBooking(bookingData);
+  //     setSelectedSeat(seatData);
+  //     setSelectedServices(servicesData);
+  //     setFromPaymentSuccess(true);
+  //     setCurrentStep("completion");
+
+  //     // Don't show error toast for auto check-in failure, just redirect
+  //   }
+  // };
+
+  // Handle downloading boarding pass
+  const handleDownloadBoardingPass = async () => {
+    try {
+      // TODO: Implement actual download logic
+      // For now, just show a success message
+      toast.success(
+        "Tính năng tải xuống thẻ lên máy bay đang được phát triển!"
+      );
+    } catch (error) {
+      console.error("Failed to download boarding pass:", error);
+      toast.error("Có lỗi xảy ra khi tải xuống thẻ lên máy bay.");
+    }
+  };
+
+  // Handle emailing boarding pass
+  const handleEmailBoardingPass = async () => {
+    try {
+      // TODO: Implement actual email logic
+      // For now, just show a success message
+      toast.success(
+        "Tính năng gửi email thẻ lên máy bay đang được phát triển!"
+      );
+    } catch (error) {
+      console.error("Failed to email boarding pass:", error);
+      toast.error("Có lỗi xảy ra khi gửi email thẻ lên máy bay.");
+    }
+  };
+
   const proceedWithCheckinAfterPaymentWithData = async (
     bookingData,
     seatData,
@@ -608,11 +951,16 @@ export default function CheckInPage() {
         throw new Error("Không tìm thấy thông tin hành khách");
       }
 
+      // ✅ Sử dụng selectedSegment để lấy segmentId cho check-in
+      const segmentId =
+        selectedSegment?.segmentId || selectedPassenger.segmentId;
+
       const newSeatId = resolveSeatId(bookingData, seatData, selectedPassenger);
 
       const checkinData = {
         bookingCode: bookingData.bookingCode,
         passengerId: selectedPassenger.passengerId,
+        segmentId: segmentId, // ✅ Thêm segmentId cho roundtrip check-in
         newSeatId,
         servicesToAdd: servicesData.map((service) => ({
           serviceId: service.id || service.serviceId,
@@ -663,17 +1011,143 @@ export default function CheckInPage() {
     }
   };
 
+  // Handle refreshing check-in status
+  const handleRefreshCheckIn = async () => {
+    try {
+      if (!booking?.bookingCode) {
+        console.warn("No booking code available for refresh");
+        return;
+      }
+
+      console.log(
+        "🔄 Refreshing check-in status for booking:",
+        booking.bookingCode
+      );
+
+      // Re-fetch booking data to get updated check-in status
+      const refreshResponse = await checkinApi.lookupBookingForCheckin(
+        booking.bookingCode,
+        booking.checkinEligiblePassengers?.[0]?.fullName ||
+          booking.passengers?.[0]?.fullName
+      );
+
+      if (refreshResponse.success && refreshResponse.data) {
+        const updatedBooking = refreshResponse.data;
+        setBooking(updatedBooking);
+
+        // ✅ Sửa logic để áp dụng quy tắc sequential check-in cho roundtrip
+        // Check if there are still eligible segments for check-in with sequential rules
+        const allSegments = updatedBooking.checkinEligiblePassengers || [];
+        const checkedInSegments = allSegments.filter(
+          (passenger) =>
+            passenger.checkinStatus === "ALREADY_CHECKED_IN" ||
+            passenger.checkinStatus === "COMPLETED"
+        );
+
+        // Nếu tất cả segments đã check-in, không làm gì thêm
+        if (checkedInSegments.length === allSegments.length) {
+          console.log("✅ All segments checked in successfully");
+          toast.success("Tất cả các chuyến bay đã được check-in thành công!");
+          return;
+        }
+
+        // Tìm segments có thể check-in theo quy tắc sequential
+        const sortedSegments = allSegments.sort(
+          (a, b) => a.segmentOrder - b.segmentOrder
+        );
+        let nextSelectableSegment = null;
+
+        for (const segment of sortedSegments) {
+          // Nếu segment đã check-in, bỏ qua
+          if (
+            segment.checkinStatus === "ALREADY_CHECKED_IN" ||
+            segment.checkinStatus === "COMPLETED"
+          ) {
+            continue;
+          }
+
+          // Segment 1 luôn có thể check-in nếu chưa check-in
+          if (
+            segment.segmentOrder === 1 &&
+            segment.checkinStatus === "ELIGIBLE"
+          ) {
+            nextSelectableSegment = segment;
+            break;
+          }
+          // Segment 2+ chỉ có thể check-in nếu segment trước đó đã check-in
+          else if (segment.segmentOrder > 1) {
+            const previousSegment = allSegments.find(
+              (p) => p.segmentOrder === segment.segmentOrder - 1
+            );
+            if (
+              previousSegment?.checkinStatus === "ALREADY_CHECKED_IN" ||
+              previousSegment?.checkinStatus === "COMPLETED"
+            ) {
+              // Segment có thể eligible ngay cả khi status là "PREVIOUS_SEGMENT_NOT_CHECKED_IN"
+              // nếu segment trước đã check-in
+              nextSelectableSegment = segment;
+              break;
+            }
+          }
+        }
+
+        if (nextSelectableSegment) {
+          console.log(
+            "🎯 Auto-selecting next eligible segment:",
+            nextSelectableSegment.segmentOrder
+          );
+          setSelectedSegment(nextSelectableSegment);
+
+          // Reset seat and services selection for new segment
+          setSelectedSeat(null);
+          setSelectedServices([]);
+          setAdditionalCost(0);
+
+          toast.success(
+            `Đã chuyển sang check-in chuyến ${nextSelectableSegment.segmentOrder}: ${nextSelectableSegment.flightNumber}`
+          );
+        } else {
+          console.log("⏳ Waiting for previous segments to be checked in");
+          toast.info(
+            "Vui lòng hoàn thành check-in chuyến bay trước đó trước khi tiếp tục."
+          );
+        }
+      } else {
+        throw new Error(
+          refreshResponse.message || "Failed to refresh booking data"
+        );
+      }
+    } catch (error) {
+      console.error("Failed to refresh check-in status:", error);
+      toast.error("Có lỗi xảy ra khi làm mới trạng thái check-in.");
+    }
+  };
+
   // ... rest of the functions remain the same (handleDownloadBoardingPass, handleEmailBoardingPass, etc.)
+
+  const handleSegmentSelect = (passenger) => {
+    setSelectedSegment(passenger);
+    // Reset seat and services when changing segments
+    setSelectedSeat(null);
+    setSelectedServices([]);
+    setAdditionalCost(0);
+    toast.success(
+      `Đã chọn check-in chuyến ${passenger.segmentOrder}: ${passenger.flightNumber}`
+    );
+  };
 
   const handleBack = () => {
     switch (currentStep) {
       case "details":
         setCurrentStep("search");
+        // Reset searched passenger when going back to search
+        setSearchedPassengerName("");
         break;
       case "seat-selection":
         setCurrentStep("details");
         break;
       case "success":
+      case "already-done":
         setCurrentStep("seat-selection");
         break;
     }
@@ -693,15 +1167,18 @@ export default function CheckInPage() {
       case "details":
         return (
           <CheckInBookingDetails
-            booking={booking}
+            booking={getFilteredBookingData()}
+            selectedSegment={selectedSegment}
             onProceed={handleProceedToSeatSelection}
             onBack={handleBack}
+            onSegmentSelect={handleSegmentSelect}
           />
         );
       case "seat-selection":
         return (
           <CheckInSeatSelection
-            booking={booking}
+            booking={getFilteredBookingData()}
+            selectedSegment={selectedSegment}
             onSelectSeat={handleSelectSeat}
             onConfirm={handleConfirmCheckIn}
             onBack={handleBack}
@@ -714,14 +1191,20 @@ export default function CheckInPage() {
       case "already-done":
         return (
           <CheckInCompletion
-            booking={booking}
+            booking={getFilteredBookingData()}
+            selectedSegment={selectedSegment}
             onNewCheckIn={() => {
               setBooking(null);
               setPassengers([]);
               setSelectedSeat(null);
+              setSelectedSegment(null); // Reset selectedSegment
+              setSearchedPassengerName(""); // Reset searched passenger name
               setError("");
               setCurrentStep("search");
             }}
+            onDownload={handleDownloadBoardingPass}
+            onEmail={handleEmailBoardingPass}
+            onRefresh={handleRefreshCheckIn}
             isAlreadyCheckedIn={currentStep === "already-done"}
             additionalCost={additionalCost}
             selectedServices={selectedServices}

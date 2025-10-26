@@ -573,38 +573,28 @@ export function FlightCard({
     }
   };
 
-  const getTripTypeBadge = () => {
-    if (flightData.isRoundTripDisplay) {
+  const getDirectionBadge = () => {
+    if (flight.direction === "outbound") {
       return (
         <Badge
           variant="outline"
-          className="bg-blue-50 text-blue-700 border-blue-200"
+          className="bg-green-50 text-green-700 border-green-200"
         >
-          <ArrowRightLeft className="w-3 h-3 mr-1" />
-          Khứ hồi
+          Chuyến đi
         </Badge>
       );
     }
-    if (flightData.isMultiCityDisplay) {
+    if (flight.direction === "return") {
       return (
         <Badge
           variant="outline"
-          className="bg-purple-50 text-purple-700 border-purple-200"
+          className="bg-orange-50 text-orange-700 border-orange-200"
         >
-          <Route className="w-3 h-3 mr-1" />
-          Đa thành phố ({flightData.segments} chặng)
+          Chuyến về
         </Badge>
       );
     }
-    return (
-      <Badge
-        variant="outline"
-        className="bg-green-50 text-green-700 border-green-200"
-      >
-        <Plane className="w-3 h-3 mr-1" />
-        Một chiều
-      </Badge>
-    );
+    return null;
   };
 
   return (
@@ -635,7 +625,9 @@ export function FlightCard({
               )}
 
               <div className="flex items-center gap-1 sm:gap-2">
-                <div className="hidden sm:block">{getTripTypeBadge()}</div>
+                {getDirectionBadge() && (
+                  <div className="hidden sm:block">{getDirectionBadge()}</div>
+                )}
                 <div className="flex items-center gap-1">
                   {!compact && (
                     <Plane className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600" />
@@ -672,9 +664,6 @@ export function FlightCard({
             </div>
           </div>
         </div>
-
-        {/* Mobile-only trip type badge */}
-        <div className="sm:hidden mb-3">{getTripTypeBadge()}</div>
 
         {/* Thông tin chuyến bay */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 md:gap-6 mb-4">

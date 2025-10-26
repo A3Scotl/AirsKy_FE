@@ -159,7 +159,7 @@ function AppRoutes() {
                 }
               />
               <Route
-                path="/detail/:id"
+                path="/detail/:id?"
                 element={
                   <PageTransition>
                     <FlightDetail />
@@ -331,7 +331,6 @@ function App() {
               />
               <AppRoutes />
             </SearchProvider>
-           
           </AuthProvider>
         </ThemeProvider>
       </Router>

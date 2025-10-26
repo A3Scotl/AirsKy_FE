@@ -28,6 +28,7 @@ import { formatCurrencyVND } from "@/utils/currency-utils";
 
 const CheckInCompletion = ({
   booking,
+  selectedSegment, // Thêm prop selectedSegment
   onNewCheckIn,
   onDownload,
   onEmail,
@@ -47,6 +48,10 @@ const CheckInCompletion = ({
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
   const [autoCheckInAttempted, setAutoCheckInAttempted] = useState(false);
 
+  // Track original total for revert functionality
+  const [originalTotal, setOriginalTotal] = useState(null);
+  const [hasTotalBeenUpdated, setHasTotalBeenUpdated] = useState(false);
+
   // Get passenger info
   const currentPassenger =
     booking.checkinEligiblePassengers?.[0] || booking.passengers?.[0];
@@ -58,12 +63,13 @@ const CheckInCompletion = ({
       fromPaymentSuccess &&
       !autoCheckInAttempted &&
       !isAlreadyCheckedIn &&
-      (selectedSeat || selectedServices.length > 0)
+      currentPassenger // Always allow auto check-in if passenger exists
     ) {
       console.log("🔄 Auto check-in attempt from payment success", {
         selectedSeat,
         selectedServices,
         bookingCode: booking.bookingCode,
+        passenger: currentPassenger?.fullName,
       });
 
       performAutoCheckIn();
@@ -82,6 +88,26 @@ const CheckInCompletion = ({
     setAutoCheckInAttempted(true);
 
     try {
+      // Validate payment status for the entire booking (not per segment)
+      // For roundtrip bookings, if at least one segment is already checked-in,
+      // we can assume payment was completed for the entire booking
+      const hasCheckedInSegments = booking?.flightSegments?.some(
+        (segment) => segment.checkinStatus === "COMPLETED"
+      );
+
+      const isBookingPaid =
+        booking?.paymentStatus === "COMPLETED" ||
+        booking?.status === "CONFIRMED" ||
+        hasCheckedInSegments; // Roundtrip: if any segment checked-in, payment is valid
+
+      if (!isBookingPaid) {
+        console.warn(
+          "⚠️ Booking payment not completed, skipping auto check-in"
+        );
+        toast.info("Vui lòng hoàn tất thanh toán trước khi check-in");
+        return;
+      }
+
       const selectedPassenger =
         booking.checkinEligiblePassengers?.[0] || booking.passengers?.[0];
       if (!selectedPassenger) {
@@ -89,7 +115,7 @@ const CheckInCompletion = ({
         return;
       }
 
-      // Resolve seat ID
+      // Resolve seat ID (optional for check-in)
       let newSeatId = null;
       if (selectedSeat?.seatId) {
         newSeatId = selectedSeat.seatId;
@@ -106,10 +132,8 @@ const CheckInCompletion = ({
         }
       }
 
-      if (!newSeatId && selectedSeat) {
-        console.warn("⚠️ Could not resolve seat ID for auto check-in");
-        return;
-      }
+      // Note: Seat selection is optional for check-in
+      console.log("🎯 Resolved seat ID for auto check-in:", newSeatId);
 
       const checkinData = {
         bookingCode: booking.bookingCode,
@@ -121,18 +145,53 @@ const CheckInCompletion = ({
         })),
       };
 
-      console.log("📝 Auto submitting check-in data:", checkinData);
+      console.log("� [AUTO CHECK-IN] Form data gửi về backend:", {
+        checkinData,
+        bookingInfo: {
+          bookingCode: booking.bookingCode,
+          status: booking.status,
+          paymentStatus: booking.paymentStatus,
+          hasCheckedInSegments: booking?.flightSegments?.some(
+            (segment) => segment.checkinStatus === "COMPLETED"
+          ),
+          selectedSegment: selectedSegment,
+          flightSegments: booking.flightSegments?.map((s) => ({
+            segmentOrder: s.segmentOrder,
+            checkinStatus: s.checkinStatus,
+            flightNumber: s.flightNumber,
+          })),
+        },
+        passengerInfo: {
+          passengerId: selectedPassenger.passengerId,
+          fullName: selectedPassenger.fullName,
+          seatNumber: selectedPassenger.seatNumber,
+        },
+        servicesInfo: {
+          selectedServices: selectedServices,
+          servicesToAdd: checkinData.servicesToAdd,
+        },
+      });
 
       const response = await bookingApi.processCheckin(checkinData);
+
+      console.log("📥 [AUTO CHECK-IN] Response từ backend:", {
+        success: response.success,
+        data: response.data,
+        message: response.message,
+        fullResponse: response,
+      });
 
       if (response.success && response.data) {
         console.log("✅ Auto check-in successful:", response.data);
         toast.success("Check-in hoàn tất thành công!");
 
-        // Update booking data
-        if (onRefresh) {
-          onRefresh();
-        }
+        // Small delay to ensure backend updates are processed
+        setTimeout(() => {
+          // Update booking data and auto-advance to next segment
+          if (onRefresh) {
+            onRefresh();
+          }
+        }, 1000);
       } else {
         console.warn("⚠️ Auto check-in failed:", response);
         toast.info("Vui lòng hoàn tất check-in thủ công");
@@ -140,6 +199,83 @@ const CheckInCompletion = ({
     } catch (error) {
       console.error("❌ Auto check-in error:", error);
       toast.info("Vui lòng hoàn tất check-in thủ công");
+    }
+  };
+
+  // Track original total when component mounts (before any updates)
+  useEffect(() => {
+    if (booking?.totalAmount && !originalTotal) {
+      console.log("💰 Tracking original total:", booking.totalAmount);
+      setOriginalTotal(booking.totalAmount);
+    }
+  }, [booking?.totalAmount, originalTotal]);
+
+  // Detect if total has been updated (when user comes to payment page with additional cost)
+  useEffect(() => {
+    if (additionalCost > 0 && !hasTotalBeenUpdated && originalTotal) {
+      console.log(
+        "💸 Total has been updated - additional cost:",
+        additionalCost
+      );
+      setHasTotalBeenUpdated(true);
+    }
+  }, [additionalCost, hasTotalBeenUpdated, originalTotal]);
+
+  // Function to revert total amount if user goes back without payment
+  const revertTotalAmount = async () => {
+    if (!hasTotalBeenUpdated || !originalTotal || !booking?.id) {
+      console.log(
+        "ℹ️ No need to revert total - not updated or no original total",
+        {
+          hasTotalBeenUpdated,
+          originalTotal,
+          bookingId: booking?.id,
+        }
+      );
+      return;
+    }
+
+    try {
+      console.log("🔄 Reverting total amount:", {
+        from: booking?.totalAmount,
+        to: originalTotal,
+        bookingId: booking.id,
+      });
+
+      const revertData = {
+        totalAmount: originalTotal,
+        reason: "User cancelled payment - reverting to original total",
+      };
+
+      const response = await bookingApi.updateBookingTotal(
+        booking.id,
+        revertData
+      );
+
+      if (response.success) {
+        console.log("✅ Total amount reverted successfully");
+        toast.success("Đã hoàn lại số tiền ban đầu");
+        setHasTotalBeenUpdated(false);
+      } else {
+        console.error("❌ Failed to revert total amount:", response.message);
+        toast.error("Có lỗi khi hoàn lại số tiền");
+      }
+    } catch (error) {
+      console.error("❌ Error reverting total amount:", error);
+      toast.error("Có lỗi khi hoàn lại số tiền");
+    }
+  };
+
+  // Handle back button with total revert
+  const handleBackWithRevert = async () => {
+    console.log("⬅️ User going back from payment page");
+
+    // Revert total if it was updated
+    await revertTotalAmount();
+
+    // Call original onBack
+    if (onBack) {
+      onBack();
     }
   };
 
@@ -312,7 +448,14 @@ const CheckInCompletion = ({
   };
 
   const needsPayment = additionalCost > 0;
-  const isPaymentPage = needsPayment && !booking.checkinId; // Need payment and not yet checked in
+  // Don't require payment if booking is already paid or has valid payment status
+  const isBookingAlreadyPaid =
+    booking.status === "CONFIRMED" ||
+    booking.status === "PAID" ||
+    booking.paymentStatus === "COMPLETED" ||
+    booking.paymentStatus === "PAID";
+  const isPaymentPage =
+    needsPayment && !booking.checkinId && !isBookingAlreadyPaid;
 
   return (
     <div className="space-y-6">
@@ -523,6 +666,16 @@ const CheckInCompletion = ({
               </Alert>
             )}
 
+            {onBack && (
+              <Button
+                variant="outline"
+                onClick={handleBackWithRevert}
+                className="w-full"
+              >
+                ← Quay lại chọn ghế/dịch vụ
+              </Button>
+            )}
+
             <Button
               onClick={handlePayment}
               disabled={isProcessingPayment}
@@ -572,27 +725,46 @@ const CheckInCompletion = ({
               <div>
                 <p className="text-sm text-gray-600">Chuyến bay</p>
                 <p className="font-semibold">
-                  {booking.flightSegments?.[0]?.flightNumber}
+                  {selectedSegment?.flightNumber ||
+                    booking.flightSegments?.[0]?.flightNumber}
                 </p>
               </div>
               <div>
                 <p className="text-sm text-gray-600">Chỗ ngồi</p>
                 <p className="font-semibold text-blue-600">
-                  {booking.checkinEligiblePassengers?.[0]?.seatNumber}
+                  {selectedSegment?.seatNumber ||
+                    booking.checkinEligiblePassengers?.[0]?.seatNumber}
                 </p>
               </div>
               <div>
                 <p className="text-sm text-gray-600">Cửa ra máy bay</p>
                 <p className="font-semibold text-green-600">
-                  {booking.flightSegments?.[0]?.departureAirport?.gates?.[0]
-                    ?.gateName || "Chưa có"}
+                  {(() => {
+                    const segment = selectedSegment
+                      ? booking.flightSegments?.find(
+                          (fs) => fs.segmentId === selectedSegment.segmentId
+                        )
+                      : booking.flightSegments?.[0];
+                    return (
+                      segment?.departureAirport?.gates?.[0]?.gateName ||
+                      "Chưa có"
+                    );
+                  })()}
                 </p>
               </div>
               <div>
                 <p className="text-sm text-gray-600">Terminal</p>
                 <p className="font-semibold">
-                  {booking.flightSegments?.[0]?.departureAirport?.gates?.[0]
-                    ?.terminal || "N/A"}
+                  {(() => {
+                    const segment = selectedSegment
+                      ? booking.flightSegments?.find(
+                          (fs) => fs.segmentId === selectedSegment.segmentId
+                        )
+                      : booking.flightSegments?.[0];
+                    return (
+                      segment?.departureAirport?.gates?.[0]?.terminal || "N/A"
+                    );
+                  })()}
                 </p>
               </div>
             </div>
@@ -607,6 +779,11 @@ const CheckInCompletion = ({
             <CardTitle className="flex items-center gap-2">
               <QrCode className="w-5 h-5 text-blue-500" />
               Thẻ lên máy bay {isAlreadyCheckedIn ? "của bạn" : "điện tử"}
+              {selectedSegment?.segmentOrder && (
+                <Badge variant="outline" className="ml-2">
+                  Chuyến {selectedSegment.segmentOrder === 1 ? "Đi" : "Về"}
+                </Badge>
+              )}
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -989,90 +1166,6 @@ const CheckInCompletion = ({
           </AlertDescription>
         </Alert>
       )}
-
-      {/* Action Section */}
-      <Card
-        className={`border-blue-200 ${
-          isPaymentPage
-            ? "bg-orange-50"
-            : isAlreadyCheckedIn
-            ? "bg-blue-50"
-            : "bg-green-50"
-        }`}
-      >
-        <CardContent className="pt-6">
-          <div className="text-center">
-            {isPaymentPage ? (
-              <div className="space-y-4">
-                <p className="mb-4 text-orange-800">
-                  Vui lòng hoàn tất thanh toán để tiếp tục check-in
-                </p>
-                <div className="space-y-2">
-                  {onBack && (
-                    <Button
-                      variant="outline"
-                      onClick={onBack}
-                      className="w-full"
-                    >
-                      ← Quay lại chọn ghế/dịch vụ
-                    </Button>
-                  )}
-                  <Button
-                    onClick={handlePayment}
-                    disabled={isProcessingPayment}
-                    className="bg-orange-600 hover:bg-orange-700 w-full"
-                  >
-                    {isProcessingPayment
-                      ? "Đang xử lý..."
-                      : `Thanh toán ${formatCurrencyVND(additionalCost)}`}
-                  </Button>
-                </div>
-              </div>
-            ) : (
-              <div>
-                <p
-                  className={`mb-4 ${
-                    isAlreadyCheckedIn ? "text-blue-800" : "text-green-800"
-                  }`}
-                >
-                  {isAlreadyCheckedIn
-                    ? "Bạn có muốn check-in cho một chuyến bay khác không?"
-                    : fromPaymentSuccess && !isAlreadyCheckedIn
-                    ? "Thanh toán thành công! Vui lòng hoàn tất check-in."
-                    : "Cảm ơn bạn đã hoàn tất check-in!"}
-                </p>
-                <div className="space-y-2">
-                  {fromPaymentSuccess &&
-                    !isAlreadyCheckedIn &&
-                    (selectedSeat || selectedServices.length > 0) && (
-                      <Button
-                        onClick={performAutoCheckIn}
-                        disabled={autoCheckInAttempted}
-                        className="bg-blue-600 hover:bg-blue-700 w-full mb-2"
-                      >
-                        {autoCheckInAttempted
-                          ? "Đang xử lý..."
-                          : "Hoàn tất check-in"}
-                      </Button>
-                    )}
-                  <Button
-                    onClick={onNewCheckIn}
-                    className={
-                      isAlreadyCheckedIn
-                        ? "bg-blue-600 hover:bg-blue-700 w-full"
-                        : "bg-green-600 hover:bg-green-700 w-full"
-                    }
-                  >
-                    {isAlreadyCheckedIn
-                      ? "Check-in vé mới"
-                      : "Check-in thêm vé khác"}
-                  </Button>
-                </div>
-              </div>
-            )}
-          </div>
-        </CardContent>
-      </Card>
 
       {/* Footer Note */}
       <div className="text-center text-sm text-gray-600 bg-gray-50 p-4 rounded-lg">

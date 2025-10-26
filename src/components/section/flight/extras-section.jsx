@@ -23,6 +23,11 @@ import { handleFetch } from "@/utils/fetch-helper";
 import PropTypes from "prop-types";
 import { toast } from "sonner";
 import { formatCurrencyVND } from "@/utils/currency-utils";
+import {
+  getPassengerMultiplier,
+  calculateFlightPrice,
+  calculateExtraServicePrice,
+} from "@/utils/flight-booking-utils";
 import SeatMap from "./seat-map";
 import SeatSelectionWrapper from "./seat-selection-wrapper";
 
@@ -156,6 +161,27 @@ const SERVICE_PRICES = {
   inFlightMeal: 18,
   priorityBoarding: 12,
 };
+
+// Service type classifications based on backend logic
+const PER_SEGMENT_SERVICE_TYPES = [
+  "MEAL",
+  "SEAT",
+  "PRIORITY_BOARDING",
+  "WIFI",
+  "EXTRA_LEGROOM",
+  "INFANT_MEAL",
+];
+
+const PER_BOOKING_SERVICE_TYPES = [
+  "TRAVEL_INSURANCE",
+  "LOUNGE_ACCESS",
+  "ENTERTAINMENT",
+  "PET_TRANSPORT",
+  "SPECIAL_ASSISTANCE",
+];
+
+// Service types that should multiply by passenger count
+const PER_PASSENGER_SERVICE_TYPES = ["TRAVEL_INSURANCE", "SPECIAL_ASSISTANCE"];
 
 // Map API status to UI status
 const mapApiStatusToUiStatus = (apiStatus, seatType) => {
@@ -1550,7 +1576,7 @@ const MultiCitySeatSelectionCard = ({
                   Chọn Chỗ Ngồi - Chặng {segmentIndex + 1} (
                   {leg.departureAirport?.code || "N/A"} →{" "}
                   {leg.arrivalAirport?.code || "N/A"}) -{" "}
-                  {leg.aircraftName || leg.aircraft || "N/A"}
+                  {leg.aircraftName || leg.aircraft?.aircraftName || "N/A"}
                 </CardTitle>
                 <Button
                   variant="ghost"
@@ -1560,11 +1586,11 @@ const MultiCitySeatSelectionCard = ({
                 >
                   {showSeats ? (
                     <>
-                      <ChevronUp className="w-4 h-4 mr-1" /> Thu gọn
+                      <ChevronUp className="w-4 h-4 mr-1" />
                     </>
                   ) : (
                     <>
-                      <ChevronDown className="w-4 h-4 mr-1" /> Mở rộng
+                      <ChevronDown className="w-4 h-4 mr-1" />
                     </>
                   )}
                 </Button>
@@ -1663,7 +1689,8 @@ const SeatSelectionCard = ({
   const filteredSeats = useMemo(() => {
     const userTravelClassId =
       flight?.isRoundTrip || flight?.type === "ROUND_TRIP"
-        ? flight.outbound?.selectedClass?.travelClass?.id
+        ? flight.outboundFlight?.selectedClass?.travelClass?.id ||
+          flight.outbound?.selectedClass?.travelClass?.id
         : flight?.flight?.selectedClass?.travelClass?.id ||
           flight?.selectedClass?.travelClass?.id;
 
@@ -1891,13 +1918,14 @@ const SeatSelectionCard = ({
             <CardTitle className="flex items-center gap-2">
               {isRoundTrip ? "Chọn Chỗ Ngồi - Chuyến Đi" : "Chọn Chỗ Ngồi"} -{" "}
               {flight?.isRoundTrip || flight?.type === "ROUND_TRIP"
-                ? flight.outbound?.aircraftName ||
-                  flight.outbound?.aircraft ||
+                ? flight.outboundFlight?.aircraft?.aircraftName ||
+                  flight.outbound?.aircraftName ||
+                  flight.outbound?.aircraft?.aircraftName ||
                   "N/A"
                 : flight?.flight?.aircraftName ||
-                  flight?.flight?.aircraft ||
+                  flight?.flight?.aircraft?.aircraftName ||
                   flight?.aircraftName ||
-                  flight?.aircraft ||
+                  flight?.aircraft?.aircraftName ||
                   "N/A"}
             </CardTitle>
             <Button
@@ -1908,11 +1936,11 @@ const SeatSelectionCard = ({
             >
               {showOutboundSeats ? (
                 <>
-                  <ChevronUp className="w-4 h-4 mr-1" /> Thu gọn
+                  <ChevronUp className="w-4 h-4 mr-1" />
                 </>
               ) : (
                 <>
-                  <ChevronDown className="w-4 h-4 mr-1" /> Mở rộng
+                  <ChevronDown className="w-4 h-4 mr-1" />
                 </>
               )}
             </Button>
@@ -1947,18 +1975,20 @@ const SeatSelectionCard = ({
                         isReturnFlight={false}
                         flightTitle={`Chọn Chỗ Ngồi - ${
                           flight?.isRoundTrip || flight?.type === "ROUND_TRIP"
-                            ? flight.outbound?.aircraftName ||
-                              flight.outbound?.aircraft ||
+                            ? flight.outboundFlight?.aircraft?.aircraftName ||
+                              flight.outbound?.aircraftName ||
+                              flight.outbound?.aircraft?.aircraftName ||
                               "N/A"
                             : flight?.flight?.aircraftName ||
-                              flight?.flight?.aircraft ||
-                              flight?.aircraft ||
+                              flight?.flight?.aircraft?.aircraftName ||
+                              flight?.aircraft?.aircraftName ||
                               "N/A"
                         }`}
                         showLegend={true}
                         userTravelClassId={
                           flight?.isRoundTrip || flight?.type === "ROUND_TRIP"
-                            ? flight.outbound?.selectedClass?.travelClass?.id
+                            ? flight.outboundFlight?.selectedClass?.travelClass
+                                ?.id
                             : flight?.flight?.selectedClass?.travelClass?.id ||
                               flight?.selectedClass?.travelClass?.id
                         }
@@ -1983,8 +2013,9 @@ const SeatSelectionCard = ({
             <div className="flex items-center justify-between">
               <CardTitle className="flex items-center gap-2">
                 Chọn Chỗ Ngồi - Chuyến Về -{" "}
-                {flight.return?.aircraftName ||
-                  flight.return?.aircraft ||
+                {flight.returnFlight?.aircraft?.aircraftName ||
+                  flight.return?.aircraftName ||
+                  flight.return?.aircraft?.aircraftName ||
                   "N/A"}
               </CardTitle>
               <Button
@@ -1995,11 +2026,11 @@ const SeatSelectionCard = ({
               >
                 {showReturnSeats ? (
                   <>
-                    <ChevronUp className="w-4 h-4 mr-1" /> Thu gọn
+                    <ChevronUp className="w-4 h-4 mr-1" />
                   </>
                 ) : (
                   <>
-                    <ChevronDown className="w-4 h-4 mr-1" /> Mở rộng
+                    <ChevronDown className="w-4 h-4 mr-1" />
                   </>
                 )}
               </Button>
@@ -2038,13 +2069,14 @@ const SeatSelectionCard = ({
                           }
                           isReturnFlight={true}
                           flightTitle={`Chọn Chỗ Ngồi - ${
+                            flight.returnFlight?.aircraft?.aircraftName ||
                             flight.return?.aircraftName ||
-                            flight.return?.aircraft ||
+                            flight.return?.aircraft?.aircraftName ||
                             "N/A"
                           }`}
                           showLegend={false}
                           userTravelClassId={
-                            flight.return?.selectedClass?.travelClass?.id
+                            flight.returnFlight?.selectedClass?.travelClass?.id
                           }
                         />
                       </div>
@@ -2072,6 +2104,7 @@ const BaggagePackageOption = ({
   passengerType,
   selectedPackage,
   onPackageChange,
+  segmentCount = 1,
 }) => (
   <div className="space-y-4">
     <h4 className="font-semibold text-gray-700">
@@ -2086,47 +2119,63 @@ const BaggagePackageOption = ({
     <RadioGroup
       value={selectedPackage}
       onValueChange={(value) =>
-        onPackageChange(`passenger${passengerIndex + 1}`, value)
+        onPackageChange(`passenger_${passengerIndex}`, value)
       }
       className="space-y-3"
     >
-      {Object.entries(BAGGAGE_PACKAGES).map(([packageKey, packageInfo]) => (
-        <div
-          key={packageKey}
-          className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50"
-        >
-          <div className="flex items-center space-x-3">
-            <RadioGroupItem
-              value={packageKey}
-              id={`${passengerIndex}-${packageKey}`}
-            />
-            <div>
-              <Label
-                htmlFor={`${passengerIndex}-${packageKey}`}
-                className="font-medium cursor-pointer"
-              >
-                {packageInfo.label}
-              </Label>
-              <p className="text-sm text-gray-500">
-                {packageKey === "NONE"
-                  ? "Chỉ bao gồm hành lý xách tay (10kg)"
-                  : `Hành lý ký gửi ${packageInfo.weight}kg`}
-              </p>
+      {Object.entries(BAGGAGE_PACKAGES).map(([packageKey, packageInfo]) => {
+        const totalPrice = packageInfo.price * segmentCount;
+        return (
+          <div
+            key={packageKey}
+            className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50"
+          >
+            <div className="flex items-center space-x-3">
+              <RadioGroupItem
+                value={packageKey}
+                id={`${passengerIndex}-${packageKey}`}
+              />
+              <div>
+                <Label
+                  htmlFor={`${passengerIndex}-${packageKey}`}
+                  className="font-medium cursor-pointer"
+                >
+                  {packageInfo.label}
+                </Label>
+                <p className="text-sm text-gray-500">
+                  {packageKey === "NONE"
+                    ? "Chỉ bao gồm hành lý xách tay (10kg)"
+                    : `Hành lý ký gửi ${packageInfo.weight}kg`}
+                </p>
+              </div>
+            </div>
+            <div className="text-right">
+              <span className="font-bold text-blue-600">
+                {formatCurrencyVND(packageInfo.price)}
+              </span>
+              {segmentCount > 1 && packageInfo.price > 0 && (
+                <p className="text-xs text-gray-500">
+                  {formatCurrencyVND(packageInfo.price)} × {segmentCount} chặng
+                  = {formatCurrencyVND(totalPrice)}
+                </p>
+              )}
             </div>
           </div>
-          <div className="text-right">
-            <span className="font-bold text-blue-600">
-              {formatCurrencyVND(packageInfo.price)}
-            </span>
-          </div>
-        </div>
-      ))}
+        );
+      })}
     </RadioGroup>
   </div>
 );
 
 // Baggage Options Card
-const BaggageOptionsCard = ({ formData, baggage, setBaggage }) => {
+const BaggageOptionsCard = ({
+  formData,
+  baggage,
+  setBaggage,
+  isRoundTrip,
+  expandedSections,
+  setExpandedSections,
+}) => {
   const [isUpdating, setIsUpdating] = useState(false);
   const handlePackageChange = (passenger, packageKey) => {
     setBaggage((prev) => ({
@@ -2143,28 +2192,52 @@ const BaggageOptionsCard = ({ formData, baggage, setBaggage }) => {
   return (
     <Card className="shadow-sm">
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          Tùy Chọn Hành Lý
+        <CardTitle className="flex items-center justify-between">
+          <span>Tùy Chọn Hành Lý</span>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() =>
+              setExpandedSections((prev) => ({
+                ...prev,
+                baggage: !prev.baggage,
+              }))
+            }
+            className="ml-2"
+          >
+            {expandedSections.baggage ? (
+              <ChevronUp className="h-4 w-4" />
+            ) : (
+              <ChevronDown className="h-4 w-4" />
+            )}
+          </Button>
         </CardTitle>
       </CardHeader>
-      <CardContent>
-        <div className="bg-green-50 p-4 rounded-lg mb-4">
-          <p className="text-sm text-green-700 font-medium">
-            ✅ Bao gồm: 1 túi xách tay (10kg) mỗi hành khách
-          </p>
-        </div>
-        <div className="space-y-4">
-          {formData.passengers.map((passenger, index) => (
-            <BaggagePackageOption
-              key={`passenger${index + 1}`}
-              passengerIndex={index}
-              passengerType={passenger.type}
-              selectedPackage={baggage[`passenger${index + 1}`] || "NONE"}
-              onPackageChange={handlePackageChange}
-            />
-          ))}
-        </div>
-      </CardContent>
+      {expandedSections.baggage && (
+        <CardContent>
+          <div className="bg-green-50 p-4 rounded-lg mb-4">
+            <p className="text-sm text-green-700 font-medium">
+              ✅ Miễn phí: 1 túi xách tay (10kg) mỗi hành khách
+            </p>
+            <p className="text-xs text-green-600 mt-1">
+              💡 Mỗi hành khách chọn gói hành lý riêng • Giá nhân với số chặng (
+              {isRoundTrip ? "2 chặng" : "1 chặng"})
+            </p>
+          </div>
+          <div className="space-y-4">
+            {formData.passengers.map((passenger, index) => (
+              <BaggagePackageOption
+                key={`passenger_${index}`}
+                passengerIndex={index}
+                passengerType={passenger.type}
+                selectedPackage={baggage[`passenger_${index}`] || "NONE"}
+                onPackageChange={handlePackageChange}
+                segmentCount={isRoundTrip ? 2 : 1}
+              />
+            ))}
+          </div>
+        </CardContent>
+      )}
     </Card>
   );
 };
@@ -2350,6 +2423,8 @@ const AncillaryServicesCard = ({
   availableServices,
   loadingServices,
   formData,
+  expandedSections,
+  setExpandedSections,
 }) => {
   const handleServiceChange = (
     serviceId,
@@ -2433,47 +2508,68 @@ const AncillaryServicesCard = ({
   return (
     <Card className="shadow-sm">
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          🛎️ Dịch Vụ Đi Kèm
+        <CardTitle className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span>🛎️ Dịch Vụ Đi Kèm</span>
+          </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() =>
+              setExpandedSections((prev) => ({
+                ...prev,
+                services: !prev.services,
+              }))
+            }
+            className="ml-2"
+          >
+            {expandedSections.services ? (
+              <ChevronUp className="h-4 w-4" />
+            ) : (
+              <ChevronDown className="h-4 w-4" />
+            )}
+          </Button>
         </CardTitle>
         <p className="text-sm text-gray-600 mt-1">
           Chọn các dịch vụ bổ sung để nâng cao trải nghiệm bay của bạn
         </p>
       </CardHeader>
-      <CardContent>
-        <div className="space-y-6">
-          {Object.entries(servicesByType).map(([type, services]) => {
-            const typeInfo = getServiceTypeInfo(type);
-            return (
-              <div key={type} className="space-y-3">
-                <h4 className="font-semibold text-gray-800 flex items-center gap-2">
-                  <span>{typeInfo.icon}</span>
-                  {typeInfo.vietnameseName}
-                </h4>
-                <div className="space-y-3 pl-4">
-                  {services.map((service) => (
-                    <AncillaryServiceOption
-                      key={service.serviceId}
-                      service={service}
-                      passengers={formData.passengers}
-                      onServiceChange={handleServiceChange}
-                      isSelectedProp={isServiceSelected}
-                      selectedServices={selectedServices}
-                      setSelectedServices={setSelectedServices}
-                    />
-                  ))}
+      {expandedSections.services && (
+        <CardContent>
+          <div className="space-y-6">
+            {Object.entries(servicesByType).map(([type, services]) => {
+              const typeInfo = getServiceTypeInfo(type);
+              return (
+                <div key={type} className="space-y-3">
+                  <h4 className="font-semibold text-gray-800 flex items-center gap-2">
+                    <span>{typeInfo.icon}</span>
+                    {typeInfo.vietnameseName}
+                  </h4>
+                  <div className="space-y-3 pl-4">
+                    {services.map((service) => (
+                      <AncillaryServiceOption
+                        key={service.serviceId}
+                        service={service}
+                        passengers={formData.passengers}
+                        onServiceChange={handleServiceChange}
+                        isSelectedProp={isServiceSelected}
+                        selectedServices={selectedServices}
+                        setSelectedServices={setSelectedServices}
+                      />
+                    ))}
+                  </div>
                 </div>
-              </div>
-            );
-          })}
+              );
+            })}
 
-          {availableServices.length === 0 && (
-            <div className="text-center py-8 text-gray-500">
-              <p>Hiện tại không có dịch vụ nào khả dụng</p>
-            </div>
-          )}
-        </div>
-      </CardContent>
+            {availableServices.length === 0 && (
+              <div className="text-center py-8 text-gray-500">
+                <p>Hiện tại không có dịch vụ nào khả dụng</p>
+              </div>
+            )}
+          </div>
+        </CardContent>
+      )}
     </Card>
   );
 };
@@ -2769,15 +2865,10 @@ const BookingSummary = ({
             <>
               {/* Multi-city passenger pricing */}
               {formData.passengers.map((passenger, index) => {
-                // For multi-city, use total price divided by passenger count
-                const totalPerPassenger =
-                  (flight.totalPrice || 0) / formData.passengers.length;
-                const discountedPrice =
-                  passenger.type === "CHILD"
-                    ? totalPerPassenger * 0.75
-                    : passenger.type === "INFANT"
-                    ? totalPerPassenger * 0.1
-                    : totalPerPassenger;
+                // For multi-city, base price is for ADULT, then multiply by passenger type
+                const basePriceForAdult = flight.totalPrice || 0; // This is adult price for all segments
+                const multiplier = getPassengerMultiplier(passenger.type);
+                const discountedPrice = basePriceForAdult * multiplier;
 
                 return (
                   <div key={index} className="flex justify-between">
@@ -2801,22 +2892,24 @@ const BookingSummary = ({
             <>
               {/* Round-trip passenger pricing */}
               {formData.passengers.map((passenger, index) => {
-                const outboundPrice =
-                  (flight.outbound?.selectedClass?.price ||
-                    flight.outbound?.selectedClass?.basePrice ||
-                    0) / formData.passengers.length;
-                const returnPrice =
-                  (flight.return?.selectedClass?.price ||
-                    flight.return?.selectedClass?.basePrice ||
-                    0) / formData.passengers.length;
-                const totalPerPassenger = outboundPrice + returnPrice;
+                // Base prices are for ADULT - don't divide by passenger count
+                const outboundPriceForAdult =
+                  flight.outboundFlight?.selectedClass?.price ||
+                  flight.outboundFlight?.selectedClass?.basePrice ||
+                  flight.outbound?.selectedClass?.price ||
+                  flight.outbound?.selectedClass?.basePrice ||
+                  0;
+                const returnPriceForAdult =
+                  flight.returnFlight?.selectedClass?.price ||
+                  flight.returnFlight?.selectedClass?.basePrice ||
+                  flight.return?.selectedClass?.price ||
+                  flight.return?.selectedClass?.basePrice ||
+                  0;
+                const totalPriceForAdult =
+                  outboundPriceForAdult + returnPriceForAdult;
 
-                const discountedPrice =
-                  passenger.type === "CHILD"
-                    ? totalPerPassenger * 0.75
-                    : passenger.type === "INFANT"
-                    ? totalPerPassenger * 0.1
-                    : totalPerPassenger;
+                const multiplier = getPassengerMultiplier(passenger.type);
+                const discountedPrice = totalPriceForAdult * multiplier;
 
                 return (
                   <div key={index} className="flex justify-between">
@@ -2840,12 +2933,8 @@ const BookingSummary = ({
             // One-way passenger pricing
             formData.passengers.map((passenger, index) => {
               const basePrice = flight?.flight?.selectedClass?.price || 0;
-              const discountedPrice =
-                passenger.type === "CHILD"
-                  ? basePrice * 0.75
-                  : passenger.type === "INFANT"
-                  ? basePrice * 0.1
-                  : basePrice;
+              const multiplier = getPassengerMultiplier(passenger.type);
+              const discountedPrice = basePrice * multiplier;
               return (
                 <div key={index} className="flex justify-between">
                   <span className="text-gray-600">
@@ -2891,21 +2980,36 @@ const BookingSummary = ({
             </div>
           )}
 
-          <div className="flex justify-between">
-            <span className="text-gray-600">
-              {isMultiCity ? "Hành lý (tất cả chặng)" : "Hành lý"}
-            </span>
-            <span className="font-medium">
-              {formatCurrencyVND(getBaggagePrice())}
-            </span>
+          <div className="space-y-1">
+            <div className="flex justify-between">
+              <span className="text-gray-600">
+                {isMultiCity ? "Hành lý (tất cả chặng)" : "Hành lý"}
+              </span>
+              <span className="font-medium">
+                {formatCurrencyVND(getBaggagePrice())}
+              </span>
+            </div>
+            {getBaggagePrice() > 0 && (
+              <div className="text-xs text-gray-500 ml-4">
+                💡 {formData.passengers.length} hành khách ×{" "}
+                {isRoundTrip && !isMultiCity ? 2 : 1} chặng
+              </div>
+            )}
           </div>
-          <div className="flex justify-between">
-            <span className="text-gray-600">🛎️ Dịch vụ đi kèm</span>
-            <span className="font-medium">
-              {formatCurrencyVND(
-                getAncillaryServicesPrice ? getAncillaryServicesPrice() : 0
-              )}
-            </span>
+          <div className="space-y-1">
+            <div className="flex justify-between">
+              <span className="text-gray-600">🛎️ Dịch vụ đi kèm</span>
+              <span className="font-medium">
+                {formatCurrencyVND(
+                  getAncillaryServicesPrice ? getAncillaryServicesPrice() : 0
+                )}
+              </span>
+            </div>
+            {getAncillaryServicesPrice && getAncillaryServicesPrice() > 0 && (
+              <div className="text-xs text-gray-500 ml-4">
+                💡 Bao gồm dịch vụ per-passenger và per-segment
+              </div>
+            )}
           </div>
           <hr className="border-gray-200" />
           <div className="flex justify-between text-lg font-bold">
@@ -2945,15 +3049,23 @@ const Extras = ({ flight, fare, formData, setExtrasData }) => {
   const [returnLoading, setReturnLoading] = useState(false);
   const [showOutboundSeats, setShowOutboundSeats] = useState(true);
   const [showReturnSeats, setShowReturnSeats] = useState(true);
+
+  // Collapse/Expand states for better UX
+  const [expandedSections, setExpandedSections] = useState({
+    baggage: true,
+    seats: false,
+    services: false,
+  });
+
   // Multi-city baggage state - per segment per passenger
   const [multiCityBaggage, setMultiCityBaggage] = useState({});
 
-  // Regular baggage state (for round-trip and one-way)
+  // Regular baggage state (for round-trip and one-way) - Per passenger
   const [baggage, setBaggage] = useState(
     formData.passengers.reduce(
       (acc, _, index) => ({
         ...acc,
-        [`passenger${index + 1}`]: "NONE",
+        [`passenger_${index}`]: "NONE", // Changed to passenger_0, passenger_1, etc.
       }),
       {}
     )
@@ -3269,28 +3381,26 @@ const Extras = ({ flight, fare, formData, setExtrasData }) => {
           });
         }
       });
-    } else if (isRoundTrip && flight.outbound && flight.return) {
-      // Round-trip outbound logic
-      if (flight.outbound.id) {
+    } else if (isRoundTrip) {
+      // Round-trip flights - load ALL seats for each flight, same as one-way
+      console.log("🪑 Loading round-trip seats", { flight });
+
+      // Get outbound flight ID - try multiple possible sources
+      const outboundId = flight.outbound?.id || flight.outboundFlight?.id;
+      const returnId = flight.return?.id || flight.returnFlight?.id;
+
+      // Load ALL outbound seats (same approach as one-way)
+      if (outboundId) {
+        console.log("🪑 Loading ALL outbound seats for ID:", outboundId);
         handleFetch({
-          apiCall: () => flightApi.getSeatsByFlight(flight.outbound.id),
+          apiCall: () => flightApi.getSeatsByFlight(outboundId),
           setData: (data) => {
             console.log("🪑 Raw outbound seat data from API:", data);
-            // Load all seats without filtering by travel class
+            // Load ALL seats without filtering by travel class (same as one-way)
             setSeats(
               data.map((seat) => {
-                console.log("🪑 Individual outbound seat:", seat);
                 // Try different field names for travel class ID, with fallback logic
                 const travelClassId = getTravelClassIdFromSeat(seat);
-                console.log("🪑 Outbound travel class ID extraction:", {
-                  seatNumber: seat.seatNumber,
-                  travelClassId: seat.travelClassId,
-                  classId: seat.classId,
-                  travelClassIdFromObject: seat.travelClass?.id,
-                  classIdFromObject: seat.class?.id,
-                  className: seat.className,
-                  finalTravelClassId: travelClassId,
-                });
                 return {
                   seatId: seat.seatId,
                   seatNumber: seat.seatNumber,
@@ -3311,27 +3421,18 @@ const Extras = ({ flight, fare, formData, setExtrasData }) => {
         });
       }
 
-      // Round-trip return logic
-      if (flight.return.id) {
+      // Load ALL return seats (same approach as one-way)
+      if (returnId) {
+        console.log("🪑 Loading ALL return seats for ID:", returnId);
         handleFetch({
-          apiCall: () => flightApi.getSeatsByFlight(flight.return.id),
+          apiCall: () => flightApi.getSeatsByFlight(returnId),
           setData: (data) => {
             console.log("🪑 Raw return seat data from API:", data);
-            // Load all seats without filtering by travel class
+            // Load ALL seats without filtering by travel class (same as one-way)
             setReturnSeats(
               data.map((seat) => {
-                console.log("🪑 Individual return seat:", seat);
                 // Try different field names for travel class ID, with fallback logic
                 const travelClassId = getTravelClassIdFromSeat(seat);
-                console.log("🪑 Return travel class ID extraction:", {
-                  seatNumber: seat.seatNumber,
-                  travelClassId: seat.travelClassId,
-                  classId: seat.classId,
-                  travelClassIdFromObject: seat.travelClass?.id,
-                  classIdFromObject: seat.class?.id,
-                  className: seat.className,
-                  finalTravelClassId: travelClassId,
-                });
                 return {
                   seatId: seat.seatId,
                   seatNumber: seat.seatNumber,
@@ -3353,7 +3454,7 @@ const Extras = ({ flight, fare, formData, setExtrasData }) => {
       }
     } else {
       // For one-way flights
-      const flightId = flight.flight?.id || flight.flightId;
+      const flightId = flight.flight?.id || flight.id;
       if (flightId) {
         handleFetch({
           apiCall: () => flightApi.getSeatsByFlight(flightId),
@@ -3402,8 +3503,12 @@ const Extras = ({ flight, fare, formData, setExtrasData }) => {
     isRoundTrip,
     flight.outbound?.id,
     flight.return?.id,
+    flight.outboundFlight?.id,
+    flight.returnFlight?.id,
     flight.outbound?.selectedClass?.id,
     flight.return?.selectedClass?.id,
+    flight.outboundFlight?.selectedClass?.id,
+    flight.returnFlight?.selectedClass?.id,
   ]);
 
   // Prepare seat legend - include both status and types (matching actual colors)
@@ -3533,13 +3638,30 @@ const Extras = ({ flight, fare, formData, setExtrasData }) => {
   const getMultiCityBaggagePrice = () => {
     if (!isMultiCity) return 0;
 
-    let total = 0;
+    // For multi-city: calculate baggage price per passenger per segment
+    const passengersCount = formData.passengers.length;
+    const segmentCount =
+      flight.segments?.length || Object.keys(multiCityBaggage).length;
+
+    let baggagePerPassengerTotal = 0;
     Object.values(multiCityBaggage).forEach((segmentBaggage) => {
       Object.values(segmentBaggage).forEach((packageKey) => {
         const packageInfo = BAGGAGE_PACKAGES[packageKey];
-        total += packageInfo ? packageInfo.price : 0;
+        baggagePerPassengerTotal += packageInfo ? packageInfo.price : 0;
       });
     });
+
+    // Multi-city baggage is already calculated per segment, so just multiply by passengers
+    const total = baggagePerPassengerTotal * passengersCount;
+
+    console.log("✈️ Multi-City Baggage Price Calculation:", {
+      baggagePerPassengerTotal,
+      passengersCount,
+      segmentCount,
+      total,
+      multiCityBaggage,
+    });
+
     return total;
   };
 
@@ -3658,10 +3780,37 @@ const Extras = ({ flight, fare, formData, setExtrasData }) => {
     if (isMultiCity) {
       return getMultiCityBaggagePrice();
     }
-    return Object.values(baggage).reduce((total, packageKey) => {
-      const packageInfo = BAGGAGE_PACKAGES[packageKey];
-      return total + (packageInfo ? packageInfo.price : 0);
-    }, 0);
+
+    // Baggage Logic: Per Passenger - mỗi hành khách chọn gói hành lý riêng
+    // Tổng = (tổng baggage của tất cả passengers đã chọn) × số segments
+    const segmentCount = isRoundTrip ? 2 : 1;
+
+    // Tính tổng baggage từ tất cả passengers (mỗi passenger có thể chọn gói khác nhau)
+    let totalBaggageAllPassengers = 0;
+
+    // Duyệt qua từng passenger và cộng baggage họ đã chọn
+    formData.passengers.forEach((passenger, passengerIndex) => {
+      const passengerBaggageKey = baggage[`passenger_${passengerIndex}`];
+      if (passengerBaggageKey) {
+        const packageInfo = BAGGAGE_PACKAGES[passengerBaggageKey];
+        if (packageInfo) {
+          totalBaggageAllPassengers += packageInfo.price;
+        }
+      }
+    });
+
+    // Nhân với số segments (x2 cho roundtrip)
+    const finalBaggagePrice = totalBaggageAllPassengers * segmentCount;
+
+    console.log("💼 Baggage Price Calculation:", {
+      totalBaggageAllPassengers,
+      segmentCount,
+      finalBaggagePrice,
+      isRoundTrip,
+      baggageSelections: baggage,
+    });
+
+    return finalBaggagePrice;
   };
 
   const getServicesPrice = () =>
@@ -3671,16 +3820,68 @@ const Extras = ({ flight, fare, formData, setExtrasData }) => {
       0
     );
 
-  // Calculate ancillary services price
+  // Calculate ancillary services price based on API response properties
   const getAncillaryServicesPrice = () => {
+    const passengersCount = formData.passengers.length;
+    const segmentCount = isMultiCity
+      ? flight.segments?.length || Object.keys(multiCityBaggage).length
+      : isRoundTrip
+      ? 2
+      : 1;
+
     return Object.values(selectedServices).reduce((total, serviceSelection) => {
       const service = availableServices.find(
         (s) => s.serviceId === serviceSelection.serviceId
       );
-      if (service) {
-        return total + service.price * serviceSelection.quantity;
+
+      if (!service) return total;
+
+      let serviceTotal = service.price * serviceSelection.quantity;
+
+      // Logic chính xác:
+      // 1. Nếu có passengerId (không null) → dịch vụ cho 1 hành khách cụ thể
+      // 2. Nếu passengerId là null → dịch vụ cho toàn booking
+      // 3. isPerPassenger = true → nhân với số hành khách
+      // 4. isPerSegment = true → nhân với số chặng
+
+      const hasSpecificPassenger =
+        serviceSelection.passengerId !== null &&
+        serviceSelection.passengerId !== undefined;
+
+      if (hasSpecificPassenger) {
+        // Dịch vụ cho 1 hành khách cụ thể - không nhân với số hành khách
+        // Chỉ nhân với segment nếu isPerSegment = true
+        if (service.isPerSegment) {
+          serviceTotal *= segmentCount;
+        }
+      } else {
+        // Dịch vụ cho toàn booking
+        // Nhân với số hành khách nếu isPerPassenger = true
+        if (service.isPerPassenger) {
+          serviceTotal *= passengersCount;
+        }
+
+        // Nhân với số chặng nếu isPerSegment = true
+        if (service.isPerSegment) {
+          serviceTotal *= segmentCount;
+        }
       }
-      return total;
+
+      console.log("🛎️ Service Price Calculation:", {
+        serviceName: service.serviceName,
+        serviceId: service.serviceId,
+        basePrice: service.price,
+        quantity: serviceSelection.quantity,
+        passengerId: serviceSelection.passengerId,
+        hasSpecificPassenger,
+        passengersCount,
+        segmentCount,
+        isPerPassenger: service.isPerPassenger,
+        isPerSegment: service.isPerSegment,
+        calculatedTotal: serviceTotal,
+      });
+
+      return total + serviceTotal;
     }, 0);
   };
 
@@ -3688,22 +3889,38 @@ const Extras = ({ flight, fare, formData, setExtrasData }) => {
     let passengersTotal = 0;
 
     if (isMultiCity) {
-      // Multi-city: use total price from flight data
-      passengersTotal = flight.totalPrice || 0;
-    } else if (isRoundTrip) {
-      // Round trip: use total price from flight data
-      passengersTotal = flight.totalPrice || 0;
-    } else {
-      // Single flight: calculate based on fare
-      const basePrice = flight.totalPrice || 0;
+      // Multi-city: flight.totalPrice is base adult price for all segments
+      const baseAdultPrice = flight.totalPrice || 0;
       passengersTotal = formData.passengers.reduce((total, p) => {
-        const discountedPrice =
-          p.type === "CHILD"
-            ? basePrice * 0.75
-            : p.type === "INFANT"
-            ? basePrice * 0.1
-            : basePrice;
-        return total + discountedPrice;
+        const multiplier = getPassengerMultiplier(p.type);
+        return total + baseAdultPrice * multiplier;
+      }, 0);
+    } else if (isRoundTrip) {
+      // Round trip: calculate from individual segment prices
+      const outboundAdultPrice =
+        flight.outboundFlight?.selectedClass?.price ||
+        flight.outboundFlight?.selectedClass?.basePrice ||
+        flight.outbound?.selectedClass?.price ||
+        flight.outbound?.selectedClass?.basePrice ||
+        0;
+      const returnAdultPrice =
+        flight.returnFlight?.selectedClass?.price ||
+        flight.returnFlight?.selectedClass?.basePrice ||
+        flight.return?.selectedClass?.price ||
+        flight.return?.selectedClass?.basePrice ||
+        0;
+      const totalAdultPrice = outboundAdultPrice + returnAdultPrice;
+
+      passengersTotal = formData.passengers.reduce((total, p) => {
+        const multiplier = getPassengerMultiplier(p.type);
+        return total + totalAdultPrice * multiplier;
+      }, 0);
+    } else {
+      // Single flight: flight.totalPrice is base adult price
+      const baseAdultPrice = flight.totalPrice || 0;
+      passengersTotal = formData.passengers.reduce((total, p) => {
+        const multiplier = getPassengerMultiplier(p.type);
+        return total + baseAdultPrice * multiplier;
       }, 0);
     }
 
@@ -3886,6 +4103,9 @@ const Extras = ({ flight, fare, formData, setExtrasData }) => {
                 formData={formData}
                 baggage={baggage}
                 setBaggage={setBaggage}
+                isRoundTrip={isRoundTrip}
+                expandedSections={expandedSections}
+                setExpandedSections={setExpandedSections}
               />
             )}
 
@@ -3895,6 +4115,8 @@ const Extras = ({ flight, fare, formData, setExtrasData }) => {
               availableServices={availableServices}
               loadingServices={loadingServices}
               formData={formData}
+              expandedSections={expandedSections}
+              setExpandedSections={setExpandedSections}
             />
           </div>
 

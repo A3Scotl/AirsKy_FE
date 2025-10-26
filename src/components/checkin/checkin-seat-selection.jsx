@@ -36,6 +36,7 @@ import { formatCurrencyVND } from "@/utils/currency-utils";
 
 const CheckInSeatSelection = ({
   booking,
+  selectedSegment, // Thêm prop selectedSegment
   onSelectSeat,
   onConfirm,
   onBack,
@@ -72,8 +73,8 @@ const CheckInSeatSelection = ({
               ? "bg-gradient-to-b from-green-400 to-green-600 text-white scale-110 shadow-2xl border-green-300 ring-4 ring-green-200 transform rotate-1 -translate-y-1"
               : seat.status === "PENDING_PAYMENT"
               ? "bg-gradient-to-b from-yellow-400 to-yellow-600 text-white shadow-inner transform translate-y-0.5 border-yellow-300"
-              : seat.status === "BOOKED"
-              ? "bg-gradient-to-b from-red-400 to-red-600 text-white shadow-inner transform translate-y-0.5 border-red-300 cursor-not-allowed"
+              : seat.status === "BOOKED" || seat.status === "OCCUPIED"
+              ? "bg-gradient-to-b from-gray-500 to-gray-700 text-white shadow-inner transform translate-y-0.5 border-gray-400 cursor-not-allowed"
               : isHovered
               ? "bg-gradient-to-b from-yellow-400 to-yellow-600 text-white shadow-2xl hover:brightness-110 hover:-translate-y-2 transition-all duration-300 cursor-pointer hover:rotate-1 border-yellow-300"
               : getSeatClassName(seatNumber) === "premium"
@@ -88,12 +89,16 @@ const CheckInSeatSelection = ({
         onClick={onClick}
         onMouseEnter={onMouseEnter}
         onMouseLeave={onMouseLeave}
-        disabled={seat.status === "BOOKED"}
+        disabled={
+          (seat.status === "BOOKED" || seat.status === "OCCUPIED") && !isCurrent
+        }
         title={`${seatNumber} - ${seat.className} - ${seatDesc} - ${
           seatPrice > 0 ? `+${formatCurrencyVND(seatPrice)}` : "Miễn phí"
         }${seat.status === "PENDING_PAYMENT" ? " - Đang chờ thanh toán" : ""}${
           seat.status === "BOOKED"
             ? ` - Đã đặt bởi ${seat.bookedBy || "khách hàng khác"}`
+            : seat.status === "OCCUPIED"
+            ? " - Ghế đã được chiếm"
             : ""
         }`}
       >
@@ -102,7 +107,9 @@ const CheckInSeatSelection = ({
           className={`absolute inset-0 rounded-xl ${
             isSelected || isCurrent
               ? "bg-gradient-to-br from-white/40 via-white/20 to-blue-500/30 shadow-inner"
-              : seat.status === "BOOKED" || seat.status === "PENDING_PAYMENT"
+              : seat.status === "BOOKED" ||
+                seat.status === "OCCUPIED" ||
+                seat.status === "PENDING_PAYMENT"
               ? "bg-gradient-to-br from-black/20 via-black/10 to-black/30 shadow-inner"
               : "bg-gradient-to-br from-white/30 via-white/15 to-black/25 shadow-inner"
           }`}
@@ -192,11 +199,15 @@ const CheckInSeatSelection = ({
         )}
 
         {/* Occupied/Pending Indicator */}
-        {(seat.status === "BOOKED" || seat.status === "PENDING_PAYMENT") && (
+        {(seat.status === "BOOKED" ||
+          seat.status === "OCCUPIED" ||
+          seat.status === "PENDING_PAYMENT") && (
           <div
             className={`absolute -top-2 -right-2 w-5 h-5 rounded-full flex items-center justify-center shadow-xl border-2 border-white transform rotate-12 ${
               seat.status === "PENDING_PAYMENT"
                 ? "bg-gradient-to-br from-yellow-400 to-yellow-600"
+                : seat.status === "OCCUPIED"
+                ? "bg-gradient-to-br from-gray-500 to-gray-700"
                 : "bg-gradient-to-br from-red-400 to-red-600"
             }`}
           >
@@ -241,9 +252,16 @@ const CheckInSeatSelection = ({
   // State for current seat ID (calculated after getSeatData is available)
   const [currentSeatId, setCurrentSeatId] = useState(null);
 
-  // Get current passenger info
-  const currentPassenger =
-    booking.checkinEligiblePassengers?.[0] || booking.passengers?.[0];
+  // Get current passenger info for selected segment
+  const currentPassenger = selectedSegment
+    ? booking.checkinEligiblePassengers?.find(
+        (p) => p.segmentId === selectedSegment.segmentId
+      ) ||
+      booking.checkinEligiblePassengers?.find(
+        (p) => p.segmentId === null && booking.flightSegments?.length === 1
+      ) ||
+      booking.checkinEligiblePassengers?.[0]
+    : booking.checkinEligiblePassengers?.[0] || booking.passengers?.[0];
   const currentSeat = currentPassenger?.seatNumber;
   const flightId = booking.flightSegments?.[0]?.flightId || booking.flightId;
   const travelClassId =
@@ -288,17 +306,68 @@ const CheckInSeatSelection = ({
   // Load seat data from API
   useEffect(() => {
     const loadSeatsData = async () => {
-      // Try to get flight and travel class info from different sources
+      // Determine the target segment based on selectedSegment
+      let targetSegment = null;
+
+      if (selectedSegment) {
+        // Check if selectedSegment is a segment object (has segmentId)
+        if (selectedSegment.segmentId) {
+          targetSegment = booking.flightSegments?.find(
+            (fs) => fs.segmentId === selectedSegment.segmentId
+          );
+        }
+        // Check if selectedSegment is a passenger object (has passengerId)
+        else if (selectedSegment.passengerId) {
+          // For one-way bookings, passenger might have segmentId: null, so use first segment
+          if (booking.flightSegments?.length === 1) {
+            targetSegment = booking.flightSegments[0];
+          }
+          // For round-trip, find segment that matches passenger's segmentId if available
+          else if (selectedSegment.segmentId !== null) {
+            targetSegment = booking.flightSegments?.find(
+              (fs) => fs.segmentId === selectedSegment.segmentId
+            );
+          }
+          // Fallback to first segment
+          if (!targetSegment) {
+            targetSegment = booking.flightSegments?.[0];
+          }
+        }
+      } else {
+        // No selectedSegment, use first segment
+        targetSegment = booking.flightSegments?.[0];
+      }
+
       const finalFlightId =
-        flightId || booking.flightSegments?.[0]?.id || booking.flightId;
+        targetSegment?.flightId || targetSegment?.id || booking.flightId;
       const finalTravelClassId =
-        travelClassId ||
+        targetSegment?.classId ||
+        targetSegment?.travelClassId ||
         currentPassenger?.travelClassId ||
-        booking.flightSegments?.[0]?.classId;
+        booking.travelClassId;
+
+      // Try to get flight and travel class info from different sources
+      console.log("🔍 Debug flight data:", {
+        selectedSegment,
+        targetSegment,
+        bookingFlightSegments: booking.flightSegments,
+        bookingFlightId: booking.flightId,
+        currentPassenger,
+        finalFlightId,
+        finalTravelClassId,
+      });
+
+      // Get available seats for the target segment
+      const segmentAvailableSeats = booking.availableSeats?.find(
+        (segment) => segment.segmentId === targetSegment?.segmentId
+      );
 
       console.log("🛩️ Attempting to load seats with:", {
         finalFlightId,
         finalTravelClassId,
+        selectedSegment,
+        targetSegment,
+        segmentAvailableSeats,
         booking,
         currentPassenger,
       });
@@ -308,7 +377,7 @@ const CheckInSeatSelection = ({
         setLoadingSeats(true);
         try {
           console.log(
-            "�️ Loading seats from API for flight:",
+            "🛩️ Loading seats from API for flight:",
             finalFlightId,
             "class:",
             finalTravelClassId
@@ -326,16 +395,33 @@ const CheckInSeatSelection = ({
               response.data
             );
 
-            // Mark seats as available based on booking.availableSeats
+            // Mark seats as available based on segment's availableSeats
             let processedSeats = response.data.map((seat) => ({
               ...seat,
               status:
-                booking.availableSeats &&
-                Array.isArray(booking.availableSeats) &&
-                booking.availableSeats.includes(seat.seatNumber)
+                segmentAvailableSeats &&
+                segmentAvailableSeats.availableSeats &&
+                segmentAvailableSeats.availableSeats.includes(seat.seatNumber)
                   ? "AVAILABLE"
                   : seat.status || "OCCUPIED",
             }));
+
+            // Ensure current seat is always included, even if not in API response
+            if (
+              currentSeat &&
+              !processedSeats.find((seat) => seat.seatNumber === currentSeat)
+            ) {
+              console.log("➕ Adding current seat to seats data:", currentSeat);
+              const currentSeatData = {
+                seatId: `current-${currentSeat}`, // Generate a temporary ID for current seat
+                seatNumber: currentSeat,
+                className: booking.travelClass || "Economy",
+                status: "AVAILABLE", // Always show current seat as available for reselection
+                seatType: getSeatTypeFromPosition(currentSeat),
+                travelClassId: finalTravelClassId,
+              };
+              processedSeats.push(currentSeatData);
+            }
 
             console.log(
               "✅ Processed seats with availability:",
@@ -368,13 +454,17 @@ const CheckInSeatSelection = ({
         }
       }
 
-      // Fallback: use availableSeats from booking data if API failed
-      if (booking.availableSeats && Array.isArray(booking.availableSeats)) {
+      // Fallback: use availableSeats from segment data if API failed
+      if (
+        segmentAvailableSeats &&
+        segmentAvailableSeats.availableSeats &&
+        Array.isArray(segmentAvailableSeats.availableSeats)
+      ) {
         console.log(
-          "� Using available seats from booking data as fallback:",
-          booking.availableSeats
+          "🪑 Using available seats from segment data as fallback:",
+          segmentAvailableSeats.availableSeats
         );
-        const fallbackSeats = booking.availableSeats.map(
+        const fallbackSeats = segmentAvailableSeats.availableSeats.map(
           (seatNumber, index) => ({
             seatId: null, // No real seatId for fallback data
             seatNumber: seatNumber,
@@ -384,6 +474,27 @@ const CheckInSeatSelection = ({
             travelClassId: finalTravelClassId,
           })
         );
+
+        // Ensure current seat is always included in fallback data
+        if (
+          currentSeat &&
+          !fallbackSeats.find((seat) => seat.seatNumber === currentSeat)
+        ) {
+          console.log(
+            "➕ Adding current seat to fallback seats data:",
+            currentSeat
+          );
+          const currentSeatData = {
+            seatId: `current-${currentSeat}`, // Generate a temporary ID for current seat
+            seatNumber: currentSeat,
+            className: booking.travelClass || "Economy",
+            status: "AVAILABLE", // Always show current seat as available for reselection
+            seatType: getSeatTypeFromPosition(currentSeat),
+            travelClassId: finalTravelClassId,
+          };
+          fallbackSeats.push(currentSeatData);
+        }
+
         setSeatsData(fallbackSeats);
 
         // Build seat type pricing
@@ -482,13 +593,9 @@ const CheckInSeatSelection = ({
     return "STANDARD";
   };
 
-  // Get available seats (AVAILABLE status) - Keep ALL seats as they have different className and seatType
-  // Always include current seat even if it's not AVAILABLE
-  const availableSeats = seatsData.filter((seat) => {
-    if (seat.status === "AVAILABLE") return true;
-    if (currentSeat && seat.seatNumber === currentSeat) return true;
-    return false;
-  });
+  // Get all seats from API data - Display ALL seats to show their actual status (AVAILABLE, BOOKED, OCCUPIED, etc.)
+  // This ensures users can see which seats are actually occupied in the database
+  const availableSeats = seatsData;
 
   // Get seat data from API data
   const getSeatData = (seatNumber) => {
@@ -640,10 +747,15 @@ const CheckInSeatSelection = ({
     onProceedToPayment(finalTotal, services, selectedSeat, paymentData);
   };
 
-  // Handle seat selection with change confirmation
   const handleSeatSelection = async (seatNumber, seatType, seatId) => {
-    // If selecting the same seat, do nothing
-    if (selectedSeat && selectedSeat.seatNumber === seatNumber) {
+    // Allow selecting the same seat to confirm selection
+    // Only skip if it's the same as currently selected AND no seat change is needed
+    if (
+      selectedSeat &&
+      selectedSeat.seatNumber === seatNumber &&
+      currentSeat === seatNumber
+    ) {
+      console.log("✅ Seat already selected and confirmed:", seatNumber);
       return;
     }
 
@@ -659,7 +771,7 @@ const CheckInSeatSelection = ({
       // Calculate seat change using API
       await calculateSeatChangeWithAPI(seatNumber, seatType, seatId);
     } else {
-      // No current seat or selecting the same seat - just select normally
+      // Selecting current seat or no current seat - just select normally
       console.log("✅ Normal seat selection:", seatNumber);
       onSelectSeat(seatNumber, seatType, seatId);
     }
@@ -679,8 +791,11 @@ const CheckInSeatSelection = ({
 
     setIsCalculating(true);
     try {
-      const currentPassenger =
-        booking.checkinEligiblePassengers?.[0] || booking.passengers?.[0];
+      const currentPassenger = selectedSegment
+        ? booking.checkinEligiblePassengers?.find(
+            (p) => p.segmentId === selectedSegment.segmentId
+          ) || booking.checkinEligiblePassengers?.[0]
+        : booking.checkinEligiblePassengers?.[0] || booking.passengers?.[0];
 
       // Prepare services to add (newly selected services)
       const servicesToAdd = ancillaryServices
@@ -716,6 +831,23 @@ const CheckInSeatSelection = ({
           seatId: newSeatId,
         });
         setSeatChangeCost(response.data.totalCharge || 0);
+
+        // If seat change is free (priceDifference is 0), just confirm the seat change
+        if (
+          response.data.totalCharge === 0 ||
+          response.data.priceDifference === 0
+        ) {
+          console.log(
+            "💰 Seat change is free, confirming seat change without payment"
+          );
+          // Select the seat and mark as confirmed
+          onSelectSeat(newSeatNumber, newSeatType, newSeatId);
+          setSeatChangeConfirmed(true);
+          // Don't proceed to check-in automatically - let user select services first
+          return;
+        }
+
+        // If seat change has cost, show confirmation dialog
         setShowSeatChangeDialog(true);
       } else {
         toast.error(
@@ -785,6 +917,13 @@ const CheckInSeatSelection = ({
 
   // Handle confirm check-in with seat change validation
   const handleConfirmCheckin = async () => {
+    // If seat change has already been confirmed, proceed directly to check-in
+    if (seatChangeConfirmed) {
+      console.log("✅ Seat change already confirmed, proceeding with check-in");
+      onConfirm();
+      return;
+    }
+
     // If user has selected a different seat from current seat, need to calculate seat change
     if (
       selectedSeat &&
@@ -819,7 +958,14 @@ const CheckInSeatSelection = ({
           <CardTitle className="flex items-center gap-2">
             <Plane className="w-5 h-5 text-blue-500" />
             Chọn chỗ ngồi -{" "}
-            {booking.flightSegments?.[0]?.flightNumber || booking.flight}
+            {selectedSegment?.flightNumber ||
+              booking.flightSegments?.[0]?.flightNumber ||
+              booking.flight}
+            {selectedSegment?.segmentOrder && (
+              <Badge variant="outline" className="ml-2">
+                Chuyến {selectedSegment.segmentOrder === 1 ? "Đi" : "Về"}
+              </Badge>
+            )}
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -836,14 +982,38 @@ const CheckInSeatSelection = ({
             <div>
               <p className="text-gray-600">Chuyến bay</p>
               <p className="font-medium">
-                {booking.flightSegments?.[0]?.flightNumber ||
+                {selectedSegment?.flightNumber ||
+                  booking.flightSegments?.[0]?.flightNumber ||
                   booking.flightNumber}{" "}
                 -{" "}
-                {booking.flightSegments?.[0]?.departureAirport?.airportCode ||
+                {selectedSegment?.departureAirport?.airportCode ||
+                  booking.flightSegments?.[0]?.departureAirport?.airportCode ||
                   booking.from}{" "}
                 →{" "}
-                {booking.flightSegments?.[0]?.arrivalAirport?.airportCode ||
+                {selectedSegment?.arrivalAirport?.airportCode ||
+                  booking.flightSegments?.[0]?.arrivalAirport?.airportCode ||
                   booking.to}
+              </p>
+              <p className="text-sm text-gray-500 mt-1">
+                {selectedSegment?.departureTime
+                  ? new Date(selectedSegment.departureTime).toLocaleString(
+                      "vi-VN"
+                    )
+                  : booking.flightSegments?.[0]?.departureTime
+                  ? new Date(
+                      booking.flightSegments[0].departureTime
+                    ).toLocaleString("vi-VN")
+                  : "N/A"}{" "}
+                -{" "}
+                {selectedSegment?.arrivalTime
+                  ? new Date(selectedSegment.arrivalTime).toLocaleString(
+                      "vi-VN"
+                    )
+                  : booking.flightSegments?.[0]?.arrivalTime
+                  ? new Date(
+                      booking.flightSegments[0].arrivalTime
+                    ).toLocaleString("vi-VN")
+                  : "N/A"}
               </p>
             </div>
             {currentSeat && (
@@ -873,57 +1043,80 @@ const CheckInSeatSelection = ({
           </CardHeader>
           <CardContent className="space-y-4">
             {/* Current Seat Information */}
-            {booking.seatTypeDetails?.length > 0 && (
-              <div>
-                <h4 className="font-semibold text-blue-800 mb-2 flex items-center gap-2">
-                  <Plane className="w-4 h-4" />
-                  Ghế Đã Chọn
-                </h4>
-                <div className="space-y-2">
-                  {booking.seatTypeDetails.map((seatDetail, index) => (
-                    <div
-                      key={index}
-                      className="flex justify-between items-center p-3 bg-white rounded-lg border"
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                          <span className="text-sm font-bold text-blue-600">
-                            {seatDetail.seatNumber}
-                          </span>
+            {(() => {
+              // For one-way bookings, show all seat details; for round-trip, filter by segment
+              const isOneWay = booking.flightSegments?.length === 1;
+              const filteredSeatDetails = isOneWay
+                ? booking.seatTypeDetails
+                : booking.seatTypeDetails?.filter(
+                    (seatDetail) =>
+                      seatDetail.segmentId === selectedSegment?.segmentId
+                  );
+
+              return (
+                filteredSeatDetails?.length > 0 && (
+                  <div>
+                    <h4 className="font-semibold text-blue-800 mb-2 flex items-center gap-2">
+                      <Plane className="w-4 h-4" />
+                      Ghế Đã Chọn
+                    </h4>
+                    <div className="space-y-2">
+                      {filteredSeatDetails.map((seatDetail, index) => (
+                        <div
+                          key={index}
+                          className="flex justify-between items-center p-3 bg-white rounded-lg border"
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                              <span className="text-sm font-bold text-blue-600">
+                                {seatDetail.seatNumber}
+                              </span>
+                            </div>
+                            <div>
+                              <p className="font-medium text-gray-800">
+                                {seatDetail.passengerName}
+                              </p>
+                              <p className="text-sm text-gray-600">
+                                {seatDetail.seatTypeDescription}
+                              </p>
+                              <p className="text-xs text-gray-500">
+                                Chuyến {seatDetail.segmentOrder}:{" "}
+                                {seatDetail.flightNumber}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <p className="font-bold text-blue-600">
+                              {seatDetail.additionalPrice > 0
+                                ? `+${formatCurrencyVND(
+                                    seatDetail.additionalPrice
+                                  )}`
+                                : "Miễn phí"}
+                            </p>
+                          </div>
                         </div>
-                        <div>
-                          <p className="font-medium text-gray-800">
-                            {seatDetail.passengerName}
-                          </p>
-                          <p className="text-sm text-gray-600">
-                            {seatDetail.seatTypeDescription}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <p className="font-bold text-blue-600">
-                          {seatDetail.additionalPrice > 0
-                            ? `+${formatCurrencyVND(
-                                seatDetail.additionalPrice
-                              )}`
-                            : "Miễn phí"}
-                        </p>
+                      ))}
+                    </div>
+                    <div className="mt-3 p-3 bg-blue-100 rounded-lg">
+                      <div className="flex justify-between items-center">
+                        <span className="font-medium text-blue-800">
+                          Tổng phí ghế:
+                        </span>
+                        <span className="font-bold text-blue-600">
+                          {formatCurrencyVND(
+                            filteredSeatDetails?.reduce(
+                              (total, seat) =>
+                                total + (seat.additionalPrice || 0),
+                              0
+                            ) || 0
+                          )}
+                        </span>
                       </div>
                     </div>
-                  ))}
-                </div>
-                <div className="mt-3 p-3 bg-blue-100 rounded-lg">
-                  <div className="flex justify-between items-center">
-                    <span className="font-medium text-blue-800">
-                      Tổng phí ghế:
-                    </span>
-                    <span className="font-bold text-blue-600">
-                      {formatCurrencyVND(booking.seatTypeAmount || 0)}
-                    </span>
                   </div>
-                </div>
-              </div>
-            )}
+                )
+              );
+            })()}
 
             {/* Ancillary Services Information */}
             {booking.ancillaryServices?.length > 0 && (
@@ -1035,6 +1228,10 @@ const CheckInSeatSelection = ({
               <span className="text-sm">Ghế hiện tại của bạn</span>
             </div>
             <div className="flex items-center gap-2">
+              <div className="w-4 h-4 bg-gray-600 border-2 border-gray-700 rounded"></div>
+              <span className="text-sm">Đã bị chiếm</span>
+            </div>
+            <div className="flex items-center gap-2">
               <div className="w-4 h-4 bg-yellow-400 border-2 border-yellow-500 rounded"></div>
               <span className="text-sm">Đang hover</span>
             </div>
@@ -1086,7 +1283,7 @@ const CheckInSeatSelection = ({
                     Sơ đồ chỗ ngồi máy bay
                   </h4>
                   <p className="text-sm text-gray-600">
-                    Ghế có sẵn ({availableSeats.length} ghế)
+                    Sơ đồ chỗ ngồi ({availableSeats.length} ghế)
                     {currentSeat && (
                       <span className="ml-2 text-green-600 font-medium">
                         • Ghế hiện tại: {currentSeat}
@@ -1173,7 +1370,10 @@ const CheckInSeatSelection = ({
                                         seatType: seat.seatType,
                                         seatId: seat.seatId,
                                       });
-                                      if (!seat.seatId) {
+                                      if (
+                                        !seat.seatId &&
+                                        currentSeat !== seat.seatNumber
+                                      ) {
                                         console.error(
                                           "❌ Missing seatId for seat:",
                                           seat.seatNumber
@@ -1238,7 +1438,10 @@ const CheckInSeatSelection = ({
                                         seatType: seat.seatType,
                                         seatId: seat.seatId,
                                       });
-                                      if (!seat.seatId) {
+                                      if (
+                                        !seat.seatId &&
+                                        currentSeat !== seat.seatNumber
+                                      ) {
                                         console.error(
                                           "❌ Missing seatId for seat:",
                                           seat.seatNumber
@@ -1601,6 +1804,7 @@ const CheckInSeatSelection = ({
           <Button
             onClick={handleProceedToPayment}
             className="flex-1 bg-orange-600 hover:bg-orange-700"
+            disabled={!selectedSeat && !currentSeat}
           >
             <CreditCard className="w-4 h-4 mr-2" />
             Tiếp tục thanh toán
@@ -1608,14 +1812,10 @@ const CheckInSeatSelection = ({
         ) : (
           <Button
             onClick={handleConfirmCheckin}
-            disabled={!currentSeat && !selectedSeat}
+            disabled={!selectedSeat}
             className="flex-1"
           >
-            {selectedSeat
-              ? "Xác nhận check-in"
-              : currentSeat
-              ? "Giữ ghế hiện tại"
-              : "Chọn ghế"}
+            {selectedSeat ? "Xác nhận check-in" : "Vui lòng chọn ghế"}
           </Button>
         )}
       </div>

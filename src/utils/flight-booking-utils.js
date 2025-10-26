@@ -101,6 +101,83 @@ export const FLIGHT_TYPE_NAMES = {
 };
 
 /**
+ * Hệ số giá theo loại hành khách (matching backend logic)
+ */
+export const PASSENGER_MULTIPLIERS = {
+  ADULT: 1.0, // 100% of base price
+  CHILD: 0.75, // 75% of base price
+  INFANT: 0.1, // 10% of base price
+};
+
+/**
+ * Get passenger type multiplier
+ * @param {string} passengerType - Loại hành khách
+ * @returns {number} - Hệ số nhân giá
+ */
+export const getPassengerMultiplier = (passengerType) => {
+  return PASSENGER_MULTIPLIERS[passengerType] || PASSENGER_MULTIPLIERS.ADULT;
+};
+
+/**
+ * Calculate total flight price for passengers with segment consideration
+ * @param {number} basePrice - Giá cơ bản cho 1 segment
+ * @param {Array} passengers - Danh sách hành khách
+ * @param {string} flightType - Loại chuyến bay (oneway, roundtrip, multi-city)
+ * @returns {number} - Tổng giá vé
+ */
+export const calculateFlightPrice = (
+  basePrice,
+  passengers,
+  flightType = "oneway"
+) => {
+  if (!basePrice || basePrice <= 0 || !passengers || passengers.length === 0)
+    return 0;
+
+  // For roundtrip flights, costs are multiplied by 2 (2 segments)
+  const segmentMultiplier =
+    flightType === "roundtrip" || flightType === "ROUND_TRIP" ? 2 : 1;
+
+  const passengerTotal = passengers.reduce((total, passenger) => {
+    const multiplier = getPassengerMultiplier(passenger.type);
+    return total + basePrice * multiplier;
+  }, 0);
+
+  return passengerTotal * segmentMultiplier;
+};
+
+/**
+ * Calculate baggage/service price with segment consideration
+ * @param {number} servicePrice - Giá dịch vụ cơ bản cho 1 segment
+ * @param {Array} passengers - Danh sách hành khách
+ * @param {string} flightType - Loại chuyến bay (oneway, roundtrip, multi-city)
+ * @returns {number} - Tổng giá dịch vụ
+ */
+export const calculateExtraServicePrice = (
+  servicePrice,
+  passengers,
+  flightType = "oneway"
+) => {
+  if (
+    !servicePrice ||
+    servicePrice <= 0 ||
+    !passengers ||
+    passengers.length === 0
+  )
+    return 0;
+
+  // For roundtrip flights, baggage/services are also multiplied by segments
+  const segmentMultiplier =
+    flightType === "roundtrip" || flightType === "ROUND_TRIP" ? 2 : 1;
+
+  const passengerTotal = passengers.reduce((total, passenger) => {
+    const multiplier = getPassengerMultiplier(passenger.type);
+    return total + servicePrice * multiplier;
+  }, 0);
+
+  return passengerTotal * segmentMultiplier;
+};
+
+/**
  * Tính giá vé dựa trên loại ghế và hành khách
  * @param {number} basePrice - Giá cơ bản
  * @param {string} seatClass - Loại ghế
@@ -130,22 +207,9 @@ export const calculateTicketPrice = (basePrice, seatClass, passengerType) => {
       multiplier = 1;
   }
 
-  // Hệ số theo loại hành khách
-  switch (passengerType) {
-    case PASSENGER_TYPES.ADULT:
-      // Người lớn trả đầy giá
-      break;
-    case PASSENGER_TYPES.CHILD:
-      // Trẻ em 75% giá người lớn
-      multiplier *= 0.75;
-      break;
-    case PASSENGER_TYPES.INFANT:
-      // Em bé 10% giá người lớn
-      multiplier *= 0.1;
-      break;
-    default:
-      break;
-  }
+  // Hệ số theo loại hành khách (sử dụng function thống nhất)
+  const passengerMultiplier = getPassengerMultiplier(passengerType);
+  multiplier *= passengerMultiplier;
 
   return Math.round(basePrice * multiplier);
 };

@@ -21,6 +21,16 @@ import { toast } from "sonner";
 import PropTypes from "prop-types";
 import { processExtrasDataForBooking } from "@/components/section/flight/extras-section";
 import { formatCurrencyVND, formatDateTimeVN } from "@/utils/currency-utils";
+import { getPassengerMultiplier } from "@/utils/flight-booking-utils";
+
+// Baggage packages definition (matching extras-section)
+const BAGGAGE_PACKAGES = {
+  NONE: { weight: 0, price: 0, label: "Không chọn" },
+  KG_15: { weight: 15, price: 200000, label: "15kg" },
+  KG_20: { weight: 20, price: 300000, label: "20kg" },
+  KG_25: { weight: 25, price: 400000, label: "25kg" },
+  KG_30: { weight: 30, price: 500000, label: "30kg" },
+};
 
 // Helper functions
 const calculateDuration = (departureDateTime, arrivalDateTime) => {
@@ -250,44 +260,26 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
     loadPointsData();
   }, [user]);
 
-  // Calculate totals from real data
+  // Calculate totals from real data - FIXED: Base price is adult price for the journey
   const calculatePassengerTotal = () => {
-    // For round-trip, use flight.totalPrice; for one-way, calculate from fare
-    if (flight?.isRoundTrip || flight?.type === "ROUND_TRIP") {
-      return flight.totalPrice || 0;
-    }
+    // fare.price is the adult price for the entire journey (including all segments)
+    const baseAdultPrice = fare?.price || fare?.basePrice || 0;
 
-    // One-way flight calculation
-    const basePrice = fare?.price || fare?.basePrice || 0;
     return formData.passengers.reduce((total, p) => {
-      const discountedPrice =
-        p.type === "CHILD"
-          ? basePrice * 0.75
-          : p.type === "INFANT"
-          ? basePrice * 0.1
-          : basePrice;
-      return total + discountedPrice;
+      const multiplier = getPassengerMultiplier(p.type);
+      return total + baseAdultPrice * multiplier;
     }, 0);
   };
 
   // Calculate total amount by summing all components
   const totalAmount = () => {
-    // Base passenger price
-    let passengerTotal = 0;
-    if (flight?.isRoundTrip || flight?.type === "ROUND_TRIP") {
-      passengerTotal = flight.totalPrice || 0;
-    } else {
-      const basePrice = fare?.price || fare?.basePrice || 0;
-      passengerTotal = formData.passengers.reduce((total, p) => {
-        const discountedPrice =
-          p.type === "CHILD"
-            ? basePrice * 0.75
-            : p.type === "INFANT"
-            ? basePrice * 0.1
-            : basePrice;
-        return total + discountedPrice;
-      }, 0);
-    }
+    // Base passenger price - fare.price is adult price for entire journey
+    const baseAdultPrice = fare?.price || fare?.basePrice || 0;
+
+    const passengerTotal = formData.passengers.reduce((total, p) => {
+      const multiplier = getPassengerMultiplier(p.type);
+      return total + baseAdultPrice * multiplier;
+    }, 0);
 
     // Add extras
     const seatTotal = extrasData?.seatTotal || 0;
@@ -630,6 +622,7 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
 
       // Check if this is round-trip or multi-city
       const isRoundTripFlight =
+        selectedFlight.returnFlight !== undefined ||
         selectedFlight.return !== undefined ||
         selectedFlight.type === "ROUND_TRIP";
       const isMultiCityFlight = selectedFlight.type === "MULTI_CITY";
@@ -639,6 +632,7 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
         isMultiCityFlight,
         selectedFlightType: selectedFlight.type,
         hasReturnProperty: !!selectedFlight.return,
+        hasReturnFlightProperty: !!selectedFlight.returnFlight,
         selectedFlight: selectedFlight,
       });
 
@@ -804,13 +798,18 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
       hasFlight: !!selectedFlight.flight,
       hasReturn: !!selectedFlight.return,
       hasOutbound: !!selectedFlight.outbound,
+      hasReturnFlight: !!selectedFlight.returnFlight,
+      hasOutboundFlight: !!selectedFlight.outboundFlight,
       type: selectedFlight.type,
     });
 
     try {
-      // Handle different selectedFlight structures
-      const outboundFlight = selectedFlight.flight || selectedFlight.outbound;
-      const returnFlight = selectedFlight.return;
+      // Handle different selectedFlight structures - prioritize outboundFlight/returnFlight
+      const outboundFlight =
+        selectedFlight.outboundFlight ||
+        selectedFlight.flight ||
+        selectedFlight.outbound;
+      const returnFlight = selectedFlight.returnFlight || selectedFlight.return;
 
       console.log("✈️ Flight objects extracted:", {
         outboundFlight,
@@ -1556,6 +1555,9 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
         (localStorageFlight?.outboundFlight && localStorageFlight?.returnFlight
           ? true
           : false) ||
+        (selectedFlight?.outboundFlight && selectedFlight?.returnFlight
+          ? true
+          : false) ||
         (selectedFlight?.outbound && selectedFlight?.return ? true : false);
 
       // Debug flight type detection
@@ -1607,14 +1609,13 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
           // For multi-city, baggage is stored per segment, but we'll use the first segment's selection
           // Or you could modify this logic based on your requirements
           const firstSegmentBaggage =
-            extrasData?.multiCityBaggage?.segment0?.[`passenger${index + 1}`];
+            extrasData?.multiCityBaggage?.segment0?.[`passenger_${index}`];
           return firstSegmentBaggage && firstSegmentBaggage !== "NONE"
             ? firstSegmentBaggage
             : null;
         } else {
-          // For regular flights, baggage is now stored as package key
-          const passengerBaggage =
-            extrasData?.baggage?.[`passenger${index + 1}`];
+          // For regular flights, baggage is now stored as package key per passenger
+          const passengerBaggage = extrasData?.baggage?.[`passenger_${index}`];
           return passengerBaggage && passengerBaggage !== "NONE"
             ? passengerBaggage
             : null;
@@ -1707,16 +1708,19 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
         ((flight.outboundFlight && flight.returnFlight) ||
           (localStorageFlight.outboundFlight &&
             localStorageFlight.returnFlight) ||
+          (selectedFlight.outboundFlight && selectedFlight.returnFlight) ||
           (selectedFlight.outbound && selectedFlight.return))
       ) {
         // Round-trip flights - use localStorage data if flight prop is incomplete
         const outboundData =
           flight.outboundFlight ||
           localStorageFlight.outboundFlight ||
+          selectedFlight.outboundFlight ||
           selectedFlight.outbound;
         const returnData =
           flight.returnFlight ||
           localStorageFlight.returnFlight ||
+          selectedFlight.returnFlight ||
           selectedFlight.return;
 
         console.log("Creating ROUND-TRIP segments with data:", {
@@ -1939,7 +1943,9 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
                 flightData.flightId ||
                 flight.id ||
                 flight.flightId ||
+                selectedFlight.outboundFlight?.id ||
                 selectedFlight.outbound?.id ||
+                selectedFlight.outboundFlight?.flightId ||
                 selectedFlight.outbound?.flightId ||
                 0
             ),
@@ -2705,7 +2711,7 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
                 ? flight?.flightNumber ||
                   `Multi-City (${flight?.legs?.length || 0} chặng)`
                 : flight?.isRoundTrip || flight?.type === "ROUND_TRIP"
-                ? `${flight.outbound?.flightNumber} / ${flight.return?.flightNumber}`
+                ? `${flight.outboundFlight?.flightNumber} / ${flight.returnFlight?.flightNumber}`
                 : flight?.flightNumber || "N/A"}
             </p>
           </div>
@@ -2872,21 +2878,21 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
                           <p className="font-semibold">
                             {flight?.isRoundTrip ||
                             flight?.type === "ROUND_TRIP"
-                              ? flight.outbound?.departureTime
+                              ? flight.outboundFlight?.departureTime
                               : flight?.flight.departureTime}
                           </p>
                           <p className="text-sm">
                             {flight?.isRoundTrip ||
                             flight?.type === "ROUND_TRIP"
-                              ? flight.outbound?.departureAirport
-                                  ?.airportName || flight.outbound?.from
+                              ? flight.outboundFlight?.departureAirport
+                                  ?.airportName || flight.outboundFlight?.from
                               : flight?.flight.departureAirport?.airportName ||
                                 "N/A"}
                           </p>
                           <p className="text-xs text-gray-500">
                             {flight?.isRoundTrip ||
                             flight?.type === "ROUND_TRIP"
-                              ? flight.outbound?.departureDate
+                              ? flight.outboundFlight?.departureDate
                               : flight?.flight.departureDate}
                           </p>
                         </div>
@@ -2895,13 +2901,13 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
                           <p className="text-xs text-gray-500">
                             {flight?.isRoundTrip ||
                             flight?.type === "ROUND_TRIP"
-                              ? `${flight.outbound?.duration} phút`
+                              ? `${flight.outboundFlight?.duration} phút`
                               : `${flight?.flight.duration} phút`}
                           </p>
                           <p className="text-xs text-gray-500">
                             {flight?.isRoundTrip ||
                             flight?.type === "ROUND_TRIP"
-                              ? flight.outbound?.flightNumber
+                              ? flight.outboundFlight?.flightNumber
                               : flight?.flight.flightNumber}
                           </p>
                         </div>
@@ -2909,21 +2915,21 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
                           <p className="font-semibold">
                             {flight?.isRoundTrip ||
                             flight?.type === "ROUND_TRIP"
-                              ? flight.outbound?.arrivalTime
+                              ? flight.outboundFlight?.arrivalTime
                               : flight?.flight.arrivalTime}
                           </p>
                           <p className="text-sm">
                             {flight?.isRoundTrip ||
                             flight?.type === "ROUND_TRIP"
-                              ? flight.outbound?.arrivalAirport?.airportName ||
-                                flight.outbound?.to
+                              ? flight.outboundFlight?.arrivalAirport
+                                  ?.airportName || flight.outboundFlight?.to
                               : flight?.flight.arrivalAirport?.airportName ||
                                 "N/A"}
                           </p>
                           <p className="text-xs text-gray-500">
                             {flight?.isRoundTrip ||
                             flight?.type === "ROUND_TRIP"
-                              ? flight.outbound?.arrivalDate
+                              ? flight.outboundFlight?.arrivalDate
                               : flight?.flight.arrivalDate}
                           </p>
                         </div>
@@ -2933,7 +2939,8 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
                           Hãng bay:{" "}
                           {flight?.isRoundTrip || flight?.type === "ROUND_TRIP"
                             ? getAirlineDisplayName(
-                                flight.outbound?.airline || flight.outbound
+                                flight.outboundFlight?.airline ||
+                                  flight.outbound
                               )
                             : getAirlineDisplayName(flight?.airline || flight)}
                         </p>
@@ -2941,8 +2948,7 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
                           Máy bay:{" "}
                           {flight?.isRoundTrip || flight?.type === "ROUND_TRIP"
                             ? getAircraftDisplayName(
-                                flight.outbound?.aircraft ||
-                                  flight.outbound?.aircraftName,
+                                flight.outboundFlight?.aircraft?.aircraftName,
                                 flight
                               )
                             : getAircraftDisplayName(
@@ -2953,7 +2959,7 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
                         <p>
                           Hạng vé:{" "}
                           {flight?.isRoundTrip || flight?.type === "ROUND_TRIP"
-                            ? flight.outbound?.selectedClass.travelClass
+                            ? flight.outboundFlight?.selectedClass.travelClass
                                 ?.className
                             : fare?.travelClass?.className}
                         </p>
@@ -2965,7 +2971,7 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
 
               {/* Return Flight */}
               {(flight?.isRoundTrip || flight?.type === "ROUND_TRIP") &&
-                flight.return && (
+                flight.returnFlight && (
                   <div>
                     <div className="flex items-center justify-between mb-3">
                       <h4 className="font-semibold text-green-800">
@@ -2985,33 +2991,36 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
                         <div className="grid grid-cols-3 gap-4 items-center">
                           <div>
                             <p className="font-semibold">
-                              {flight.return?.departureTime}
+                              {flight.returnFlight?.departureTime}
                             </p>
                             <p className="text-sm">
-                              {flight.return?.departureAirport.airportName}
+                              {
+                                flight.returnFlight?.departureAirport
+                                  .airportName
+                              }
                             </p>
                             <p className="text-xs text-gray-500">
-                              {flight.return?.departureDate}
+                              {flight.returnFlight?.departureDate}
                             </p>
                           </div>
                           <div className="text-center">
                             <div className="w-full h-0.5 bg-gray-300 mb-1"></div>
                             <p className="text-xs text-gray-500">
-                              {flight.return?.duration} phút
+                              {flight.returnFlight?.duration} phút
                             </p>
                             <p className="text-xs text-gray-500">
-                              {flight.return?.flightNumber}
+                              {flight.returnFlight?.flightNumber}
                             </p>
                           </div>
                           <div className="text-right">
                             <p className="font-semibold">
-                              {flight.return?.arrivalTime}
+                              {flight.returnFlight?.arrivalTime}
                             </p>
                             <p className="text-sm">
-                              {flight.return?.arrivalAirport?.airportName}
+                              {flight.returnFlight?.arrivalAirport?.airportName}
                             </p>
                             <p className="text-xs text-gray-500">
-                              {flight.return?.arrivalDate}
+                              {flight.returnFlight?.arrivalDate}
                             </p>
                           </div>
                         </div>
@@ -3019,18 +3028,18 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
                           <p>
                             Hãng bay:{" "}
                             {getAirlineDisplayName(
-                              flight.return?.airline || flight.return
+                              flight.returnFlight?.airline || flight.return
                             )}
                           </p>
                           <p>
                             Máy bay:{" "}
-                            {flight.return?.aircraft ||
-                              flight.return?.aircraftName}
+                            {flight.returnFlight?.aircraft?.aircraftName ||
+                              "N/A"}
                           </p>
                           <p>
                             Hạng vé:{" "}
                             {
-                              flight.return?.selectedClass.travelClass
+                              flight.returnFlight?.selectedClass.travelClass
                                 ?.className
                             }
                           </p>
@@ -3326,22 +3335,27 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
                       const baggagePackage =
                         extrasData?.baggage?.[`passenger${index + 1}`];
                       if (baggagePackage && baggagePackage !== "NONE") {
-                        const packageInfo = {
-                          KG_15: "15kg",
-                          KG_20: "20kg",
-                          KG_25: "25kg",
-                          KG_30: "30kg",
-                        }[baggagePackage];
+                        const packageInfo = BAGGAGE_PACKAGES[baggagePackage];
                         return (
                           <div
                             key={index}
-                            className="flex justify-between text-sm"
+                            className="flex justify-between items-center text-sm py-1"
                           >
-                            <span>
-                              {passenger.firstName} {passenger.lastName}:
-                            </span>
-                            <span className="text-green-600 font-medium">
-                              {packageInfo}
+                            <div className="flex-1">
+                              <span className="font-medium">
+                                {passenger.firstName || passenger.lastName
+                                  ? `${passenger.firstName || ""} ${
+                                      passenger.lastName || ""
+                                    }`.trim()
+                                  : `Hành khách ${index + 1}`}
+                                :
+                              </span>
+                              <span className="text-green-600 font-medium ml-1">
+                                Gói {packageInfo.label}
+                              </span>
+                            </div>
+                            <span className="text-blue-600 font-medium">
+                              {formatCurrencyVND(packageInfo.price)}
                             </span>
                           </div>
                         );
@@ -3349,6 +3363,14 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
                       return null;
                     })
                     .filter(Boolean)}
+                  {extrasData?.baggageTotal > 0 && (
+                    <div className="flex justify-between text-sm font-semibold border-t pt-2 mt-2">
+                      <span>Tổng hành lý:</span>
+                      <span className="text-blue-600">
+                        {formatCurrencyVND(extrasData.baggageTotal)}
+                      </span>
+                    </div>
+                  )}
                   {!formData.passengers.some((_, index) => {
                     const baggage =
                       extrasData?.baggage?.[`passenger${index + 1}`];
@@ -3449,8 +3471,8 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
                         Chuyến bay chiều đi
                       </p>
                       <p className="text-gray-600">
-                        {flight.outbound?.departureAirport?.code} →{" "}
-                        {flight.outbound?.arrivalAirport?.code}
+                        {flight.outboundFlight?.departureAirport?.code} →{" "}
+                        {flight.outboundFlight?.arrivalAirport?.code}
                       </p>
                       <p className="text-gray-600">
                         {flight.selectedOutboundFare?.travelClass?.className}
@@ -3461,8 +3483,8 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
                         Chuyến bay chiều về
                       </p>
                       <p className="text-gray-600">
-                        {flight.return?.departureAirport?.code} →{" "}
-                        {flight.return?.arrivalAirport?.code}
+                        {flight.returnFlight?.departureAirport?.code} →{" "}
+                        {flight.returnFlight?.arrivalAirport?.code}
                       </p>
                       <p className="text-gray-600">
                         {flight.selectedReturnFare?.travelClass?.className}
@@ -3565,12 +3587,12 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
                         ]) && (
                         <span className="text-xs text-blue-500">
                           {flight?.aircraft ||
-                            flight?.outbound?.aircraft ||
+                            flight?.outboundFlight?.aircraft?.aircraftName ||
                             flight?.flight?.aircraft ||
                             "N/A"}{" "}
                           |{" "}
                           {flight?.seatLayout ||
-                            flight?.outbound?.seatLayout ||
+                            flight?.outboundFlight?.seatLayout ||
                             flight?.flight?.seatLayout ||
                             "N/A"}
                         </span>
@@ -3594,22 +3616,27 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
                         const baggagePackage =
                           extrasData.baggage[`passenger${index + 1}`];
                         if (baggagePackage && baggagePackage !== "NONE") {
-                          const packageInfo = {
-                            KG_15: "15kg",
-                            KG_20: "20kg",
-                            KG_25: "25kg",
-                            KG_30: "30kg",
-                          }[baggagePackage];
+                          const packageInfo = BAGGAGE_PACKAGES[baggagePackage];
                           return (
                             <div
                               key={index}
-                              className="flex justify-between text-sm"
+                              className="flex justify-between items-center text-sm py-1"
                             >
-                              <span className="text-gray-600">
-                                {passenger.firstName} {passenger.lastName}
-                              </span>
+                              <div className="flex-1">
+                                <span className="text-gray-600">
+                                  {passenger.firstName || passenger.lastName
+                                    ? `${passenger.firstName || ""} ${
+                                        passenger.lastName || ""
+                                      }`.trim()
+                                    : `Hành khách ${index + 1}`}
+                                  :
+                                </span>
+                                <span className="text-green-600 font-medium ml-1">
+                                  Gói {packageInfo.label}
+                                </span>
+                              </div>
                               <span className="text-blue-600 font-medium">
-                                {packageInfo}
+                                {formatCurrencyVND(packageInfo.price)}
                               </span>
                             </div>
                           );
@@ -3617,6 +3644,12 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
                         return null;
                       })
                       .filter(Boolean)}
+                    <div className="flex justify-between text-sm font-semibold border-t pt-2 mt-2">
+                      <span>Tổng hành lý:</span>
+                      <span className="text-blue-600">
+                        {formatCurrencyVND(extrasData.baggageTotal || 0)}
+                      </span>
+                    </div>
                   </div>
                 )}
 
@@ -3624,18 +3657,18 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
 
               {/* Passengers */}
               {flight?.isRoundTrip || flight?.type === "ROUND_TRIP" ? (
-                // Round-trip pricing - try to break down by segment if available
+                // Round-trip pricing - show detailed breakdown
                 <div className="space-y-1 mb-2">
                   {flight.outboundFlight && flight.returnFlight ? (
-                    // If we have separate flight data, show breakdown
+                    // If we have separate flight data, show detailed breakdown
                     <>
                       <div className="flex justify-between text-sm">
                         <span>
-                          {formData.passengers.length} hành khách (Chiều đi)
+                          {formData.passengers.length} hành khách × Chiều đi
                         </span>
                         <span>
                           {formatCurrencyVND(
-                            flight.outboundFlight.totalPrice ||
+                            flight.outboundFlight?.selectedClass?.price ||
                               flight.totalPrice / 2 ||
                               0
                           )}
@@ -3643,11 +3676,11 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
                       </div>
                       <div className="flex justify-between text-sm">
                         <span>
-                          {formData.passengers.length} hành khách (Chiều về)
+                          {formData.passengers.length} hành khách × Chiều về
                         </span>
                         <span>
                           {formatCurrencyVND(
-                            flight.returnFlight.totalPrice ||
+                            flight.returnFlight.selectedClass.price ||
                               flight.totalPrice / 2 ||
                               0
                           )}
@@ -3655,41 +3688,62 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
                       </div>
                     </>
                   ) : (
-                    // Fallback to total price
+                    // Fallback to total price with passenger count
                     <div className="flex justify-between text-sm">
                       <span>
-                        {formData.passengers.length} hành khách (Khứ hồi)
+                        {formData.passengers.length} hành khách × Khứ hồi (2
+                        chặng)
                       </span>
                       <span>{formatCurrencyVND(flight.totalPrice || 0)}</span>
                     </div>
                   )}
                 </div>
               ) : (
-                // One-way pricing calculated per passenger
-                formData.passengers.map((passenger, index) => {
-                  const basePrice = fare?.price || fare?.basePrice || 0;
-                  const discountedPrice =
-                    passenger.type === "CHILD"
-                      ? basePrice * 0.75
-                      : passenger.type === "INFANT"
-                      ? basePrice * 0.1
-                      : basePrice;
-                  return (
-                    <div
-                      key={index}
-                      className="flex justify-between text-sm mb-2"
-                    >
-                      <span>
-                        {passenger.type === "ADULT"
-                          ? "Người lớn"
-                          : passenger.type === "CHILD"
-                          ? "Trẻ em"
-                          : "Em bé"}
-                      </span>
-                      <span>{formatCurrencyVND(discountedPrice)}</span>
-                    </div>
+                // One-way pricing calculated per passenger type
+                (() => {
+                  const passengerCounts = formData.passengers.reduce(
+                    (counts, passenger) => {
+                      counts[passenger.type] =
+                        (counts[passenger.type] || 0) + 1;
+                      return counts;
+                    },
+                    {}
                   );
-                })
+
+                  const baseAdultPrice = fare?.price || fare?.basePrice || 0;
+                  const isRoundTrip =
+                    flight?.isRoundTrip || flight?.type === "ROUND_TRIP";
+
+                  return Object.entries(passengerCounts).map(
+                    ([type, count]) => {
+                      const multiplier = getPassengerMultiplier(type);
+                      const pricePerPassenger = baseAdultPrice * multiplier;
+                      const totalPrice = pricePerPassenger * count;
+
+                      const typeLabel =
+                        type === "ADULT"
+                          ? "Người lớn"
+                          : type === "CHILD"
+                          ? "Trẻ em"
+                          : "Em bé";
+
+                      const segmentText = isRoundTrip ? " (khứ hồi)" : "";
+
+                      return (
+                        <div
+                          key={type}
+                          className="flex justify-between text-sm mb-2"
+                        >
+                          <span>
+                            {count} {typeLabel}
+                            {segmentText}
+                          </span>
+                          <span>{formatCurrencyVND(totalPrice)}</span>
+                        </div>
+                      );
+                    }
+                  );
+                })()
               )}
 
               {/* Extras */}
@@ -3712,11 +3766,72 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
                 Object.values(extrasData.baggage).some(
                   (bag) => bag.firstBag > 0 || bag.secondBag > 0
                 ) && (
-                  <div className="flex justify-between text-sm mb-2">
-                    <span>Hành lý</span>
-                    <span>
-                      {formatCurrencyVND(extrasData.baggageTotal || 0)}
-                    </span>
+                  <div className="space-y-1 mb-2">
+                    <div className="flex justify-between text-sm">
+                      <span className="font-medium">🧳 Hành lý</span>
+                      <span className="font-medium">
+                        {formatCurrencyVND(extrasData.baggageTotal || 0)}
+                      </span>
+                    </div>
+                    {/* Baggage breakdown by passenger */}
+                    <div className="ml-4 space-y-1">
+                      {Object.entries(extrasData.baggage).map(
+                        ([passengerKey, baggageInfo], index) => {
+                          if (!baggageInfo.firstBag && !baggageInfo.secondBag)
+                            return null;
+
+                          const passengerIndex = parseInt(
+                            passengerKey.replace("passenger_", "")
+                          );
+                          const passenger = formData.passengers[passengerIndex];
+                          const passengerName = passenger
+                            ? `${passenger.firstName} ${passenger.lastName}`.trim()
+                            : `Hành khách ${passengerIndex + 1}`;
+
+                          const segmentCount =
+                            flight?.isRoundTrip || flight?.type === "ROUND_TRIP"
+                              ? 2
+                              : 1;
+
+                          let baggageItems = [];
+                          if (baggageInfo.firstBag > 0) {
+                            const totalPrice =
+                              baggageInfo.firstBag * segmentCount;
+                            baggageItems.push(
+                              `${
+                                baggageInfo.firstBagWeight
+                              }kg (${formatCurrencyVND(totalPrice)})`
+                            );
+                          }
+                          if (baggageInfo.secondBag > 0) {
+                            const totalPrice =
+                              baggageInfo.secondBag * segmentCount;
+                            baggageItems.push(
+                              `${
+                                baggageInfo.secondBagWeight
+                              }kg (${formatCurrencyVND(totalPrice)})`
+                            );
+                          }
+
+                          return (
+                            <div
+                              key={passengerKey}
+                              className="text-xs text-gray-600"
+                            >
+                              <span className="font-medium">
+                                {passengerName}:
+                              </span>{" "}
+                              {baggageItems.join(" + ")}
+                              {segmentCount > 1 && (
+                                <span className="text-orange-600 ml-1">
+                                  (× {segmentCount} chặng)
+                                </span>
+                              )}
+                            </div>
+                          );
+                        }
+                      )}
+                    </div>
                   </div>
                 )}
 
@@ -3743,8 +3858,38 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
                             }`.trim()
                           : "Toàn booking";
 
-                        const totalPrice =
-                          (serviceInfo?.price || 0) * (service.quantity || 1);
+                        // Calculate total price considering segments and passengers correctly
+                        const segmentCount =
+                          flight?.isRoundTrip || flight?.type === "ROUND_TRIP"
+                            ? 2
+                            : 1;
+                        const isPerSegment = serviceInfo?.isPerSegment;
+                        const isPerPassenger = serviceInfo?.isPerPassenger;
+                        const basePrice = serviceInfo?.price || 0;
+                        const quantity = service.quantity || 1;
+                        const hasSpecificPassenger =
+                          service.passengerId !== null &&
+                          service.passengerId !== undefined;
+
+                        let totalPrice = basePrice * quantity;
+
+                        if (hasSpecificPassenger) {
+                          // Dịch vụ cho 1 hành khách cụ thể - chỉ nhân với segment nếu isPerSegment = true
+                          if (isPerSegment) {
+                            totalPrice *= segmentCount;
+                          }
+                        } else {
+                          // Dịch vụ cho toàn booking
+                          // Nhân với số hành khách nếu isPerPassenger = true
+                          if (isPerPassenger) {
+                            totalPrice *= formData.passengers.length;
+                          }
+
+                          // Nhân với số chặng nếu isPerSegment = true
+                          if (isPerSegment) {
+                            totalPrice *= segmentCount;
+                          }
+                        }
 
                         return (
                           <div key={index} className="ml-4 space-y-1">
@@ -3752,8 +3897,29 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
                               <span className="text-gray-600">
                                 {serviceInfo?.serviceName ||
                                   `Dịch vụ ${service.serviceId}`}
-                                {service.quantity > 1 &&
-                                  ` (x${service.quantity})`}
+                                {quantity > 1 && ` (×${quantity})`}
+                                {hasSpecificPassenger &&
+                                  isPerSegment &&
+                                  segmentCount > 1 && (
+                                    <span className="text-orange-600">
+                                      {" "}
+                                      (×{segmentCount} chặng)
+                                    </span>
+                                  )}
+                                {!hasSpecificPassenger && isPerPassenger && (
+                                  <span className="text-blue-600">
+                                    {" "}
+                                    (×{formData.passengers.length} người)
+                                  </span>
+                                )}
+                                {!hasSpecificPassenger &&
+                                  isPerSegment &&
+                                  segmentCount > 1 && (
+                                    <span className="text-orange-600">
+                                      {" "}
+                                      (×{segmentCount} chặng)
+                                    </span>
+                                  )}
                               </span>
                               <span className="font-medium">
                                 {formatCurrencyVND(totalPrice)}
@@ -3761,6 +3927,17 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
                             </div>
                             <div className="text-xs text-gray-500 ml-2">
                               {passengerName}
+                              {hasSpecificPassenger
+                                ? isPerSegment
+                                  ? " - Tính theo chặng cho hành khách này"
+                                  : " - Dịch vụ cho hành khách này"
+                                : isPerPassenger && isPerSegment
+                                ? " - Tính theo hành khách và chặng"
+                                : isPerPassenger
+                                ? " - Tính theo số hành khách"
+                                : isPerSegment
+                                ? " - Tính theo chặng"
+                                : " - Giá cố định cho booking"}
                               {service.notes && ` - ${service.notes}`}
                             </div>
                           </div>

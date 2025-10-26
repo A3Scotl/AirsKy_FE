@@ -33,22 +33,38 @@ const steps = [
 import { formatCurrencyVND } from "@/utils/currency-utils";
 
 const FlightInfo = ({ flightDetails, fare }) => {
-  // Helper to get airport code
+  // Debug logging
+  console.log("🔍 FlightInfo received data:", flightDetails);
+  console.log("🔍 FlightInfo fare:", fare);
+
+  // Helper to get airport code - aligned with result-section.jsx structure
   const getAirportCode = (airport) => {
     if (!airport) return "N/A";
-    return airport.airportCode || airport.code || "N/A";
+    return airport.code || airport.airportCode || "N/A";
   };
 
-  // Helper to get airport name
+  // Helper to get airport name - aligned with result-section.jsx structure
   const getAirportName = (airport) => {
     if (!airport) return "N/A";
-    return airport.airportName || airport.name || "N/A";
+    return airport.name || airport.airportName || airport.city || "N/A";
   };
   // Check flight type
-  const isRoundTrip = flightDetails.type === "ROUND_TRIP";
+  const isRoundTrip =
+    flightDetails.type === "ROUND_TRIP" ||
+    flightDetails.tripType === "ROUND_TRIP";
   const isMultiCity =
     flightDetails.type === "MULTI_CITY" ||
     flightDetails.tripType === "MULTI_CITY";
+
+  // Debug round-trip structure
+  if (isRoundTrip) {
+    console.log("🔍 Round-trip flight structure:", {
+      hasOutbound: !!flightDetails.outbound,
+      hasOutboundFlight: !!flightDetails.outboundFlight,
+      hasReturn: !!flightDetails.return,
+      hasReturnFlight: !!flightDetails.returnFlight,
+    });
+  }
 
   if (isMultiCity && (flightDetails.legs || flightDetails.multiCity?.legs)) {
     // Multi-city display - handle both new and old data structures
@@ -59,7 +75,9 @@ const FlightInfo = ({ flightDetails, fare }) => {
       legs.length;
     const routeInfo =
       legs.map((leg) => getAirportCode(leg.departureAirport)).join(" → ") +
-      (legs.length > 0 ? ` → ${getAirportCode(legs[legs.length - 1].arrivalAirport)}` : "");
+      (legs.length > 0
+        ? ` → ${getAirportCode(legs[legs.length - 1].arrivalAirport)}`
+        : "");
 
     return (
       <div className="my-6 sm:my-8 space-y-4">
@@ -101,10 +119,12 @@ const FlightInfo = ({ flightDetails, fare }) => {
               </div>
               <div className="text-sm space-y-1">
                 <div className="font-medium">
-                  {getAirportCode(leg.departureAirport)} → {getAirportCode(leg.arrivalAirport)}
+                  {getAirportCode(leg.departureAirport)} →{" "}
+                  {getAirportCode(leg.arrivalAirport)}
                 </div>
                 <div className="text-gray-600">
-                  {getAirportName(leg.departureAirport)} → {getAirportName(leg.arrivalAirport)}
+                  {getAirportName(leg.departureAirport)} →{" "}
+                  {getAirportName(leg.arrivalAirport)}
                 </div>
                 <div className="text-gray-600">
                   {leg.departureDate || "N/A"}
@@ -140,8 +160,20 @@ const FlightInfo = ({ flightDetails, fare }) => {
     );
   }
 
-  if (isRoundTrip && flightDetails.outbound && flightDetails.return) {
-    // Round-trip display
+  // Handle round-trip with the EXACT structure from result-section.jsx
+  if (
+    isRoundTrip &&
+    flightDetails.outboundFlight &&
+    flightDetails.returnFlight
+  ) {
+    // Use exact field names from result-section.jsx: outboundFlight & returnFlight
+    const outbound = flightDetails.outboundFlight;
+    const returnFlight = flightDetails.returnFlight;
+
+    console.log("🔥 Round-trip detected!");
+    console.log("🔥 Outbound data:", outbound);
+    console.log("🔥 Return data:", returnFlight);
+
     return (
       <div className="my-6 sm:my-8 space-y-4">
         {/* Header with total price */}
@@ -151,12 +183,18 @@ const FlightInfo = ({ flightDetails, fare }) => {
               Chuyến bay khứ hồi
             </h1>
             <p className="text-xs sm:text-sm text-gray-500">
-              {flightDetails.outbound?.airline || flightDetails.airline} /{" "}
-              {flightDetails.return?.airline || flightDetails.airline}
+              {outbound?.airline ||
+                outbound?.airlineName ||
+                flightDetails.airline}{" "}
+              /{" "}
+              {returnFlight?.airline ||
+                returnFlight?.airlineName ||
+                flightDetails.airline}
             </p>
           </div>
           <div className="text-2xl sm:text-3xl font-bold text-blue-600 sm:text-gray-900 dark:text-white">
-            {formatCurrencyVND(flightDetails.totalPrice || 0)}
+            {flightDetails.formattedTotalPrice ||
+              formatCurrencyVND(flightDetails.totalPrice || 0)}
           </div>
         </div>
 
@@ -169,23 +207,28 @@ const FlightInfo = ({ flightDetails, fare }) => {
                 Chuyến đi
               </Badge>
               <span className="font-semibold">
-                {flightDetails.outbound?.flightNumber || "N/A"}
+                {outbound?.flightNumber || "N/A"}
               </span>
             </div>
             <div className="text-sm space-y-1">
               <div className="font-medium">
-                {getAirportCode(flightDetails.outbound?.departureAirport)} → {getAirportCode(flightDetails.outbound?.arrivalAirport)}
+                {getAirportCode(outbound?.departureAirport)} →{" "}
+                {getAirportCode(outbound?.arrivalAirport)}
               </div>
               <div className="text-gray-600">
-                {flightDetails.outbound?.departureDate || "N/A"}
+                {getAirportName(outbound?.departureAirport)} →{" "}
+                {getAirportName(outbound?.arrivalAirport)}
               </div>
               <div className="text-gray-600">
-                {flightDetails.outbound?.departureTime} -{" "}
-                {flightDetails.outbound?.arrivalTime}
+                {outbound?.departureDate || "N/A"}
+              </div>
+              <div className="text-gray-600">
+                {outbound?.departureTime} - {outbound?.arrivalTime}
               </div>
               <div className="text-blue-600 font-medium">
                 {formatCurrencyVND(
-                  flightDetails.outbound?.selectedClass?.price || 0
+                  outbound?.selectedClass?.price ||
+                    (flightDetails.totalPrice || 0) / 2
                 )}
               </div>
             </div>
@@ -198,23 +241,28 @@ const FlightInfo = ({ flightDetails, fare }) => {
                 Chuyến về
               </Badge>
               <span className="font-semibold">
-                {flightDetails.return?.flightNumber || "N/A"}
+                {returnFlight?.flightNumber || "N/A"}
               </span>
             </div>
             <div className="text-sm space-y-1">
               <div className="font-medium">
-                {getAirportCode(flightDetails.return?.departureAirport)} → {getAirportCode(flightDetails.return?.arrivalAirport)}
+                {getAirportCode(returnFlight?.departureAirport)} →{" "}
+                {getAirportCode(returnFlight?.arrivalAirport)}
               </div>
               <div className="text-gray-600">
-                {flightDetails.return?.departureDate || "N/A"}
+                {getAirportName(returnFlight?.departureAirport)} →{" "}
+                {getAirportName(returnFlight?.arrivalAirport)}
               </div>
               <div className="text-gray-600">
-                {flightDetails.return?.departureTime} -{" "}
-                {flightDetails.return?.arrivalTime}
+                {returnFlight?.departureDate || "N/A"}
+              </div>
+              <div className="text-gray-600">
+                {returnFlight?.departureTime} - {returnFlight?.arrivalTime}
               </div>
               <div className="text-blue-600 font-medium">
                 {formatCurrencyVND(
-                  flightDetails.return?.selectedClass?.price || 0
+                  returnFlight?.selectedClass?.price ||
+                    (flightDetails.totalPrice || 0) / 2
                 )}
               </div>
             </div>
@@ -255,7 +303,8 @@ const FlightInfo = ({ flightDetails, fare }) => {
         </div>
         <div className="text-sm space-y-1">
           <div className="font-medium">
-            {getAirportCode(flightDetails.flight?.departureAirport)} → {getAirportCode(flightDetails.flight?.arrivalAirport)}
+            {getAirportCode(flightDetails.flight?.departureAirport)} →{" "}
+            {getAirportCode(flightDetails.flight?.arrivalAirport)}
           </div>
           <div className="text-gray-600">
             {flightDetails.flight?.departureDate || "N/A"}
@@ -300,7 +349,7 @@ const validateForm = (formData, flightType, departureDate) => {
   } else if (!/\S+@\S+\.\S+/.test(formData.contactEmail)) {
     errors.contactEmail = "Email không hợp lệ.";
   }
- 
+
   // 2. Xác thực thông tin từng hành khách
   formData.passengers.forEach((p, index) => {
     const passengerErrors = {};
@@ -313,7 +362,8 @@ const validateForm = (formData, flightType, departureDate) => {
 
     if (!isInternational && age >= 14) {
       if (!p.passportNumber) {
-        passengerErrors.passportNumber = "CCCD là bắt buộc cho người từ 14 tuổi.";
+        passengerErrors.passportNumber =
+          "CCCD là bắt buộc cho người từ 14 tuổi.";
       } else if (!/^\d{12}$/.test(p.passportNumber)) {
         passengerErrors.passportNumber = "CCCD phải có đúng 12 chữ số.";
       }
@@ -333,7 +383,9 @@ function FlightBookingStepper() {
   const [fare, setFare] = useState({});
   const [currentStep, setCurrentStep] = useState(2);
   const [formData, setFormData] = useState({
-    contactName: "", contactEmail: "", contactPhone: "",
+    contactName: "",
+    contactEmail: "",
+    contactPhone: "",
     passengers: [],
   });
 
@@ -342,10 +394,9 @@ function FlightBookingStepper() {
   const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
 
   // Scroll to top when step changes
-  useEffect(
-    () => { window.scrollTo({ top: 0, behavior: "smooth" }); },
-    [currentStep]
-  );
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }, [currentStep]);
 
   // Determine flight type based on departure and arrival airports
   const getFlightType = () => {
@@ -393,23 +444,48 @@ function FlightBookingStepper() {
     ) {
       try {
         const flightData = JSON.parse(storedFlight);
+        console.log("📍 Flight data loaded:", flightData);
+        console.log("📍 Flight type:", flightData.type || flightData.tripType);
+        console.log(
+          "📍 Outbound flight:",
+          flightData.outbound || flightData.outboundFlight
+        );
+        console.log(
+          "📍 Return flight:",
+          flightData.return || flightData.returnFlight
+        );
+
+        // Set flight data directly - data from result-section.jsx should be clean
         setFlight(flightData);
 
         // Extract fare data from flight data
         if (flightData.type === "ONE_WAY" && flightData.selectedClass) {
           setFare(flightData.selectedClass);
-        } else if (flightData.type === "ROUND_TRIP") {
-          // For round-trip, we can use outbound class as primary fare or create a combined fare object
+        } else if (
+          flightData.type === "ROUND_TRIP" ||
+          flightData.tripType === "ROUND_TRIP"
+        ) {
+          // For round-trip, use EXACT field names from result-section.jsx
+          const outbound = flightData.outboundFlight;
+          const returnFlight = flightData.returnFlight;
+
+          console.log("📍 Round-trip fare extraction:", {
+            outbound: outbound,
+            returnFlight: returnFlight,
+            totalPrice: flightData.totalPrice,
+          });
+
           const combinedFare = {
-            id: `${flightData.outbound?.selectedClass?.id || "outbound"}-${
-              flightData.return?.selectedClass?.id || "return"
+            id: `${outbound?.id || "outbound"}-${returnFlight?.id || "return"}`,
+            name: `${outbound?.segmentLabel || "Chiều đi"} / ${
+              returnFlight?.segmentLabel || "Chiều về"
             }`,
-            name: `${
-              flightData.outbound?.selectedClass?.name || "Outbound"
-            } / ${flightData.return?.selectedClass?.name || "Return"}`,
             price: flightData.totalPrice,
-            outboundClass: flightData.outbound?.selectedClass,
-            returnClass: flightData.return?.selectedClass,
+            formattedPrice: flightData.formattedTotalPrice,
+            outboundClass: outbound?.selectedClass,
+            returnClass: returnFlight?.selectedClass,
+            outbound: outbound,
+            returnFlight: returnFlight,
           };
           setFare(combinedFare);
         } else if (
@@ -440,9 +516,12 @@ function FlightBookingStepper() {
       if (storedSearchCriteria) {
         try {
           const searchCriteria = JSON.parse(storedSearchCriteria);
-          for (let i = 0; i < (searchCriteria.passengers?.adults || 1); i++) passengers.push({ type: "ADULT" });
-          for (let i = 0; i < (searchCriteria.passengers?.children || 0); i++) passengers.push({ type: "CHILD" });
-          for (let i = 0; i < (searchCriteria.passengers?.infants || 0); i++) passengers.push({ type: "INFANT" });
+          for (let i = 0; i < (searchCriteria.passengers?.adults || 1); i++)
+            passengers.push({ type: "ADULT" });
+          for (let i = 0; i < (searchCriteria.passengers?.children || 0); i++)
+            passengers.push({ type: "CHILD" });
+          for (let i = 0; i < (searchCriteria.passengers?.infants || 0); i++)
+            passengers.push({ type: "INFANT" });
         } catch (e) {
           passengers.push({ type: "ADULT" });
         }
@@ -464,17 +543,23 @@ function FlightBookingStepper() {
   const handleNext = () => {
     switch (currentStep) {
       case 2: // Passenger Details
-        const { isValid, errors } = validateForm(formData, flightType, flight.departureDate);
+        const { isValid, errors } = validateForm(
+          formData,
+          flightType,
+          flight.departureDate
+        );
         setValidationErrors(errors || {});
 
         if (!isValid) {
-          toast.error("Vui lòng kiểm tra lại các thông tin được đánh dấu màu đỏ.");
+          toast.error(
+            "Vui lòng kiểm tra lại các thông tin được đánh dấu màu đỏ."
+          );
         } else {
           setIsConfirmModalOpen(true);
         }
         break;
 
-      case 3: // Extrasx  
+      case 3: // Extrasx
         proceedToNextStep();
         break;
 
@@ -607,17 +692,23 @@ function FlightBookingStepper() {
               {currentStep === steps.length ? "" : "Tiếp tục →"}
             </button>
           </div>
-          <AlertDialog open={isConfirmModalOpen} onOpenChange={setIsConfirmModalOpen}>
+          <AlertDialog
+            open={isConfirmModalOpen}
+            onOpenChange={setIsConfirmModalOpen}
+          >
             <AlertDialogContent>
               <AlertDialogHeader>
                 <AlertDialogTitle>Xác nhận thông tin</AlertDialogTitle>
                 <AlertDialogDescription>
-                  Bạn chắc chắn các thông tin đã nhập là chính xác? Thông tin sai có thể ảnh hưởng đến việc làm thủ tục chuyến bay.
+                  Bạn chắc chắn các thông tin đã nhập là chính xác? Thông tin
+                  sai có thể ảnh hưởng đến việc làm thủ tục chuyến bay.
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
                 <AlertDialogCancel>Kiểm tra lại</AlertDialogCancel>
-                <AlertDialogAction onClick={proceedToNextStep}>Chính xác</AlertDialogAction>
+                <AlertDialogAction onClick={proceedToNextStep}>
+                  Chính xác
+                </AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>
