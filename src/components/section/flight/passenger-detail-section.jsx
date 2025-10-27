@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useCallback, useRef, memo } from "react";
+import { useEffect, useMemo, useCallback, useRef, memo, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -11,7 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { CalendarIcon } from "lucide-react";
+import { CalendarIcon, CheckCircle, XCircle, Loader2 } from "lucide-react";
 import {
   Popover,
   PopoverContent,
@@ -22,6 +22,14 @@ import { cn } from "@/lib/utils";
 import PropTypes from "prop-types";
 import { formatDateVN } from "@/utils/currency-utils";
 import { useAuth } from "@/contexts/auth-context";
+import PhoneInput from "react-phone-number-input";
+import "react-phone-number-input/style.css";
+import "@/styles/phone-input.css";
+import { bookingApi } from "@/apis/booking-api";
+import { toast } from "sonner";
+import CountrySelect, {
+  getVietnamCountry,
+} from "@/components/ui/country-select";
 // Custom Date Input Component with toggle between calendar and text input
 const DateInput = ({
   value,
@@ -44,7 +52,8 @@ const DateInput = ({
           className={cn(
             "w-full justify-start text-left font-normal text-sm dark:bg-[#171717]",
             !value && "text-muted-foreground",
-            error && "border-red-500"
+            error && "border-red-500",
+            className
           )}
         >
           <CalendarIcon className="mr-2 h-4 w-4" />
@@ -91,6 +100,137 @@ const removeDiacritics = (str) => {
     .replace(/Đ/g, "D");
 };
 
+// Membership validation component
+const MembershipInput = ({
+  value,
+  onChange,
+  passengerName,
+  validationErrors,
+}) => {
+  const [isValidating, setIsValidating] = useState(false);
+  const [validationStatus, setValidationStatus] = useState(null); // null, 'valid', 'invalid'
+  const [validationMessage, setValidationMessage] = useState("");
+
+  const validateMembershipCode = async (code) => {
+    if (!code || code.length < 12) {
+      setValidationStatus(null);
+      setValidationMessage("");
+      return;
+    }
+
+    setIsValidating(true);
+    try {
+      const response = await bookingApi.validateMembershipCode(code);
+      if (response.success && response.data.valid) {
+        // Check if the membership name matches passenger name
+        const memberName = response.data.userName;
+        const normalizedMemberName = removeDiacritics(
+          memberName.toLowerCase().replace(/\s+/g, "")
+        );
+        const normalizedPassengerName = removeDiacritics(
+          passengerName.toLowerCase().replace(/\s+/g, "")
+        );
+
+        if (normalizedMemberName === normalizedPassengerName) {
+          setValidationStatus("valid");
+          setValidationMessage(
+            `Mã hợp lệ - ${response.data.tier} (${response.data.currentPoints} điểm)`
+          );
+          // Store membership data for payment section
+          onChange(code, response.data);
+        } else {
+          setValidationStatus("invalid");
+          setValidationMessage(
+            `Tên không khớp: ${memberName} ≠ ${passengerName}`
+          );
+          onChange(code, null);
+        }
+      } else {
+        setValidationStatus("invalid");
+        setValidationMessage("Mã hội viên không hợp lệ");
+        onChange(code, null);
+      }
+    } catch (error) {
+      setValidationStatus("invalid");
+      setValidationMessage("Lỗi kiểm tra mã hội viên");
+      onChange(code, null);
+    } finally {
+      setIsValidating(false);
+    }
+  };
+
+  const handleInputChange = (inputValue) => {
+    // Format input to AK + 10 digits
+    let formatted = inputValue.toUpperCase();
+    if (!formatted.startsWith("AK")) {
+      formatted = "AK" + formatted.replace(/[^0-9]/g, "").slice(0, 10);
+    } else {
+      formatted =
+        "AK" +
+        formatted
+          .slice(2)
+          .replace(/[^0-9]/g, "")
+          .slice(0, 10);
+    }
+
+    onChange(formatted, null);
+
+    // Validate if complete
+    if (formatted.length === 12) {
+      validateMembershipCode(formatted);
+    } else {
+      setValidationStatus(null);
+      setValidationMessage("");
+    }
+  };
+
+  return (
+    <div className="space-y-2">
+      <div className="relative">
+        <Input
+          placeholder="AK1234567890 (AK + 10 số)"
+          value={value || ""}
+          onChange={(e) => handleInputChange(e.target.value)}
+          className={cn(
+            "text-sm dark:bg-[#171717] pr-10",
+            validationErrors && "border-red-500",
+            validationStatus === "valid" && "border-green-500",
+            validationStatus === "invalid" && "border-red-500",
+            !validationErrors &&
+              !validationStatus &&
+              value &&
+              value.length === 12 &&
+              "border-yellow-500"
+          )}
+          maxLength={12}
+        />
+        {isValidating && (
+          <Loader2 className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 animate-spin text-blue-500" />
+        )}
+        {!isValidating && validationStatus === "valid" && (
+          <CheckCircle className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-green-500" />
+        )}
+        {!isValidating && validationStatus === "invalid" && (
+          <XCircle className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-red-500" />
+        )}
+      </div>
+      {validationMessage && (
+        <p
+          className={cn(
+            "text-xs",
+            validationStatus === "valid" ? "text-green-600" : "text-red-600"
+          )}
+        >
+          {validationMessage}
+        </p>
+      )}
+      {validationErrors && (
+        <p className="text-xs text-red-500">{validationErrors}</p>
+      )}
+    </div>
+  );
+};
+
 const getAge = (dob, referenceDate = new Date()) => {
   if (!dob) return null;
   const refDate = new Date(referenceDate);
@@ -110,194 +250,409 @@ const getPassengerType = (dob, referenceDate) => {
   return "ADULT";
 };
 
-const PassengerForm = memo(({
-  passenger,
-  index,
-  updatePassenger,
-  removePassenger,
-  isInternationalFlight,
-  canBeRemoved,
-  validationErrors,
-  departureDate,
-  isNew,
-}) => {
-  const age = getAge(passenger.dob, departureDate);
-  const showIdFieldForDomestic = age >= 14;
-  const firstInputRef = useRef(null);
-  
-  return (
-    <div className="border-2 border-gray-200 dark:border-none bg-gray-50 dark:bg-gray-800 p-4 rounded-lg">
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-2">
-          <div className="w-6 h-6 rounded-full bg-green-100 flex items-center justify-center">
-            <span className="text-green-600 text-sm">👤</span>
-          </div>
-          <h3 className="font-semibold text-base">Hành khách {index + 1}</h3>
-          <span className="text-xs bg-gray-200 dark:bg-gray-700 px-2 py-0.5 rounded-full">
-            {PASSENGER_TYPES[passenger.type]}
-          </span>
-        </div>
-        {canBeRemoved && (
-          <Button
-            variant="destructive"
-            size="sm"
-            onClick={() => removePassenger(index)}
-            className="text-sm bg-white border border-red-600 text-red-600 hover:bg-red-600 hover:text-white cursor-pointer"
-          >
-            Xóa
-          </Button>
-        )}
-      </div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        <div>
-          <Label htmlFor={`p${index}-lastname`} className="text-sm">
-            Họ *
-          </Label>
-          <Input
-            ref={firstInputRef}
-            id={`p${index}-lastname`}
-            placeholder="Họ (viết hoa, không dấu)"
-            className={`text-sm dark:bg-[#171717] ${
-              validationErrors?.lastName ? "border-red-500" : ""
-            }`}
-            value={passenger.lastName || ""}
-            onChange={(e) => {
-              const formattedValue = removeDiacritics(e.target.value).toUpperCase();
-              updatePassenger(index, "lastName", formattedValue);
-            }}
-            required
-          />
-          {validationErrors?.lastName && (
-            <p className="mt-1 text-xs text-red-500">
-              {validationErrors.lastName}
-            </p>
-          )}
-        </div>
-        <div>
-          <Label htmlFor={`p${index}-firstname`} className="text-sm">
-            Tên đệm và Tên *
-          </Label>
-          <Input
-            id={`p${index}-firstname`}
-            placeholder="Tên đệm và Tên (viết hoa, không dấu)"
-            className={`text-sm dark:bg-[#171717] ${
-              validationErrors?.firstName ? "border-red-500" : ""
-            }`}
-            value={passenger.firstName || ""}
-            onChange={(e) => {
-              const formattedValue = removeDiacritics(e.target.value).toUpperCase();
-              updatePassenger(index, "firstName", formattedValue);
-            }}
-            required
-          />
-          {validationErrors?.firstName && (
-            <p className="mt-1 text-xs text-red-500">
-              {validationErrors.firstName}
-            </p>
-          )}
-        </div>
-        <div>
-          <Label htmlFor={`p${index}-dob`} className="text-sm">
-            Ngày sinh *
-          </Label>
-          <DateInput
-            id={`p${index}-dob`}
-            value={passenger.dob}
-            onChange={(date) => updatePassenger(index, "dob", date)}
-            placeholder="dd/mm/yyyy"
-            error={!!validationErrors?.dateOfBirth}
-          />
-          {validationErrors?.dateOfBirth && (
-            <p className="mt-1 text-xs text-red-500">
-              {validationErrors.dateOfBirth}
-            </p>
-          )}
-          {!isInternationalFlight && age < 14 && age !== null && (
-            <p className="mt-1 text-xs text-blue-600">
-              Hành khách dưới 14 tuổi cần mang theo giấy khai sinh (bản gốc
-              hoặc bản sao trích lục).
-            </p>
-          )}
-        </div>
-        <div>
-          <Label htmlFor={`p${index}-gender`} className="text-sm">
-            Giới tính *
-          </Label>
-          <Select
-            value={passenger.gender}
-            onValueChange={(value) => updatePassenger(index, "gender", value)}
-          >
-            <SelectTrigger
-              className={cn(
-                "text-sm dark:bg-[#171717]",
-                validationErrors?.gender && "border-red-500"
-              )}
-            >
-              <SelectValue placeholder="Chọn giới tính" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="MALE">Nam</SelectItem>
-              <SelectItem value="FEMALE">Nữ</SelectItem>
-            </SelectContent>
-          </Select>
-          {validationErrors?.gender && (
-            <p className="mt-1 text-xs text-red-500">{validationErrors.gender}</p>
-          )}
-        </div>
+const PassengerForm = memo(
+  ({
+    passenger,
+    index,
+    updatePassenger,
+    removePassenger,
+    isInternationalFlight,
+    canBeRemoved,
+    validationErrors,
+    departureDate,
+    isNew,
+  }) => {
+    const age = getAge(passenger.dob, departureDate);
+    const showIdFieldForDomestic = age >= 14;
+    const firstInputRef = useRef(null);
 
-        {(isInternationalFlight || showIdFieldForDomestic) && (
-          <div className="sm:col-span-2">
-            <Label htmlFor={`p${index}-id`} className="text-sm">
-              {isInternationalFlight ? "Số hộ chiếu *" : "Căn cước công dân *"}
+    // Helper function to get field validation status
+    const getFieldValidationClass = (
+      fieldName,
+      value,
+      customValidation = null
+    ) => {
+      const hasError = validationErrors?.[fieldName];
+
+      // If there's an error, show red border
+      if (hasError) {
+        return "border-red-500";
+      }
+
+      // If field has value and no error, show green border
+      let isValid = false;
+
+      switch (fieldName) {
+        case "firstName":
+        case "lastName":
+          isValid = value?.trim().length > 0;
+          break;
+        case "gender":
+          isValid = value && ["MALE", "FEMALE"].includes(value);
+          break;
+        case "dob":
+          isValid = value instanceof Date && !isNaN(value);
+          break;
+        case "passportNumber":
+          if (isInternationalFlight) {
+            isValid = value?.trim().length > 0;
+          } else if (age >= 14) {
+            isValid = /^\d{12}$/.test(value?.trim());
+          } else {
+            isValid = true; // Not required for under 14
+          }
+          break;
+        case "phone":
+          if (age >= 12) {
+            isValid = /^0[0-9]{8,9}$/.test(value?.trim());
+          } else {
+            isValid = true; // Not required for under 12
+          }
+          break;
+        case "country":
+          if (age >= 12) {
+            isValid = value?.trim().length > 0;
+          } else {
+            isValid = true; // Not required for under 12
+          }
+          break;
+        case "currentAddress":
+          if (age >= 12) {
+            isValid = value?.trim().length >= 10;
+          } else {
+            isValid = true; // Not required for under 12
+          }
+          break;
+        case "membershipCode":
+          // Optional field - only validate if has value
+          if (value?.trim()) {
+            isValid =
+              /^AK[0-9]{10}$/.test(value.trim()) &&
+              passenger.membershipData?.valid;
+          } else {
+            isValid = true; // Empty is OK for optional field
+          }
+          break;
+        default:
+          if (customValidation) {
+            isValid = customValidation(value);
+          } else {
+            isValid = value?.trim?.()?.length > 0;
+          }
+      }
+
+      return isValid && value ? "border-green-500" : "";
+    };
+
+    return (
+      <div className="border-2 border-gray-200 dark:border-none bg-gray-50 dark:bg-gray-800 p-4 rounded-lg">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <div className="w-6 h-6 rounded-full bg-green-100 flex items-center justify-center">
+              <span className="text-green-600 text-sm">👤</span>
+            </div>
+            <h3 className="font-semibold text-base">Hành khách {index + 1}</h3>
+            <span className="text-xs bg-gray-200 dark:bg-gray-700 px-2 py-0.5 rounded-full">
+              {PASSENGER_TYPES[passenger.type]}
+            </span>
+          </div>
+          {canBeRemoved && (
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={() => removePassenger(index)}
+              className="text-sm bg-white border border-red-600 text-red-600 hover:bg-red-600 hover:text-white cursor-pointer"
+            >
+              Xóa
+            </Button>
+          )}
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div>
+            <Label htmlFor={`p${index}-lastname`} className="text-sm">
+              Họ <span className="text-red-500">*</span>
             </Label>
             <Input
-              id={`p${index}-id`}
-              placeholder={
-                isInternationalFlight
-                  ? "Nhập số hộ chiếu"
-                  : "Nhập số căn cước công dân"
-              }
+              ref={firstInputRef}
+              id={`p${index}-lastname`}
+              placeholder="Họ (viết hoa, không dấu)"
               className={cn(
                 "text-sm dark:bg-[#171717]",
-                validationErrors?.passportNumber && "border-red-500"
+                getFieldValidationClass("lastName", passenger.lastName)
               )}
-              value={passenger.passportNumber || ""}
-              onChange={(e) =>
-                updatePassenger(index, "passportNumber", e.target.value)
-              }
-              required={!isInternationalFlight}
-              maxLength={isInternationalFlight ? 20 : 12}
-              pattern={isInternationalFlight ? undefined : "[0-9]{12}"}
+              value={passenger.lastName || ""}
+              onChange={(e) => {
+                const formattedValue = removeDiacritics(
+                  e.target.value
+                ).toUpperCase();
+                updatePassenger(index, "lastName", formattedValue);
+              }}
+              required
             />
-            {validationErrors?.passportNumber && (
+            {validationErrors?.lastName && (
               <p className="mt-1 text-xs text-red-500">
-                {validationErrors.passportNumber}
-              </p>
-            )}
-            {!isInternationalFlight && (
-              <p className="text-xs text-gray-500 mt-1">
-                Căn cước công dân gồm 12 chữ số.
+                {validationErrors.lastName}
               </p>
             )}
           </div>
-        )}
-      </div>
+          <div>
+            <Label htmlFor={`p${index}-firstname`} className="text-sm">
+              Tên đệm và Tên <span className="text-red-500">*</span>
+            </Label>
+            <Input
+              id={`p${index}-firstname`}
+              placeholder="Tên đệm và Tên (viết hoa, không dấu)"
+              className={cn(
+                "text-sm dark:bg-[#171717]",
+                getFieldValidationClass("firstName", passenger.firstName)
+              )}
+              value={passenger.firstName || ""}
+              onChange={(e) => {
+                const formattedValue = removeDiacritics(
+                  e.target.value
+                ).toUpperCase();
+                updatePassenger(index, "firstName", formattedValue);
+              }}
+              required
+            />
+            {validationErrors?.firstName && (
+              <p className="mt-1 text-xs text-red-500">
+                {validationErrors.firstName}
+              </p>
+            )}
+          </div>
+          <div>
+            <Label htmlFor={`p${index}-dob`} className="text-sm">
+              Ngày sinh <span className="text-red-500">*</span>
+            </Label>
+            <DateInput
+              id={`p${index}-dob`}
+              value={passenger.dob}
+              onChange={(date) => updatePassenger(index, "dob", date)}
+              placeholder="dd/mm/yyyy"
+              error={!!validationErrors?.dateOfBirth}
+              className={getFieldValidationClass("dob", passenger.dob)}
+            />
+            {validationErrors?.dateOfBirth && (
+              <p className="mt-1 text-xs text-red-500">
+                {validationErrors.dateOfBirth}
+              </p>
+            )}
+            {!isInternationalFlight && age < 14 && age !== null && (
+              <p className="mt-1 text-xs text-blue-600">
+                Hành khách dưới 14 tuổi cần mang theo giấy khai sinh (bản gốc
+                hoặc bản sao trích lục).
+              </p>
+            )}
+          </div>
+          <div>
+            <Label htmlFor={`p${index}-gender`} className="text-sm">
+              Giới tính <span className="text-red-500">*</span>
+            </Label>
+            <Select
+              value={passenger.gender}
+              onValueChange={(value) => updatePassenger(index, "gender", value)}
+            >
+              <SelectTrigger
+                className={cn(
+                  "text-sm dark:bg-[#171717]",
+                  getFieldValidationClass("gender", passenger.gender)
+                )}
+              >
+                <SelectValue placeholder="Chọn giới tính" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="MALE">Nam</SelectItem>
+                <SelectItem value="FEMALE">Nữ</SelectItem>
+              </SelectContent>
+            </Select>
+            {validationErrors?.gender && (
+              <p className="mt-1 text-xs text-red-500">
+                {validationErrors.gender}
+              </p>
+            )}
+          </div>
 
-      <div className="mt-4 p-3 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
-        <h5 className="font-semibold text-green-800 dark:text-green-200 mb-2">
-          Hành Lý Miễn Phí
-        </h5>
-        <ul className="text-sm text-green-700 dark:text-green-300 space-y-1">
-          <li>✅ 1 túi xách tay (10kg)</li>
-          <li>✅ Hành lý ký gửi 23kg (tùy hạng vé)</li>
-        </ul>
-        <p className="text-xs text-green-600 dark:text-green-400 mt-2">
-          Tùy chọn hành lý bổ sung có thể chọn ở bước tiếp theo.
-        </p>
+          {(isInternationalFlight || showIdFieldForDomestic) && (
+            <div className="sm:col-span-2">
+              <Label htmlFor={`p${index}-id`} className="text-sm">
+                {isInternationalFlight ? "Số hộ chiếu" : "Căn cước công dân"}{" "}
+                <span className="text-red-500">*</span>
+              </Label>
+              <Input
+                id={`p${index}-id`}
+                placeholder={
+                  isInternationalFlight
+                    ? "Nhập số hộ chiếu"
+                    : "Nhập số căn cước công dân"
+                }
+                className={cn(
+                  "text-sm dark:bg-[#171717]",
+                  getFieldValidationClass(
+                    "passportNumber",
+                    passenger.passportNumber
+                  )
+                )}
+                value={passenger.passportNumber || ""}
+                onChange={(e) =>
+                  updatePassenger(index, "passportNumber", e.target.value)
+                }
+                required={!isInternationalFlight}
+                maxLength={isInternationalFlight ? 20 : 12}
+                pattern={isInternationalFlight ? undefined : "[0-9]{12}"}
+              />
+              {validationErrors?.passportNumber && (
+                <p className="mt-1 text-xs text-red-500">
+                  {validationErrors.passportNumber}
+                </p>
+              )}
+              {!isInternationalFlight && (
+                <p className="text-xs text-gray-500 mt-1">
+                  Căn cước công dân gồm 12 chữ số.
+                </p>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Additional fields for ADULT passengers only - based on age calculation */}
+        {age >= 12 && (
+          <div className="mt-6">
+            <h4 className="font-medium text-gray-800 dark:text-gray-200 mb-4 flex items-center gap-2">
+              <span className="w-4 h-4 rounded-full bg-blue-100 flex items-center justify-center">
+                <span className="text-blue-600 text-xs">+</span>
+              </span>
+              Thông tin bổ sung (dành cho người lớn)
+            </h4>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 border border-blue-200 rounded-lg bg-blue-50/30 dark:bg-blue-900/10">
+              {/* Phone Number */}
+              <div>
+                <Label htmlFor={`p${index}-phone`} className="text-sm">
+                  Số điện thoại <span className="text-red-500">*</span>
+                </Label>
+                <div className="mt-1">
+                  <PhoneInput
+                    international
+                    country={passenger.country || "VN"}
+                    value={passenger.phone || ""}
+                    onChange={(value) => {
+                      updatePassenger(index, "phone", value || "");
+                    }}
+                    className={cn(
+                      "phone-input",
+                      getFieldValidationClass("phone", passenger.phone)
+                    )}
+                  />
+                  {validationErrors?.phone && (
+                    <p className="mt-1 text-xs text-red-500">
+                      {validationErrors.phone}
+                    </p>
+                  )}
+                </div>
+                <p className="text-xs text-gray-500 mt-1">
+                  Số điện thoại lưu dạng 0xxx... (mã quốc gia tự động theo quốc
+                  gia được chọn)
+                </p>
+              </div>
+
+              {/* Country */}
+              <div>
+                <Label htmlFor={`p${index}-country`} className="text-sm">
+                  Quốc gia <span className="text-red-500">*</span>
+                </Label>
+                <CountrySelect
+                  value={passenger.country || "Vietnam"}
+                  onChange={(countryName) => {
+                    updatePassenger(index, "country", countryName);
+                    // Update phone number display when country changes but keep the local number
+                    if (passenger.phone && passenger.phone.startsWith("0")) {
+                      // Keep the same local number, just update the country context for display
+                      updatePassenger(index, "phone", passenger.phone);
+                    }
+                  }}
+                  error={!!validationErrors?.country}
+                  className={cn(
+                    "text-sm dark:bg-[#171717]",
+                    getFieldValidationClass("country", passenger.country)
+                  )}
+                  placeholder="Chọn quốc gia"
+                  defaultCountry="VN"
+                  showFlag={true}
+                />
+                {validationErrors?.country && (
+                  <p className="mt-1 text-xs text-red-500">
+                    {validationErrors.country}
+                  </p>
+                )}
+              </div>
+
+              {/* Current Address */}
+              <div className="sm:col-span-2">
+                <Label htmlFor={`p${index}-address`} className="text-sm">
+                  Nơi ở hiện tại <span className="text-red-500">*</span>
+                </Label>
+                <Input
+                  id={`p${index}-address`}
+                  placeholder="Nhập địa chỉ hiện tại"
+                  className={cn(
+                    "text-sm dark:bg-[#171717]",
+                    getFieldValidationClass(
+                      "currentAddress",
+                      passenger.currentAddress
+                    )
+                  )}
+                  value={passenger.currentAddress || ""}
+                  onChange={(e) =>
+                    updatePassenger(index, "currentAddress", e.target.value)
+                  }
+                />
+                {validationErrors?.currentAddress && (
+                  <p className="mt-1 text-xs text-red-500">
+                    {validationErrors.currentAddress}
+                  </p>
+                )}
+              </div>
+
+              {/* Membership Code */}
+              <div className="sm:col-span-2">
+                <Label htmlFor={`p${index}-membership`} className="text-sm">
+                  Mã hội viên AirSky (tùy chọn)
+                </Label>
+                <MembershipInput
+                  value={passenger.membershipCode || ""}
+                  onChange={(code, membershipData) => {
+                    updatePassenger(index, "membershipCode", code);
+                    updatePassenger(index, "membershipData", membershipData);
+                  }}
+                  passengerName={`${passenger.lastName || ""} ${
+                    passenger.firstName || ""
+                  }`.trim()}
+                  validationErrors={validationErrors?.membershipCode}
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Nhập mã hội viên để tích lũy và sử dụng điểm thưởng
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        <div className="mt-4 p-3 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
+          <h5 className="font-semibold text-green-800 dark:text-green-200 mb-2">
+            Hành Lý Miễn Phí
+          </h5>
+          <ul className="text-sm text-green-700 dark:text-green-300 space-y-1">
+            <li>✅ 1 túi xách tay (10kg)</li>
+            <li>✅ Hành lý ký gửi 23kg (tùy hạng vé)</li>
+          </ul>
+          <p className="text-xs text-green-600 dark:text-green-400 mt-2">
+            Tùy chọn hành lý bổ sung có thể chọn ở bước tiếp theo.
+          </p>
+        </div>
       </div>
-    </div>
-  );
-});
+    );
+  }
+);
 
 PassengerForm.propTypes = {
   passenger: PropTypes.object.isRequired,
@@ -325,14 +680,37 @@ const ContactInformation = ({ formData, updateFormData, validationErrors }) => {
     }
   }, [user, formData.contactEmail, formData.contactName, updateFormData]);
 
+  // Helper function for contact validation
+  const getContactFieldValidationClass = (fieldName, value) => {
+    const hasError = validationErrors?.[fieldName];
+
+    if (hasError) {
+      return "border-red-500";
+    }
+
+    let isValid = false;
+    switch (fieldName) {
+      case "contactName":
+        isValid = value?.trim().length > 0;
+        break;
+      case "contactEmail":
+        isValid = /\S+@\S+\.\S+/.test(value);
+        break;
+    }
+
+    return isValid && value ? "border-green-500" : "";
+  };
+
   return (
     <div className="w-full space-y-4">
       <h2 className="text-xl font-bold">Thông tin liên hệ</h2>
-      <h6 className=" text-sm text-gray-600 dark:text-gray-300">Thông tin đặt vé sẽ được gửi đến địa chỉ email này.</h6>
+      <h6 className=" text-sm text-gray-600 dark:text-gray-300">
+        Thông tin đặt vé sẽ được gửi đến địa chỉ email này.
+      </h6>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 border rounded-lg bg-gray-50 dark:bg-gray-800">
         <div>
           <Label htmlFor="contact-name" className="text-sm">
-            Họ và tên người liên hệ *
+            Họ và tên người liên hệ <span className="text-red-500">*</span>
           </Label>
           <Input
             id="contact-name"
@@ -341,9 +719,14 @@ const ContactInformation = ({ formData, updateFormData, validationErrors }) => {
             value={formData.contactName || ""}
             onChange={(e) => updateFormData("contactName", e.target.value)}
             readOnly={!!user}
-            className={`text-sm dark:bg-[#171717] ${
-              user ? "cursor-not-allowed bg-gray-100" : ""
-            } ${validationErrors?.contactName ? "border-red-500" : ""}`}
+            className={cn(
+              "text-sm dark:bg-[#171717]",
+              user && "cursor-not-allowed bg-gray-100",
+              getContactFieldValidationClass(
+                "contactName",
+                formData.contactName
+              )
+            )}
             required
           />
           {validationErrors?.contactName && (
@@ -354,7 +737,7 @@ const ContactInformation = ({ formData, updateFormData, validationErrors }) => {
         </div>
         <div>
           <Label htmlFor="contact-email" className="text-sm">
-            Email liên hệ *
+            Email liên hệ <span className="text-red-500">*</span>
           </Label>
           <Input
             id="contact-email"
@@ -363,9 +746,14 @@ const ContactInformation = ({ formData, updateFormData, validationErrors }) => {
             value={formData.contactEmail || ""} // Đã sửa ở commit trước
             onChange={(e) => updateFormData("contactEmail", e.target.value)}
             readOnly={!!user}
-            className={`text-sm dark:bg-[#171717] ${
-              user ? "cursor-not-allowed bg-gray-100" : ""
-            } ${validationErrors?.contactEmail ? "border-red-500" : ""}`}
+            className={cn(
+              "text-sm dark:bg-[#171717]",
+              user && "cursor-not-allowed bg-gray-100",
+              getContactFieldValidationClass(
+                "contactEmail",
+                formData.contactEmail
+              )
+            )}
             required
           />
           {validationErrors?.contactEmail && (
@@ -404,12 +792,15 @@ const PassengerDetails = ({
       // Chuyển đổi Date objects thành ISO strings trước khi lưu
       const serializableFormData = {
         ...formData,
-        passengers: formData.passengers.map(p => ({
+        passengers: formData.passengers.map((p) => ({
           ...p,
-          dob: p.dob ? p.dob.toISOString() : null
-        }))
+          dob: p.dob ? p.dob.toISOString() : null,
+        })),
       };
-      localStorage.setItem(localStorageKey, JSON.stringify(serializableFormData));
+      localStorage.setItem(
+        localStorageKey,
+        JSON.stringify(serializableFormData)
+      );
     } catch (error) {
       console.error("Failed to save form data to localStorage:", error);
     }
@@ -421,10 +812,44 @@ const PassengerDetails = ({
       ...p,
       type: getPassengerType(p.dob, departureDate),
     }));
-    if (
-      JSON.stringify(newPassengers) !== JSON.stringify(formData.passengers)
-    ) {
+    if (JSON.stringify(newPassengers) !== JSON.stringify(formData.passengers)) {
       updateFormData("passengers", newPassengers);
+    }
+  }, [formData.passengers, departureDate, updateFormData]);
+
+  // Set default Vietnam country and phone format for new passengers
+  useEffect(() => {
+    const updatedPassengers = formData.passengers.map((passenger, index) => {
+      const updates = {};
+
+      // Set default country to Vietnam if not set
+      if (!passenger.country) {
+        updates.country = "Vietnam";
+      }
+
+      // For adults, set default Vietnam phone prefix if not set
+      const passengerAge = getAge(passenger.dob, departureDate);
+      if (passengerAge >= 12) {
+        // Ensure country is set for adults
+        if (!passenger.country) {
+          updates.country = "Vietnam";
+        }
+
+        // Set default phone with Vietnam prefix if not set
+        if (!passenger.phone) {
+          updates.phone = "+84"; // Vietnam calling code with space for user to enter number
+        }
+      }
+
+      return Object.keys(updates).length > 0
+        ? { ...passenger, ...updates }
+        : passenger;
+    });
+
+    if (
+      JSON.stringify(updatedPassengers) !== JSON.stringify(formData.passengers)
+    ) {
+      updateFormData("passengers", updatedPassengers);
     }
   }, [formData.passengers, departureDate, updateFormData]);
 
@@ -453,19 +878,21 @@ const PassengerDetails = ({
 
   const removePassenger = useCallback(
     (index) => {
-    if (formData.passengers.length > 1) {
-      updateFormData(
-        "passengers",
-        formData.passengers.filter((_, i) => i !== index)
-      );
-    }
+      if (formData.passengers.length > 1) {
+        updateFormData(
+          "passengers",
+          formData.passengers.filter((_, i) => i !== index)
+        );
+      }
     },
     [formData.passengers, updateFormData]
   );
 
   useEffect(() => {
     if (newPassengerIndex.current !== null) {
-      const newPassengerForm = document.getElementById(`p${newPassengerIndex.current}-lastname`);
+      const newPassengerForm = document.getElementById(
+        `p${newPassengerIndex.current}-lastname`
+      );
       if (newPassengerForm) {
         newPassengerForm.focus();
       }
@@ -499,8 +926,8 @@ const PassengerDetails = ({
       {!hasAtLeastOneAdult && (
         <div className="p-3 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200 dark:border-red-800">
           <p className="text-sm text-red-800 dark:text-red-200">
-            <strong>Cảnh báo:</strong> Cần có ít nhất một hành khách là người lớn
-            (từ 12 tuổi trở lên) trong danh sách.
+            <strong>Cảnh báo:</strong> Cần có ít nhất một hành khách là người
+            lớn (từ 12 tuổi trở lên) trong danh sách.
           </p>
         </div>
       )}
@@ -517,7 +944,10 @@ const PassengerDetails = ({
             canBeRemoved={formData.passengers.length > 1}
             validationErrors={validationErrors[`passenger_${index}`]}
             departureDate={departureDate}
-            isNew={index === formData.passengers.length - 1 && newPassengerIndex.current === index}
+            isNew={
+              index === formData.passengers.length - 1 &&
+              newPassengerIndex.current === index
+            }
           />
         ))
       ) : (

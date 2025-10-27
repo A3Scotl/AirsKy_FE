@@ -636,6 +636,14 @@ const AccountTab = ({ userProfile, onProfileUpdate }) => {
                     </Badge>
                   </div>
                 </div>
+                <div>
+                  <Label className="text-sm font-medium text-gray-500">
+                    Mã hội viên
+                  </Label>
+                  <p className="text-sm mt-1 text-blue-900">
+                    {userProfile?.membershipCode || "Chưa có"}
+                  </p>
+                </div>
               </div>
             </div>
           )}

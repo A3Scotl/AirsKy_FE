@@ -94,8 +94,9 @@ const MyBookingsTab = () => {
       if (response.success) {
         // Transform API data to match component structure
         const transformedBookings = response.data.map((booking) => ({
-          id: `BK${booking.bookingId}`,
+          id: booking.bookingCode || `BK${booking.bookingId}`,
           bookingId: booking.bookingId,
+          bookingCode: booking.bookingCode,
           flight: booking.flightNumber,
           from: "Origin Airport", // This would come from flight data
           to: "Destination Airport", // This would come from flight data
@@ -230,7 +231,7 @@ const MyBookingsTab = () => {
         // Store payment info for redirect handling
         const paymentInfo = {
           isMyBookingsPayment: true,
-          bookingCode: selectedBooking.id,
+          bookingCode: selectedBooking.bookingCode || selectedBooking.id,
           bookingId: selectedBooking.bookingId,
           passengerName:
             selectedBooking.passengers?.[0]?.firstName +
@@ -260,7 +261,7 @@ const MyBookingsTab = () => {
             navigate("/qr-pay", {
               state: {
                 checkoutUrl: checkoutUrl,
-                bookingCode: selectedBooking.id,
+                bookingCode: selectedBooking.bookingCode || selectedBooking.id,
               },
             });
           } else {
@@ -512,7 +513,7 @@ const MyBookingsTab = () => {
               <TableBody>
                 {currentBookings.map((booking) => (
                   <TableRow key={booking.id}>
-                    <TableCell>{booking.id}</TableCell>
+                    <TableCell>{booking.bookingCode || booking.id}</TableCell>
                     <TableCell>{booking.flight}</TableCell>
                     <TableCell>{booking.from}</TableCell>
                     <TableCell>{booking.to}</TableCell>
@@ -615,7 +616,8 @@ const MyBookingsTab = () => {
               <div className="flex items-center justify-between">
                 <div>
                   <DialogTitle className="text-xl font-semibold">
-                    Chi tiết đặt chỗ {selectedBooking?.id}
+                    Chi tiết đặt chỗ{" "}
+                    {selectedBooking?.bookingCode || selectedBooking?.id}
                   </DialogTitle>
                   <DialogDescription>
                     Thông tin chi tiết về đặt chỗ của bạn
@@ -890,7 +892,8 @@ const MyBookingsTab = () => {
                     </CardContent>
                   </Card>
                   {/* Reviews Section */}
-                  {(selectedBooking.status !== "CANCELLED" || selectedBooking.status !== "PENDING") && (
+                  {(selectedBooking.status !== "CANCELLED" ||
+                    selectedBooking.status !== "PENDING") && (
                     <Card>
                       <CardHeader>
                         <CardTitle className="flex items-center justify-between">

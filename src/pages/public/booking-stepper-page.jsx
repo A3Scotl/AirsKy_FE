@@ -22,6 +22,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { isPossiblePhoneNumber } from "libphonenumber-js";
 
 const steps = [
   { title: "Chọn chuyến bay" },
@@ -342,7 +343,6 @@ const validateForm = (formData, flightType, departureDate) => {
   let isValid = true;
 
   // 1. Xác thực thông tin liên hệ
-
   if (!formData.contactEmail) {
     errors.contactEmail = "Email liên hệ là bắt buộc.";
     isValid = false;
@@ -353,19 +353,75 @@ const validateForm = (formData, flightType, departureDate) => {
   // 2. Xác thực thông tin từng hành khách
   formData.passengers.forEach((p, index) => {
     const passengerErrors = {};
+
+    // Basic required fields
     if (!p.firstName?.trim()) passengerErrors.firstName = "Tên là bắt buộc.";
+    if (!p.lastName?.trim()) passengerErrors.lastName = "Họ là bắt buộc.";
     if (!p.dob) passengerErrors.dateOfBirth = "Ngày sinh là bắt buộc.";
     if (!p.gender) passengerErrors.gender = "Giới tính là bắt buộc.";
 
     const age = getAge(p.dob, departureDate);
     const isInternational = flightType === "INTERNATIONAL";
+    const isAdult = p.type === "ADULT" || age >= 12;
 
+    // ID/Passport validation
     if (!isInternational && age >= 14) {
       if (!p.passportNumber) {
         passengerErrors.passportNumber =
           "CCCD là bắt buộc cho người từ 14 tuổi.";
       } else if (!/^\d{12}$/.test(p.passportNumber)) {
         passengerErrors.passportNumber = "CCCD phải có đúng 12 chữ số.";
+      }
+    }
+
+    // Additional validation for passengers >= 12 years old (based on age, not type)
+    if (age >= 12) {
+      // Phone validation - required for adults
+      if (!p.phone?.trim()) {
+        passengerErrors.phone =
+          "Số điện thoại là bắt buộc cho người từ 12 tuổi trở lên.";
+      } else if (!isPossiblePhoneNumber(p.phone.trim())) {
+        passengerErrors.phone = "Số điện thoại không hợp lệ.";
+      }
+
+      // Country validation - required for adults
+      if (!p.country?.trim()) {
+        passengerErrors.country =
+          "Quốc gia là bắt buộc cho người từ 12 tuổi trở lên.";
+      }
+
+      // Current address validation - required for adults
+      if (!p.currentAddress?.trim()) {
+        passengerErrors.currentAddress =
+          "Nơi ở hiện tại là bắt buộc cho người từ 12 tuổi trở lên.";
+      } else if (p.currentAddress.trim().length < 10) {
+        passengerErrors.currentAddress = "Địa chỉ quá ngắn (ít nhất 10 ký tự).";
+      }
+
+      // Membership code validation - optional but if entered must be valid
+      if (p.membershipCode?.trim()) {
+        // Check format
+        if (!/^AK[0-9]{10}$/.test(p.membershipCode.trim())) {
+          passengerErrors.membershipCode =
+            "Mã hội viên không đúng định dạng (AK + 10 số).";
+        } else {
+          // Check if membership data exists and is valid
+          if (!p.membershipData || !p.membershipData.valid) {
+            passengerErrors.membershipCode =
+              "Mã hội viên không hợp lệ hoặc chưa được xác thực.";
+            // Show toast for name mismatch or invalid code
+            const passengerName = `${p.lastName || ""} ${
+              p.firstName || ""
+            }`.trim();
+            if (p.membershipData && p.membershipData.userName) {
+              toast.error(
+                `Tên hội viên không khớp: ${p.membershipData.userName} ≠ ${passengerName}`
+              );
+            } else {
+              toast.error("Mã hội viên không hợp lệ. Vui lòng kiểm tra lại.");
+            }
+          }
+        }
       }
     }
 
@@ -517,16 +573,16 @@ function FlightBookingStepper() {
         try {
           const searchCriteria = JSON.parse(storedSearchCriteria);
           for (let i = 0; i < (searchCriteria.passengers?.adults || 1); i++)
-            passengers.push({ type: "ADULT" });
+            passengers.push({ type: "ADULT", phone: "" });
           for (let i = 0; i < (searchCriteria.passengers?.children || 0); i++)
-            passengers.push({ type: "CHILD" });
+            passengers.push({ type: "CHILD", phone: "" });
           for (let i = 0; i < (searchCriteria.passengers?.infants || 0); i++)
-            passengers.push({ type: "INFANT" });
+            passengers.push({ type: "INFANT", phone: "" });
         } catch (e) {
-          passengers.push({ type: "ADULT" });
+          passengers.push({ type: "ADULT", phone: "" });
         }
       } else {
-        passengers.push({ type: "ADULT" });
+        passengers.push({ type: "ADULT", phone: "" });
       }
       setFormData((prev) => ({ ...prev, passengers }));
     }

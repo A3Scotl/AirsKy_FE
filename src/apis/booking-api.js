@@ -103,4 +103,13 @@ export const bookingApi = {
   processCheckin: async (checkinData) => {
     return apiHandler("put", "/bookings/checkin", checkinData);
   },
+
+  /**
+   * Validate membership code
+   * @param {string} membershipCode - Mã hội viên (AK + 10 số)
+   * @returns {Promise<{ success: boolean, data?: any, message: string }>}
+   */
+  validateMembershipCode: async (membershipCode) => {
+    return apiHandler("get", `/bookings/validate-membership/${membershipCode}`);
+  },
 };

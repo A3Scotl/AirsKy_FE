@@ -300,46 +300,77 @@ export const calculateRewardPoints = (
  * @returns {Object} - Kết quả validation
  */
 export const validatePassengerInfo = (passenger) => {
-  const errors = [];
+  const errors = {};
 
+  // Basic fields validation
   if (!passenger.firstName?.trim()) {
-    errors.push("Họ không được để trống");
+    errors.firstName = "Họ không được để trống";
   }
 
   if (!passenger.lastName?.trim()) {
-    errors.push("Tên không được để trống");
+    errors.lastName = "Tên không được để trống";
   }
 
   if (!passenger.dateOfBirth) {
-    errors.push("Ngày sinh không được để trống");
+    errors.dateOfBirth = "Ngày sinh không được để trống";
   } else {
     const birthDate = new Date(passenger.dateOfBirth);
     const today = new Date();
     const age = today.getFullYear() - birthDate.getFullYear();
 
     if (passenger.type === PASSENGER_TYPES.INFANT && age >= 2) {
-      errors.push("Em bé phải dưới 2 tuổi");
+      errors.dateOfBirth = "Em bé phải dưới 2 tuổi";
     }
 
     if (passenger.type === PASSENGER_TYPES.CHILD && (age < 2 || age >= 12)) {
-      errors.push("Trẻ em từ 2 đến 11 tuổi");
+      errors.dateOfBirth = "Trẻ em từ 2 đến 11 tuổi";
     }
 
     if (passenger.type === PASSENGER_TYPES.ADULT && age < 12) {
-      errors.push("Người lớn từ 12 tuổi trở lên");
+      errors.dateOfBirth = "Người lớn từ 12 tuổi trở lên";
     }
   }
 
   if (!passenger.nationality?.trim()) {
-    errors.push("Quốc tịch không được để trống");
+    errors.nationality = "Quốc tịch không được để trống";
   }
 
   if (!passenger.idNumber?.trim()) {
-    errors.push("Số CMND/CCCD không được để trống");
+    errors.idNumber = "Số CMND/CCCD không được để trống";
+  }
+
+  // Additional validation for ADULT passengers
+  if (passenger.type === PASSENGER_TYPES.ADULT) {
+    // Phone number validation
+    if (!passenger.phone?.trim()) {
+      errors.phone = "Số điện thoại không được để trống";
+    } else if (!/^0[0-9]{8,9}$/.test(passenger.phone.trim())) {
+      errors.phone = "Số điện thoại không đúng định dạng (0xxxxxxxxx)";
+    }
+
+    // Country validation
+    if (!passenger.country?.trim()) {
+      errors.country = "Quốc gia không được để trống";
+    }
+
+    // Current address validation
+    if (!passenger.currentAddress?.trim()) {
+      errors.currentAddress = "Nơi ở hiện tại không được để trống";
+    } else if (passenger.currentAddress.trim().length < 10) {
+      errors.currentAddress = "Địa chỉ quá ngắn (ít nhất 10 ký tự)";
+    }
+
+    // Membership code validation (optional)
+    if (
+      passenger.membershipCode?.trim() &&
+      !/^AK[0-9]{10}$/.test(passenger.membershipCode.trim())
+    ) {
+      errors.membershipCode = "Mã hội viên không đúng định dạng (AK + 10 số)";
+    }
   }
 
   return {
-    isValid: errors.length === 0,
+    isValid: Object.keys(errors).length === 0,
     errors,
   };
 };

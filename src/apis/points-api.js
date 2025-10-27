@@ -38,6 +38,19 @@ export const pointsApi = {
   },
 
   /**
+   * Tính giá trị giảm giá từ số điểm bằng mã hội viên
+   * @param {string} membershipCode - Mã hội viên
+   * @param {number} points - Số điểm muốn đổi
+   * @returns {Promise<{ success: boolean, data?: number, message: string }>}
+   */
+  calculateDiscountFromPointsByMembership: async (membershipCode, points) => {
+    return apiHandler(
+      "get",
+      `/points-redemption/calculate-discount-by-membership?membershipCode=${membershipCode}&points=${points}`
+    );
+  },
+
+  /**
    * Đổi điểm lấy voucher
    * @param {Object} redeemData - Dữ liệu đổi điểm
    * @param {number} redeemData.userId - ID người dùng

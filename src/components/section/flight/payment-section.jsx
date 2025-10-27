@@ -22,6 +22,7 @@ import PropTypes from "prop-types";
 import { processExtrasDataForBooking } from "@/components/section/flight/extras-section";
 import { formatCurrencyVND, formatDateTimeVN } from "@/utils/currency-utils";
 import { getPassengerMultiplier } from "@/utils/flight-booking-utils";
+import countries from "world-countries";
 
 // Baggage packages definition (matching extras-section)
 const BAGGAGE_PACKAGES = {
@@ -195,6 +196,7 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
   const [pointsRates, setPointsRates] = useState(null);
   const [userPoints, setUserPoints] = useState(0);
   const [canRedeem, setCanRedeem] = useState(false);
+  const [membershipCodeForPoints, setMembershipCodeForPoints] = useState(0); // Number of points used from membership
 
   // Load available seats on component mount
   useEffect(() => {
@@ -241,24 +243,47 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
   // Load points redemption rates and user points
   useEffect(() => {
     const loadPointsData = async () => {
-      if (!user?.id) return;
+      const hasMembershipPoints = formData.passengers.some(
+        (p) => p.membershipData?.valid
+      );
+
+      // Load points rates if user is logged in OR has valid membership
+      if (!user?.id && !hasMembershipPoints) return;
 
       try {
         // Load points rates
         const ratesResponse = await pointsApi.getPointsRedemptionRates();
         if (ratesResponse.success) {
           setPointsRates(ratesResponse.data);
+          console.log("🎁 Points Rates Loaded:", ratesResponse.data);
         }
 
-        // Load user points (assuming user object has loyaltyPoints)
-        setUserPoints(user.loyaltyPoints || 0);
+        // Calculate total points (user loyalty points + membership points)
+        let totalUserPoints = user?.loyaltyPoints || 0;
+
+        // Add membership points from valid membership codes
+        const membershipPoints = formData.passengers
+          .filter(
+            (p) =>
+              p.membershipData?.valid && p.membershipData?.currentPoints >= 0
+          )
+          .reduce((sum, p) => sum + (p.membershipData.currentPoints || 0), 0);
+
+        totalUserPoints += membershipPoints;
+        setUserPoints(totalUserPoints);
+
+        console.log("🎁 Points Calculation:", {
+          userLoyalty: user?.loyaltyPoints || 0,
+          membershipPoints,
+          totalUserPoints,
+        });
       } catch (error) {
         console.error("Error loading points data:", error);
       }
     };
 
     loadPointsData();
-  }, [user]);
+  }, [user, formData.passengers]);
 
   // Calculate totals from real data - FIXED: Base price is adult price for the journey
   const calculatePassengerTotal = () => {
@@ -477,12 +502,8 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
       setDealError("");
       setAppliedDealInfo(dealData);
 
-      // Reset points when applying deal
-      setPointsToRedeem("");
-      setPointsDiscount(0);
-      setPointsApplied(false);
-      setPointsError("");
-      setCanRedeem(false);
+      // Allow both deal and points to be used together
+      // Removed: Reset points when applying deal
 
       toast.success(
         `Đã áp dụng mã giảm giá ${dealCode} - Giảm ${formatCurrencyVND(
@@ -514,30 +535,68 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
     const points = parseInt(value) || 0;
     setPointsToRedeem(value);
 
-    if (points > 0) {
+    if (points >= 500) {
+      // Minimum 500 points
       try {
-        // Check if user can redeem
-        const canRedeemResponse = await pointsApi.canRedeemPoints(
-          user.id,
-          points
-        );
-        setCanRedeem(canRedeemResponse.success && canRedeemResponse.data);
+        let canRedeemResult = false;
+        let discountAmount = 0;
 
-        // Calculate discount
-        const discountResponse = await pointsApi.calculateDiscountFromPoints(
-          points
+        // Check if we have membership code to use
+        const membershipPassenger = formData.passengers.find(
+          (p) =>
+            p.membershipCode &&
+            p.membershipData?.valid &&
+            p.membershipData?.currentPoints >= points
         );
-        if (discountResponse.success) {
-          setPointsDiscount(discountResponse.data);
+
+        if (membershipPassenger && !user) {
+          // Use membership-based calculation for guest users
+          const discountResponse =
+            await pointsApi.calculateDiscountFromPointsByMembership(
+              membershipPassenger.membershipCode,
+              points
+            );
+
+          if (discountResponse.success) {
+            canRedeemResult = true;
+            discountAmount = discountResponse.data;
+          }
+        } else if (user) {
+          // Check if user can redeem
+          const canRedeemResponse = await pointsApi.canRedeemPoints(
+            user.id,
+            points
+          );
+          canRedeemResult = canRedeemResponse.success && canRedeemResponse.data;
+
+          // Calculate discount
+          const discountResponse = await pointsApi.calculateDiscountFromPoints(
+            points
+          );
+          if (discountResponse.success) {
+            discountAmount = discountResponse.data;
+          }
         }
+
+        setCanRedeem(canRedeemResult);
+        setPointsDiscount(discountAmount);
+        setPointsError("");
       } catch (error) {
         console.error("Error calculating points discount:", error);
         setCanRedeem(false);
         setPointsDiscount(0);
+        setPointsError("Lỗi khi tính toán điểm");
       }
     } else {
       setCanRedeem(false);
       setPointsDiscount(0);
+      if (points > 0 && points < 500) {
+        setPointsError(
+          `Cần tối thiểu 500 điểm để đổi (hiện tại: ${points} điểm)`
+        );
+      } else {
+        setPointsError("");
+      }
     }
   };
 
@@ -545,19 +604,43 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
     if (!pointsToRedeem || !canRedeem) return;
 
     // Check if deal is applied and warn user
-    if (dealApplied) {
-      const confirmReplace = window.confirm(
-        `Bạn đã áp dụng mã giảm giá "${dealCode}". Đổi điểm sẽ hủy mã giảm giá này. Bạn có muốn tiếp tục?`
-      );
-      if (!confirmReplace) return;
-    }
+    // if (dealApplied) {
+    //   const confirmReplace = window.confirm(
+    //     `Bạn đã áp dụng mã giảm giá "${dealCode}". Đổi điểm sẽ hủy mã giảm giá này. Bạn có muốn tiếp tục?`
+    //   );
+    //   if (!confirmReplace) return;
+    // }
 
     setRedeemingPoints(true);
     try {
-      // Calculate discount directly without creating voucher
-      const discountResponse = await pointsApi.calculateDiscountFromPoints(
-        parseInt(pointsToRedeem)
+      let discountResponse;
+
+      // Check if we have membership code to use for points calculation
+      const membershipPassenger = formData.passengers.find(
+        (p) =>
+          p.membershipCode &&
+          p.membershipData?.valid &&
+          p.membershipData?.currentPoints >= parseInt(pointsToRedeem)
       );
+
+      if (membershipPassenger && !user) {
+        // Use membership-based calculation for guest users
+        discountResponse =
+          await pointsApi.calculateDiscountFromPointsByMembership(
+            membershipPassenger.membershipCode,
+            parseInt(pointsToRedeem)
+          );
+
+        // Store membership points used for backend
+        setMembershipCodeForPoints(parseInt(pointsToRedeem));
+      } else {
+        // Use regular points calculation for logged-in users
+        discountResponse = await pointsApi.calculateDiscountFromPoints(
+          parseInt(pointsToRedeem)
+        );
+
+        setMembershipCodeForPoints(0);
+      }
 
       if (discountResponse.success) {
         const discountAmount = discountResponse.data;
@@ -565,18 +648,19 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
         setPointsApplied(true);
         setPointsError("");
 
-        // Reset deal when applying points
-        setDealCode("");
-        setDealDiscount(0);
-        setDealApplied(false);
-        setDealError("");
-        setAppliedDealInfo(null);
+        // Allow both deal and points to be used together
+        // Removed: Reset deal when applying points
 
         // Update user points (simulate deduction)
         setUserPoints((prev) => prev - parseInt(pointsToRedeem));
 
+        const sourceText =
+          membershipPassenger && !user
+            ? `từ mã hội viên ${membershipPassenger.membershipCode}`
+            : "từ tài khoản";
+
         toast.success(
-          `Đã đổi ${pointsToRedeem} điểm thành ${formatCurrencyVND(
+          `Đã đổi ${pointsToRedeem} điểm ${sourceText} thành ${formatCurrencyVND(
             discountAmount
           )} giảm giá`
         );
@@ -600,6 +684,7 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
     setPointsApplied(false);
     setPointsError("");
     setCanRedeem(false);
+    setMembershipCodeForPoints(0); // Reset membership points count
     // Restore user points
     setUserPoints((prev) => prev + redeemedPoints);
     toast.info("Đã hủy đổi điểm");
@@ -1622,10 +1707,24 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
         }
       };
 
+      // Get membership code if points are from membership
+      const membershipCodeUsedForPoints = pointsApplied
+        ? formData.passengers.find(
+            (p) =>
+              p.membershipCode &&
+              p.membershipData?.valid &&
+              membershipCodeForPoints > 0
+          )?.membershipCode
+        : null;
+
       const bookingData = {
         ...(dealApplied && dealCode && { dealCode: dealCode }),
         ...(pointsApplied &&
           pointsToRedeem && { pointsToRedeem: parseInt(pointsToRedeem) }),
+        ...(pointsApplied &&
+          membershipCodeUsedForPoints && {
+            membershipCodeForPoints: membershipCodeUsedForPoints,
+          }),
         userId: user?.id || null,
         totalAmount: finalAmount,
         passengers: [], // Will be populated with seatAssignments
@@ -2069,11 +2168,41 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
         passportNumber: passenger.passportNumber || passenger.passport || "",
         type: passenger.type || "ADULT",
         frequentFlyer: passenger.frequentFlyer || "",
-        phoneNumber: passenger.phoneNumber || formData.contact?.phone || "",
+        phone: (() => {
+          let phone =
+            passenger.phone ||
+            passenger.phoneNumber ||
+            formData.contact?.phone ||
+            "";
+
+          // Convert international format to local format if needed
+          // If phone starts with +84, convert to 0xxx format for Vietnam
+          if (phone.startsWith("+84")) {
+            phone = "0" + phone.slice(3);
+          }
+
+          return phone;
+        })(),
         email: passenger.email || formData.contact?.email || "",
+        // Add new fields for backend
+        nationality: passenger.country || "Vietnam", // Quốc gia/quốc tịch
+        currentResidence: passenger.currentAddress || "", // Nơi ở hiện tại
+        membershipCode: passenger.membershipCode || null, // Mã hội viên
         baggagePackage: getBaggagePackage(passenger, index),
         seatAssignments: [], // Will be populated below for each flight segment
       }));
+
+      console.log(
+        "🔍 Debug passengers phone data:",
+        formData.passengers.map((p) => ({
+          firstName: p.firstName,
+          lastName: p.lastName,
+          rawPhone: p.phone,
+          phoneNumber: p.phoneNumber,
+          contactPhone: formData.contact?.phone,
+          finalPhone: p.phone || p.phoneNumber || formData.contact?.phone || "",
+        }))
+      );
 
       console.log(
         "Created passengers array with seatAssignments structure:",
@@ -2473,6 +2602,14 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
           dealDiscount
         );
         console.log(
+          "Points Applied:",
+          pointsApplied,
+          "Points Redeemed:",
+          pointsToRedeem,
+          "Points Discount:",
+          pointsDiscount
+        );
+        console.log(
           "Original Amount:",
           currentTotalAmount,
           "Final Amount:",
@@ -2619,15 +2756,14 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
             formData,
             extrasData: { ...extrasData, selectedSeats: finalSelectedSeats },
             assignedSeats: finalSelectedSeats,
-            appliedDeal:
-              dealApplied && !pointsApplied
-                ? {
-                    code: dealCode,
-                    discount: dealDiscount,
-                    originalAmount: currentTotalAmount,
-                    finalAmount: finalAmount,
-                  }
-                : null,
+            appliedDeal: dealApplied
+              ? {
+                  code: dealCode,
+                  discount: dealDiscount,
+                  originalAmount: currentTotalAmount,
+                  finalAmount: finalAmount,
+                }
+              : null,
             pointsRedeemed: pointsApplied ? parseInt(pointsToRedeem) : 0,
             pointsDiscountAmount: pointsApplied ? pointsDiscount : 0,
           })
@@ -3602,6 +3738,97 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
                 ))}
               </div>
 
+              {/* Membership Information */}
+              {(() => {
+                const membersWithValidCodes = formData.passengers.filter(
+                  (passenger, index) =>
+                    passenger.membershipCode && passenger.membershipData?.valid
+                );
+
+                if (membersWithValidCodes.length > 0) {
+                  const totalMembershipPoints = membersWithValidCodes.reduce(
+                    (sum, p) => sum + (p.membershipData.currentPoints || 0),
+                    0
+                  );
+                  const minPointsRequired =
+                    pointsRates?.minPointsRedemption || 1000; // Default to 1000 if not loaded
+                  const canUseMembershipPoints =
+                    totalMembershipPoints >= minPointsRequired;
+
+                  return (
+                    <div className="space-y-2 mb-4">
+                      <h5 className="font-semibold text-gray-700">
+                        Thông Tin Hội Viên:
+                      </h5>
+                      {membersWithValidCodes.map((passenger, passengerIdx) => (
+                        <div
+                          key={passengerIdx}
+                          className="bg-gradient-to-r from-yellow-50 to-orange-50 p-3 rounded-lg border border-yellow-200"
+                        >
+                          <div className="flex justify-between items-start mb-2">
+                            <div>
+                              <p className="font-medium text-gray-800">
+                                {passenger.firstName} {passenger.lastName}
+                              </p>
+                              <p className="text-sm text-gray-600">
+                                Mã hội viên:{" "}
+                                <span className="font-mono font-semibold text-orange-600">
+                                  {passenger.membershipCode}
+                                </span>
+                              </p>
+                            </div>
+                            <div className="text-right">
+                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gradient-to-r from-yellow-400 to-orange-500 text-white">
+                                {passenger.membershipData.tier}
+                              </span>
+                            </div>
+                          </div>
+                          <div className="flex justify-between items-center">
+                            <span className="text-sm text-gray-600">
+                              Điểm hiện tại:
+                            </span>
+                            <span className="font-semibold text-orange-600">
+                              {passenger.membershipData.currentPoints?.toLocaleString() ||
+                                0}{" "}
+                              điểm
+                            </span>
+                          </div>
+                          <div className="mt-2 text-xs text-gray-500">
+                            {canUseMembershipPoints
+                              ? `🎁 Có thể sử dụng điểm này để giảm giá đơn hàng`
+                              : `✈️ Tích điểm từ chuyến bay này và sử dụng để giảm giá lần sau`}
+                          </div>
+                        </div>
+                      ))}
+
+                      {/* Membership Points Summary */}
+                      {totalMembershipPoints > 0 && (
+                        <div className="bg-blue-50 p-3 rounded-lg border border-blue-200">
+                          <div className="flex justify-between items-center">
+                            <div>
+                              <span className="text-sm font-medium text-blue-800">
+                                Tổng điểm hội viên có thể sử dụng:
+                              </span>
+                              <p className="text-xs text-blue-600 mt-1">
+                                {canUseMembershipPoints
+                                  ? `✅ Đủ điều kiện đổi điểm (tối thiểu ${minPointsRequired} điểm)`
+                                  : `⚠️ Cần thêm ${
+                                      minPointsRequired - totalMembershipPoints
+                                    } điểm để đổi (tối thiểu ${minPointsRequired} điểm)`}
+                              </p>
+                            </div>
+                            <span className="text-lg font-bold text-blue-800">
+                              {totalMembershipPoints.toLocaleString()} điểm
+                            </span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                }
+                return null;
+              })()}
+
               {/* Baggage Info */}
               {extrasData?.baggage &&
                 Object.values(extrasData.baggage).some(
@@ -4062,7 +4289,30 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
               <Separator className="my-4" />
 
               {/* Points Redemption Section */}
-              {user && pointsRates && (
+              {(() => {
+                const hasUser = !!user;
+                const hasMembershipCode = formData.passengers.some(
+                  (p) => p.membershipCode && p.membershipData?.valid
+                );
+                const hasPointsRates = !!pointsRates;
+
+                console.log("🎁 Points Redemption Debug:", {
+                  hasUser,
+                  hasMembershipCode,
+                  hasPointsRates,
+                  userPoints,
+                  passengers: formData.passengers.map((p) => ({
+                    name: `${p.firstName} ${p.lastName}`,
+                    membershipCode: p.membershipCode,
+                    membershipData: p.membershipData,
+                    hasValid: p.membershipData?.valid,
+                    points: p.membershipData?.currentPoints,
+                  })),
+                });
+
+                // Show if user is logged in OR has valid membership code (regardless of points amount)
+                return (hasUser || hasMembershipCode) && hasPointsRates;
+              })() && (
                 <div className="space-y-3">
                   <div className="flex items-center gap-2 mb-2">
                     <span className="text-lg">🎁</span>
@@ -4070,7 +4320,31 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
                       Đổi điểm giảm giá
                     </h3>
                     <span className="text-sm text-gray-500">
-                      ({userPoints} điểm hiện có)
+                      ({userPoints.toLocaleString()} điểm khả dụng
+                      {(() => {
+                        const userLoyaltyPoints = user?.loyaltyPoints || 0;
+                        const membershipPoints = formData.passengers
+                          .filter(
+                            (p) =>
+                              p.membershipData?.valid &&
+                              p.membershipData?.currentPoints
+                          )
+                          .reduce(
+                            (sum, p) =>
+                              sum + (p.membershipData.currentPoints || 0),
+                            0
+                          );
+
+                        if (userLoyaltyPoints > 0 && membershipPoints > 0) {
+                          return ` = ${userLoyaltyPoints.toLocaleString()} (tài khoản) + ${membershipPoints.toLocaleString()} (hội viên)`;
+                        } else if (userLoyaltyPoints > 0) {
+                          return ` từ tài khoản`;
+                        } else if (membershipPoints > 0) {
+                          return ` từ hội viên`;
+                        }
+                        return "";
+                      })()}
+                      )
                     </span>
                   </div>
 
@@ -4080,9 +4354,7 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
                       Quy tắc đổi điểm: {pointsRates.pointsPer10kVnd} điểm ={" "}
                       {formatCurrencyVND(pointsRates.vndPer100Points)} giảm giá
                     </p>
-                    <p className="text-xs">
-                      Điểm tối thiểu: {pointsRates.minPointsRedemption} điểm
-                    </p>
+                    <p className="text-xs">Điểm tối thiểu: 500 điểm</p>
                     <div className="flex flex-wrap gap-1 mt-2">
                       {pointsRates.suggestedTiers &&
                         Object.entries(pointsRates.suggestedTiers).map(
@@ -4102,11 +4374,11 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
                   <div className="flex gap-2">
                     <Input
                       type="number"
-                      placeholder={`Nhập số điểm để đổi giảm giá (tối thiểu ${pointsRates.minPointsRedemption})`}
+                      placeholder="Nhập số điểm để đổi giảm giá (tối thiểu 500)"
                       value={pointsToRedeem}
                       onChange={(e) => handlePointsChange(e.target.value)}
                       disabled={pointsApplied}
-                      min={pointsRates.minPointsRedemption}
+                      min="500"
                       max={userPoints}
                       className="flex-1"
                     />
@@ -4144,7 +4416,7 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
                       ) : (
                         <div className="text-red-600 bg-red-50 p-2 rounded">
                           {pointsError ||
-                            `Không đủ điểm hoặc ít hơn ${pointsRates.minPointsRedemption} điểm tối thiểu`}
+                            `Không đủ điểm hoặc ít hơn 500 điểm tối thiểu`}
                         </div>
                       )}
                     </div>
