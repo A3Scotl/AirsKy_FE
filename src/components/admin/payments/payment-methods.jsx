@@ -85,7 +85,7 @@ const PaymentMethods = () => {
         // Simulate API delay
         await new Promise((resolve) => setTimeout(resolve, 1000));
       } catch (error) {
-        console.error("Error loading payment methods:", error);
+        
         toast.error("Không thể tải thông tin phương thức thanh toán");
       } finally {
         setLoading(false);
@@ -116,7 +116,7 @@ const PaymentMethods = () => {
         `${method.name} đã được ${newActiveStatus ? "kích hoạt" : "tắt"}`
       );
     } catch (error) {
-      console.error("Error updating payment method:", error);
+      
       toast.error("Không thể cập nhật trạng thái phương thức thanh toán");
     }
   };
@@ -139,7 +139,7 @@ const PaymentMethods = () => {
 
       toast.success(`Cấu hình ${methods[methodId].name} đã được lưu`);
     } catch (error) {
-      console.error("Error saving payment method config:", error);
+      
       toast.error("Không thể lưu cấu hình phương thức thanh toán");
     } finally {
       setSaving((prev) => ({ ...prev, [methodId]: false }));

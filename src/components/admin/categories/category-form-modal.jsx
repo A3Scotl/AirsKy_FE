@@ -97,12 +97,11 @@ const CategoryFormModal = ({ isOpen, onClose, category, onSuccess }) => {
       let result;
       if (category) {
         // Update category
-        console.log("Category object:", category);
-        console.log("Category ID:", category.categoryId);
+       
 
         // Fallback to different possible ID field names
         const categoryId = category.categoryId;
-        console.log("Using Category ID:", categoryId);
+     
 
         if (!categoryId) {
           throw new Error("Không thể xác định ID của category");
@@ -135,7 +134,7 @@ const CategoryFormModal = ({ isOpen, onClose, category, onSuccess }) => {
         }
       }
     } catch (error) {
-      console.error("Error submitting category:", error);
+    
       toast.error("Có lỗi xảy ra khi lưu category");
     } finally {
       setLoading(false);

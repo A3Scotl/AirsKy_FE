@@ -3215,387 +3215,9 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
 
           <Card>
             <CardHeader>
-              <CardTitle>Dịch Vụ Đã Chọn</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {/* Chỗ ngồi */}
-                <div>
-                  <h5 className="font-semibold text-gray-700 mb-2">
-                    💺 Chỗ Ngồi:
-                  </h5>
-                  {/* Ghế đã chọn thủ công */}
-                  {Object.entries(extrasData?.selectedSeats || {}).map(
-                    ([passengerKey, seatInfo]) => {
-                      const passengerIndex =
-                        parseInt(passengerKey.replace("passenger", "")) - 1;
-                      const passenger = formData.passengers[passengerIndex];
-
-                      // Handle both new format (object) and old format (string)
-                      let seatNumber, seatPrice, seatType;
-
-                      if (typeof seatInfo === "object" && seatInfo.seatNumber) {
-                        // New format - seat info already stored with complete details
-                        seatNumber = seatInfo.seatNumber;
-                        seatPrice = seatInfo.priceVND || 0;
-                        seatType = seatInfo.seatType || "STANDARD";
-                      } else if (typeof seatInfo === "string") {
-                        // Old format - just seat number, need to get details from seatDetails or fallback
-                        seatNumber = seatInfo;
-                        const seatDetail =
-                          seatDetails[seatNumber] ||
-                          allAvailableSeats?.find(
-                            (seat) => seat.seatNumber === seatNumber
-                          );
-                        seatPrice = seatDetail?.priceVND || 0;
-                        seatType = seatDetail?.seatType || "STANDARD";
-                      }
-
-                      // Get seat type label
-                      const getSeatTypeLabel = (type) => {
-                        const labels = {
-                          STANDARD: "Tiêu chuẩn",
-                          EXTRA_LEGROOM: "Chỗ để chân rộng",
-                          EXIT_ROW: "Hàng thoát hiểm",
-                          FRONT_ROW: "Hàng đầu",
-                          ACCESSIBLE: "Khuyết tật",
-                        };
-                        return labels[type] || "Tiêu chuẩn";
-                      };
-
-                      return (
-                        <div
-                          key={passengerKey}
-                          className="flex justify-between text-sm border-b pb-2 mb-2"
-                        >
-                          <div>
-                            <span className="font-medium">
-                              {passenger?.firstName} {passenger?.lastName}:
-                            </span>
-                            <div className="text-xs text-gray-500 mt-1">
-                              Ghế {seatNumber} - {getSeatTypeLabel(seatType)}
-                            </div>
-                          </div>
-                          <div className="text-right">
-                            {seatPrice > 0 ? (
-                              <div className="text-blue-600 font-medium">
-                                +{formatCurrencyVND(seatPrice)}
-                              </div>
-                            ) : (
-                              <div className="text-green-600 font-medium">
-                                Miễn phí
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      );
-                    }
-                  )}
-
-                  {/* Ghế tự động gán */}
-                  {Object.entries(autoAssignedSeats).map(
-                    ([passengerKey, seatInfo]) => {
-                      const passengerIndex =
-                        parseInt(passengerKey.replace("passenger", "")) - 1;
-                      const passenger = formData.passengers[passengerIndex];
-
-                      // Handle both new format (object) and old format (string)
-                      let seatNumber, seatPrice, seatType;
-
-                      if (typeof seatInfo === "object" && seatInfo.seatNumber) {
-                        // New format - seat info already stored with complete details
-                        seatNumber = seatInfo.seatNumber;
-                        seatPrice = seatInfo.priceVND || 0;
-                        seatType = seatInfo.seatType || "STANDARD";
-                      } else if (typeof seatInfo === "string") {
-                        // Old format - just seat number, need to get details from seatDetails or fallback
-                        seatNumber = seatInfo;
-                        const seatDetail =
-                          seatDetails[seatNumber] ||
-                          allAvailableSeats?.find(
-                            (seat) => seat.seatNumber === seatNumber
-                          );
-                        seatPrice = seatDetail?.priceVND || 0;
-                        seatType = seatDetail?.seatType || "STANDARD";
-                      }
-
-                      // Get seat type label
-                      const getSeatTypeLabel = (type) => {
-                        const labels = {
-                          STANDARD: "Tiêu chuẩn",
-                          EXTRA_LEGROOM: "Chỗ để chân rộng",
-                          EXIT_ROW: "Hàng thoát hiểm",
-                          FRONT_ROW: "Hàng đầu",
-                          ACCESSIBLE: "Khuyết tật",
-                        };
-                        return labels[type] || "Tiêu chuẩn";
-                      };
-
-                      // Chỉ hiển thị nếu chưa có ghế thủ công
-                      if (extrasData?.selectedSeats?.[passengerKey])
-                        return null;
-
-                      return (
-                        <div
-                          key={passengerKey}
-                          className="flex justify-between text-sm border-b pb-2 mb-2 bg-gray-50 p-2 rounded"
-                        >
-                          <div>
-                            <span className="font-medium">
-                              {passenger?.firstName} {passenger?.lastName}:
-                            </span>
-                            <div className="text-xs text-gray-500 mt-1">
-                              Ghế {seatNumber} - {getSeatTypeLabel(seatType)}{" "}
-                              (tự động gán)
-                            </div>
-                          </div>
-                          <div className="text-right">
-                            {seatPrice > 0 ? (
-                              <div className="text-orange-600 font-medium">
-                                +{formatCurrencyVND(seatPrice)}
-                              </div>
-                            ) : (
-                              <div className="text-green-600 font-medium">
-                                Miễn phí
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      );
-                    }
-                  )}
-
-                  {/* Ghế chiều về nếu có */}
-                  {(flight?.isRoundTrip || flight?.type === "ROUND_TRIP") &&
-                    Object.keys(extrasData?.selectedReturnSeats || {}).length >
-                      0 && (
-                      <div className="mt-4 pt-4 border-t">
-                        <p className="text-sm font-medium text-gray-700 mb-2">
-                          Chiều về:
-                        </p>
-                        {Object.entries(extrasData.selectedReturnSeats).map(
-                          ([passengerKey, seatInfo]) => {
-                            const passengerIndex =
-                              parseInt(
-                                passengerKey
-                                  .replace("return_passenger", "")
-                                  .replace("passenger", "")
-                              ) - 1;
-                            const passenger =
-                              formData.passengers[passengerIndex];
-
-                            // Handle both new format (object) and old format (string)
-                            let seatNumber, seatPrice, seatType;
-
-                            if (
-                              typeof seatInfo === "object" &&
-                              seatInfo.seatNumber
-                            ) {
-                              // New format - seat info already stored with complete details
-                              seatNumber = seatInfo.seatNumber;
-                              seatPrice = seatInfo.priceVND || 0;
-                              seatType = seatInfo.seatType || "STANDARD";
-                            } else if (typeof seatInfo === "string") {
-                              // Old format - just seat number, need to get details from seatDetails or fallback
-                              seatNumber = seatInfo;
-                              const seatDetail =
-                                seatDetails[seatNumber] ||
-                                allAvailableSeats?.find(
-                                  (seat) => seat.seatNumber === seatNumber
-                                );
-                              seatPrice = seatDetail?.priceVND || 0;
-                              seatType = seatDetail?.seatType || "STANDARD";
-                            }
-
-                            // Get seat type label
-                            const getSeatTypeLabel = (type) => {
-                              const labels = {
-                                STANDARD: "Tiêu chuẩn",
-                                EXTRA_LEGROOM: "Chỗ để chân rộng",
-                                EXIT_ROW: "Hàng thoát hiểm",
-                                FRONT_ROW: "Hàng đầu",
-                                ACCESSIBLE: "Khuyết tật",
-                              };
-                              return labels[type] || "Tiêu chuẩn";
-                            };
-
-                            return (
-                              <div
-                                key={passengerKey}
-                                className="flex justify-between text-sm border-b pb-2 mb-2"
-                              >
-                                <div>
-                                  <span className="font-medium">
-                                    {passenger?.firstName} {passenger?.lastName}
-                                    :
-                                  </span>
-                                  <div className="text-xs text-gray-500 mt-1">
-                                    Ghế {seatNumber} -{" "}
-                                    {getSeatTypeLabel(seatType)}
-                                  </div>
-                                </div>
-                                <div className="text-right">
-                                  {seatPrice > 0 ? (
-                                    <div className="text-blue-600 font-medium">
-                                      +{formatCurrencyVND(seatPrice)}
-                                    </div>
-                                  ) : (
-                                    <div className="text-green-600 font-medium">
-                                      Miễn phí
-                                    </div>
-                                  )}
-                                </div>
-                              </div>
-                            );
-                          }
-                        )}
-                      </div>
-                    )}
-
-                  {/* Thông báo khi không có ghế nào */}
-                  {/* {Object.keys(extrasData?.selectedSeats || {}).length === 0 &&
-                    Object.keys(autoAssignedSeats).length === 0 && (
-                      <p className="text-sm text-gray-500">
-                        Sẽ tự động gán ghế trống khi thanh toán
-                      </p>
-                    )} */}
-                </div>
-
-                {/* Hành lý */}
-                <div>
-                  <h5 className="font-semibold text-gray-700 mb-2">
-                    🧳 Hành Lý Ký Gửi:
-                  </h5>
-                  {formData.passengers
-                    .map((passenger, index) => {
-                      const baggagePackage =
-                        extrasData?.baggage?.[`passenger${index + 1}`];
-                      if (baggagePackage && baggagePackage !== "NONE") {
-                        const packageInfo = BAGGAGE_PACKAGES[baggagePackage];
-                        return (
-                          <div
-                            key={index}
-                            className="flex justify-between items-center text-sm py-1"
-                          >
-                            <div className="flex-1">
-                              <span className="font-medium">
-                                {passenger.firstName || passenger.lastName
-                                  ? `${passenger.firstName || ""} ${
-                                      passenger.lastName || ""
-                                    }`.trim()
-                                  : `Hành khách ${index + 1}`}
-                                :
-                              </span>
-                              <span className="text-green-600 font-medium ml-1">
-                                Gói {packageInfo.label}
-                              </span>
-                            </div>
-                            <span className="text-blue-600 font-medium">
-                              {formatCurrencyVND(packageInfo.price)}
-                            </span>
-                          </div>
-                        );
-                      }
-                      return null;
-                    })
-                    .filter(Boolean)}
-                  {extrasData?.baggageTotal > 0 && (
-                    <div className="flex justify-between text-sm font-semibold border-t pt-2 mt-2">
-                      <span>Tổng hành lý:</span>
-                      <span className="text-blue-600">
-                        {formatCurrencyVND(extrasData.baggageTotal)}
-                      </span>
-                    </div>
-                  )}
-                  {!formData.passengers.some((_, index) => {
-                    const baggage =
-                      extrasData?.baggage?.[`passenger${index + 1}`];
-                    return baggage && baggage !== "NONE";
-                  }) && (
-                    <p className="text-sm text-gray-500">
-                      Không có hành lý ký gửi
-                    </p>
-                  )}
-                </div>
-
-                {/* Dịch vụ đi kèm */}
-                {extrasData?.selectedAncillaryServices &&
-                  Object.keys(extrasData.selectedAncillaryServices).length >
-                    0 && (
-                    <div>
-                      <h5 className="font-semibold text-gray-700 mb-2">
-                        🛎️ Dịch Vụ Đi Kèm:
-                      </h5>
-                      {Object.values(extrasData.selectedAncillaryServices).map(
-                        (service, index) => {
-                          const serviceInfo =
-                            extrasData.availableAncillaryServices?.find(
-                              (s) => s.serviceId === service.serviceId
-                            );
-                          const passengerName = service.passengerId
-                            ? `${
-                                formData.passengers[service.passengerId - 1]
-                                  ?.firstName || ""
-                              } ${
-                                formData.passengers[service.passengerId - 1]
-                                  ?.lastName || ""
-                              }`.trim()
-                            : "Toàn booking";
-
-                          const totalPrice =
-                            (serviceInfo?.price || 0) * (service.quantity || 1);
-
-                          return (
-                            <div
-                              key={index}
-                              className="mb-2 p-2 bg-purple-50 rounded-md"
-                            >
-                              <div className="flex justify-between items-start">
-                                <div className="flex-1">
-                                  <div className="font-medium text-gray-800">
-                                    {serviceInfo?.serviceName ||
-                                      `Dịch vụ ${service.serviceId}`}
-                                  </div>
-                                  <div className="text-sm text-gray-600">
-                                    Hành khách: {passengerName}
-                                  </div>
-                                  <div className="text-sm text-gray-600">
-                                    Số lượng: {service.quantity || 1}
-                                  </div>
-                                  {service.notes && (
-                                    <div className="text-sm text-gray-600 italic">
-                                      Ghi chú: {service.notes}
-                                    </div>
-                                  )}
-                                </div>
-                                <div className="text-right">
-                                  <div className="text-purple-600 font-medium">
-                                    {formatCurrencyVND(totalPrice)}
-                                  </div>
-                                  {(service.quantity || 1) > 1 && (
-                                    <div className="text-xs text-gray-500">
-                                      (
-                                      {formatCurrencyVND(
-                                        serviceInfo?.price || 0
-                                      )}{" "}
-                                      × {service.quantity || 1})
-                                    </div>
-                                  )}
-                                </div>
-                              </div>
-                            </div>
-                          );
-                        }
-                      )}
-                    </div>
-                  )}
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Chi Tiết Giá</CardTitle>
+              <CardTitle>
+                Chi Tiết Giá Bao Gồm Hành lý, Dịch Vụ Đã Chọn
+              </CardTitle>
             </CardHeader>
             <CardContent className="space-y-2">
               {/* Flight Info */}
@@ -3883,69 +3505,26 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
               <Separator className="my-4" />
 
               {/* Passengers */}
-              {flight?.isRoundTrip || flight?.type === "ROUND_TRIP" ? (
-                // Round-trip pricing - show detailed breakdown
-                <div className="space-y-1 mb-2">
-                  {flight.outboundFlight && flight.returnFlight ? (
-                    // If we have separate flight data, show detailed breakdown
-                    <>
-                      <div className="flex justify-between text-sm">
-                        <span>
-                          {formData.passengers.length} hành khách × Chiều đi
-                        </span>
-                        <span>
-                          {formatCurrencyVND(
-                            flight.outboundFlight?.selectedClass?.price ||
-                              flight.totalPrice / 2 ||
-                              0
-                          )}
-                        </span>
-                      </div>
-                      <div className="flex justify-between text-sm">
-                        <span>
-                          {formData.passengers.length} hành khách × Chiều về
-                        </span>
-                        <span>
-                          {formatCurrencyVND(
-                            flight.returnFlight.selectedClass.price ||
-                              flight.totalPrice / 2 ||
-                              0
-                          )}
-                        </span>
-                      </div>
-                    </>
-                  ) : (
-                    // Fallback to total price with passenger count
-                    <div className="flex justify-between text-sm">
-                      <span>
-                        {formData.passengers.length} hành khách × Khứ hồi (2
-                        chặng)
-                      </span>
-                      <span>{formatCurrencyVND(flight.totalPrice || 0)}</span>
-                    </div>
-                  )}
-                </div>
-              ) : (
-                // One-way pricing calculated per passenger type
-                (() => {
-                  const passengerCounts = formData.passengers.reduce(
-                    (counts, passenger) => {
-                      counts[passenger.type] =
-                        (counts[passenger.type] || 0) + 1;
-                      return counts;
-                    },
-                    {}
-                  );
+              {(() => {
+                // Calculate passenger pricing for both one-way and round-trip
+                const passengerCounts = formData.passengers.reduce(
+                  (counts, passenger) => {
+                    counts[passenger.type] = (counts[passenger.type] || 0) + 1;
+                    return counts;
+                  },
+                  {}
+                );
 
-                  const baseAdultPrice = fare?.price || fare?.basePrice || 0;
-                  const isRoundTrip =
-                    flight?.isRoundTrip || flight?.type === "ROUND_TRIP";
+                const baseAdultPrice = fare?.price || fare?.basePrice || 0;
+                const isRoundTrip =
+                  flight?.isRoundTrip || flight?.type === "ROUND_TRIP";
 
-                  return Object.entries(passengerCounts).map(
-                    ([type, count]) => {
+                return (
+                  <div className="space-y-1 mb-2">
+                    {Object.entries(passengerCounts).map(([type, count]) => {
                       const multiplier = getPassengerMultiplier(type);
                       const pricePerPassenger = baseAdultPrice * multiplier;
-                      const totalPrice = pricePerPassenger * count;
+                      const totalPricePerType = pricePerPassenger * count;
 
                       const typeLabel =
                         type === "ADULT"
@@ -3955,6 +3534,12 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
                           : "Em bé";
 
                       const segmentText = isRoundTrip ? " (khứ hồi)" : "";
+                      const multiplierText =
+                        multiplier === 1
+                          ? "100%"
+                          : multiplier === 0.75
+                          ? "75%"
+                          : "10%";
 
                       return (
                         <div
@@ -3962,16 +3547,18 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
                           className="flex justify-between text-sm mb-2"
                         >
                           <span>
-                            {count} {typeLabel}
-                            {segmentText}
+                            {count} {typeLabel} ({multiplierText}){segmentText}
                           </span>
-                          <span>{formatCurrencyVND(totalPrice)}</span>
+                          <span>
+                            {formatCurrencyVND(pricePerPassenger)} × {count} ={" "}
+                            {formatCurrencyVND(totalPricePerType)}
+                          </span>
                         </div>
                       );
-                    }
-                  );
-                })()
-              )}
+                    })}
+                  </div>
+                );
+              })()}
 
               {/* Extras */}
               {extrasData?.selectedSeats &&

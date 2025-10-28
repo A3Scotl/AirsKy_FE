@@ -34,6 +34,44 @@ import {
   SelectContent,
   SelectItem,
 } from "@/components/ui/select";
+import { Skeleton } from "@/components/ui/skeleton";
+
+const BlogCardSkeleton = () => {
+  return (
+    <article className="bg-white rounded-lg shadow-md overflow-hidden">
+      {/* Featured Image Skeleton */}
+      <div className="relative h-48 overflow-hidden">
+        <Skeleton className="w-full h-full" />
+      </div>
+
+      <div className="p-6">
+        {/* Categories Skeleton */}
+        <div className="flex flex-wrap gap-2 mb-3">
+          <Skeleton className="h-5 w-16 rounded-full" />
+          <Skeleton className="h-5 w-20 rounded-full" />
+        </div>
+
+        {/* Title Skeleton */}
+        <Skeleton className="h-6 w-full mb-2" />
+        <Skeleton className="h-6 w-3/4 mb-4" />
+
+        {/* Excerpt Skeleton */}
+        <Skeleton className="h-4 w-full mb-2" />
+        <Skeleton className="h-4 w-full mb-2" />
+        <Skeleton className="h-4 w-2/3 mb-4" />
+
+        {/* Meta Info Skeleton */}
+        <div className="flex items-center justify-between text-sm border-t pt-4">
+          <div className="flex items-center gap-4">
+            <Skeleton className="h-4 w-4 rounded" />
+            <Skeleton className="h-4 w-24" />
+          </div>
+          <Skeleton className="h-4 w-20" />
+        </div>
+      </div>
+    </article>
+  );
+};
 
 const BlogPage = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -423,8 +461,10 @@ const BlogPage = () => {
 
               {/* Loading State */}
               {searchLoading && (
-                <div className="text-center py-12">
-                  <p className="text-gray-600 text-lg">Đang tải...</p>
+                <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-8">
+                  {Array.from({ length: 9 }).map((_, index) => (
+                    <BlogCardSkeleton key={index} />
+                  ))}
                 </div>
               )}
 

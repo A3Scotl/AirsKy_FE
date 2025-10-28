@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useCallback } from "react";
 import CountryModal from "@/components/admin/countries/country-modal";
+import CountryTableSkeleton from "@/components/admin/countries/country-table-skeleton";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -518,9 +519,7 @@ const CountryPage = () => {
       {/* Table */}
       <Card>
         {loading ? (
-          <div className="flex justify-center py-12">
-            <Loader2 className="animate-spin" />
-          </div>
+          <CountryTableSkeleton />
         ) : (
           <Table>
             <TableHeader>

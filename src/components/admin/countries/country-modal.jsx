@@ -65,15 +65,7 @@ const CountryModal = ({ open, onClose, onSubmit, initialData }) => {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    // Log giá trị ảnh trước khi submit
-    console.log("[CountryModal] Submitting form data:");
-    console.log("- thumbnail:", form.thumbnail);
-    console.log("- thumbnailFile:", form.thumbnailFile);
-    console.log(
-      "- thumbnailFile instanceof File:",
-      form.thumbnailFile instanceof File
-    );
-    console.log("- initialData thumbnail:", initialData?.thumbnail);
+   
 
     const formData = {
       countryCode: form.country_code,
@@ -85,38 +77,28 @@ const CountryModal = ({ open, onClose, onSubmit, initialData }) => {
     if (initialData) {
       // Update mode
       if (form.thumbnailFile instanceof File) {
-        console.log(
-          "[CountryModal] Update - Sending new file:",
-          form.thumbnailFile.name
-        );
+        
         formData.thumbnailFile = form.thumbnailFile;
       } else if (form.thumbnail && form.thumbnail !== initialData.thumbnail) {
-        console.log("[CountryModal] Update - Sending new URL:", form.thumbnail);
+     
         formData.thumbnail = form.thumbnail;
       } else if (initialData.thumbnail) {
-        console.log(
-          "[CountryModal] Update - Keeping existing thumbnail:",
-          initialData.thumbnail
-        );
+       
         formData.existingThumbnail = initialData.thumbnail;
       }
     } else {
       // Create mode
       if (form.thumbnailFile instanceof File) {
-        console.log(
-          "[CountryModal] Create - Sending file:",
-          form.thumbnailFile.name
-        );
+        
         formData.thumbnailFile = form.thumbnailFile;
       } else if (form.thumbnail) {
-        console.log("[CountryModal] Create - Sending URL:", form.thumbnail);
         formData.thumbnail = form.thumbnail;
       } else {
         console.log("[CountryModal] Create - No thumbnail");
       }
     }
 
-    console.log("[CountryModal] Final formData:", formData);
+  
     onSubmit(formData);
   };
 

@@ -42,6 +42,7 @@ import { airlineApi } from "@/apis/airline-api";
 import { useAirline } from "@/hooks/use-airline";
 import { toast } from "sonner";
 import ExportButton from "@/components/common/export-button";
+import AirlineTableSkeleton from "@/components/admin/airlines/airline-table-skeleton";
 
 // TanStack Table imports
 import {
@@ -537,9 +538,7 @@ const AirlinePage = () => {
       {/* Table */}
       <Card>
         {loading ? (
-          <div className="flex justify-center py-12">
-            <Loader2 className="animate-spin" />
-          </div>
+          <AirlineTableSkeleton rows={10} />
         ) : (
           <Table>
             <TableHeader>

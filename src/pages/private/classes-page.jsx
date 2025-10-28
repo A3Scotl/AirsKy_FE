@@ -22,8 +22,10 @@ import Pagination from "@/components/ui/pagination";
 import { classesApi } from "@/apis/classes-api";
 import { handleFetch } from "@/utils/fetch-helper.js";
 import { toast } from "sonner";
+
 import ExportButton from "@/components/common/export-button";
 import TravelClassModal from "@/components/admin/travel-classes/travel-class-modal";
+import ClassesTableSkeleton from "@/components/admin/travel-classes/classes-table-skeleton";
 
 const ClassesPage = () => {
   const [modalOpen, setModalOpen] = useState(false);
@@ -224,7 +226,7 @@ const ClassesPage = () => {
         </div>
         <div className="flex gap-2">
           <ExportButton entity="classes" />
-          <Button onClick={handleAdd}>Thêm hạng vé</Button>
+          {/* <Button onClick={handleAdd}>Thêm hạng vé</Button> */}
         </div>
       </div>
 
@@ -287,9 +289,7 @@ const ClassesPage = () => {
       {/* Table */}
       <Card>
         {loading ? (
-          <div className="flex justify-center py-12">
-            <Loader2 className="animate-spin" />
-          </div>
+          <ClassesTableSkeleton />
         ) : (
           <Table>
             <TableHeader>

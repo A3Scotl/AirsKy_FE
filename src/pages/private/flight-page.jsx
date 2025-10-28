@@ -54,6 +54,70 @@ import { handleFetch } from "@/utils/fetch-helper.js";
 import { toast } from "sonner";
 import FlightTableSkeleton from "@/components/admin/flights/flight-table-skeleton";
 import ExportButton from "@/components/common/export-button";
+
+// Utility functions for flight statistics
+const getWeekKey = (date) => {
+  const d = new Date(date);
+  const year = d.getFullYear();
+  const weekNum = Math.ceil((d.getDate() - d.getDay() + 1) / 7);
+  return `${year}-W${weekNum}`;
+};
+
+const saveWeeklyStats = (stats) => {
+  try {
+    const currentWeek = getWeekKey(new Date());
+    const stored = localStorage.getItem("flight_weekly_stats");
+    const weeklyData = stored ? JSON.parse(stored) : {};
+
+    // Lưu dữ liệu cho tuần hiện tại
+    weeklyData[currentWeek] = {
+      ...stats,
+      timestamp: new Date().toISOString(),
+    };
+
+    // Giữ lại tối đa 12 tuần dữ liệu
+    const weeks = Object.keys(weeklyData).sort().reverse();
+    if (weeks.length > 12) {
+      weeks.slice(12).forEach((week) => delete weeklyData[week]);
+    }
+
+    localStorage.setItem("flight_weekly_stats", JSON.stringify(weeklyData));
+  } catch (error) {
+    console.error("Error saving weekly stats:", error);
+  }
+};
+
+const getLastWeekStats = () => {
+  try {
+    const stored = localStorage.getItem("flight_weekly_stats");
+    if (!stored) return null;
+
+    const weeklyData = JSON.parse(stored);
+    const currentWeek = getWeekKey(new Date());
+
+    // Tìm tuần trước
+    const weeks = Object.keys(weeklyData).sort().reverse();
+    const lastWeekIndex = weeks.findIndex((week) => week !== currentWeek);
+
+    if (lastWeekIndex !== -1) {
+      return weeklyData[weeks[lastWeekIndex]];
+    }
+
+    return null;
+  } catch (error) {
+    console.error("Error getting last week stats:", error);
+    return null;
+  }
+};
+
+const clearWeeklyStats = () => {
+  try {
+    localStorage.removeItem("flight_weekly_stats");
+    toast.success("Đã xóa dữ liệu thống kê lịch sử");
+  } catch (error) {
+    console.error("Error clearing weekly stats:", error);
+  }
+};
 const AdminFlights = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("on-time"); // Mặc định lọc chuyến bay "Đúng giờ"
@@ -66,7 +130,6 @@ const AdminFlights = () => {
   const [activeTab, setActiveTab] = useState("overview");
   const [flights, setFlights] = useState([]);
   const [aircrafts, setAircrafts] = useState([]);
-  const [previousFlights, setPreviousFlights] = useState([]); // Để tính % thay đổi
   const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
   const [flightToCancel, setFlightToCancel] = useState(null);
   const [cancellationReason, setCancellationReason] = useState("");
@@ -86,13 +149,17 @@ const AdminFlights = () => {
           const newFlights = flightsResult.data?.content || flightsResult.data;
           setFlights(newFlights);
         } else {
-          toast.error(flightsResult?.message || "Không thể tải danh sách chuyến bay");
+          toast.error(
+            flightsResult?.message || "Không thể tải danh sách chuyến bay"
+          );
         }
 
         if (aircraftsResult && aircraftsResult.success) {
           setAircrafts(aircraftsResult.data);
         } else {
-          toast.error(aircraftsResult?.message || "Không thể tải danh sách máy bay");
+          toast.error(
+            aircraftsResult?.message || "Không thể tải danh sách máy bay"
+          );
         }
       } catch (error) {
         toast.error("Đã xảy ra lỗi khi tải dữ liệu ban đầu.");
@@ -103,8 +170,15 @@ const AdminFlights = () => {
     fetchData();
   }, []);
 
-  // Hàm tính toán thống kê chuyến bay toàn diện
-  const calculateFlightStats = (currentFlights, prevFlights = []) => {
+  // Tự động cập nhật thống kê khi dữ liệu flights thay đổi
+  useEffect(() => {
+    if (flights.length > 0) {
+      calculateFlightStats(flights);
+    }
+  }, [flights]);
+
+  // Hàm tính toán thống kê chuyến bay toàn diện với dữ liệu lịch sử
+  const calculateFlightStats = (currentFlights) => {
     if (!currentFlights || currentFlights.length === 0) {
       return [
         {
@@ -131,7 +205,6 @@ const AdminFlights = () => {
           icon: Clock,
           color: "bg-indigo-500",
         },
-
         {
           title: "Tỷ lệ lấp đầy",
           value: "0%",
@@ -143,17 +216,17 @@ const AdminFlights = () => {
       ];
     }
 
-    // === THỐNG KÊ TỔNG QUÁT ===
+    // === TÍNH TOÁN THỐNG KÊ HIỆN TẠI ===
     const totalFlights = currentFlights.length;
-    const activeFlights = currentFlights.filter(
-      (flight) => flight.status !== "CANCELLED"
-    ).length;
-    const activeRate =
-      totalFlights > 0 ? ((activeFlights / totalFlights) * 100).toFixed(1) : 0;
 
-    // Tính tỷ lệ đúng giờ (chuyến bay ON_TIME hoặc DEPARTED)
-    const onTimeFlights = currentFlights.filter(
-      (flight) => flight.status === "ON_TIME" || flight.status === "DEPARTED"
+    // Chuyến bay hoạt động (không bị hủy)
+    const activeFlights = currentFlights.filter(
+      (flight) => flight.status !== "CANCELLED" && flight.status !== "CANCELLED"
+    ).length;
+
+    // Tỷ lệ đúng giờ (chuyến bay ON_TIME, DEPARTED, hoặc ARRIVED đúng giờ)
+    const onTimeFlights = currentFlights.filter((flight) =>
+      ["ON_TIME", "DEPARTED", "ARRIVED"].includes(flight.status)
     ).length;
     const onTimeRate =
       totalFlights > 0 ? ((onTimeFlights / totalFlights) * 100).toFixed(1) : 0;
@@ -164,138 +237,116 @@ const AdminFlights = () => {
       0
     );
     const bookedSeats = currentFlights.reduce((sum, flight) => {
-      return sum + (flight?.aircraft?.totalSeats - (flight.availableSeats || 0));
+      const aircraftSeats = flight?.aircraft?.totalSeats || 0;
+      const availableSeats = flight.availableSeats || 0;
+      return sum + Math.max(0, aircraftSeats - availableSeats);
     }, 0);
     const occupancyRate =
       totalSeats > 0 ? ((bookedSeats / totalSeats) * 100).toFixed(1) : 0;
 
-    // === THỐNG KÊ HÔM NAY ===
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
+    // Tính doanh thu ước tính
+    const estimatedRevenue = currentFlights.reduce((sum, flight) => {
+      const aircraftSeats = flight?.aircraft?.totalSeats || 0;
+      const availableSeats = flight.availableSeats || 0;
+      const bookedSeatsCount = Math.max(0, aircraftSeats - availableSeats);
+      const pricePerSeat = flight.priceNumeric || flight.price || 0;
+      return sum + bookedSeatsCount * pricePerSeat;
+    }, 0);
 
-    const todayFlights = currentFlights.filter((flight) => {
-      const departureDate = new Date(flight.departureTime);
-      return departureDate >= today && departureDate < tomorrow;
-    });
-
-    const todayFlightsCount = todayFlights.length;
+    // === LẤY DỮ LIỆU TUẦN TRƯỚC ===
+    const lastWeekStats = getLastWeekStats();
 
     // === TÍNH % THAY ĐỔI ===
-    const prevTotalFlights = prevFlights.length;
-    const prevActiveFlights = prevFlights.filter(
-      (flight) => flight.status !== "CANCELLED"
-    ).length;
-    const prevOnTimeFlights = prevFlights.filter(
-      (flight) => flight.status === "ON_TIME" || flight.status === "DEPARTED"
-    ).length;
-    const prevTotalRevenue = prevFlights.reduce((sum, flight) => {
-      const bookedSeats = flight.totalSeats - (flight.availableSeats || 0);
-      return sum + bookedSeats * (flight.priceNumeric || 0);
-    }, 0);
-    const prevTotalSeats = prevFlights.reduce(
-      (sum, flight) => sum + (flight.totalSeats || 0),
-      0
+    const calculateChange = (current, previous) => {
+      if (!previous || previous <= 0) return { value: "0.0", isPositive: true };
+      const change = ((current - previous) / previous) * 100;
+      return {
+        value: Math.abs(change).toFixed(1),
+        isPositive: change >= 0,
+      };
+    };
+
+    const totalChange = calculateChange(
+      totalFlights,
+      lastWeekStats?.totalFlights
     );
-    const prevBookedSeats = prevFlights.reduce((sum, flight) => {
-      return sum + (flight.totalSeats - (flight.availableSeats || 0));
-    }, 0);
+    const activeChange = calculateChange(
+      activeFlights,
+      lastWeekStats?.activeFlights
+    );
+    const onTimeChange = calculateChange(
+      parseFloat(onTimeRate),
+      lastWeekStats?.onTimeRate
+    );
+    const occupancyChange = calculateChange(
+      parseFloat(occupancyRate),
+      lastWeekStats?.occupancyRate
+    );
 
-    const prevTodayFlights = prevFlights.filter((flight) => {
-      const departureDate = new Date(flight.departureTime);
-      return departureDate >= today && departureDate < tomorrow;
-    }).length;
-
-    // Tính % thay đổi
-    const totalChange =
-      prevTotalFlights > 0
-        ? (
-            ((totalFlights - prevTotalFlights) / prevTotalFlights) *
-            100
-          ).toFixed(1)
-        : "0";
-
-    const activeChange =
-      prevActiveFlights > 0
-        ? (
-            ((activeFlights - prevActiveFlights) / prevActiveFlights) *
-            100
-          ).toFixed(1)
-        : "0";
-
-    const onTimeChange =
-      prevOnTimeFlights > 0
-        ? (
-            ((onTimeFlights - prevOnTimeFlights) / prevOnTimeFlights) *
-            100
-          ).toFixed(1)
-        : "0";
-
-    const revenueChange =
-      prevTotalRevenue > 0
-        ? (
-            ((totalRevenue - prevTotalRevenue) / prevTotalRevenue) *
-            100
-          ).toFixed(1)
-        : "0";
-
-    const prevOccupancyRate =
-      prevTotalSeats > 0
-        ? ((prevBookedSeats / prevTotalSeats) * 100).toFixed(1)
-        : 0;
-    const occupancyChange =
-      prevOccupancyRate > 0
-        ? (occupancyRate - prevOccupancyRate).toFixed(1)
-        : "0";
-
-    const todayChange =
-      prevTodayFlights > 0
-        ? (
-            ((todayFlightsCount - prevTodayFlights) / prevTodayFlights) *
-            100
-          ).toFixed(1)
-        : "0";
+    // === LƯU DỮ LIỆU HIỆN TẠI CHO TUẦN SAU ===
+    const currentStats = {
+      totalFlights,
+      activeFlights,
+      onTimeRate: parseFloat(onTimeRate),
+      occupancyRate: parseFloat(occupancyRate),
+      estimatedRevenue,
+      totalSeats,
+      bookedSeats,
+    };
+    saveWeeklyStats(currentStats);
 
     return [
       {
         title: "Tổng chuyến bay",
         value: totalFlights.toString(),
-        change: `${totalChange > 0 ? "+" : ""}${totalChange}%`,
-        isPositive: totalChange >= 0,
+        change: `${totalChange.isPositive ? "+" : "-"}${totalChange.value}%`,
+        isPositive: totalChange.isPositive,
         icon: Plane,
         color: "bg-blue-500",
+        description: lastWeekStats
+          ? `Tuần trước: ${lastWeekStats.totalFlights || 0}`
+          : "Dữ liệu mới",
       },
       {
         title: "Chuyến bay hoạt động",
         value: activeFlights.toString(),
-        change: `${activeChange > 0 ? "+" : ""}${activeChange}%`,
-        isPositive: activeChange >= 0,
+        change: `${activeChange.isPositive ? "+" : "-"}${activeChange.value}%`,
+        isPositive: activeChange.isPositive,
         icon: CheckCircle,
         color: "bg-green-500",
+        description: lastWeekStats
+          ? `Tuần trước: ${lastWeekStats.activeFlights || 0}`
+          : "Dữ liệu mới",
       },
       {
         title: "Tỷ lệ đúng giờ",
         value: `${onTimeRate}%`,
-        change: `${onTimeChange > 0 ? "+" : ""}${onTimeChange}%`,
-        isPositive: onTimeChange >= 0,
+        change: `${onTimeChange.isPositive ? "+" : "-"}${onTimeChange.value}%`,
+        isPositive: onTimeChange.isPositive,
         icon: Clock,
         color: "bg-indigo-500",
+        description: lastWeekStats
+          ? `Tuần trước: ${lastWeekStats.onTimeRate?.toFixed(1) || 0}%`
+          : "Dữ liệu mới",
       },
-
       {
         title: "Tỷ lệ lấp đầy",
         value: `${occupancyRate}%`,
-        change: `${occupancyChange > 0 ? "+" : ""}${occupancyChange}%`,
-        isPositive: occupancyChange >= 0,
+        change: `${occupancyChange.isPositive ? "+" : "-"}${
+          occupancyChange.value
+        }%`,
+        isPositive: occupancyChange.isPositive,
         icon: Users,
         color: "bg-purple-500",
+        description: lastWeekStats
+          ? `Tuần trước: ${lastWeekStats.occupancyRate?.toFixed(1) || 0}%`
+          : "Dữ liệu mới",
       },
     ];
   };
 
   // Tính toán flightStats dựa trên dữ liệu thực
-  const flightStats = calculateFlightStats(flights, previousFlights);
+  const flightStats = calculateFlightStats(flights);
 
   const aircraftTypes = aircrafts.map((a) => ({
     name: a.aircraftName,
@@ -339,7 +390,9 @@ const AdminFlights = () => {
     } catch (error) {
       console.error("Cancel flight error:", error);
       toast.error(
-        `Lỗi khi hủy chuyến bay: ${error.response?.data?.error || error.message}`
+        `Lỗi khi hủy chuyến bay: ${
+          error.response?.data?.error || error.message
+        }`
       );
     } finally {
       setIsCancelModalOpen(false);
@@ -425,12 +478,6 @@ const AdminFlights = () => {
           toast.error("Thời gian khởi hành phải trước thời gian đến");
         } else if (
           errorMessage.includes(
-            "Round-trip flight must have a roundTripGroupId"
-          )
-        ) {
-          toast.error("Chuyến bay khứ hồi phải có mã nhóm khứ hồi");
-        } else if (
-          errorMessage.includes(
             "Departure and arrival airports must be different"
           )
         ) {
@@ -464,9 +511,6 @@ const AdminFlights = () => {
   const handleRefresh = async () => {
     try {
       setLoading(true);
-
-      // Lưu dữ liệu hiện tại để tính % thay đổi
-      setPreviousFlights(flights);
 
       // Fetch dữ liệu mới
       const result = await flightApi.getAllFlights({ size: 1000 });
@@ -509,6 +553,7 @@ const AdminFlights = () => {
             <RotateCcw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
             Làm mới
           </Button>
+         
           {/* button export file */}
           <ExportButton entity="flights" />
 
@@ -530,7 +575,7 @@ const AdminFlights = () => {
             <Card key={index}>
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
-                  <div>
+                  <div className="flex-1">
                     <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
                       {stat.title}
                     </p>
@@ -554,6 +599,11 @@ const AdminFlights = () => {
                         so với tuần trước
                       </span>
                     </div>
+                    {stat.description && (
+                      <p className="text-xs text-gray-500 mt-1">
+                        {stat.description}
+                      </p>
+                    )}
                   </div>
                   <div
                     className={`w-12 h-12 ${stat.color} rounded-lg flex items-center justify-center`}
@@ -618,7 +668,7 @@ const AdminFlights = () => {
                     <SelectValue placeholder="Aircraft type" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">All Aircraft</SelectItem>
+                    <SelectItem value="all">Tất cả máy bay</SelectItem>
                     {aircraftTypes.map((aircraft) => (
                       <SelectItem
                         key={aircraft.code}

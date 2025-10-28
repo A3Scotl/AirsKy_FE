@@ -20,6 +20,7 @@ export function DateTimePicker({
   placeholder = "Chọn ngày",
   className,
   disabled = false,
+  minDate,
 }) {
   const [selectedDate, setSelectedDate] = React.useState(date);
   const [isOpen, setIsOpen] = React.useState(false);
@@ -61,6 +62,7 @@ export function DateTimePicker({
           onSelect={handleDateSelect}
           initialFocus
           locale={vi}
+          disabled={minDate ? { before: minDate } : undefined}
         />
       </PopoverContent>
     </Popover>

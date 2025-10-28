@@ -250,6 +250,56 @@ const AdminUsers = () => {
         setPagination(finalPagination);
         console.log("Final pagination:", finalPagination);
 
+        // If API didn't provide totalBookings/totalSpent for users on this page,
+        // fetch per-user stats for current page to show accurate numbers in table.
+        (async () => {
+          try {
+            const toFetch = finalUsers.map((u, idx) => ({ u, idx }));
+            const statsPromises = toFetch.map(async ({ u, idx }) => {
+              // Only call if backend did not include totals (check if properties exist)
+              if (
+                !("totalBookings" in u) ||
+                !("totalSpent" in u) ||
+                u.totalBookings === 0 ||
+                u.totalSpent === 0
+              ) {
+                try {
+                  const resp = await userApi.getUserBookingStats(u.id);
+                  if (resp.success && resp.data) {
+                    return { idx, data: resp.data };
+                  }
+                } catch (e) {
+                  return null;
+                }
+              }
+              return null;
+            });
+
+            const statsResults = await Promise.all(statsPromises);
+            let updated = [...transformedUsers];
+            let changed = false;
+            statsResults.forEach((r) => {
+              if (r && r.data) {
+                const { idx, data } = r;
+                // Map to transformedUsers index
+                if (updated[idx]) {
+                  updated[idx] = {
+                    ...updated[idx],
+                    totalBookings:
+                      data.totalBookings ?? updated[idx].totalBookings,
+                    totalSpent: data.totalSpent ?? updated[idx].totalSpent,
+                  };
+                  changed = true;
+                }
+              }
+            });
+
+            if (changed) setUsers(updated);
+          } catch (e) {
+            console.error("Failed to fetch per-user booking stats:", e);
+          }
+        })();
+
         // Calculate stats
         let totalCustomers, activeCustomers, newRegistrations;
 

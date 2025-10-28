@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import {
   X,
   User,
@@ -52,6 +52,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { userApi } from "@/apis/user-api";
+import Pagination from "@/components/ui/pagination";
 
 const UserDetailsModal = ({
   open,
@@ -62,6 +64,65 @@ const UserDetailsModal = ({
   onSuspendUser,
   onDeleteUser,
 }) => {
+  const [userBookings, setUserBookings] = useState([]);
+  const [bookingStats, setBookingStats] = useState({
+    totalBookings: 0,
+    cancelledBookings: 0,
+    completedBookings: 0,
+    totalSpent: 0,
+  });
+  const [loadingBookings, setLoadingBookings] = useState(false);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(5);
+
+  // Fetch user bookings when modal opens
+  useEffect(() => {
+    if (open && user?.id) {
+      fetchUserBookings();
+    }
+  }, [open, user?.id]);
+
+  const fetchUserBookings = async () => {
+    if (!user?.id) return;
+
+    setLoadingBookings(true);
+    try {
+      const response = await userApi.getBookingsByUserId(user.id);
+      if (response.success) {
+        const bookings = response.data || [];
+        setUserBookings(bookings);
+
+        // Tính toán thống kê từ dữ liệu thật
+        const stats = {
+          totalBookings: bookings.length,
+          cancelledBookings: bookings.filter(
+            (booking) => booking.status === "CANCELLED"
+          ).length,
+          completedBookings: bookings.filter(
+            (booking) =>
+              booking.status === "COMPLETED" || booking.status === "CONFIRMED"
+          ).length,
+          totalSpent: bookings
+            .filter(
+              (booking) =>
+                booking.status === "COMPLETED" || booking.status === "CONFIRMED"
+            )
+            .reduce((total, booking) => total + (booking.totalAmount || 0), 0),
+        };
+        setBookingStats(stats);
+      }
+    } catch (error) {
+      console.error("Error fetching user bookings:", error);
+    } finally {
+      setLoadingBookings(false);
+    }
+  };
+
+  // reset pagination when bookings change or modal closed/opened
+  useEffect(() => {
+    setPage(1);
+  }, [userBookings.length, open]);
+
   if (!user) return null;
 
   const getStatusBadge = (status) => {
@@ -144,68 +205,85 @@ const UserDetailsModal = ({
   const StatusIcon = getStatusIcon(user.status);
   const RoleIcon = getRoleIcon(user.role);
 
-  // Mock data for recent bookings and activities
-  const recentBookings = [
-    {
-      id: "BK001",
-      route: "HAN → SGN",
-      date: "2024-01-15",
-      status: "Completed",
-      amount: 1500000,
-      flightNumber: "VN123",
-    },
-    {
-      id: "BK002",
-      route: "SGN → DAD",
-      date: "2024-01-10",
-      status: "Cancelled",
-      amount: 2200000,
-      flightNumber: "VN456",
-    },
-    {
-      id: "BK003",
-      route: "HAN → HPH",
-      date: "2024-01-05",
-      status: "Completed",
-      amount: 800000,
-      flightNumber: "VN789",
-    },
-  ];
+  // Xử lý dữ liệu booking thật
+  const totalBookingItems = userBookings.length;
+  const totalBookingPages = Math.max(
+    1,
+    Math.ceil(totalBookingItems / pageSize)
+  );
 
-  const recentActivities = [
-    {
-      action: "Cập nhật hồ sơ",
-      date: "2024-01-15 10:30",
-      description: "Thay đổi thông tin liên hệ",
-      icon: Edit,
-      color: "text-blue-500",
-    },
-    {
-      action: "Tạo đặt chỗ",
-      date: "2024-01-15 09:15",
-      description: "Tạo đặt chỗ BK001",
-      icon: Plane,
-      color: "text-green-500",
-    },
-    {
-      action: "Đăng nhập",
-      date: "2024-01-15 09:00",
-      description: "Đăng nhập từ Việt Nam",
-      icon: UserCheck,
-      color: "text-purple-500",
-    },
-    {
-      action: "Đổi mật khẩu",
-      date: "2024-01-10 14:20",
-      description: "Cập nhật mật khẩu thành công",
-      icon: Shield,
-      color: "text-orange-500",
-    },
-  ];
+  const displayedBookings = userBookings
+    .slice((page - 1) * pageSize, page * pageSize)
+    .map((booking) => ({
+      id: booking.bookingCode || booking.bookingId,
+      route:
+        booking.flightSegments?.length > 0
+          ? `${booking.flightSegments[0].departureAirport?.airportCode} → ${booking.flightSegments[0].arrivalAirport?.airportCode}`
+          : "N/A",
+      date: booking.bookingDate
+        ? new Date(booking.bookingDate).toLocaleDateString("vi-VN")
+        : "N/A",
+      status: booking.status,
+      amount: booking.totalAmount || 0,
+      flightNumber: booking.flightNumber || "N/A",
+      raw: booking,
+    }));
+
+  // Tạo activities từ booking data
+  const getRecentActivities = () => {
+    const activities = [];
+
+    userBookings.forEach((booking) => {
+      // Activity cho việc tạo booking
+      activities.push({
+        action: "Tạo đặt chỗ",
+        date: booking.createdAt
+          ? formatDate(booking.createdAt)
+          : booking.bookingDate,
+        description: `Tạo đặt chỗ ${booking.bookingCode || booking.bookingId}`,
+        icon: Plane,
+        color: "text-green-500",
+      });
+
+      // Activity cho việc cập nhật trạng thái
+      if (booking.status === "CANCELLED") {
+        activities.push({
+          action: "Hủy đặt chỗ",
+          date: booking.updatedAt || booking.bookingDate,
+          description: `Hủy đặt chỗ ${
+            booking.bookingCode || booking.bookingId
+          }`,
+          icon: XCircle,
+          color: "text-red-500",
+        });
+      } else if (booking.status === "COMPLETED") {
+        activities.push({
+          action: "Hoàn thành đặt chỗ",
+          date: booking.updatedAt || booking.bookingDate,
+          description: `Hoàn thành đặt chỗ ${
+            booking.bookingCode || booking.bookingId
+          }`,
+          icon: CheckCircle,
+          color: "text-blue-500",
+        });
+      }
+    });
+
+    // Sắp xếp theo thời gian giảm dần và lấy 5 hoạt động gần nhất
+    return activities
+      .sort((a, b) => new Date(b.date) - new Date(a.date))
+      .slice(0, 5);
+  };
+
+  const recentBookings = displayedBookings;
+  const recentActivities = getRecentActivities();
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="max-w-6xl max-h-[95vh] overflow-hidden p-0">
+        <DialogHeader className="sr-only">
+          <DialogTitle>Thông tin chi tiết người dùng</DialogTitle>
+        </DialogHeader>
         {/* Header với gradient background */}
         <div className="bg-gradient-to-r from-gray-500 via-gray-500 to-gray-600 text-white p-6">
           <div className="flex items-center justify-between">
@@ -321,7 +399,7 @@ const UserDetailsModal = ({
         {/* Content */}
         <div className="p-6 overflow-y-auto max-h-[calc(95vh-200px)]">
           {/* Stats Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
             <Card className="border-l-4 border-l-green-500">
               <CardContent className="pt-4">
                 <div className="flex items-center justify-between">
@@ -349,7 +427,7 @@ const UserDetailsModal = ({
                       Tổng chi tiêu
                     </p>
                     <p className="text-2xl font-bold text-green-600">
-                      {user.totalSpent?.toLocaleString("vi-VN") || 0}đ
+                      {bookingStats.totalSpent?.toLocaleString("vi-VN") || 0}đ
                     </p>
                   </div>
                   <DollarSign className="h-8 w-8 text-gray-400" />
@@ -365,7 +443,7 @@ const UserDetailsModal = ({
                       Tổng đặt chỗ
                     </p>
                     <p className="text-2xl font-bold text-purple-600">
-                      {user.totalBookings || 0}
+                      {bookingStats.totalBookings || 0}
                     </p>
                   </div>
                   <Plane className="h-8 w-8 text-gray-400" />
@@ -373,18 +451,32 @@ const UserDetailsModal = ({
               </CardContent>
             </Card>
 
-            <Card className="border-l-4 border-l-orange-500">
+            <Card className="border-l-4 border-l-red-500">
+              <CardContent className="pt-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">Đã hủy</p>
+                    <p className="text-2xl font-bold text-red-600">
+                      {bookingStats.cancelledBookings || 0}
+                    </p>
+                  </div>
+                  <XCircle className="h-8 w-8 text-gray-400" />
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="border-l-4 border-l-green-500">
               <CardContent className="pt-4">
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium text-gray-600">
-                      Điểm tích lũy
+                      Đã hoàn thành
                     </p>
-                    <p className="text-2xl font-bold text-orange-600">
-                      {(user.loyaltyPoints || 0).toLocaleString("vi-VN")} VNĐ
+                    <p className="text-2xl font-bold text-green-600">
+                      {bookingStats.completedBookings || 0}
                     </p>
                   </div>
-                  <Award className="h-8 w-8 text-gray-400" />
+                  <CheckCircle className="h-8 w-8 text-gray-400" />
                 </div>
               </CardContent>
             </Card>
@@ -475,9 +567,7 @@ const UserDetailsModal = ({
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-1">
                         <p className="text-sm text-gray-500">Ngày tham gia</p>
-                        <p className="font-medium">
-                          {user.joinDate}
-                        </p>
+                        <p className="font-medium">{user.joinDate}</p>
                       </div>
                       <div className="space-y-1">
                         <p className="text-sm text-gray-500">
@@ -516,6 +606,16 @@ const UserDetailsModal = ({
                           )}
                         </div>
                       </div>
+                      <div className="space-y-1">
+                        <p className="text-sm text-gray-500">Mã hội viên</p>
+                        <p className="font-medium font-mono">
+                          {user?.membershipCode || "N/A"}
+                        </p>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-sm text-gray-500">Điểm tích lũy</p>
+                        <p className="font-medium">{user.loyaltyPoints || 0}</p>
+                      </div>
                     </div>
 
                     {user.passportNumber && (
@@ -544,48 +644,105 @@ const UserDetailsModal = ({
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-4">
-                    {recentBookings.map((booking) => (
-                      <div
-                        key={booking.id}
-                        className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 transition-colors"
-                      >
-                        <div className="flex items-center space-x-4">
-                          <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                            <Plane className="h-5 w-5 text-blue-600" />
-                          </div>
-                          <div>
-                            <p className="font-semibold">{booking.route}</p>
-                            <p className="text-sm text-gray-500">
-                              {booking.flightNumber} •{" "}
-                              {formatDate(booking.date)}
-                            </p>
-                          </div>
-                        </div>
-                        <div className="text-right">
-                          <Badge
-                            variant={
-                              booking.status === "Completed"
-                                ? "default"
-                                : booking.status === "Cancelled"
-                                ? "destructive"
-                                : "secondary"
-                            }
-                            className="mb-2"
-                          >
-                            {booking.status === "Completed"
-                              ? "Hoàn thành"
-                              : booking.status === "Cancelled"
-                              ? "Đã hủy"
-                              : booking.status}
-                          </Badge>
-                          <p className="text-lg font-bold text-green-600">
-                            {booking.amount.toLocaleString("vi-VN")}đ
-                          </p>
-                        </div>
+                  {loadingBookings ? (
+                    <div className="flex items-center justify-center py-8">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+                      <span className="ml-2 text-gray-500">
+                        Đang tải dữ liệu...
+                      </span>
+                    </div>
+                  ) : recentBookings.length === 0 ? (
+                    <div className="text-center py-8 text-gray-500">
+                      <Plane className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+                      <p>Không có lịch sử đặt chỗ</p>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="space-y-4">
+                        {recentBookings.map((booking) => {
+                          const getStatusDisplay = (status) => {
+                            const statusMap = {
+                              CANCELLED: {
+                                label: "Đã hủy",
+                                variant: "destructive",
+                              },
+                              COMPLETED: {
+                                label: "Hoàn thành",
+                                variant: "default",
+                              },
+                              CONFIRMED: {
+                                label: "Đã xác nhận",
+                                variant: "secondary",
+                              },
+                              PENDING: {
+                                label: "Chờ xử lý",
+                                variant: "outline",
+                              },
+                            };
+                            return (
+                              statusMap[status] || {
+                                label: status,
+                                variant: "secondary",
+                              }
+                            );
+                          };
+
+                          const statusDisplay = getStatusDisplay(
+                            booking.status
+                          );
+
+                          return (
+                            <div
+                              key={booking.id}
+                              className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 transition-colors"
+                            >
+                              <div className="flex items-center space-x-4">
+                                <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                                  <Plane className="h-5 w-5 text-blue-600" />
+                                </div>
+                                <div>
+                                  <p className="font-semibold">
+                                    {booking.route}
+                                  </p>
+                                  <p className="text-sm text-gray-500">
+                                    {booking.flightNumber} • {booking.date}
+                                  </p>
+                                </div>
+                              </div>
+                              <div className="text-right">
+                                <Badge
+                                  variant={statusDisplay.variant}
+                                  className="mb-2"
+                                >
+                                  {statusDisplay.label}
+                                </Badge>
+                                <p className="text-lg font-bold text-green-600">
+                                  {booking.amount.toLocaleString("vi-VN")}đ
+                                </p>
+                              </div>
+                            </div>
+                          );
+                        })}
                       </div>
-                    ))}
-                  </div>
+
+                      {/* Pagination for bookings */}
+                      {totalBookingItems > pageSize && (
+                        <Pagination
+                          currentPage={page}
+                          totalPages={totalBookingPages}
+                          itemsPerPage={pageSize}
+                          totalItems={totalBookingItems}
+                          onPageChange={(p) => setPage(p)}
+                          onPageSizeChange={(size) => {
+                            setPageSize(size);
+                            setPage(1);
+                          }}
+                          showPageSizeSelector={true}
+                          showInfo={true}
+                        />
+                      )}
+                    </>
+                  )}
                 </CardContent>
               </Card>
             </TabsContent>
@@ -683,31 +840,29 @@ const UserDetailsModal = ({
                     <div className="grid grid-cols-2 gap-4">
                       <div className="text-center p-4 bg-blue-50 rounded-lg">
                         <p className="text-2xl font-bold text-blue-600">
-                          {user.totalBookings || 0}
+                          {bookingStats.totalBookings || 0}
                         </p>
-                        <p className="text-sm text-gray-600">Tổng chuyến bay</p>
+                        <p className="text-sm text-gray-600">Tổng đặt chỗ</p>
                       </div>
                       <div className="text-center p-4 bg-green-50 rounded-lg">
                         <p className="text-2xl font-bold text-green-600">
-                          {user.totalSpent?.toLocaleString("vi-VN") || 0}đ
+                          {bookingStats.totalSpent?.toLocaleString("vi-VN") ||
+                            0}
+                          đ
                         </p>
                         <p className="text-sm text-gray-600">Tổng chi tiêu</p>
                       </div>
-                      <div className="text-center p-4 bg-purple-50 rounded-lg">
-                        <p className="text-2xl font-bold text-purple-600">
-                          {(user.loyaltyPoints || 0).toLocaleString("vi-VN")}{" "}
-                          VNĐ
+                      <div className="text-center p-4 bg-red-50 rounded-lg">
+                        <p className="text-2xl font-bold text-red-600">
+                          {bookingStats.cancelledBookings || 0}
                         </p>
-                        <p className="text-sm text-gray-600">Điểm tích lũy</p>
+                        <p className="text-sm text-gray-600">Đã hủy</p>
                       </div>
-                      <div className="text-center p-4 bg-orange-50 rounded-lg">
-                        <p className="text-2xl font-bold text-orange-600">
-                          {user.memberSince
-                            ? new Date().getFullYear() -
-                              new Date(user.memberSince).getFullYear()
-                            : 0}
+                      <div className="text-center p-4 bg-emerald-50 rounded-lg">
+                        <p className="text-2xl font-bold text-emerald-600">
+                          {bookingStats.completedBookings || 0}
                         </p>
-                        <p className="text-sm text-gray-600">Năm thành viên</p>
+                        <p className="text-sm text-gray-600">Đã hoàn thành</p>
                       </div>
                     </div>
                   </CardContent>

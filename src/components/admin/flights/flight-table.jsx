@@ -10,7 +10,6 @@ import {
   AlertTriangle,
   CheckCircle,
   Pause,
-  ArrowRightLeft,
   Link,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -42,32 +41,6 @@ const FlightTable = ({
 }) => {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(5);
-
-  // Màu sắc cho các nhóm khứ hồi
-  const roundTripGroupColors = [
-    "bg-blue-50 border-blue-200",
-    "bg-green-50 border-green-200",
-    "bg-purple-50 border-purple-200",
-    "bg-orange-50 border-orange-200",
-    "bg-pink-50 border-pink-200",
-    "bg-indigo-50 border-indigo-200",
-    "bg-teal-50 border-teal-200",
-    "bg-yellow-50 border-yellow-200",
-  ];
-
-  // Map để lưu màu cho từng nhóm
-  const groupColorMap = useMemo(() => {
-    const map = {};
-    let colorIndex = 0;
-    flights.forEach((flight) => {
-      if (flight.roundTripGroupId && !map[flight.roundTripGroupId]) {
-        map[flight.roundTripGroupId] =
-          roundTripGroupColors[colorIndex % roundTripGroupColors.length];
-        colorIndex++;
-      }
-    });
-    return map;
-  }, [flights]);
 
   const statusConfig = {
     ON_TIME: {
@@ -104,68 +77,71 @@ const FlightTable = ({
   };
 
   const filteredFlights = useMemo(() => {
-    return flights.filter((flight) => {
-      const aircraftName =
-        typeof flight.aircraft === "object"
-          ? flight.aircraft?.aircraftName || flight.aircraft?.aircraftCode || ""
-          : flight.aircraft || "";
+    return flights
+      .filter((flight) => {
+        const aircraftName =
+          typeof flight.aircraft === "object"
+            ? flight.aircraft?.aircraftName ||
+              flight.aircraft?.aircraftCode ||
+              ""
+            : flight.aircraft || "";
 
-      // Tạo route code từ departure và arrival airport codes
-      const routeCode = `${flight.departureAirport?.airportCode || ""}-${
-        flight.arrivalAirport?.airportCode || ""
-      }`;
+        // Tạo route code từ departure và arrival airport codes
+        const routeCode = `${flight.departureAirport?.airportCode || ""}-${
+          flight.arrivalAirport?.airportCode || ""
+        }`;
 
-      const matchesSearch =
-        !searchQuery || // Nếu không có search query thì match tất cả
-        (flight.flightNumber &&
-          flight.flightNumber
-            .toLowerCase()
-            .includes(searchQuery.toLowerCase())) ||
-        aircraftName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (flight.departureAirport?.airportName &&
-          flight.departureAirport.airportName
-            .toLowerCase()
-            .includes(searchQuery.toLowerCase())) ||
-        (flight.arrivalAirport?.airportName &&
-          flight.arrivalAirport.airportName
-            .toLowerCase()
-            .includes(searchQuery.toLowerCase())) ||
-        routeCode.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (flight.departureAirport?.airportCode &&
-          flight.departureAirport.airportCode
-            .toLowerCase()
-            .includes(searchQuery.toLowerCase())) ||
-        (flight.arrivalAirport?.airportCode &&
-          flight.arrivalAirport.airportCode
-            .toLowerCase()
-            .includes(searchQuery.toLowerCase()));
+        const matchesSearch =
+          !searchQuery || // Nếu không có search query thì match tất cả
+          (flight.flightNumber &&
+            flight.flightNumber
+              .toLowerCase()
+              .includes(searchQuery.toLowerCase())) ||
+          aircraftName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          (flight.departureAirport?.airportName &&
+            flight.departureAirport.airportName
+              .toLowerCase()
+              .includes(searchQuery.toLowerCase())) ||
+          (flight.arrivalAirport?.airportName &&
+            flight.arrivalAirport.airportName
+              .toLowerCase()
+              .includes(searchQuery.toLowerCase())) ||
+          routeCode.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          (flight.departureAirport?.airportCode &&
+            flight.departureAirport.airportCode
+              .toLowerCase()
+              .includes(searchQuery.toLowerCase())) ||
+          (flight.arrivalAirport?.airportCode &&
+            flight.arrivalAirport.airportCode
+              .toLowerCase()
+              .includes(searchQuery.toLowerCase()));
 
-      // Sửa logic status filter để match với dữ liệu thực
-      const statusMapping = {
-        "on-time": "ON_TIME",
-        departed: "DEPARTED",
-        delayed: "DELAYED",
-        cancelled: "CANCELLED",
-      };
+        // Sửa logic status filter để match với dữ liệu thực
+        const statusMapping = {
+          "on-time": "ON_TIME",
+          departed: "DEPARTED",
+          delayed: "DELAYED",
+          cancelled: "CANCELLED",
+        };
 
-      const actualStatusFilter = statusMapping[statusFilter] || statusFilter;
-      const matchesStatus =
-        statusFilter === "all" || flight.status === actualStatusFilter;
+        const actualStatusFilter = statusMapping[statusFilter] || statusFilter;
+        const matchesStatus =
+          statusFilter === "all" || flight.status === actualStatusFilter;
 
-      // Sửa logic aircraft filter
-      const matchesAircraft =
-        aircraftFilter === "all" ||
-        aircraftName.toLowerCase().replace(/\s+/g, "-") === aircraftFilter ||
-        (flight.aircraft?.aircraftCode &&
-          flight.aircraft.aircraftCode.toLowerCase() === aircraftFilter);
+        // Sửa logic aircraft filter
+        const matchesAircraft =
+          aircraftFilter === "all" ||
+          aircraftName.toLowerCase().replace(/\s+/g, "-") === aircraftFilter ||
+          (flight.aircraft?.aircraftCode &&
+            flight.aircraft.aircraftCode.toLowerCase() === aircraftFilter);
 
-      return matchesSearch && matchesStatus && matchesAircraft;
-    })
-    .sort(
-      (a, b) =>
-        new Date(a.departureTime).getTime() -
-        new Date(b.departureTime).getTime()
-    );
+        return matchesSearch && matchesStatus && matchesAircraft;
+      })
+      .sort(
+        (a, b) =>
+          new Date(a.departureTime).getTime() -
+          new Date(b.departureTime).getTime()
+      );
   }, [flights, searchQuery, statusFilter, aircraftFilter]);
 
   const totalPages = Math.ceil(filteredFlights.length / itemsPerPage);
@@ -191,18 +167,17 @@ const FlightTable = ({
       minute: "2-digit",
     });
   const formatDate = (dateTime) =>
-    new Date(dateTime).toLocaleDateString("en-US", {
-      month: "short",
+    new Date(dateTime).toLocaleDateString("vi-VN", {
       day: "numeric",
+      month: "numeric",
       year: "numeric",
     });
-      console.log(
-        flights
-  );
+
   const calculateLoadFactor = (flight) =>
-    
     Math.round(
-      ((flight?.aircraft?.totalSeats - flight?.availableSeats) / flight?.aircraft?.totalSeats) * 100
+      ((flight?.aircraft?.totalSeats - flight?.availableSeats) /
+        flight?.aircraft?.totalSeats) *
+        100
     );
 
   return (
@@ -219,7 +194,6 @@ const FlightTable = ({
               <TableHead>Tỷ lệ lấp đầy</TableHead>
               <TableHead>Cổng</TableHead>
               <TableHead>Điểm dừng</TableHead>
-              <TableHead>Nhóm khứ hồi</TableHead>
               <TableHead className="text-right">Thao tác</TableHead>
             </TableRow>
           </TableHeader>
@@ -236,28 +210,10 @@ const FlightTable = ({
                 flight.status === "ON_TIME" || flight.status === "DELAYED";
               const loadFactor = calculateLoadFactor(flight);
 
-              // Xác định màu nền cho nhóm khứ hồi
-              const isRoundTrip = !!flight.roundTripGroupId;
-              const groupColor = isRoundTrip
-                ? groupColorMap[flight.roundTripGroupId]
-                : "";
-
               return (
                 <TableRow
                   key={`${flight.flightId}-${flight.flightNumber}-${flight.departureTime}`}
-                  className={`hover:bg-gray-50 ${
-                    groupColor ? `${groupColor} border-l-4` : ""
-                  }`}
-                  style={
-                    groupColor
-                      ? {
-                          borderLeftColor: groupColor
-                            .split(" ")[1]
-                            .replace("border-", "")
-                            .replace("-200", ""),
-                        }
-                      : {}
-                  }
+                  className="hover:bg-gray-50"
                 >
                   <TableCell>
                     <div className="font-semibold text-blue-600">
@@ -363,33 +319,6 @@ const FlightTable = ({
                         ? `${flight.stopsList.length} điểm dừng`
                         : "Bay thẳng"}
                     </div>
-                  </TableCell>
-                  <TableCell>
-                    {isRoundTrip ? (
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger>
-                            <Badge
-                              variant="outline"
-                              className="flex items-center space-x-1 bg-white"
-                            >
-                              <ArrowRightLeft className="h-3 w-3" />
-                              <span className="text-xs font-mono">
-                                {flight.roundTripGroupId}
-                              </span>
-                            </Badge>
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            <p>Chuyến bay khứ hồi</p>
-                            <p className="text-xs text-gray-500">
-                              Nhóm: {flight.roundTripGroupId}
-                            </p>
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
-                    ) : (
-                      <span className="text-gray-400 text-xs">-</span>
-                    )}
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex items-center justify-end space-x-1">

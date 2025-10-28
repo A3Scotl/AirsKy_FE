@@ -67,7 +67,6 @@ const TEXT = {
   no: "Không",
   businessName: "Người Tạo",
   tripType: "Loại Chuyến",
-  roundTripGroupId: "ID Nhóm Khứ Hồi",
   createdAt: "Ngày Tạo",
   updatedAt: "Ngày Cập Nhật",
   seatLayout: "Bố Trí Ghế Ngồi",
@@ -145,7 +144,8 @@ const FlightDetailsModal = ({ flight, open, onClose, onEdit, onDelete }) => {
   const departure = formatDateTime(flight.departureTime);
   const arrival = formatDateTime(flight.arrivalTime);
   const loadFactor = (
-    ((flight?.aircraft?.totalSeats - flight.availableSeats) / flight?.aircraft?.totalSeats) *
+    ((flight?.aircraft?.totalSeats - flight.availableSeats) /
+      flight?.aircraft?.totalSeats) *
     100
   ).toFixed(1);
   const estimatedRevenue =
@@ -458,7 +458,7 @@ const FlightDetailsModal = ({ flight, open, onClose, onEdit, onDelete }) => {
     const rows = Math.ceil(aircraft.totalSeats / totalSeatsPerRow);
     const seats = [];
     let seatCounter = 1;
-     console.log(seats);
+    console.log(seats);
 
     for (let row = 1; row <= rows; row++) {
       const rowSeats = [];
@@ -466,7 +466,9 @@ const FlightDetailsModal = ({ flight, open, onClose, onEdit, onDelete }) => {
       // Left side seats
       for (let col = 1; col <= left; col++) {
         const seatId = `${row}${String.fromCharCode(64 + col)}`;
-        const seatStatus = detailedSeats.find(s => s.seatNumber === seatId)?.status || 'AVAILABLE';
+        const seatStatus =
+          detailedSeats.find((s) => s.seatNumber === seatId)?.status ||
+          "AVAILABLE";
         rowSeats.push({
           id: seatId,
           row,
@@ -484,7 +486,9 @@ const FlightDetailsModal = ({ flight, open, onClose, onEdit, onDelete }) => {
         // Middle seats
         for (let col = 1; col <= middle; col++) {
           const seatId = `${row}${String.fromCharCode(64 + left + col)}`;
-          const seatStatus = detailedSeats.find(s => s.seatNumber === seatId)?.status || 'AVAILABLE';
+          const seatStatus =
+            detailedSeats.find((s) => s.seatNumber === seatId)?.status ||
+            "AVAILABLE";
           rowSeats.push({
             id: seatId,
             row,
@@ -505,7 +509,9 @@ const FlightDetailsModal = ({ flight, open, onClose, onEdit, onDelete }) => {
         const seatId = `${row}${String.fromCharCode(
           64 + left + (middle || 0) + col
         )}`;
-        const seatStatus = detailedSeats.find(s => s.seatNumber === seatId)?.status || 'AVAILABLE';
+        const seatStatus =
+          detailedSeats.find((s) => s.seatNumber === seatId)?.status ||
+          "AVAILABLE";
         rowSeats.push({
           id: seatId,
           row,
@@ -522,7 +528,7 @@ const FlightDetailsModal = ({ flight, open, onClose, onEdit, onDelete }) => {
 
     return seats;
   };
-  
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div className="absolute inset-0 bg-black/50" onClick={onClose} />
@@ -533,20 +539,20 @@ const FlightDetailsModal = ({ flight, open, onClose, onEdit, onDelete }) => {
             <div>
               <h2 className="text-xl font-bold text-gray-900 gap-3 flex">
                 {flight.flightNumber}
-                 {(() => {
-                const badgeConfig = getTripTypeBadge(flight.tripType);
-                return (
-                  <Badge
-                    variant="outline"
-                    className={`text-sm font-bold border ${badgeConfig.className}`}
-                  >
-                    {badgeConfig.text}
-                  </Badge>
-                );
-              })()}
+                {(() => {
+                  const badgeConfig = getTripTypeBadge(flight.tripType);
+                  return (
+                    <Badge
+                      variant="outline"
+                      className={`text-sm font-bold border ${badgeConfig.className}`}
+                    >
+                      {badgeConfig.text}
+                    </Badge>
+                  );
+                })()}
               </h2>
               {/* show tripType */}
-             
+
               <p className="text-xl text-gray-600">
                 {flight.departureAirport.airportName} (
                 {flight.departureAirport.airportCode})
@@ -845,8 +851,8 @@ const FlightDetailsModal = ({ flight, open, onClose, onEdit, onDelete }) => {
               <div className="text-sm text-gray-600">
                 Layout: {flight.aircraft?.seatLayout || "N/A"} | Tổng ghế:{" "}
                 {flight?.aircraft?.totalSeats} | Đã đặt:{" "}
-                {flight?.aircraft?.totalSeats - flight.availableSeats} | Còn trống:{" "}
-                {flight.availableSeats}
+                {flight?.aircraft?.totalSeats - flight.availableSeats} | Còn
+                trống: {flight.availableSeats}
               </div>
             </CardHeader>
             <CardContent>
@@ -880,10 +886,7 @@ const FlightDetailsModal = ({ flight, open, onClose, onEdit, onDelete }) => {
                       </div>
 
                       <div className="flex flex-col min-w-full justify-center items-center">
-                        {generateSeats(
-                          flight.aircraft,
-                      
-                        ).map((row, rowIndex) => 
+                        {generateSeats(flight.aircraft).map((row, rowIndex) => (
                           <div
                             key={rowIndex}
                             className="flex items-center mb-2 mr-12"
@@ -891,35 +894,32 @@ const FlightDetailsModal = ({ flight, open, onClose, onEdit, onDelete }) => {
                             <span className="w-8 text-xs font-mono text-gray-500 mr-2 text-right">
                               {rowIndex + 1}
                             </span>
-                            {row.map((seat, seatIndex) => 
-                            
-                            {
+                            {row.map((seat, seatIndex) => {
                               console.log(seat);
-                              return(
-                              <div
-                                key={seatIndex}
-                                className={`w-8 h-8 mx-1 rounded text-xs flex items-center justify-center font-mono text-[10px] border-2 ${
-                                  seat.type === "aisle"
-                                    ? "bg-gray-200 border-gray-300"
-                                   : seat.status === 'OCCUPIED'
-                                    ? "bg-red-100 border-red-400 text-red-800"
-                                    : "bg-green-100 border-green-400 text-green-800"
-                                }`}
-                                title={
-                                  seat.type === "aisle"
-                                    ? "Lối đi"
-                                    : seat.status === 'OCCUPIED'
-                                    ? `Ghế ${seat.id} - Đã đặt`
-                                    : `Ghế ${seat.id} - Còn trống`
-                                }
-                              >
-                                {seat.type === "aisle" ? "" : seat.id}
-                              </div>
-                            )
-                            }
-                            )}
+                              return (
+                                <div
+                                  key={seatIndex}
+                                  className={`w-8 h-8 mx-1 rounded text-xs flex items-center justify-center font-mono text-[10px] border-2 ${
+                                    seat.type === "aisle"
+                                      ? "bg-gray-200 border-gray-300"
+                                      : seat.status === "OCCUPIED"
+                                      ? "bg-red-100 border-red-400 text-red-800"
+                                      : "bg-green-100 border-green-400 text-green-800"
+                                  }`}
+                                  title={
+                                    seat.type === "aisle"
+                                      ? "Lối đi"
+                                      : seat.status === "OCCUPIED"
+                                      ? `Ghế ${seat.id} - Đã đặt`
+                                      : `Ghế ${seat.id} - Còn trống`
+                                  }
+                                >
+                                  {seat.type === "aisle" ? "" : seat.id}
+                                </div>
+                              );
+                            })}
                           </div>
-                        )}
+                        ))}
                       </div>
                     </div>
 
@@ -933,18 +933,14 @@ const FlightDetailsModal = ({ flight, open, onClose, onEdit, onDelete }) => {
                         <div className="flex items-center">
                           <div className="w-4 h-4 bg-red-100 border-2 border-red-400 rounded mr-2"></div>
                           <span>
-                            Đã đặt: {flight?.aircraft?.totalSeats - flight.availableSeats}
+                            Đã đặt:{" "}
+                            {flight?.aircraft?.totalSeats -
+                              flight.availableSeats}
                           </span>
                         </div>
                       </div>
                       <div className="text-gray-600">
-                        Hiển thị tất cả{" "}
-                        {
-                          generateSeats(
-                            flight.aircraft,
-
-                          ).length
-                        }{" "}
+                        Hiển thị tất cả {generateSeats(flight.aircraft).length}{" "}
                         hàng ghế
                       </div>
                     </div>
@@ -991,8 +987,6 @@ const FlightDetailsModal = ({ flight, open, onClose, onEdit, onDelete }) => {
 
         <div className="flex items-center justify-between p-6 border-t border-gray-200 bg-gray-50">
           <div className="text-sm text-gray-600">
-            {flight.roundTripGroupId &&
-              ` • ${TEXT.roundTripGroupId}: ${flight.roundTripGroupId}`}{" "}
             • {TEXT.createdAt}: {formatDateTime(flight.createdAt).date}{" "}
             {formatDateTime(flight.createdAt).time} • {TEXT.lastUpdated}:{" "}
             {formatDateTime(flight.updatedAt).date}{" "}
@@ -1003,7 +997,6 @@ const FlightDetailsModal = ({ flight, open, onClose, onEdit, onDelete }) => {
               <Edit className="h-4 w-4 mr-2" />
               {TEXT.editFlight}
             </Button>
-            
           </div>
         </div>
       </div>

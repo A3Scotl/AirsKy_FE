@@ -4,7 +4,13 @@ import SEO from "@/components/common/seo";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Dialog,
   DialogContent,
@@ -22,6 +28,7 @@ import {
   Trash2,
   CheckCircle,
   XCircle,
+  Filter,
 } from "lucide-react";
 
 import AncillaryServiceTable from "../../components/admin/ancillary-services/ancillary-service-table";
@@ -37,7 +44,7 @@ const AncillaryServicesPage = () => {
   const [currentPage, setCurrentPage] = useState(0);
   const [pageSize, setPageSize] = useState(10);
   const [totalElements, setTotalElements] = useState(0);
-  const [activeTab, setActiveTab] = useState("all");
+  const [serviceTypeFilter, setServiceTypeFilter] = useState("all");
   const [serviceTypes, setServiceTypes] = useState({});
   const [loadingServiceTypes, setLoadingServiceTypes] = useState(false);
 
@@ -90,12 +97,8 @@ const AncillaryServicesPage = () => {
       const params = {
         page: currentPage,
         size: pageSize,
-        activeOnly:
-          activeTab === "active"
-            ? true
-            : activeTab === "inactive"
-            ? false
-            : undefined,
+        serviceType:
+          serviceTypeFilter !== "all" ? serviceTypeFilter : undefined,
       };
 
       const response = await ancillaryServiceApi.getAllServices(params);
@@ -107,12 +110,11 @@ const AncillaryServicesPage = () => {
         toast.error("Không thể tải danh sách dịch vụ");
       }
     } catch (error) {
-      console.error("Error loading services:", error);
       toast.error("Lỗi khi tải danh sách dịch vụ");
     } finally {
       setLoading(false);
     }
-  }, [currentPage, pageSize, activeTab]);
+  }, [currentPage, pageSize, serviceTypeFilter]);
 
   // Load services on mount and when dependencies change
   useEffect(() => {
@@ -270,57 +272,19 @@ const AncillaryServicesPage = () => {
           </Button>
         </div>
 
-        {/* Statistics Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
-                Tổng dịch vụ
-              </CardTitle>
-              <Settings className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats.total}</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
-                Đang hoạt động
-              </CardTitle>
-              <CheckCircle className="h-4 w-4 text-green-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-green-600">
-                {stats.active}
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
         {/* Main Content */}
         <Card>
-          <CardHeader>
-            <CardTitle>Danh sách dịch vụ</CardTitle>
-          </CardHeader>
+          <CardHeader></CardHeader>
           <CardContent>
-            <Tabs value={activeTab} onValueChange={setActiveTab}>
-              <TabsList className="grid w-full grid-cols-1">
-                <TabsTrigger value="all">Tất cả</TabsTrigger>
-              </TabsList>
-
-              <TabsContent value={activeTab} className="mt-6">
-                <AncillaryServiceTable
-                  services={services}
-                  loading={loading}
-                  onViewDetails={handleViewDetails}
-                  onEdit={handleEditService}
-                  onDelete={handleDeleteService}
-                  onToggleStatus={handleToggleStatus}
-                  onCreate={handleCreateNew}
-                />
-              </TabsContent>
-            </Tabs>
+            <AncillaryServiceTable
+              services={services}
+              loading={loading}
+              onViewDetails={handleViewDetails}
+              onEdit={handleEditService}
+              onDelete={handleDeleteService}
+              onToggleStatus={handleToggleStatus}
+              onCreate={handleCreateNew}
+            />
           </CardContent>
         </Card>
 

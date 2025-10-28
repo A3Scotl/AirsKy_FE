@@ -167,7 +167,7 @@ const RefundModal = ({ open, onClose, paymentData }) => {
         processedAt: new Date().toISOString(),
       };
 
-      console.log("Processing refund:", refundData);
+   
       alert(
         TEXT.messages.refundSuccess.replace(
           "{amount}",

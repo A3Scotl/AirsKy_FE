@@ -82,11 +82,11 @@ const BlogFormModal = ({
       if (result.success && result.data) {
         setAvailableCategories(result.data);
       } else {
-        console.error("Failed to fetch categories:", result.message);
+        
         setAvailableCategories([]);
       }
     } catch (error) {
-      console.error("Error fetching categories:", error);
+      
       setAvailableCategories([]);
     } finally {
       setLoadingCategories(false);
@@ -144,11 +144,11 @@ const BlogFormModal = ({
       if (response.success) {
         return response.data; // Return image URL
       } else {
-        console.error("Failed to upload image:", response.message);
+      
         throw new Error(response.message);
       }
     } catch (error) {
-      console.error("Error uploading image:", error);
+     
       throw error;
     }
   };

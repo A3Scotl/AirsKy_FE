@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Swiper, SwiperSlide } from "swiper/react";
 import { Pagination, Autoplay } from "swiper/modules";
 import "swiper/css";
@@ -32,6 +33,21 @@ export function DestinationSection() {
       },
     });
   };
+
+  const DestinationCardSkeleton = () => (
+    <Card className="overflow-hidden">
+      <div className="relative">
+        <Skeleton className="w-full h-48" />
+        <div className="absolute top-4 right-4">
+          <Skeleton className="h-6 w-20 rounded-full" />
+        </div>
+      </div>
+      <CardContent className="p-4">
+        <Skeleton className="h-6 w-3/4 mb-2" />
+        <Skeleton className="h-4 w-1/2" />
+      </CardContent>
+    </Card>
+  );
 
   const loadDestinations = async () => {
     try {
@@ -173,11 +189,11 @@ export function DestinationSection() {
               đãi vé máy bay tốt nhất của chúng tôi
             </p>
           </div>
-          <div className="flex items-center justify-center py-12">
-            <Loader2 className="h-8 w-8 animate-spin text-[#2563eb]" />
-            <span className="ml-2 text-[#6b7280]">
-              Đang tải danh sách điểm đến...
-            </span>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            {Array.from({ length: 4 }).map((_, index) => (
+              <DestinationCardSkeleton key={index} />
+            ))}
           </div>
         </div>
       </section>

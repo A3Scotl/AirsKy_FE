@@ -28,6 +28,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import AncillaryServiceTableSkeleton from "./ancillary-service-table-skeleton";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -96,11 +97,9 @@ const AncillaryServiceTable = ({
           });
           setServiceTypes(typesObject);
         } else {
-          console.error("Failed to fetch service types:", response.message);
           toast.error("Không thể tải danh sách loại dịch vụ từ server");
         }
       } catch (error) {
-        console.error("Error fetching service types:", error);
         toast.error("Lỗi khi tải danh sách loại dịch vụ từ server");
       } finally {
         setLoadingServiceTypes(false);
@@ -126,7 +125,6 @@ const AncillaryServiceTable = ({
         await onDelete(service.serviceId);
         toast.success("Xóa dịch vụ thành công!");
       } catch (error) {
-        console.error("Error deleting service:", error);
         toast.error("Lỗi khi xóa dịch vụ");
       }
     },
@@ -146,7 +144,6 @@ const AncillaryServiceTable = ({
             : "bật";
         toast.success(`Dịch vụ đã được ${action} thành công!`);
       } catch (error) {
-        console.error("Error toggling service status:", error);
         toast.error("Lỗi khi thay đổi trạng thái dịch vụ");
       }
     },
@@ -420,7 +417,6 @@ const AncillaryServiceTable = ({
       setRowSelection({});
       toast.success(`Đã bật ${selectedServices.length} dịch vụ thành công!`);
     } catch (error) {
-      console.error("Error bulk activating services:", error);
       toast.error("Có lỗi xảy ra khi bật dịch vụ");
     }
   }, [selectedServices, onToggleStatus]);
@@ -444,7 +440,6 @@ const AncillaryServiceTable = ({
       setRowSelection({});
       toast.success(`Đã tắt ${selectedServices.length} dịch vụ thành công!`);
     } catch (error) {
-      console.error("Error bulk deactivating services:", error);
       toast.error("Có lỗi xảy ra khi tắt dịch vụ");
     }
   }, [selectedServices, onToggleStatus]);
@@ -468,7 +463,6 @@ const AncillaryServiceTable = ({
       setRowSelection({});
       toast.success(`Đã xóa ${selectedServices.length} dịch vụ thành công!`);
     } catch (error) {
-      console.error("Error bulk deleting services:", error);
       toast.error("Có lỗi xảy ra khi xóa dịch vụ");
     }
   }, [selectedServices, onDelete]);
@@ -607,18 +601,8 @@ const AncillaryServiceTable = ({
           </TableHeader>
           <TableBody>
             {loading ? (
-              <TableRow>
-                <TableCell
-                  colSpan={columns.length}
-                  className="text-center py-8"
-                >
-                  <div className="flex items-center justify-center space-x-2">
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-900"></div>
-                    <span>Đang tải...</span>
-                  </div>
-                </TableCell>
-              </TableRow>
-            ) : table.getRowModel().rows?.length ? (
+              <AncillaryServiceTableSkeleton />
+            ) : services && services.length > 0 ? (
               table.getRowModel().rows.map((row) => (
                 <TableRow
                   key={row.id}

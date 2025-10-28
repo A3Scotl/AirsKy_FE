@@ -10,6 +10,53 @@ import {
 import { blogApi } from "@/apis/blog-api";
 
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
+
+const BlogCardSkeleton = () => {
+  return (
+    <div className="group relative overflow-hidden rounded-2xl bg-white dark:bg-gray-800 shadow-2xl mx-4">
+      {/* Image Skeleton */}
+      <div className="relative h-64 overflow-hidden">
+        <Skeleton className="w-full h-full" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent"></div>
+
+        {/* Category Badge Skeleton */}
+        <div className="absolute top-4 left-4">
+          <Skeleton className="h-6 w-20 rounded-full" />
+        </div>
+
+        {/* View Count Skeleton */}
+        <div className="absolute top-4 right-4">
+          <Skeleton className="h-6 w-12 rounded-full" />
+        </div>
+      </div>
+
+      {/* Content Skeleton */}
+      <div className="p-6">
+        {/* Title Skeleton */}
+        <Skeleton className="h-6 w-3/4 mb-3" />
+        <Skeleton className="h-4 w-1/2 mb-4" />
+
+        {/* Meta Information Skeleton */}
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-3">
+            <Skeleton className="h-4 w-4 rounded" />
+            <Skeleton className="h-4 w-24" />
+          </div>
+        </div>
+
+        {/* Buttons Skeleton */}
+        <div className="flex items-center justify-between">
+          <Skeleton className="h-5 w-20" />
+          <div className="flex gap-2">
+            <Skeleton className="h-8 w-8 rounded-full" />
+            <Skeleton className="h-8 w-8 rounded-full" />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 const BlogSection = () => {
   const navigate = useNavigate();
@@ -86,18 +133,64 @@ const BlogSection = () => {
 
   if (loading) {
     return (
-      <section className="py-16 bg-gradient-to-br from-slate-50 to-blue-50 dark:from-gray-900 dark:to-gray-800">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <section className="py-16 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 relative overflow-hidden">
+        {/* Background Pattern */}
+        <div className="absolute inset-0 opacity-5">
+          <div className="absolute top-20 left-10 w-32 h-32 bg-blue-500 rounded-full blur-3xl"></div>
+          <div className="absolute bottom-20 right-10 w-40 h-40 bg-indigo-500 rounded-full blur-3xl"></div>
+          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-48 h-48 bg-purple-500 rounded-full blur-3xl"></div>
+        </div>
+
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
           <div className="text-center mb-12">
             <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">
               Blog Du Lịch & Kinh Nghiệm
             </h2>
-            <div className="flex justify-center items-center py-12">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-              <span className="ml-3 text-gray-600 dark:text-gray-300">
-                Đang tải blog...
-              </span>
-            </div>
+          </div>
+
+          {/* Skeleton Carousel */}
+          <div className="mb-16 relative">
+            <Swiper
+              modules={[Autoplay, Pagination, Navigation, EffectCoverflow]}
+              effect="coverflow"
+              grabCursor={true}
+              centeredSlides={true}
+              slidesPerView={1}
+              coverflowEffect={{
+                rotate: 50,
+                stretch: 0,
+                depth: 100,
+                modifier: 1,
+                slideShadows: true,
+              }}
+              autoplay={{
+                delay: 4000,
+                disableOnInteraction: false,
+              }}
+              pagination={{
+                clickable: true,
+                dynamicBullets: true,
+              }}
+              navigation={false}
+              breakpoints={{
+                640: {
+                  slidesPerView: 1.2,
+                },
+                768: {
+                  slidesPerView: 1.5,
+                },
+                1024: {
+                  slidesPerView: 2,
+                },
+              }}
+              className="blog-carousel"
+            >
+              {Array.from({ length: 4 }).map((_, index) => (
+                <SwiperSlide key={index}>
+                  <BlogCardSkeleton />
+                </SwiperSlide>
+              ))}
+            </Swiper>
           </div>
         </div>
       </section>

@@ -71,32 +71,6 @@ const FlightSchedule = ({ flights }) => {
     CANCELLED: "bg-red-100 text-red-800 border-red-200",
   };
 
-  // Màu sắc cho các nhóm khứ hồi
-  const roundTripGroupColors = [
-    "bg-blue-50 border-blue-200",
-    "bg-green-50 border-green-200",
-    "bg-purple-50 border-purple-200",
-    "bg-orange-50 border-orange-200",
-    "bg-pink-50 border-pink-200",
-    "bg-indigo-50 border-indigo-200",
-    "bg-teal-50 border-teal-200",
-    "bg-yellow-50 border-yellow-200",
-  ];
-
-  // Map để lưu màu cho từng nhóm
-  const groupColorMap = useMemo(() => {
-    const map = {};
-    let colorIndex = 0;
-    flights.forEach((flight) => {
-      if (flight.roundTripGroupId && !map[flight.roundTripGroupId]) {
-        map[flight.roundTripGroupId] =
-          roundTripGroupColors[colorIndex % roundTripGroupColors.length];
-        colorIndex++;
-      }
-    });
-    return map;
-  }, [flights]);
-
   // Memoized calculations
   const timeSlots = useMemo(() => {
     const slots = [];
@@ -192,19 +166,6 @@ const FlightSchedule = ({ flights }) => {
     return statusColors[status] || "bg-gray-100 text-gray-800 border-gray-200";
   };
 
-  // Get round trip color
-  const getRoundTripColor = (flight) => {
-    if (flight.roundTripGroupId) {
-      return (
-        groupColorMap[flight.roundTripGroupId]
-          ?.replace("bg-", "bg-")
-          .replace("border-", "border-") ||
-        "bg-blue-100 text-blue-800 border-blue-200"
-      );
-    }
-    return getStatusColor(flight.status);
-  };
-
   const getAircraftDisplayName = (aircraft) => {
     if (typeof aircraft === "object") {
       return aircraft?.aircraftName || aircraft?.aircraftCode || "N/A";
@@ -276,16 +237,6 @@ const FlightSchedule = ({ flights }) => {
                 <span>
                   {filteredFlights.length} {TEXT.flightsScheduled}
                 </span>
-                {filteredFlights.filter((f) => f.roundTripGroupId).length >
-                  0 && (
-                  <span className="flex items-center space-x-1">
-                    <ArrowRightLeft className="h-3 w-3" />
-                    <span>
-                      {filteredFlights.filter((f) => f.roundTripGroupId).length}{" "}
-                      khứ hồi
-                    </span>
-                  </span>
-                )}
               </div>
             </div>
 
@@ -310,16 +261,6 @@ const FlightSchedule = ({ flights }) => {
               <Badge variant="outline" className="text-sm">
                 {filteredFlights.length} {TEXT.flights}
               </Badge>
-              {filteredFlights.filter((f) => f.roundTripGroupId).length > 0 && (
-                <Badge
-                  variant="outline"
-                  className="text-sm bg-blue-50 text-blue-700 border-blue-200"
-                >
-                  <ArrowRightLeft className="h-3 w-3 mr-1" />
-                  {filteredFlights.filter((f) => f.roundTripGroupId).length} khứ
-                  hồi
-                </Badge>
-              )}
             </div>
           </CardTitle>
         </CardHeader>
@@ -352,48 +293,17 @@ const FlightSchedule = ({ flights }) => {
                     {filteredHourFlights.length > 0 ? (
                       <div className="space-y-2">
                         {filteredHourFlights.map((flight) => {
-                          // Xác định màu nền cho nhóm khứ hồi
-                          const isRoundTrip = !!flight.roundTripGroupId;
-                          const groupColor = isRoundTrip
-                            ? groupColorMap[flight.roundTripGroupId]
-                            : "";
-
                           return (
                             <div
                               key={flight.flightId || flight.id}
-                              className={`flex items-center justify-between p-3 rounded-lg transition-colors ${
-                                groupColor
-                                  ? `${groupColor} border-l-4 hover:bg-opacity-80`
-                                  : "bg-gray-50 hover:bg-gray-100"
-                              }`}
-                              style={
-                                groupColor
-                                  ? {
-                                      borderLeftColor: groupColor
-                                        .split(" ")[1]
-                                        .replace("border-", "")
-                                        .replace("-200", ""),
-                                    }
-                                  : {}
-                              }
+                              className="flex items-center justify-between p-3 rounded-lg transition-colors bg-gray-50 hover:bg-gray-100"
                             >
                               <div className="flex items-center space-x-3">
                                 <div className="flex items-center space-x-2">
-                                  {isRoundTrip && (
-                                    <ArrowRightLeft className="h-4 w-4 text-blue-600" />
-                                  )}
                                   <Plane className="h-4 w-4 text-blue-600" />
                                   <span className="font-semibold text-blue-600">
                                     {flight.flightNumber}
                                   </span>
-                                  {isRoundTrip && (
-                                    <Badge
-                                      variant="outline"
-                                      className="text-xs"
-                                    >
-                                      {flight.roundTripGroupId}
-                                    </Badge>
-                                  )}
                                 </div>
 
                                 <div className="flex items-center space-x-1 text-sm text-gray-600">
@@ -425,7 +335,7 @@ const FlightSchedule = ({ flights }) => {
 
                                 <Badge
                                   variant="outline"
-                                  className={getRoundTripColor(flight)}
+                                  className={getStatusColor(flight.status)}
                                 >
                                   {TEXT.status[flight.status] || flight.status}
                                 </Badge>

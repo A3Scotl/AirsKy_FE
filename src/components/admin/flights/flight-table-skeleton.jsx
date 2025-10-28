@@ -22,7 +22,7 @@ const FlightTableSkeleton = () => {
             <TableHead>Tỷ lệ lấp đầy</TableHead>
             <TableHead>Cổng</TableHead>
             <TableHead>Điểm dừng</TableHead>
-            <TableHead>Nhóm khứ hồi</TableHead>
+          
             <TableHead className="text-right">Thao tác</TableHead>
           </TableRow>
         </TableHeader>

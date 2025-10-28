@@ -66,7 +66,6 @@ function HomePage() {
   // Handle search from homepage (optimized with memoized date formatting)
   const handleHomeSearch = useCallback(
     (criteria) => {
-
       // Update context with search criteria
       updateSearchCriteria(criteria);
 
@@ -227,10 +226,10 @@ function HomePage() {
             ))}
           </Swiper>
 
-          <div className="absolute inset-0 mx-auto px-4 sm:px-6 lg:px-8 top-[45%] w-full z-99">
+          <div className="absolute inset-0 mx-auto px-4 sm:px-6 lg:px-8 top-[45%] w-full z-[99999]">
             <div
               data-swiper-parallax="0"
-              className="relative z-10 max-w-6xl mx-auto"
+              className="relative z-[100000] max-w-6xl mx-auto"
             >
               <div className="search-form-overlay">
                 <SearchForm onSearch={handleHomeSearch} />
@@ -285,8 +284,17 @@ function HomePage() {
                 ? Array.from({ length: 6 }).map((_, index) => (
                     <SwiperSlide key={`loading-${index}`}>
                       <div className="p-4">
-                        <div className="animate-pulse h-16 bg-gray-300 rounded mb-3" />
-                        <div className="animate-pulse h-4 bg-gray-300 rounded" />
+                        <div className="text-center">
+                          {/* Logo skeleton */}
+                          <div className="h-16 flex items-center justify-center mb-3">
+                            <div className="w-20 h-12 bg-gray-200 dark:bg-gray-700 rounded-lg animate-pulse" />
+                          </div>
+                          {/* Text skeleton */}
+                          <div className="space-y-2">
+                            <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded animate-pulse w-3/4 mx-auto" />
+                            <div className="h-2 bg-gray-200 dark:bg-gray-700 rounded animate-pulse w-1/2 mx-auto" />
+                          </div>
+                        </div>
                       </div>
                     </SwiperSlide>
                   ))

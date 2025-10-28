@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback } from "react";
 import AirportModal from "@/components/admin/airport/airport-modal";
+import AirportTableSkeleton from "@/components/admin/airport/airport-table-skeleton";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -713,9 +714,7 @@ const AirportPage = () => {
       {/* Table */}
       <Card>
         {loading ? (
-          <div className="flex justify-center py-12">
-            <Loader2 className="animate-spin" />
-          </div>
+          <AirportTableSkeleton />
         ) : (
           <Table>
             <TableHeader>

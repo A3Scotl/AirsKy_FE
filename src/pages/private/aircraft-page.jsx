@@ -41,6 +41,7 @@ import { aircraftApi } from "@/apis/aircraft-api";
 import { useAircraft } from "@/hooks/use-aircraft";
 import { toast } from "sonner";
 import ExportButton from "@/components/common/export-button";
+import AircraftTableSkeleton from "@/components/admin/aircrafts/aircraft-table-skeleton";
 
 // TanStack Table imports
 import {
@@ -367,8 +368,7 @@ const AircraftPage = () => {
         <div>
           <h1 className="text-2xl font-bold">Quản lý Máy bay</h1>
           <p className="text-sm text-gray-600 mt-1">
-            Tổng cộng: {" "}
-            {aircrafts.length} máy bay
+            Tổng cộng: {aircrafts.length} máy bay
             {(minSeats ||
               maxSeats ||
               (seatLayoutFilter && seatLayoutFilter !== "all")) && (
@@ -500,9 +500,7 @@ const AircraftPage = () => {
       {/* Table */}
       <Card>
         {loading ? (
-          <div className="flex justify-center py-12">
-            <Loader2 className="animate-spin" />
-          </div>
+          <AircraftTableSkeleton rows={10} />
         ) : (
           <Table>
             <TableHeader>

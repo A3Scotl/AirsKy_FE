@@ -126,23 +126,20 @@ const AirportModal = ({ open, onClose, onSubmit, initialData, countries }) => {
       gates: form.gates, // Gửi tất cả gates, để backend filter
     };
 
-    console.log(
-      "[AirportModal] All gates (before backend filter):",
-      formData.gates
-    );
+   
 
     // Xử lý thumbnail: chỉ gửi 1 loại
     if (form.thumbnailFile instanceof File) {
-      console.log("[AirportModal] Sending file:", form.thumbnailFile.name);
+      
       formData.thumbnailFile = form.thumbnailFile;
     } else if (form.thumbnail) {
-      console.log("[AirportModal] Sending URL:", form.thumbnail);
+      
       formData.thumbnailUrl = form.thumbnail;
     } else {
       console.log("[AirportModal] No thumbnail to send");
     }
 
-    console.log("[AirportModal] Final formData:", formData);
+    
     onSubmit(formData);
   };
 

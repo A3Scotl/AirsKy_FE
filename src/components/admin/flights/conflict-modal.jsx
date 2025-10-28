@@ -200,7 +200,7 @@ const ConflictModal = ({
       (a) => String(a.aircraftId) === String(aircraftId)
     );
     return aircraft
-      ? `${aircraft.aircraftCode} - ${aircraft.model}`
+      ? `${aircraft.aircraftCode} - ${aircraft.aircraftName}`
       : `Aircraft ${aircraftId}`;
   };
 

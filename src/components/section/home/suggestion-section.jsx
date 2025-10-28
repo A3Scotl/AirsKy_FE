@@ -1,5 +1,6 @@
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useState, useEffect } from "react";
 import { ArrowRight, Plane, Clock, Calendar, MapPin } from "lucide-react";
 import { flightApi } from "@/apis/flight-api";
@@ -7,6 +8,55 @@ import { useNavigate } from "react-router-dom";
 
 const formatPrice = (price) =>
   new Intl.NumberFormat("vi-VN").format(price) + "đ";
+
+const FlightCardSkeleton = ({ main }) => {
+  return (
+    <Card
+      className={
+        main
+          ? "relative overflow-hidden h-full border-0 shadow-xl"
+          : "relative overflow-hidden border cursor-pointer"
+      }
+    >
+      <div
+        className={
+          main
+            ? "absolute inset-0 bg-gray-200 animate-pulse"
+            : "absolute inset-0 bg-gray-200 animate-pulse opacity-20"
+        }
+      >
+        {main && (
+          <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/50 to-black/30"></div>
+        )}
+      </div>
+      <div
+        className={
+          main
+            ? "relative z-10 p-8 h-full flex flex-col justify-between min-h-[400px]"
+            : "relative z-10 p-4"
+        }
+      >
+        <div>
+          {main && <Skeleton className="h-6 w-24 rounded-full mb-4" />}
+          <Skeleton className={main ? "h-8 w-3/4 mb-2" : "h-6 w-full mb-2"} />
+          <Skeleton className={main ? "h-6 w-1/2 mb-4" : "h-4 w-3/4 mb-2"} />
+          <div className="flex items-center space-x-4 mb-4">
+            <Skeleton className="h-4 w-16" />
+            <Skeleton className="h-4 w-20" />
+          </div>
+          {main && <Skeleton className="h-4 w-full mb-2" />}
+        </div>
+        <div className="flex items-center justify-between">
+          <div>
+            <Skeleton className={main ? "h-8 w-24 mb-1" : "h-6 w-20 mb-1"} />
+            <Skeleton className="h-3 w-12" />
+          </div>
+          <Skeleton className={main ? "h-12 w-32" : "h-8 w-20"} />
+        </div>
+      </div>
+    </Card>
+  );
+};
 
 const FlightCard = ({ flight, onClick, main }) => {
   const navigate = useNavigate();
@@ -347,8 +397,20 @@ const SuggestionSection = () => {
               Chuyến Bay Nội Địa
             </h2>
             <p className="text-lg text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">
-              Đang tải dữ liệu chuyến bay...
+              Khám phá Việt Nam với những tuyến bay phổ biến và giá vé tốt nhất
             </p>
+          </div>
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-8">
+            <div className="lg:col-span-2">
+              <FlightCardSkeleton main />
+            </div>
+            {[0, 1].map((col) => (
+              <div className="flex flex-col gap-4" key={col}>
+                {[0, 1].map((row) => (
+                  <FlightCardSkeleton key={row} />
+                ))}
+              </div>
+            ))}
           </div>
         </div>
       </section>

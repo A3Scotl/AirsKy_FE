@@ -52,6 +52,110 @@ import {
 
 import { Autoplay } from "swiper/modules";
 import "swiper/css";
+import { Skeleton } from "@/components/ui/skeleton";
+import { airportApi } from "@/apis/airport-api";
+
+const DealCardSkeleton = ({ isLarge = false }) => {
+  return (
+    <Card
+      className={`relative overflow-hidden group hover:shadow-2xl transition-all duration-500 ${
+        isLarge ? "lg:col-span-2 lg:row-span-2" : ""
+      }`}
+    >
+      {/* Background Image Skeleton */}
+      <div
+        className={`absolute inset-0 ${
+          isLarge ? "min-h-[320px]" : "min-h-[200px]"
+        }`}
+      >
+        <Skeleton className="w-full h-full" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/50 to-black/30"></div>
+      </div>
+
+      {/* Content Skeleton */}
+      <div
+        className={`relative z-10 p-6 h-full flex flex-col justify-between ${
+          isLarge ? "min-h-[320px]" : "min-h-[200px]"
+        }`}
+      >
+        <div>
+          {/* Badges Skeleton */}
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center space-x-2">
+              <Skeleton className="h-6 w-16 rounded-full" />
+              <Skeleton className="h-6 w-20 rounded-full" />
+            </div>
+            <Skeleton className="h-8 w-12 rounded-full" />
+          </div>
+
+          {/* Title Skeleton */}
+          <Skeleton
+            className={`h-6 w-3/4 mb-2 text-white ${
+              isLarge ? "text-2xl" : "text-lg"
+            }`}
+          />
+          <Skeleton
+            className={`h-4 w-full mb-3 ${isLarge ? "text-base" : "text-sm"}`}
+          />
+
+          {/* Deal Code Skeleton */}
+          <div className="flex items-center space-x-2 mb-3">
+            <Skeleton className="h-6 w-20 rounded-lg" />
+            <Skeleton className="h-4 w-16" />
+          </div>
+        </div>
+
+        {/* Bottom Actions Skeleton */}
+        <div className="flex items-center justify-between">
+          <Skeleton className="h-4 w-32" />
+          <Skeleton className="h-10 w-20 rounded" />
+        </div>
+      </div>
+    </Card>
+  );
+};
+
+const DealCardSkeletonGrid = () => {
+  return (
+    <Card
+      className="relative overflow-hidden group hover:shadow-xl transition-all duration-300 border-0 shadow-lg"
+      style={{ minHeight: 350 }}
+    >
+      <div className="absolute inset-0 bg-black/70 bg-opacity-40 z-9">
+        <Skeleton className="w-full h-full" />
+      </div>
+      <div className="absolute bottom-0 left-0 w-full z-99">
+        <div className="p-4">
+          {/* Route Skeleton */}
+          <div className="flex items-center justify-between mb-3">
+            <div className="text-center">
+              <Skeleton className="h-6 w-12 mx-auto mb-1" />
+            </div>
+            <div className="flex-1 mx-3 relative">
+              <Skeleton className="h-px w-full" />
+              <Skeleton className="h-4 w-4 rounded-full absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2" />
+            </div>
+            <div className="text-center">
+              <Skeleton className="h-6 w-12 mx-auto mb-1" />
+            </div>
+          </div>
+          <Skeleton className="h-4 w-32 mx-auto mb-3" />
+
+          {/* Deal Info Skeleton */}
+          <div className="bg-yellow-50/60 rounded-lg p-2 mb-3">
+            <div className="flex items-center justify-between text-xs">
+              <Skeleton className="h-4 w-16" />
+              <Skeleton className="h-4 w-20" />
+            </div>
+            <Skeleton className="h-4 w-24 mt-1" />
+          </div>
+
+          <Skeleton className="h-8 w-full rounded" />
+        </div>
+      </div>
+    </Card>
+  );
+};
 
 const DealsPage = () => {
   const { user } = useAuth();
@@ -65,6 +169,13 @@ const DealsPage = () => {
   const [allDealsSortBy, setAllDealsSortBy] = useState("discount");
   const [allDealsCurrentPage, setAllDealsCurrentPage] = useState(1);
   const [allDealsFiltered, setAllDealsFiltered] = useState([]);
+  const [allDealsDepartureAirport, setAllDealsDepartureAirport] =
+    useState("all");
+  const [allDealsArrivalAirport, setAllDealsArrivalAirport] = useState("all");
+
+  // Airport data for filters
+  const [airports, setAirports] = useState([]);
+  const [airportsLoading, setAirportsLoading] = useState(false);
 
   // States for "Flash Sale Chuyến Bay" section
   const [flashSaleDeals, setFlashSaleDeals] = useState([]);
@@ -81,6 +192,24 @@ const DealsPage = () => {
 
   const itemsPerPage = 8;
   const allDealsItemsPerPage = 12; // More items per page for the modal
+
+  // Fetch airports for filter dropdowns
+  const fetchAirports = async () => {
+    try {
+      setAirportsLoading(true);
+      const result = await airportApi.getAllAirports({
+        size: 1000, // Get all airports
+        sort: "airportName,asc",
+      });
+      if (result.success && result.data && result.data.content) {
+        setAirports(result.data.content);
+      }
+    } catch (error) {
+      console.error("Error fetching airports:", error);
+    } finally {
+      setAirportsLoading(false);
+    }
+  };
 
   useEffect(() => {
     const fetchFlightDeals = async () => {
@@ -211,11 +340,23 @@ const DealsPage = () => {
         return false;
       }
 
-      return (
+      // Apply search filter
+      const matchesSearch =
         deal.title.toLowerCase().includes(searchLower) ||
         deal.dealCode.toLowerCase().includes(searchLower) ||
-        deal.description.toLowerCase().includes(searchLower)
-      );
+        deal.description.toLowerCase().includes(searchLower);
+
+      // Apply departure airport filter
+      const matchesDeparture =
+        allDealsDepartureAirport === "all" ||
+        deal.departureAirportId === parseInt(allDealsDepartureAirport);
+
+      // Apply arrival airport filter
+      const matchesArrival =
+        allDealsArrivalAirport === "all" ||
+        deal.arrivalAirportId === parseInt(allDealsArrivalAirport);
+
+      return matchesSearch && matchesDeparture && matchesArrival;
     });
 
     // Sort
@@ -232,7 +373,18 @@ const DealsPage = () => {
 
     setAllDealsFiltered(filtered);
     setAllDealsCurrentPage(1); // Reset page khi filter/sort thay đổi
-  }, [flightDeals, allDealsSearchTerm, allDealsSortBy]);
+  }, [
+    flightDeals,
+    allDealsSearchTerm,
+    allDealsSortBy,
+    allDealsDepartureAirport,
+    allDealsArrivalAirport,
+  ]);
+
+  // Fetch airports on component mount
+  useEffect(() => {
+    fetchAirports();
+  }, []);
 
   // Filter and sort for "Flash Sale Chuyến Bay" section - show deals with airport information
   useEffect(() => {
@@ -427,9 +579,11 @@ const DealsPage = () => {
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
               {flightLoading ? (
-                <div className="col-span-3 text-center py-12 text-gray-500">
-                  Đang tải ưu đãi...
-                </div>
+                <>
+                  <DealCardSkeleton isLarge={true} />
+                  <DealCardSkeleton />
+                  <DealCardSkeleton />
+                </>
               ) : featuredDeals.length === 0 ? (
                 <div className="col-span-3 text-center py-12 text-gray-500">
                   Không có ưu đãi nào phù hợp với bạn
@@ -550,7 +704,8 @@ const DealsPage = () => {
 
                 <SheetContent
                   side="right"
-                  className="w-full sm:w-[540px] md:w-[720px] lg:w-[900px] xl:w-[1000px] h-screen overflow-y-auto p-0 sm:max-w-none z-9999"
+                  className="w-full sm:w-[540px] md:w-[720px] lg:w-[900px] xl:w-[1000px] h-screen overflow-y-auto p-0 sm:max-w-none z-[9999]"
+                  style={{ zIndex: 9999 }}
                 >
                   <div className="p-6">
                     <SheetHeader className="mb-6">
@@ -563,45 +718,154 @@ const DealsPage = () => {
                     </SheetHeader>
 
                     {/* Filter and Sort Controls */}
-                    <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
-                      <div className="flex items-center space-x-4 w-full">
-                        <div className="relative">
-                          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                          <input
-                            type="text"
-                            placeholder="Tìm kiếm mã giảm giá..."
-                            value={allDealsSearchTerm}
-                            onChange={(e) =>
-                              setAllDealsSearchTerm(e.target.value)
-                            }
-                            className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent flex-1"
-                          />
+                    <div className="space-y-4 mb-6">
+                      {/* Search and Sort Row */}
+                      <div className="flex flex-wrap items-center justify-between gap-4">
+                        <div className="flex items-center space-x-4 flex-1">
+                          <div className="relative flex-1 max-w-md">
+                            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                            <input
+                              type="text"
+                              placeholder="Tìm kiếm mã giảm giá..."
+                              value={allDealsSearchTerm}
+                              onChange={(e) =>
+                                setAllDealsSearchTerm(e.target.value)
+                              }
+                              className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent w-full"
+                            />
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <label className="text-gray-700 font-medium whitespace-nowrap">
+                              Sắp xếp:
+                            </label>
+                            <Select
+                              value={allDealsSortBy}
+                              onValueChange={setAllDealsSortBy}
+                            >
+                              <SelectTrigger className="w-48 h-10">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent className="z-[10000]">
+                                <SelectItem value="discount">
+                                  Giảm giá cao nhất
+                                </SelectItem>
+                                <SelectItem value="expiry">
+                                  Hết hạn sớm nhất
+                                </SelectItem>
+                                <SelectItem value="usage">
+                                  Sử dụng nhiều nhất
+                                </SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
                         </div>
+                      </div>
+
+                      {/* Airport Filters Row */}
+                      <div className="flex flex-wrap items-center gap-4">
                         <div className="flex items-center space-x-2">
-                          <label className="text-gray-700 font-medium">
-                            Sắp xếp:
+                          <label className="text-gray-700 font-medium whitespace-nowrap">
+                            Điểm đi:
                           </label>
                           <Select
-                            value={allDealsSortBy}
-                            onValueChange={setAllDealsSortBy}
+                            value={allDealsDepartureAirport}
+                            onValueChange={setAllDealsDepartureAirport}
                           >
                             <SelectTrigger className="w-48 h-10">
-                              <SelectValue />
+                              <SelectValue placeholder="Chọn điểm đi" />
                             </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="discount">
-                                Giảm giá cao nhất
-                              </SelectItem>
-                              <SelectItem value="expiry">
-                                Hết hạn sớm nhất
-                              </SelectItem>
-                              <SelectItem value="usage">
-                                Sử dụng nhiều nhất
-                              </SelectItem>
+                            <SelectContent className="z-[10000]">
+                              <SelectItem value="all">Tất cả</SelectItem>
+                              {airports.map((airport) => (
+                                <SelectItem
+                                  key={airport.airportId}
+                                  value={airport.airportId.toString()}
+                                >
+                                  {airport.airportCode} - {airport.airportName}
+                                </SelectItem>
+                              ))}
                             </SelectContent>
                           </Select>
                         </div>
+
+                        <div className="flex items-center space-x-2">
+                          <label className="text-gray-700 font-medium whitespace-nowrap">
+                            Điểm đến:
+                          </label>
+                          <Select
+                            value={allDealsArrivalAirport}
+                            onValueChange={setAllDealsArrivalAirport}
+                          >
+                            <SelectTrigger className="w-48 h-10">
+                              <SelectValue placeholder="Chọn điểm đến" />
+                            </SelectTrigger>
+                            <SelectContent className="z-[10000]">
+                              <SelectItem value="all">Tất cả</SelectItem>
+                              {airports.map((airport) => (
+                                <SelectItem
+                                  key={airport.airportId}
+                                  value={airport.airportId.toString()}
+                                >
+                                  {airport.airportCode} - {airport.airportName}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        {/* Clear Filters Button */}
+                        {(allDealsSearchTerm ||
+                          allDealsDepartureAirport !== "all" ||
+                          allDealsArrivalAirport !== "all") && (
+                          <Button
+                            variant="outline"
+                            onClick={() => {
+                              setAllDealsSearchTerm("");
+                              setAllDealsDepartureAirport("all");
+                              setAllDealsArrivalAirport("all");
+                            }}
+                            className="ml-auto"
+                          >
+                            Xóa bộ lọc
+                          </Button>
+                        )}
                       </div>
+                    </div>
+
+                    {/* Results Summary */}
+                    <div className="mb-4 text-sm text-gray-600">
+                      Hiển thị {allDealsPaginated.length} /{" "}
+                      {allDealsFiltered.length} mã giảm giá
+                      {(allDealsSearchTerm ||
+                        allDealsDepartureAirport !== "all" ||
+                        allDealsArrivalAirport !== "all") && (
+                        <span className="ml-2">
+                          (đã lọc theo:{" "}
+                          {[
+                            allDealsSearchTerm &&
+                              `từ khóa "${allDealsSearchTerm}"`,
+                            allDealsDepartureAirport !== "all" &&
+                              `điểm đi: ${
+                                airports.find(
+                                  (a) =>
+                                    a.airportId ===
+                                    parseInt(allDealsDepartureAirport)
+                                )?.airportCode
+                              }`,
+                            allDealsArrivalAirport !== "all" &&
+                              `điểm đến: ${
+                                airports.find(
+                                  (a) =>
+                                    a.airportId ===
+                                    parseInt(allDealsArrivalAirport)
+                                )?.airportCode
+                              }`,
+                          ]
+                            .filter(Boolean)
+                            .join(", ")}
+                          )
+                        </span>
+                      )}
                     </div>
 
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -621,6 +885,19 @@ const DealsPage = () => {
                               -{deal.discountPercentage}%
                             </Badge>
                           </div>
+
+                          {/* Route Information */}
+                          {deal.departureAirportCode &&
+                            deal.arrivalAirportCode && (
+                              <div className="flex items-center gap-2 mb-2 text-sm text-gray-600">
+                                <MapPin className="h-4 w-4" />
+                                <span>
+                                  {deal.departureAirportCode} →{" "}
+                                  {deal.arrivalAirportCode}
+                                </span>
+                              </div>
+                            )}
+
                           <p className="text-gray-700 mb-2 text-sm">
                             {deal.description}
                           </p>
@@ -780,7 +1057,7 @@ const DealsPage = () => {
                         <SelectTrigger className="w-48 h-10 bg-white dark:bg-gray-800">
                           <SelectValue />
                         </SelectTrigger>
-                        <SelectContent>
+                        <SelectContent className="z-[10000]">
                           <SelectItem value="discount">
                             Giảm giá cao nhất
                           </SelectItem>
@@ -801,9 +1078,9 @@ const DealsPage = () => {
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               {flightLoading ? (
-                <div className="col-span-4 text-center py-12 text-gray-500">
-                  Đang tải ưu đãi chuyến bay...
-                </div>
+                Array.from({ length: 8 }).map((_, index) => (
+                  <DealCardSkeletonGrid key={index} />
+                ))
               ) : flashSalePaginated.length === 0 ? (
                 <div className="col-span-4 text-center py-12 text-gray-500">
                   Không có ưu đãi chuyến bay nào

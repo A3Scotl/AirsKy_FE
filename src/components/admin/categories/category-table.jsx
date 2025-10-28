@@ -318,7 +318,7 @@ const CategoryTable = () => {
       setRowSelection({});
       toast.success(`Đã xóa ${selectedCategories.length} category thành công!`);
     } catch (error) {
-      console.error("Error bulk deleting categories:", error);
+      
       toast.error("Có lỗi xảy ra khi xóa categories");
     }
   };
@@ -359,7 +359,7 @@ const CategoryTable = () => {
         `Đã ${actionText} ${selectedCategories.length} category thành công!`
       );
     } catch (error) {
-      console.error("Error bulk toggling categories:", error);
+      
       toast.error(`Có lỗi xảy ra khi ${actionText} categories`);
     }
   };
@@ -371,7 +371,7 @@ const CategoryTable = () => {
       await fetchCategories(currentPage, itemsPerPage, searchTerm);
       toast.success("Đã làm mới danh sách category");
     } catch (error) {
-      console.error("Error refreshing categories:", error);
+      
       toast.error("Có lỗi xảy ra khi làm mới");
     } finally {
       setRefreshing(false);
@@ -442,7 +442,7 @@ const CategoryTable = () => {
         setCategories([]);
       }
     } catch (err) {
-      console.error("Error fetching categories:", err);
+     
       setError("Có lỗi xảy ra khi tải danh sách category");
       setCategories([]);
     } finally {
@@ -542,7 +542,7 @@ const CategoryTable = () => {
         toast.error(result.message || `Không thể ${actionText} category`);
       }
     } catch (error) {
-      console.error("Error toggling category active status:", error);
+    
       toast.error(`Có lỗi xảy ra khi ${actionText} category`);
     }
   };
@@ -566,7 +566,7 @@ const CategoryTable = () => {
         toast.error(result.message || "Không thể xóa category");
       }
     } catch (error) {
-      console.error("Error deleting category:", error);
+     
       toast.error("Có lỗi xảy ra khi xóa category");
     }
   };
@@ -598,7 +598,7 @@ const CategoryTable = () => {
         toast.error("Không thể tải danh sách bài viết");
       }
     } catch (error) {
-      console.error("Error fetching blogs for category:", error);
+ 
       setBlogsForCategory([]);
       toast.error("Có lỗi xảy ra khi tải danh sách bài viết");
     } finally {

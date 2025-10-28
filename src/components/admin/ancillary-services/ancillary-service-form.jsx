@@ -57,11 +57,11 @@ const AncillaryServiceForm = ({
           });
           setServiceTypes(typesObject);
         } else {
-          console.error("Failed to fetch service types:", response.message);
+        
           toast.error("Không thể tải danh sách loại dịch vụ");
         }
       } catch (error) {
-        console.error("Error fetching service types:", error);
+       
         toast.error("Lỗi khi tải danh sách loại dịch vụ");
       } finally {
         setLoadingServiceTypes(false);
@@ -148,7 +148,7 @@ const AncillaryServiceForm = ({
       );
       onOpenChange(false);
     } catch (error) {
-      console.error("Error submitting service:", error);
+      
       toast.error(
         service ? "Lỗi khi cập nhật dịch vụ" : "Lỗi khi thêm dịch vụ"
       );

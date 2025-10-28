@@ -17,6 +17,7 @@ import {
 import { toast } from "sonner";
 import BlogFormModal from "./blog-form-modal";
 import BlogDetailModal from "./blog-detail-modal";
+import BlogTableSkeleton from "./blog-table-skeleton";
 import { blogApi } from "@/apis/blog-api";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -96,12 +97,10 @@ const BlogTable = ({
         // Call API to create blog
         const response = await blogApi.createBlog(blogData);
         if (response.success) {
-          console.log("Blog created successfully:", response.data);
           onAdd?.(response.data);
           setShowFormModal(false);
           toast.success("Tạo bài viết thành công!");
         } else {
-          console.error("Failed to create blog:", response.message);
           toast.error("Lỗi tạo bài viết: " + response.message);
         }
       } else {
@@ -111,18 +110,15 @@ const BlogTable = ({
           blogData
         );
         if (response.success) {
-          console.log("Blog updated successfully:", response.data);
           onEdit?.(selectedBlog.blogId, response.data);
           setShowFormModal(false);
           toast.success("Cập nhật bài viết thành công!");
         } else {
-          console.error("Failed to update blog:", response.message);
           toast.error("Lỗi cập nhật bài viết: " + response.message);
         }
       }
       // Don't close modal here, let success case handle it
     } catch (error) {
-      console.error("Error saving blog:", error);
       toast.error("Lỗi kết nối API: " + error.message);
     }
   };
@@ -132,15 +128,12 @@ const BlogTable = ({
       try {
         const response = await blogApi.deleteBlog(blogId);
         if (response.success) {
-          console.log("Blog deleted successfully");
           onDelete?.(blogId);
           toast.success("Xóa bài viết thành công!");
         } else {
-          console.error("Failed to delete blog:", response.message);
           toast.error("Lỗi xóa bài viết: " + response.message);
         }
       } catch (error) {
-        console.error("Error deleting blog:", error);
         toast.error("Lỗi kết nối API: " + error.message);
       }
     }
@@ -153,25 +146,17 @@ const BlogTable = ({
         : await blogApi.publishBlog(blogId);
 
       if (response.success) {
-        console.log(
-          `Blog ${isPublished ? "unpublished" : "published"} successfully`
-        );
         onEdit?.(blogId, { isPublished: !isPublished });
         toast.success(
           `Bài viết đã ${isPublished ? "hủy đăng" : "đăng"} thành công!`
         );
       } else {
-        console.error(
-          `Failed to ${isPublished ? "unpublish" : "publish"} blog:`,
-          response.message
-        );
         toast.error(
           `Lỗi ${isPublished ? "hủy đăng" : "đăng"} bài viết: ` +
             response.message
         );
       }
     } catch (error) {
-      console.error("Error toggling publish status:", error);
       toast.error("Lỗi kết nối API: " + error.message);
     }
   };
@@ -224,11 +209,7 @@ const BlogTable = ({
               </TableHeader>
               <TableBody>
                 {loading ? (
-                  <TableRow>
-                    <TableCell colSpan={8} className="text-center py-8">
-                      Đang tải...
-                    </TableCell>
-                  </TableRow>
+                  <BlogTableSkeleton />
                 ) : displayBlogs.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={8} className="text-center py-8">

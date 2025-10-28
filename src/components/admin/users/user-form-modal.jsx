@@ -194,10 +194,10 @@ const UserFormModal = ({
             phone: formData.phone,
             role: formData.role,
           };
-          console.log("Sending registerData:", registerData);
+         
           const response = await authApi.adminRegister(registerData);
           if (response.success) {
-            console.log("Admin register response:", response.data); // Debug log
+           // Debug log
             toast.success("Tạo người dùng thành công");
             onSave(response.data, false); // Pass the created user data
             onClose();
@@ -205,7 +205,7 @@ const UserFormModal = ({
             toast.error(response.message || "Tạo người dùng thất bại");
           }
         } catch (error) {
-          console.error("Error creating user:", error);
+          
           toast.error("Lỗi khi tạo người dùng");
         }
       } else {
@@ -243,11 +243,7 @@ const UserFormModal = ({
             // Add avatar file
             formDataToSend.append("avatar", avatarFile);
 
-            console.log("Sending update data with avatar for user:", user.id);
-            // Log FormData contents
-            for (let [key, value] of formDataToSend.entries()) {
-              console.log(`${key}:`, value);
-            }
+        
 
             response = await userApi.updateUser(user.id, formDataToSend);
           } else {

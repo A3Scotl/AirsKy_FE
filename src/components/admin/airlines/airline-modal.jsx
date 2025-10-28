@@ -68,14 +68,7 @@ const AirlineModal = ({ open, onClose, onSubmit, initialData }) => {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    // Log giá trị ảnh trước khi submit
-    console.log("[AirlineModal] Submitting form data:");
-    console.log("- thumbnail:", form.thumbnail);
-    console.log("- thumbnailFile:", form.thumbnailFile);
-    console.log(
-      "- thumbnailFile instanceof File:",
-      form.thumbnailFile instanceof File
-    );
+   
 
     const formData = {
       airlineCode: form.airline_code,
@@ -86,16 +79,16 @@ const AirlineModal = ({ open, onClose, onSubmit, initialData }) => {
 
     // Xử lý thumbnail: chỉ gửi 1 loại
     if (form.thumbnailFile instanceof File) {
-      console.log("[AirlineModal] Sending file:", form.thumbnailFile.name);
+      
       formData.thumbnailFile = form.thumbnailFile;
     } else if (form.thumbnail) {
-      console.log("[AirlineModal] Sending URL:", form.thumbnail);
+      
       formData.thumbnail = form.thumbnail;
     } else {
       console.log("[AirlineModal] No thumbnail to send");
     }
 
-    console.log("[AirlineModal] Final formData:", formData);
+   
     onSubmit(formData);
   };
 

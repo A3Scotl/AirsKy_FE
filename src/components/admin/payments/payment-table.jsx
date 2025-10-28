@@ -117,12 +117,12 @@ const PaymentTable = ({
         setData(response.data.content || []);
         setPageCount(response.data.totalPages || 0);
       } else {
-        console.error("Failed to fetch payments:", response.message);
+       
         setData([]);
         toast.error("Không thể tải danh sách thanh toán");
       }
     } catch (error) {
-      console.error("Error fetching payments:", error);
+      
       setData([]);
       toast.error("Lỗi khi tải danh sách thanh toán");
     } finally {
@@ -331,7 +331,7 @@ const PaymentTable = ({
                   (row) => row.original
                 );
                 // Handle bulk export
-                console.log("Bulk export:", selectedPayments);
+                
                 toast.success(`Đã xuất ${selectedPayments.length} giao dịch`);
               }}
               className="text-blue-600 border-blue-600 hover:bg-blue-50"

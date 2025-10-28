@@ -19,8 +19,10 @@ import {
 } from "lucide-react";
 import DealFormModal from "./deal-form-modal";
 import DealDetailModal from "./deal-detail-modal";
+import DealTableSkeleton from "./deal-table-skeleton";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
   TableBody,
@@ -251,11 +253,7 @@ const DealTable = ({
               </TableHeader>
               <TableBody>
                 {loading ? (
-                  <TableRow>
-                    <TableCell colSpan={9} className="text-center py-8">
-                      Đang tải...
-                    </TableCell>
-                  </TableRow>
+                  <DealTableSkeleton />
                 ) : deals && deals.length > 0 ? (
                   deals.map((deal) => (
                     <TableRow

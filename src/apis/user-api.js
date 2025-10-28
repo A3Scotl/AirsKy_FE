@@ -84,4 +84,50 @@ export const userApi = {
     const endpoint = `/users/${id}/role?role=${role}`;
     return apiHandler("patch", endpoint);
   },
+
+  /**
+   * Lấy thống kê booking của một user
+   * @param {number} id - ID của người dùng
+   * @returns {Promise<{ success: boolean, data?: { totalBookings: number, cancelledBookings: number, completedBookings: number, totalSpent: number }, message: string }>}
+   */
+  getUserBookingStats: async (id) => {
+    try {
+      const response = await apiHandler("get", `/users/${id}/bookings`);
+
+      if (!response.success) {
+        return response;
+      }
+
+      const bookings = response.data || [];
+
+      // Tính toán thống kê
+      const stats = {
+        totalBookings: bookings.length,
+        cancelledBookings: bookings.filter(
+          (booking) => booking.status === "CANCELLED"
+        ).length,
+        completedBookings: bookings.filter(
+          (booking) =>
+            booking.status === "COMPLETED" || booking.status === "CONFIRMED"
+        ).length,
+        totalSpent: bookings
+          .filter(
+            (booking) =>
+              booking.status === "COMPLETED" || booking.status === "CONFIRMED"
+          )
+          .reduce((total, booking) => total + (booking.totalAmount || 0), 0),
+      };
+
+      return {
+        success: true,
+        data: stats,
+        message: "Get user booking stats successful",
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: error.message || "Failed to get user booking stats",
+      };
+    }
+  },
 };

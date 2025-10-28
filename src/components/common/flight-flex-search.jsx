@@ -85,101 +85,54 @@ export function FlightFlexSearch({
     }).format(price);
   }, []);
 
-  // ENHANCED: Get airport IDs from both searchCriteria AND allFlights for accuracy
+  // Simplified airport ID extraction
   const getAirportIds = useMemo(() => {
-    const extractAirportData = (source) => {
+    const extractAirportId = (source) => {
       if (!source) return null;
-
-      // Direct ID access - prioritize airportId field
-      if (source.airportId) {
-        return {
-          id: source.airportId,
-          code: source.airportCode,
-          name: source.airportName || source.city,
-        };
-      }
-
-      // Extract from string format "City Name (CODE)"
+      if (source.airportId) return source.airportId;
       if (typeof source === "string") {
         const match =
           source.match(/\(([A-Z]{3})\)/) || source.match(/\b([A-Z]{3})\b/);
-        return match ? { code: match[1] } : null;
+        return match ? match[1] : null;
       }
-
       return null;
     };
 
-    // ENHANCED: Try to get airport IDs from actual flights first (more reliable)
-    let originalDeparture, originalArrival;
+    // Try to get from flights first, then searchCriteria
+    let departureId = null;
+    let arrivalId = null;
 
     if (allFlights && allFlights.length > 0) {
-      // Get from first outbound flight (most reliable source)
-      const outboundFlight =
-        allFlights.find(
-          (f) => f.direction === "outbound" || !f.direction // If no direction, assume it's the main flight
-        ) || allFlights[0];
-
-      if (outboundFlight) {
-        originalDeparture = {
-          id:
-            outboundFlight.departureAirport?.airportId ||
-            outboundFlight.departureAirportId,
-          code: outboundFlight.departureAirport?.airportCode,
-          name: outboundFlight.departureAirport?.airportName,
-        };
-
-        originalArrival = {
-          id:
-            outboundFlight.arrivalAirport?.airportId ||
-            outboundFlight.arrivalAirportId,
-          code: outboundFlight.arrivalAirport?.airportCode,
-          name: outboundFlight.arrivalAirport?.airportName,
-        };
-
-        console.log("Got airport IDs from flights:", {
-          originalDeparture,
-          originalArrival,
-        });
+      const flight =
+        allFlights.find((f) => f.direction === "outbound" || !f.direction) ||
+        allFlights[0];
+      if (flight) {
+        departureId =
+          flight.departureAirport?.airportId || flight.departureAirportId;
+        arrivalId = flight.arrivalAirport?.airportId || flight.arrivalAirportId;
       }
     }
 
-    // Fallback to searchCriteria if no flights available
-    if (!originalDeparture || !originalArrival) {
-      originalDeparture = searchCriteria?.departureAirportId
-        ? { id: searchCriteria.departureAirportId }
-        : extractAirportData(searchCriteria?.from) ||
-          extractAirportData(searchCriteria?.fromLocations?.[0]);
-
-      originalArrival = searchCriteria?.arrivalAirportId
-        ? { id: searchCriteria.arrivalAirportId }
-        : extractAirportData(searchCriteria?.to) ||
-          extractAirportData(searchCriteria?.toLocations?.[0]);
-
-      console.log("Got airport IDs from searchCriteria:", {
-        originalDeparture,
-        originalArrival,
-      });
+    if (!departureId || !arrivalId) {
+      departureId =
+        searchCriteria?.departureAirportId ||
+        extractAirportId(searchCriteria?.from) ||
+        extractAirportId(searchCriteria?.fromLocations?.[0]);
+      arrivalId =
+        searchCriteria?.arrivalAirportId ||
+        extractAirportId(searchCriteria?.to) ||
+        extractAirportId(searchCriteria?.toLocations?.[0]);
     }
 
-    // Swap airports if selecting return flight
-    let departureData, arrivalData;
+    // Swap for return selection
     if (isReturnSelection) {
-      departureData = originalArrival; // SGN becomes departure
-      arrivalData = originalDeparture; // HAN becomes arrival
-      console.log("Return selection - swapped airports:", {
-        original: `${originalDeparture?.id}-${originalArrival?.id}`,
-        swapped: `${departureData?.id}-${arrivalData?.id}`,
-      });
-    } else {
-      departureData = originalDeparture;
-      arrivalData = originalArrival;
-      console.log("Outbound selection - normal airports:", {
-        departureData,
-        arrivalData,
-      });
+      [departureId, arrivalId] = [arrivalId, departureId];
     }
 
-    return { departureData, arrivalData };
+    return {
+      departureData: departureId ? { id: departureId } : null,
+      arrivalData: arrivalId ? { id: arrivalId } : null,
+    };
   }, [searchCriteria, isReturnSelection, allFlights]);
 
   // Optimized date parser
@@ -191,8 +144,12 @@ export function FlightFlexSearch({
       typeof dateValue === "string" &&
       /^\d{4}-\d{2}-\d{2}$/.test(dateValue)
     ) {
+      // Create date in local timezone to avoid timezone issues
       const [year, month, day] = dateValue.split("-").map(Number);
-      return new Date(year, month - 1, day, 12, 0, 0, 0);
+      const date = new Date();
+      date.setFullYear(year, month - 1, day);
+      date.setHours(12, 0, 0, 0);
+      return date;
     }
 
     // Handle Date object or string
@@ -202,15 +159,10 @@ export function FlightFlexSearch({
       return new Date();
     }
 
-    return new Date(
-      parsed.getFullYear(),
-      parsed.getMonth(),
-      parsed.getDate(),
-      12,
-      0,
-      0,
-      0
-    );
+    // Ensure we return date in local timezone
+    const date = new Date(parsed);
+    date.setHours(12, 0, 0, 0);
+    return date;
   }, []);
 
   // Optimized date generation - always 7 days with search date in center
@@ -227,14 +179,6 @@ export function FlightFlexSearch({
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    console.log("Generate dates with:", {
-      isReturnSelection,
-      departDate: searchCriteria?.departDate,
-      returnDate: searchCriteria?.returnDate,
-      selectedBaseDate: baseDate,
-      isRoundTrip,
-    });
-
     const dates = [];
     const centerIndex = 3; // Search date always in center
 
@@ -242,17 +186,21 @@ export function FlightFlexSearch({
     const startDate = new Date(baseDate);
     startDate.setDate(baseDate.getDate() - centerIndex + dateOffset * 7);
 
-    // Ensure startDate is not before today
+    // Prevent going back before today - only allow navigation within future dates
     if (startDate < today) {
-      const daysToAdd = Math.ceil((today - startDate) / (1000 * 60 * 60 * 24));
-      startDate.setDate(startDate.getDate() + daysToAdd);
+      startDate.setTime(today.getTime());
     }
 
     for (let i = 0; i < 7; i++) {
       const currentDate = new Date(startDate);
       currentDate.setDate(startDate.getDate() + i);
 
-      const formatted = currentDate.toISOString().split("T")[0];
+      const formatted =
+        currentDate.getFullYear() +
+        "-" +
+        String(currentDate.getMonth() + 1).padStart(2, "0") +
+        "-" +
+        String(currentDate.getDate()).padStart(2, "0");
       const display = currentDate.toLocaleDateString("vi-VN", {
         weekday: "short",
         day: "numeric",
@@ -268,11 +216,21 @@ export function FlightFlexSearch({
         );
         const calculatedReturnDate = new Date(currentDate);
         calculatedReturnDate.setDate(currentDate.getDate() + originalGap);
-        returnFormatted = calculatedReturnDate.toISOString().split("T")[0];
+        returnFormatted =
+          calculatedReturnDate.getFullYear() +
+          "-" +
+          String(calculatedReturnDate.getMonth() + 1).padStart(2, "0") +
+          "-" +
+          String(calculatedReturnDate.getDate()).padStart(2, "0");
       }
 
       // Check if selected
-      const baseFormatted = baseDate.toISOString().split("T")[0];
+      const baseFormatted =
+        baseDate.getFullYear() +
+        "-" +
+        String(baseDate.getMonth() + 1).padStart(2, "0") +
+        "-" +
+        String(baseDate.getDate()).padStart(2, "0");
       const isSelected = formatted === baseFormatted;
 
       // Always use simple date key for one-way pricing
@@ -284,7 +242,10 @@ export function FlightFlexSearch({
         formatted,
         returnFormatted,
         display,
-        isToday: currentDate.getTime() === today.getTime(),
+        isToday:
+          currentDate.getFullYear() === today.getFullYear() &&
+          currentDate.getMonth() === today.getMonth() &&
+          currentDate.getDate() === today.getDate(),
         isSelected,
         price: cachedPrice,
         loading: false,
@@ -305,17 +266,6 @@ export function FlightFlexSearch({
 
   // Optimized flight price extraction with availability filter
   const extractFlightPrice = useCallback((flight) => {
-    // Check if flight is still available (not in the past)
-    const now = new Date();
-    const flightDateTime = new Date(
-      flight.departureTime || flight.departureDate
-    );
-
-    // Skip flights that have already departed
-    if (flightDateTime <= now) {
-      return null;
-    }
-
     // Priority: flightTravelClasses > direct price fields
     if (flight?.flightTravelClasses?.length > 0) {
       const validPrices = flight.flightTravelClasses
@@ -383,9 +333,7 @@ export function FlightFlexSearch({
         );
       });
 
-      console.log(
-        `Found ${matchingFlights.length} flights for ${dateObj.formatted} from ${getAirportIds.departureData.id} to ${getAirportIds.arrivalData.id}`
-      );
+      // Found matching flights for date
 
       const availablePrices = matchingFlights
         .map(extractFlightPrice)
@@ -395,7 +343,7 @@ export function FlightFlexSearch({
 
       if (minPrice) {
         priceCache.current.set(cacheKey, minPrice);
-        console.log(`Min price for ${dateObj.formatted}: ${minPrice} VND`);
+        // Cached min price for date
       }
 
       return minPrice;
@@ -407,7 +355,7 @@ export function FlightFlexSearch({
   const fetchPriceFromAPI = useCallback(
     async (dateObj) => {
       if (!getAirportIds.departureData?.id || !getAirportIds.arrivalData?.id) {
-        console.log("Missing airport IDs for API fetch");
+        // Missing airport IDs for API fetch
         return null;
       }
 
@@ -415,11 +363,11 @@ export function FlightFlexSearch({
 
       // Prevent duplicate requests
       if (apiRequests.current.has(requestKey)) {
-        console.log("Using cached API request for:", requestKey);
+        // Using cached API request
         return apiRequests.current.get(requestKey);
       }
       if (pendingRequests.current.has(requestKey)) {
-        console.log("Request already pending for:", requestKey);
+        // Request already pending
         return null;
       }
 
@@ -440,9 +388,9 @@ export function FlightFlexSearch({
           dateRangeDays: 0,
         };
 
-        console.log("Calling compare-prices API with:", requestBody);
+        // Calling compare-prices API
         const response = await flightApi.compareFlightPrices(requestBody);
-        console.log("API response for", dateObj.formatted, ":", response);
+        // API response received
 
         if (response?.success && response.data?.prices?.length > 0) {
           // Always extract one-way price - get minPrice for the specific route and date
@@ -459,12 +407,7 @@ export function FlightFlexSearch({
             response.data.prices[0]?.minPrice ||
             null;
 
-          console.log(
-            "Extracted one-way price for",
-            dateObj.formatted,
-            ":",
-            price
-          );
+          // Extracted price from API response
 
           // Cache the result
           if (price !== null) {
@@ -473,7 +416,7 @@ export function FlightFlexSearch({
           return price;
         }
 
-        console.log("No prices found in API response");
+        // No prices found in API response
         return null;
       } catch (error) {
         console.error("API price fetch error:", error);
@@ -521,33 +464,24 @@ export function FlightFlexSearch({
     const datesToFetch = dates.filter((d) => d.price === undefined);
 
     if (datesToFetch.length > 0) {
-      console.log(
-        "Fetching prices from API for dates:",
-        datesToFetch.map((d) => d.formatted)
-      );
+      // Fetching prices from API
 
       // Process in smaller batches for better performance
-      const batchSize = 3;
+      const batchSize = 2;
 
       for (let i = 0; i < datesToFetch.length; i += batchSize) {
         const batch = datesToFetch.slice(i, i + batchSize);
-        console.log(
-          `Processing batch ${i / batchSize + 1}:`,
-          batch.map((d) => d.formatted)
-        );
+        // Processing batch
 
         const batchResults = await Promise.all(
           batch.map(async (dateObj) => {
             try {
-              console.log("Fetching price for:", dateObj.formatted);
+              // Fetching price for date
               const price = await fetchPriceFromAPI(dateObj);
 
               // Fallback to existing flights if API fails
               if (price === null) {
-                console.log(
-                  "API failed, trying existing flights for:",
-                  dateObj.formatted
-                );
+                // API failed, trying existing flights
                 const fallbackPrice = getPriceFromAllFlights(dateObj);
                 return {
                   priceKey: dateObj.priceKey,
@@ -575,7 +509,7 @@ export function FlightFlexSearch({
           })
         );
 
-        console.log("Batch results:", batchResults);
+        // Batch results processed
 
         // Update state with batch results
         setDates((prev) =>
@@ -642,7 +576,7 @@ export function FlightFlexSearch({
     const hasMissingPrices = dates.some((d) => d.price === undefined);
 
     if (criteriaChanged) {
-      console.log("Criteria changed - should update prices");
+      // Criteria changed - should update prices
       // console.log('Old:', lastFetchedCriteria.current); // Reduced logging
       // console.log('New:', criteriaStr); // Reduced logging
       lastFetchedCriteria.current = criteriaStr;
@@ -650,7 +584,7 @@ export function FlightFlexSearch({
     }
 
     if (hasMissingPrices) {
-      console.log("Missing prices detected - should update");
+      // Missing prices detected
       return true;
     }
 
@@ -668,10 +602,7 @@ export function FlightFlexSearch({
   const prevIsReturnSelectionRef = useRef(isReturnSelection);
 
   useEffect(() => {
-    console.log(
-      "Generating new dates for selection mode:",
-      isReturnSelection ? "return" : "outbound"
-    );
+    // Generating new dates for selection mode
     setDates(generateDates);
 
     // Auto-select based on search criteria
@@ -698,7 +629,7 @@ export function FlightFlexSearch({
     if (shouldUpdatePrices) {
       const timer = setTimeout(() => {
         updatePrices();
-      }, 100); // Small debounce to prevent rapid calls
+      }, 50); // Reduced debounce to improve responsiveness
 
       return () => clearTimeout(timer);
     }
@@ -706,7 +637,7 @@ export function FlightFlexSearch({
 
   // CRITICAL: Handle return selection changes - clear cache and refresh
   useEffect(() => {
-    console.log("Selection mode effect triggered:", isReturnSelection);
+    // Selection mode effect triggered
 
     // Clear all caches when switching between outbound/return selection
     priceCache.current.clear();
@@ -732,7 +663,7 @@ export function FlightFlexSearch({
 
   // Optimized refresh handler
   const handleRefresh = useCallback(() => {
-    console.log("Refreshing prices - clearing all caches");
+    // Refreshing prices - clearing all caches
     priceCache.current.clear();
     apiRequests.current.clear();
     pendingRequests.current.clear();
@@ -746,22 +677,18 @@ export function FlightFlexSearch({
     (dateObj) => {
       setSelectedDate(dateObj);
 
-      console.log("Date selected:", {
-        date: dateObj.formatted,
-        isReturnSelection,
-        direction: isReturnSelection ? "return" : "outbound",
-      });
+      // Date selected
 
       const newCriteria = { ...searchCriteria };
 
       if (isReturnSelection) {
         // Selecting return flight date
         newCriteria.returnDate = new Date(dateObj.formatted + "T12:00:00");
-        console.log("Updated return date to:", dateObj.formatted);
+        // Updated return date
       } else {
         // Selecting outbound flight date
         newCriteria.departDate = new Date(dateObj.formatted + "T12:00:00");
-        console.log("Updated departure date to:", dateObj.formatted);
+        // Updated departure date
 
         // Maintain return date if it exists for round-trip
         if (isRoundTrip && dateObj.returnFormatted) {
@@ -771,7 +698,7 @@ export function FlightFlexSearch({
         }
       }
 
-      console.log("Final search criteria:", newCriteria);
+      // Final search criteria updated
       updateSearchCriteria(newCriteria);
       localStorage.setItem("searchCriteria", JSON.stringify(newCriteria));
 
@@ -847,7 +774,7 @@ export function FlightFlexSearch({
 
       <div className="p-6">
         <div className="relative">
-          <div className="absolute left-2 top-1/2 -translate-y-1/2 z-20">
+          <div className="absolute left-2 top-1/2 -translate-y-1/2 z-10">
             <Button
               variant="outline"
               size="sm"
@@ -858,7 +785,7 @@ export function FlightFlexSearch({
               <ChevronLeft className="h-5 w-5 text-gray-700 dark:text-gray-300" />
             </Button>
           </div>
-          <div className="absolute right-2 top-1/2 -translate-y-1/2 z-20">
+          <div className="absolute right-2 top-1/2 -translate-y-1/2 z-10">
             <Button
               variant="outline"
               size="sm"

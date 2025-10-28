@@ -93,14 +93,13 @@ const DealFormModal = ({
         const response = await airportApi.getAllAirports({ size: 1000 });
         if (response.success && response.data) {
           const airportsData = response.data.content || response.data;
-          console.log("Fetched airports data:", airportsData);
-          console.log("First airport structure:", airportsData[0]);
+        
           setAirports(airportsData);
         } else {
           setAirportsError("Không thể tải danh sách sân bay");
         }
       } catch (error) {
-        console.error("Error fetching airports:", error);
+
         setAirportsError("Lỗi khi tải danh sách sân bay");
       } finally {
         setAirportsLoading(false);
@@ -274,8 +273,7 @@ const DealFormModal = ({
     if (!validateForm()) {
       return;
     }
-    // Log giá trị ảnh trước khi submit
-    console.log("[DealFormModal] thumbnail:", formData.thumbnail);
+   
     // Chỉ gửi thumbnail là file nếu có file, nếu không thì gửi url string
     const dealData = {
       ...formData,

@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useCallback } from "react";
 import ReviewDetailsModal from "@/components/admin/reviews/review-details-modal";
+import ReviewTableSkeleton from "@/components/admin/reviews/review-table-skeleton";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -750,9 +751,7 @@ const ReviewPage = () => {
       {/* Table */}
       <Card>
         {loading ? (
-          <div className="flex justify-center py-12">
-            <Loader2 className="animate-spin" />
-          </div>
+          <ReviewTableSkeleton />
         ) : (
           <Table>
             <TableHeader>

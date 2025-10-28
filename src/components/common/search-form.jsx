@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
@@ -23,8 +23,6 @@ import {
   ArrowRightLeft,
   Loader2,
   RotateCcw,
-  Plus,
-  Minus,
 } from "lucide-react";
 import { format } from "date-fns";
 import AirportAutocomplete from "./airport-autocomplete";
@@ -82,7 +80,7 @@ function DatePicker({ date, onSelect, placeholder, disabled = false }) {
           )}
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-auto p-0 z-999" align="start">
+      <PopoverContent className="w-auto p-0 z-[10000000]" align="start">
         <Calendar
           mode="single"
           selected={date}
@@ -106,12 +104,6 @@ export function SearchForm({ onSearch, initialValues, onTripTypeChange }) {
   const [departDate, setDepartDate] = useState();
   const [returnDate, setReturnDate] = useState();
   const [validationErrors, setValidationErrors] = useState([]);
-
-  // Multi-city state
-  const [multiCityTrips, setMultiCityTrips] = useState([
-    { from: null, to: null, departDate: null },
-    { from: null, to: null, departDate: null },
-  ]);
 
   const [passengerPopup, setPassengerPopup] = useState(false);
   const [passengers, setPassengers] = useState({
@@ -152,11 +144,6 @@ export function SearchForm({ onSearch, initialValues, onTripTypeChange }) {
         }
       );
       setTravelClass(initialValues.travelClass || "Phổ thông");
-
-      // Handle multi-city trips
-      if (initialValues.multiTrips && initialValues.multiTrips.length > 0) {
-        setMultiCityTrips(initialValues.multiTrips);
-      }
     }
   }, [initialValues]);
 
@@ -184,7 +171,6 @@ export function SearchForm({ onSearch, initialValues, onTripTypeChange }) {
           }
         }
       } catch (error) {
-        console.error("Failed to load travel classes:", error);
         // Fallback to default classes if API fails
         setTravelClasses(["Phổ thông", "Phổ thông cao cấp", "Thương gia"]);
       } finally {
@@ -195,49 +181,25 @@ export function SearchForm({ onSearch, initialValues, onTripTypeChange }) {
     loadTravelClasses();
   }, []);
 
-  const updatePassenger = (type, value) => {
+  const updatePassenger = useCallback((type, value) => {
     setPassengers((prev) => ({
       ...prev,
       [type]: Math.max(type === "adults" ? 1 : 0, value),
     }));
-  };
+  }, []);
 
-  // Multi-city trip handlers
-  const addMultiCityTrip = () => {
-    setMultiCityTrips((prev) => [
-      ...prev,
-      { from: [], to: [], departDate: null },
-    ]);
-  };
-
-  const removeMultiCityTrip = (index) => {
-    if (multiCityTrips && multiCityTrips.length > 2) {
-      setMultiCityTrips((prev) => prev.filter((_, i) => i !== index));
-    }
-  };
-
-  const updateMultiCityTrip = (index, field, value) => {
-    setMultiCityTrips((prev) =>
-      prev.map((trip, i) => (i === index ? { ...trip, [field]: value } : trip))
-    );
-  };
-
-  const passengerSummary = `${passengers.adults} Người lớn${
-    passengers.children > 0 ? `, ${passengers.children} Trẻ em` : ""
-  }${
-    passengers.infants > 0 ? `, ${passengers.infants} Em bé` : ""
-  } - ${travelClass}`;
+  const passengerSummary = useMemo(
+    () =>
+      `${passengers.adults} Người lớn${
+        passengers.children > 0 ? `, ${passengers.children} Trẻ em` : ""
+      }${
+        passengers.infants > 0 ? `, ${passengers.infants} Em bé` : ""
+      } - ${travelClass}`,
+    [passengers.adults, passengers.children, passengers.infants, travelClass]
+  );
 
   // Check if form has any data to reset
-  const hasDataToReset = () => {
-    const hasMultiCityData =
-      multiCityTrips && multiCityTrips.length > 0
-        ? multiCityTrips.some(
-            (trip) =>
-              trip.from?.length > 0 || trip.to?.length > 0 || trip.departDate
-          )
-        : false;
-
+  const hasDataToReset = useMemo(() => {
     return (
       fromLocations.length > 0 ||
       toLocations.length > 0 ||
@@ -247,13 +209,20 @@ export function SearchForm({ onSearch, initialValues, onTripTypeChange }) {
       passengers.children > 0 ||
       passengers.infants > 0 ||
       travelClass !== "Phổ thông" ||
-      tripType !== "ROUND_TRIP" ||
-      hasMultiCityData
+      tripType !== "ROUND_TRIP"
     );
-  };
-
-  // Check if form is valid for search
-  const isFormValid = () => {
+  }, [
+    fromLocations.length,
+    toLocations.length,
+    departDate,
+    returnDate,
+    passengers.adults,
+    passengers.children,
+    passengers.infants,
+    travelClass,
+    tripType,
+  ]);
+  const isFormValid = useMemo(() => {
     if (tripType === "ROUND_TRIP") {
       return (
         fromLocations.length > 0 &&
@@ -264,20 +233,19 @@ export function SearchForm({ onSearch, initialValues, onTripTypeChange }) {
       );
     } else if (tripType === "ONE_WAY") {
       return fromLocations.length > 0 && toLocations.length > 0 && departDate;
-    } else if (tripType === "MULTI_CITY") {
-      return multiCityTrips && multiCityTrips.length > 0
-        ? multiCityTrips.every(
-            (trip) =>
-              trip.from?.length > 0 && trip.to?.length > 0 && trip.departDate
-          )
-        : false;
     }
     return false;
-  };
+  }, [
+    tripType,
+    fromLocations.length,
+    toLocations.length,
+    departDate,
+    returnDate,
+  ]);
 
   // Handle search submission
-  const handleSearch = () => {
-    if (!isFormValid()) {
+  const handleSearch = useCallback(() => {
+    if (!isFormValid) {
       return;
     }
 
@@ -290,8 +258,8 @@ export function SearchForm({ onSearch, initialValues, onTripTypeChange }) {
     if (tripType === "ROUND_TRIP") {
       searchData = {
         ...searchData,
-        fromLocations: fromLocations, // Send all selected locations
-        toLocations: toLocations, // Send all selected locations
+        fromLocations: fromLocations,
+        toLocations: toLocations,
         departDate:
           departDate &&
           departDate instanceof Date &&
@@ -308,8 +276,8 @@ export function SearchForm({ onSearch, initialValues, onTripTypeChange }) {
     } else if (tripType === "ONE_WAY") {
       searchData = {
         ...searchData,
-        fromLocations: fromLocations, // Send all selected locations
-        toLocations: toLocations, // Send all selected locations
+        fromLocations: fromLocations,
+        toLocations: toLocations,
         departDate:
           departDate &&
           departDate instanceof Date &&
@@ -317,44 +285,33 @@ export function SearchForm({ onSearch, initialValues, onTripTypeChange }) {
             ? departDate
             : null,
       };
-    } else if (tripType === "MULTI_CITY") {
-      searchData = {
-        ...searchData,
-        multiCityTrips: multiCityTrips.map((trip) => ({
-          fromLocations: trip.from || [],
-          toLocations: trip.to || [],
-          departDate:
-            trip.departDate &&
-            trip.departDate instanceof Date &&
-            !isNaN(trip.departDate.getTime())
-              ? trip.departDate
-              : null,
-        })),
-      };
     }
 
-    console.log("Submitting search data:", searchData);
-
-    // Store search data in localStorage for later use
     localStorage.setItem("searchData", JSON.stringify(searchData));
 
     if (onSearch) {
       onSearch(searchData);
     }
-  };
+  }, [
+    isFormValid,
+    tripType,
+    passengers,
+    travelClass,
+    fromLocations,
+    toLocations,
+    departDate,
+    returnDate,
+    onSearch,
+  ]);
 
-  const handleReset = () => {
+  const handleReset = useCallback(() => {
     setTripType("ROUND_TRIP");
     setFromLocations([]);
     setToLocations([]);
     setDepartDate();
     setReturnDate();
-    setMultiCityTrips([
-      { from: [], to: [], departDate: null },
-      { from: [], to: [], departDate: null },
-    ]);
     setValidationErrors([]);
-  };
+  }, []);
 
   return (
     <Card className="bg-white/95 backdrop-blur-sm dark:bg-gray-400/100 p-6 mt-4  max-w-6xl mx-auto">
@@ -515,7 +472,7 @@ export function SearchForm({ onSearch, initialValues, onTripTypeChange }) {
           </div>
 
           {/* Reset Button */}
-          {hasDataToReset() && (
+          {hasDataToReset && (
             <div className="flex justify-end">
               <Button
                 variant="outline"
@@ -590,7 +547,7 @@ export function SearchForm({ onSearch, initialValues, onTripTypeChange }) {
 
             <Button
               className="bg-blue-500 text-white hover:bg-blue-600 disabled:bg-gray-400 disabled:cursor-not-allowed mt-6 dark:bg-blue-50 dark:text-gray-800 dark:hover:bg-blue-100"
-              disabled={!isFormValid()}
+              disabled={!isFormValid}
               onClick={handleSearch}
             >
               {fromLocations.length > 1 || toLocations.length > 1
@@ -652,7 +609,7 @@ export function SearchForm({ onSearch, initialValues, onTripTypeChange }) {
             <Button
               className="bg-blue-500 text-white hover:bg-blue-600 disabled:bg-gray-400 disabled:cursor-not-allowed mt-6 dark:bg-blue-50 dark:text-gray-800 dark:hover:bg-blue-100"
               onClick={handleSearch}
-              disabled={!isFormValid()}
+              disabled={!isFormValid}
             >
               {fromLocations.length > 1 || toLocations.length > 1
                 ? `Tìm chuyến bay (${
@@ -660,107 +617,6 @@ export function SearchForm({ onSearch, initialValues, onTripTypeChange }) {
                   } kết hợp)`
                 : "Tìm chuyến bay"}
             </Button>
-          </div>
-        )}
-
-        {/* Multi-City Form */}
-        {tripType === "MULTI_CITY" && multiCityTrips && (
-          <div className="space-y-4">
-            {multiCityTrips.map((trip, index) => (
-              <div
-                key={index}
-                className="grid md:grid-cols-4 gap-4 p-4 bg-gray-50 rounded-lg border border-gray-200"
-              >
-                <div className="relative">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Từ sân bay {index + 1}
-                  </label>
-                  <AirportAutocomplete
-                    placeholder="Chọn sân bay đi"
-                    value={trip.from || []}
-                    onChange={(value) =>
-                      updateMultiCityTrip(index, "from", value)
-                    }
-                    multiple={true}
-                  />
-                  {trip.from && trip.from.length > 1 && (
-                    <div className="text-xs text-blue-600 mt-1">
-                      Đã chọn {trip.from.length} sân bay đi
-                    </div>
-                  )}
-                </div>
-
-                <div className="relative">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Đến sân bay {index + 1}
-                  </label>
-                  <AirportAutocomplete
-                    placeholder="Chọn sân bay đến"
-                    value={trip.to || []}
-                    onChange={(value) =>
-                      updateMultiCityTrip(index, "to", value)
-                    }
-                    multiple={true}
-                  />
-                  {trip.to && trip.to.length > 1 && (
-                    <div className="text-xs text-blue-600 mt-1">
-                      Đã chọn {trip.to.length} sân bay đến
-                    </div>
-                  )}
-                </div>
-
-                <div className="relative">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Ngày đi {index + 1}
-                  </label>
-                  <DatePicker
-                    date={trip.departDate}
-                    onSelect={(date) =>
-                      updateMultiCityTrip(index, "departDate", date)
-                    }
-                    placeholder="Chọn ngày đi"
-                  />
-                </div>
-
-                <div className="flex items-end space-x-2">
-                  {index > 1 && (
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      onClick={() => removeMultiCityTrip(index)}
-                      className="text-red-600 hover:text-red-700 hover:bg-red-50 border-red-300"
-                      title="Xóa chuyến bay này"
-                    >
-                      <Minus className="w-4 h-4" />
-                    </Button>
-                  )}
-
-                  {index === multiCityTrips.length - 1 &&
-                    multiCityTrips.length < 6 && (
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        onClick={addMultiCityTrip}
-                        className="text-blue-600 hover:text-blue-700 hover:bg-blue-50 border-blue-300"
-                        title="Thêm chuyến bay"
-                      >
-                        <Plus className="w-4 h-4" />
-                      </Button>
-                    )}
-                </div>
-              </div>
-            ))}
-
-            <div className="flex justify-center">
-              <Button
-                className="bg-blue-500 text-white hover:bg-blue-600 disabled:bg-gray-400 disabled:cursor-not-allowed dark:bg-blue-50 dark:text-gray-800 dark:hover:bg-blue-100"
-                onClick={handleSearch}
-                disabled={!isFormValid()}
-              >
-                Tìm chuyến bay đa thành phố ({multiCityTrips?.length || 0}{" "}
-                chặng)
-              </Button>
-            </div>
           </div>
         )}
       </div>
