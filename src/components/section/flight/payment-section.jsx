@@ -535,22 +535,44 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
     const points = parseInt(value) || 0;
     setPointsToRedeem(value);
 
+    // Reset states
+    setCanRedeem(false);
+    setPointsDiscount(0);
+    setPointsError("");
+
+    if (points < 500 && points > 0) {
+      setPointsError(
+        `Cần tối thiểu 500 điểm để đổi (hiện tại: ${points} điểm)`
+      );
+      return;
+    }
+
     if (points >= 500) {
-      // Minimum 500 points
       try {
         let canRedeemResult = false;
         let discountAmount = 0;
+        let availablePoints = 0;
 
         // Check if we have membership code to use
         const membershipPassenger = formData.passengers.find(
-          (p) =>
-            p.membershipCode &&
-            p.membershipData?.valid &&
-            p.membershipData?.currentPoints >= points
+          (p) => p.membershipCode && p.membershipData?.valid
         );
 
         if (membershipPassenger && !user) {
-          // Use membership-based calculation for guest users
+          // Use membership-based points
+          availablePoints =
+            membershipPassenger.membershipData?.currentPoints || 0;
+
+          // Kiểm tra điểm có đủ không
+          if (points > availablePoints) {
+            setPointsError(
+              `Số điểm không đủ. Bạn chỉ có ${availablePoints.toLocaleString()} điểm từ hội viên ${
+                membershipPassenger.membershipCode
+              }`
+            );
+            return;
+          }
+
           const discountResponse =
             await pointsApi.calculateDiscountFromPointsByMembership(
               membershipPassenger.membershipCode,
@@ -562,6 +584,17 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
             discountAmount = discountResponse.data;
           }
         } else if (user) {
+          // Use user account points
+          availablePoints = userPoints;
+
+          // Kiểm tra điểm có đủ không
+          if (points > availablePoints) {
+            setPointsError(
+              `Số điểm không đủ. Bạn chỉ có ${availablePoints.toLocaleString()} điểm trong tài khoản`
+            );
+            return;
+          }
+
           // Check if user can redeem
           const canRedeemResponse = await pointsApi.canRedeemPoints(
             user.id,
@@ -576,40 +609,41 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
           if (discountResponse.success) {
             discountAmount = discountResponse.data;
           }
+        } else {
+          setPointsError(
+            "Vui lòng đăng nhập hoặc nhập mã hội viên để sử dụng điểm"
+          );
+          return;
+        }
+
+        // Kiểm tra để tránh giảm giá vượt quá tổng tiền
+        const maxDiscount = currentTotalAmount - dealDiscount;
+        if (discountAmount > maxDiscount) {
+          discountAmount = maxDiscount;
+          const maxPoints = Math.floor(
+            maxDiscount * (pointsRates?.pointsPerVND || 100)
+          );
+          setPointsError(
+            `Số điểm tối đa có thể đổi cho đơn hàng này là ${maxPoints.toLocaleString()} điểm (${formatCurrencyVND(
+              maxDiscount
+            )})`
+          );
+          canRedeemResult = false;
         }
 
         setCanRedeem(canRedeemResult);
         setPointsDiscount(discountAmount);
-        setPointsError("");
       } catch (error) {
         console.error("Error calculating points discount:", error);
         setCanRedeem(false);
         setPointsDiscount(0);
         setPointsError("Lỗi khi tính toán điểm");
       }
-    } else {
-      setCanRedeem(false);
-      setPointsDiscount(0);
-      if (points > 0 && points < 500) {
-        setPointsError(
-          `Cần tối thiểu 500 điểm để đổi (hiện tại: ${points} điểm)`
-        );
-      } else {
-        setPointsError("");
-      }
     }
   };
 
   const handleRedeemPoints = async () => {
     if (!pointsToRedeem || !canRedeem) return;
-
-    // Check if deal is applied and warn user
-    // if (dealApplied) {
-    //   const confirmReplace = window.confirm(
-    //     `Bạn đã áp dụng mã giảm giá "${dealCode}". Đổi điểm sẽ hủy mã giảm giá này. Bạn có muốn tiếp tục?`
-    //   );
-    //   if (!confirmReplace) return;
-    // }
 
     setRedeemingPoints(true);
     try {
@@ -643,10 +677,23 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
       }
 
       if (discountResponse.success) {
-        const discountAmount = discountResponse.data;
+        let discountAmount = discountResponse.data;
+
+        // Kiểm tra để đảm bảo không vượt quá tổng tiền
+        const maxAllowedDiscount = currentTotalAmount - dealDiscount;
+        if (discountAmount > maxAllowedDiscount) {
+          discountAmount = Math.max(0, maxAllowedDiscount);
+          setPointsError(
+            `Giảm giá đã được điều chỉnh xuống ${formatCurrencyVND(
+              discountAmount
+            )} để không vượt quá tổng tiền đơn hàng`
+          );
+        } else {
+          setPointsError("");
+        }
+
         setPointsDiscount(discountAmount);
         setPointsApplied(true);
-        setPointsError("");
 
         // Allow both deal and points to be used together
         // Removed: Reset deal when applying points
@@ -690,11 +737,32 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
     toast.info("Đã hủy đổi điểm");
   };
 
-  // Calculate final amount with deal discount and points discount
-  const finalAmount = Math.max(
-    0,
-    currentTotalAmount - dealDiscount - pointsDiscount
-  );
+  // Calculate final amount with deal discount and points discount - ensure no negative values
+  const calculateFinalAmount = () => {
+    const totalDiscount = dealDiscount + pointsDiscount;
+    const finalAmount = Math.max(0, currentTotalAmount - totalDiscount);
+
+    // If total discount exceeds the current amount, adjust discounts
+    if (totalDiscount > currentTotalAmount) {
+      console.warn("Total discounts exceed current amount, adjusting...");
+      // Prioritize deal discount, then points
+      const adjustedPointsDiscount = Math.max(
+        0,
+        currentTotalAmount - dealDiscount
+      );
+      if (adjustedPointsDiscount !== pointsDiscount) {
+        setPointsDiscount(adjustedPointsDiscount);
+      }
+      return Math.max(
+        0,
+        currentTotalAmount - dealDiscount - adjustedPointsDiscount
+      );
+    }
+
+    return finalAmount;
+  };
+
+  const finalAmount = calculateFinalAmount();
 
   // Auto-assignment is now handled in extras-section automatically
   const autoAssignSeats = async () => {
@@ -3941,7 +4009,11 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
                       Quy tắc đổi điểm: {pointsRates.pointsPer10kVnd} điểm ={" "}
                       {formatCurrencyVND(pointsRates.vndPer100Points)} giảm giá
                     </p>
-                    <p className="text-xs">Điểm tối thiểu: 500 điểm</p>
+                    <p className="text-xs mb-1">Điểm tối thiểu: 500 điểm</p>
+                    <p className="text-xs text-amber-700 bg-amber-100 px-2 py-1 rounded">
+                      ⚠️ Điểm đổi không được vượt quá tổng tiền đơn hàng (
+                      {formatCurrencyVND(currentTotalAmount - dealDiscount)})
+                    </p>
                     <div className="flex flex-wrap gap-1 mt-2">
                       {pointsRates.suggestedTiers &&
                         Object.entries(pointsRates.suggestedTiers).map(
@@ -4126,6 +4198,19 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
                   {formatCurrencyVND(finalAmount)}
                 </span>
               </div>
+
+              {finalAmount === 0 && (
+                <div className="bg-green-50 p-3 rounded-lg border border-green-200 mt-2">
+                  <p className="text-green-800 text-sm font-medium">
+                    🎉 Tuyệt vời! Đơn hàng của bạn đã được giảm 100% nhờ các ưu
+                    đãi.
+                  </p>
+                  <p className="text-green-700 text-xs mt-1">
+                    Bạn chỉ cần xác nhận đặt vé mà không phải thanh toán gì
+                    thêm.
+                  </p>
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>

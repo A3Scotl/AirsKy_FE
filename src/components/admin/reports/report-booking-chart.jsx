@@ -92,6 +92,11 @@ const BookingChart = ({ bookings, isLoading, detailed = false, dateRange }) => {
 
   // Process bookings data
   const processBookingsData = () => {
+    // Validate bookings is an array before processing
+    if (!Array.isArray(bookings) || bookings.length === 0) {
+      return [];
+    }
+
     // Group bookings by date
     const bookingsByDate = {};
 
@@ -306,7 +311,11 @@ const BookingChart = ({ bookings, isLoading, detailed = false, dateRange }) => {
               Hoạt động Đặt Vé
             </h4>
             <div className="h-64 w-full">
-              <Bar data={barChartData} options={barChartOptions} />
+              <Bar
+                id="bookings-bar-chart"
+                data={barChartData}
+                options={barChartOptions}
+              />
             </div>
           </div>
 
@@ -319,7 +328,11 @@ const BookingChart = ({ bookings, isLoading, detailed = false, dateRange }) => {
                   Booking Success Rate
                 </h5>
                 <div className="h-64 w-full">
-                  <Doughnut data={successRateData} options={doughnutOptions} />
+                  <Doughnut
+                    id="bookings-doughnut-chart"
+                    data={successRateData}
+                    options={doughnutOptions}
+                  />
                 </div>
               </div>
 

@@ -343,11 +343,27 @@ const validateForm = (formData, flightType, departureDate) => {
   let isValid = true;
 
   // 1. Xác thực thông tin liên hệ
-  if (!formData.contactEmail) {
+  if (!formData.contactName?.trim()) {
+    errors.contactName = "Họ và tên liên hệ là bắt buộc.";
+    isValid = false;
+  } else if (formData.contactName.trim().length < 2) {
+    errors.contactName = "Họ và tên phải có ít nhất 2 ký tự.";
+    isValid = false;
+  }
+
+  if (!formData.contactEmail?.trim()) {
     errors.contactEmail = "Email liên hệ là bắt buộc.";
     isValid = false;
-  } else if (!/\S+@\S+\.\S+/.test(formData.contactEmail)) {
+  } else if (!/\S+@\S+\.\S+/.test(formData.contactEmail.trim())) {
     errors.contactEmail = "Email không hợp lệ.";
+    isValid = false;
+  }
+
+  // Kiểm tra nếu không có hành khách nào
+  if (!formData.passengers || formData.passengers.length === 0) {
+    errors.passengers.general = "Phải có ít nhất một hành khách.";
+    isValid = false;
+    return { isValid: false, errors };
   }
 
   // 2. Xác thực thông tin từng hành khách
@@ -355,10 +371,22 @@ const validateForm = (formData, flightType, departureDate) => {
     const passengerErrors = {};
 
     // Basic required fields
-    if (!p.firstName?.trim()) passengerErrors.firstName = "Tên là bắt buộc.";
-    if (!p.lastName?.trim()) passengerErrors.lastName = "Họ là bắt buộc.";
-    if (!p.dob) passengerErrors.dateOfBirth = "Ngày sinh là bắt buộc.";
-    if (!p.gender) passengerErrors.gender = "Giới tính là bắt buộc.";
+    if (!p.firstName?.trim()) {
+      passengerErrors.firstName = "Tên là bắt buộc.";
+      isValid = false;
+    }
+    if (!p.lastName?.trim()) {
+      passengerErrors.lastName = "Họ là bắt buộc.";
+      isValid = false;
+    }
+    if (!p.dob) {
+      passengerErrors.dob = "Ngày sinh là bắt buộc.";
+      isValid = false;
+    }
+    if (!p.gender) {
+      passengerErrors.gender = "Giới tính là bắt buộc.";
+      isValid = false;
+    }
 
     const age = getAge(p.dob, departureDate);
     const isInternational = flightType === "INTERNATIONAL";
@@ -366,11 +394,20 @@ const validateForm = (formData, flightType, departureDate) => {
 
     // ID/Passport validation
     if (!isInternational && age >= 14) {
-      if (!p.passportNumber) {
+      if (!p.passportNumber?.trim()) {
         passengerErrors.passportNumber =
           "CCCD là bắt buộc cho người từ 14 tuổi.";
-      } else if (!/^\d{12}$/.test(p.passportNumber)) {
+        isValid = false;
+      } else if (!/^\d{12}$/.test(p.passportNumber.trim())) {
         passengerErrors.passportNumber = "CCCD phải có đúng 12 chữ số.";
+        isValid = false;
+      }
+    }
+
+    if (isInternational) {
+      if (!p.passportNumber?.trim()) {
+        passengerErrors.passportNumber = "Số hộ chiếu là bắt buộc.";
+        isValid = false;
       }
     }
 
@@ -380,22 +417,27 @@ const validateForm = (formData, flightType, departureDate) => {
       if (!p.phone?.trim()) {
         passengerErrors.phone =
           "Số điện thoại là bắt buộc cho người từ 12 tuổi trở lên.";
+        isValid = false;
       } else if (!isPossiblePhoneNumber(p.phone.trim())) {
         passengerErrors.phone = "Số điện thoại không hợp lệ.";
+        isValid = false;
       }
 
       // Country validation - required for adults
       if (!p.country?.trim()) {
         passengerErrors.country =
           "Quốc gia là bắt buộc cho người từ 12 tuổi trở lên.";
+        isValid = false;
       }
 
       // Current address validation - required for adults
       if (!p.currentAddress?.trim()) {
         passengerErrors.currentAddress =
           "Nơi ở hiện tại là bắt buộc cho người từ 12 tuổi trở lên.";
+        isValid = false;
       } else if (p.currentAddress.trim().length < 10) {
         passengerErrors.currentAddress = "Địa chỉ quá ngắn (ít nhất 10 ký tự).";
+        isValid = false;
       }
 
       // Membership code validation - optional but if entered must be valid
@@ -573,16 +615,16 @@ function FlightBookingStepper() {
         try {
           const searchCriteria = JSON.parse(storedSearchCriteria);
           for (let i = 0; i < (searchCriteria.passengers?.adults || 1); i++)
-            passengers.push({ type: "ADULT", phone: "" });
+            passengers.push({ type: "ADULT", phone: "", country: "Vietnam" });
           for (let i = 0; i < (searchCriteria.passengers?.children || 0); i++)
-            passengers.push({ type: "CHILD", phone: "" });
+            passengers.push({ type: "CHILD", phone: "", country: "Vietnam" });
           for (let i = 0; i < (searchCriteria.passengers?.infants || 0); i++)
-            passengers.push({ type: "INFANT", phone: "" });
+            passengers.push({ type: "INFANT", phone: "", country: "Vietnam" });
         } catch (e) {
-          passengers.push({ type: "ADULT", phone: "" });
+          passengers.push({ type: "ADULT", phone: "", country: "Vietnam" });
         }
       } else {
-        passengers.push({ type: "ADULT", phone: "" });
+        passengers.push({ type: "ADULT", phone: "", country: "Vietnam" });
       }
       setFormData((prev) => ({ ...prev, passengers }));
     }
@@ -604,12 +646,24 @@ function FlightBookingStepper() {
           flightType,
           flight.departureDate
         );
+
+        console.log("Validation result:", { isValid, errors });
         setValidationErrors(errors || {});
 
         if (!isValid) {
           toast.error(
             "Vui lòng kiểm tra lại các thông tin được đánh dấu màu đỏ."
           );
+          // Scroll to first error
+          setTimeout(() => {
+            const firstError = document.querySelector(".border-red-500");
+            if (firstError) {
+              firstError.scrollIntoView({
+                behavior: "smooth",
+                block: "center",
+              });
+            }
+          }, 100);
         } else {
           setIsConfirmModalOpen(true);
         }

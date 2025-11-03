@@ -51,7 +51,13 @@ ChartJS.register(
   Filler
 );
 
-const CustomerChart = ({ users, isLoading, detailed = false, dateRange }) => {
+const CustomerChart = ({
+  users: initialUsers,
+  isLoading,
+  detailed = false,
+  dateRange,
+}) => {
+  const users = Array.isArray(initialUsers) ? initialUsers : [];
   if (isLoading) {
     return (
       <Card className={detailed ? "col-span-full" : ""}>
@@ -98,6 +104,17 @@ const CustomerChart = ({ users, isLoading, detailed = false, dateRange }) => {
 
   // Process users data
   const processUsersData = () => {
+    // Validate users is an array before processing
+    if (!Array.isArray(users) || users.length === 0) {
+      return {
+        chartData: [],
+        loyaltyTiers: { standard: 0, silver: 0, gold: 0, platinum: 0 },
+        ageGroups: { "18-25": 0, "26-35": 0, "36-50": 0, "51+": 0 },
+        authProviders: { local: 0, google: 0, facebook: 0 },
+        activityStats: { active: 0, verified: 0, total: 0 },
+      };
+    }
+
     // Group users by registration date
     const usersByDate = {};
     const loyaltyTiers = { standard: 0, silver: 0, gold: 0, platinum: 0 };
@@ -186,9 +203,10 @@ const CustomerChart = ({ users, isLoading, detailed = false, dateRange }) => {
     activityStats,
   } = processUsersData();
 
-  const maxCustomers = Math.max(...data.map((d) => d.customers || 0));
+  const maxCustomers =
+    data.length > 0 ? Math.max(...data.map((d) => d.customers || 0)) : 0;
   const totalCustomers = data.reduce((sum, d) => sum + (d.customers || 0), 0);
-  const avgCustomers = totalCustomers / data.length;
+  const avgCustomers = data.length > 0 ? totalCustomers / data.length : 0;
   const customerGrowth =
     data.length > 1
       ? ((data[data.length - 1].customers - data[data.length - 2].customers) /
@@ -430,7 +448,7 @@ const CustomerChart = ({ users, isLoading, detailed = false, dateRange }) => {
       </CardHeader>
       <CardContent>
         {/* Key Customer Metrics */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+        <div className="grid grid-cols-2 md:grid-cols-2 gap-4 mb-6">
           <div className="text-center p-4 bg-blue-50 rounded-lg border">
             <div className="text-2xl font-bold text-blue-600">
               {formatNumber(totalCustomers)}
@@ -445,18 +463,6 @@ const CustomerChart = ({ users, isLoading, detailed = false, dateRange }) => {
               Khách Hàng Mới (30 ngày)
             </div>
           </div>
-          <div className="text-center p-4 bg-purple-50 rounded-lg border">
-            <div className="text-2xl font-bold text-purple-600">
-              {verifiedRate.toFixed(1)}%
-            </div>
-            <div className="text-sm text-gray-600">Đã Xác Minh</div>
-          </div>
-          <div className="text-center p-4 bg-orange-50 rounded-lg border">
-            <div className="text-2xl font-bold text-orange-600">
-              {avgAge > 0 ? avgAge.toFixed(1) : "N/A"}
-            </div>
-            <div className="text-sm text-gray-600">Tuổi Trung Bình</div>
-          </div>
         </div>
 
         {/* Charts Section */}
@@ -468,35 +474,11 @@ const CustomerChart = ({ users, isLoading, detailed = false, dateRange }) => {
               Xu Hướng Hoạt Động Khách Hàng
             </h4>
             <div className="h-64 w-full">
-              <Line data={lineChartData} options={lineChartOptions} />
-            </div>
-          </div>
-
-          {/* Customer Insights Charts */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Weekly Activity */}
-            <div className="space-y-3">
-              <h5 className="font-medium text-sm flex items-center gap-2">
-                <Calendar className="h-4 w-4" />
-                Hoạt Động Theo Ngày Trong Tuần
-              </h5>
-              <div className="h-64 w-full">
-                <Bar
-                  data={weeklyActivityData}
-                  options={weeklyActivityOptions}
-                />
-              </div>
-            </div>
-
-            {/* Age Groups */}
-            <div className="space-y-3">
-              <h5 className="font-medium text-sm flex items-center gap-2">
-                <Clock className="h-4 w-4" />
-                Nhóm Tuổi Khách Hàng
-              </h5>
-              <div className="h-64 w-full">
-                <Doughnut data={ageGroupData} options={ageGroupOptions} />
-              </div>
+              <Line
+                id="customers-line-chart"
+                data={lineChartData}
+                options={lineChartOptions}
+              />
             </div>
           </div>
 
@@ -566,7 +548,7 @@ const CustomerChart = ({ users, isLoading, detailed = false, dateRange }) => {
 
           {detailed && (
             <div className="pt-4 border-t">
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-center">
                 <div>
                   <div className="text-lg font-bold">
                     {activeRate.toFixed(1)}%
@@ -596,18 +578,6 @@ const CustomerChart = ({ users, isLoading, detailed = false, dateRange }) => {
                   <div className="text-xs text-gray-600">
                     Đăng Nhập Phổ Biến
                   </div>
-                </div>
-                <div>
-                  <div className="text-lg font-bold">
-                    {totalCustomers > 0
-                      ? (
-                          (returningCustomersCount / totalCustomers) *
-                          100
-                        ).toFixed(1)
-                      : 0}
-                    %
-                  </div>
-                  <div className="text-xs text-gray-600">Tỷ Lệ Quay Lại</div>
                 </div>
               </div>
             </div>

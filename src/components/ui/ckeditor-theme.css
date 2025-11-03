@@ -60,12 +60,17 @@
 }
 
 /* Content styles */
+.ck.ck-editor__editable {
+  font-size: 13px !important;
+  font-weight: 400 !important;
+}
+
 .ck.ck-editor__editable h1,
 .ck.ck-editor__editable h2,
 .ck.ck-editor__editable h3,
 .ck.ck-editor__editable h4 {
   color: hsl(var(--foreground));
-  font-weight: 600;
+  font-weight: 500;
   line-height: 1.25;
   margin-top: 1.5em;
   margin-bottom: 0.5em;
@@ -95,6 +100,10 @@
 .ck.ck-editor__editable ol {
   margin: 1em 0;
   padding-left: 1.5em;
+}
+
+.ck.ck-editor__editable li {
+  margin-bottom: 0.5em;
 }
 
 .ck.ck-editor__editable blockquote {
@@ -208,4 +217,95 @@
   .ck.ck-toolbar .ck-toolbar__items {
     flex-wrap: wrap;
   }
+}
+
+/* Blog content display styles - match CKEditor content */
+.blog-content {
+  font-size: 13px !important;
+  font-weight: 400 !important;
+  line-height: 1.6;
+  color: hsl(var(--foreground));
+  font-family: inherit;
+}
+
+.blog-content h1,
+.blog-content h2,
+.blog-content h3,
+.blog-content h4 {
+  color: hsl(var(--foreground));
+  font-weight: 500;
+  line-height: 1.25;
+  margin-top: 1.5em;
+  margin-bottom: 0.5em;
+}
+
+.blog-content h1 {
+  font-size: 1.875rem;
+}
+
+.blog-content h2 {
+  font-size: 1.5rem;
+}
+
+.blog-content h3 {
+  font-size: 1.25rem;
+}
+
+.blog-content h4 {
+  font-size: 1.125rem;
+}
+
+.blog-content p {
+  margin-bottom: 1em;
+}
+
+.blog-content ul,
+.blog-content ol {
+  margin: 1em 0;
+  padding-left: 1.5em;
+}
+
+.blog-content li {
+  margin-bottom: 0.5em;
+}
+
+.blog-content blockquote {
+  border-left: 4px solid hsl(var(--border));
+  padding-left: 1em;
+  margin: 1em 0;
+  font-style: italic;
+  color: hsl(var(--muted-foreground));
+}
+
+.blog-content table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 1em 0;
+}
+
+.blog-content th,
+.blog-content td {
+  border: 1px solid hsl(var(--border));
+  padding: 0.5em;
+  text-align: left;
+}
+
+.blog-content th {
+  background: hsl(var(--muted));
+  font-weight: 600;
+}
+
+.blog-content a {
+  color: hsl(var(--primary));
+  text-decoration: underline;
+}
+
+.blog-content a:hover {
+  color: hsl(var(--primary)) / 0.8;
+}
+
+.blog-content img {
+  max-width: 100%;
+  height: auto;
+  border-radius: calc(var(--radius) - 2px);
 }

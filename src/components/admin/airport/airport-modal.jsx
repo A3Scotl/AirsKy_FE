@@ -5,6 +5,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogFooter,
+  DialogDescription,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -63,7 +64,7 @@ const AirportModal = ({ open, onClose, onSubmit, initialData, countries }) => {
       setForm({
         airport_code: "",
         airport_name: "",
-        countryId: "",
+        countryId: "1", // Mặc định chọn Việt Nam (id = 1)
         city_name: "",
         is_active: true,
         thumbnail: "",
@@ -117,29 +118,38 @@ const AirportModal = ({ open, onClose, onSubmit, initialData, countries }) => {
   const handleSubmit = (e) => {
     e.preventDefault();
 
+    // Validation
+    if (!form.airport_code.trim()) {
+      alert("Vui lòng nhập mã sân bay");
+      return;
+    }
+    if (!form.airport_name.trim()) {
+      alert("Vui lòng nhập tên sân bay");
+      return;
+    }
+    if (!form.countryId) {
+      alert("Vui lòng chọn quốc gia");
+      return;
+    }
+
     const formData = {
       airportCode: form.airport_code,
       airportName: form.airport_name,
-      countryId: form.countryId,
+      countryId: parseInt(form.countryId), // Đảm bảo là number
       cityNames: form.city_name,
       active: form.is_active,
-      gates: form.gates, // Gửi tất cả gates, để backend filter
+      gates: form.gates.filter((gate) => gate.gateName && gate.terminal), // Chỉ gửi gates có dữ liệu
     };
-
-   
 
     // Xử lý thumbnail: chỉ gửi 1 loại
     if (form.thumbnailFile instanceof File) {
-      
       formData.thumbnailFile = form.thumbnailFile;
     } else if (form.thumbnail) {
-      
       formData.thumbnailUrl = form.thumbnail;
     } else {
       console.log("[AirportModal] No thumbnail to send");
     }
 
-    
     onSubmit(formData);
   };
 
@@ -150,6 +160,11 @@ const AirportModal = ({ open, onClose, onSubmit, initialData, countries }) => {
           <DialogTitle>
             {initialData ? "Cập nhật sân bay" : "Thêm sân bay"}
           </DialogTitle>
+          <DialogDescription>
+            {initialData
+              ? "Cập nhật thông tin sân bay. Các trường có dấu * là bắt buộc."
+              : "Thêm sân bay mới vào hệ thống. Các trường có dấu * là bắt buộc."}
+          </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <Input

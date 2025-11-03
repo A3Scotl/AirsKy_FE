@@ -16,8 +16,7 @@ import "swiper/css/navigation";
 import "@/styles/swiper-parallax.css";
 import { useNavigate } from "react-router-dom";
 import { useSearch } from "@/contexts/search-context";
-import { useState, useEffect, useCallback } from "react";
-import { airlineApi } from "@/apis/airline-api";
+import { useCallback } from "react";
 
 // Define hero slide data for better maintainability
 const heroSlides = [
@@ -47,11 +46,6 @@ const heroSlides = [
 function HomePage() {
   const navigate = useNavigate();
   const { updateSearchCriteria } = useSearch();
-
-  // Airlines state
-  const [airlines, setAirlines] = useState([]);
-  const [airlinesLoading, setAirlinesLoading] = useState(true);
-  const [airlinesError, setAirlinesError] = useState(null);
 
   // Memoized function to format date as YYYY-MM-DD
   const formatDate = useCallback((date) => {
@@ -126,51 +120,6 @@ function HomePage() {
     [navigate, updateSearchCriteria, formatDate]
   );
 
-  // Fetch airlines data (unchanged, but added useCallback for consistency)
-  useEffect(() => {
-    const fetchAirlines = async () => {
-      try {
-        setAirlinesLoading(true);
-        setAirlinesError(null);
-
-        const result = await airlineApi.getAllAirlines({
-          page: 0,
-          size: 50,
-          sort: "airlineName,asc",
-        });
-
-        if (result.success && result.data) {
-          const mappedAirlines =
-            result.data.content
-              ?.filter((airline) => airline.active)
-              .map((airline) => ({
-                name: airline.airlineName,
-                logo: airline.thumbnail || "/default-airline-logo.svg",
-                description: `Mã hãng: ${airline.airlineCode}${
-                  airline.contact ? ` - Liên hệ: ${airline.contact}` : ""
-                }`,
-                airlineId: airline.airlineId,
-                airlineCode: airline.airlineCode,
-                active: airline.active,
-              })) || [];
-
-          setAirlines(mappedAirlines);
-        } else {
-          setAirlinesError(
-            result.message || "Không thể tải danh sách hãng hàng không"
-          );
-        }
-      } catch (error) {
-        console.error("Error fetching airlines:", error);
-        setAirlinesError("Có lỗi xảy ra khi tải danh sách hãng hàng không");
-      } finally {
-        setAirlinesLoading(false);
-      }
-    };
-
-    fetchAirlines();
-  }, []);
-
   return (
     <>
       <SEO
@@ -236,92 +185,6 @@ function HomePage() {
               </div>
             </div>
           </div>
-        </section>
-
-        <section className="py-16 bg-gradient-to-t from-blue-100 to-white dark:from-gray-600 dark:to-gray-800 h-auto">
-          <div className="text-center mb-8">
-            <h3 className="text-2xl font-bold mb-2 text-gray-900 dark:text-white">
-              Được tin cậy bởi các hãng hàng không hàng đầu
-            </h3>
-            <p className="text-gray-600 dark:text-gray-300">
-              Hợp tác với các hãng hàng không hàng đầu cho hành trình hoàn hảo
-              của bạn
-            </p>
-          </div>
-
-          {airlinesError ? (
-            <div className="text-center">
-              <p className="text-red-600 dark:text-red-400 mb-4">
-                {airlinesError}
-              </p>
-              <button
-                onClick={() => window.location.reload()}
-                className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
-              >
-                Thử lại
-              </button>
-            </div>
-          ) : (
-            <Swiper
-              modules={[Autoplay]}
-              spaceBetween={30}
-              slidesPerView={5}
-              loop={airlines.length > 6}
-              autoplay={{
-                delay: 2000,
-                disableOnInteraction: false,
-                pauseOnMouseEnter: true,
-              }}
-              breakpoints={{
-                320: { slidesPerView: 2 },
-                640: { slidesPerView: 3 },
-                768: { slidesPerView: 4 },
-                1024: { slidesPerView: 6 },
-              }}
-              className="airlines-slider"
-            >
-              {airlinesLoading
-                ? Array.from({ length: 6 }).map((_, index) => (
-                    <SwiperSlide key={`loading-${index}`}>
-                      <div className="p-4">
-                        <div className="text-center">
-                          {/* Logo skeleton */}
-                          <div className="h-16 flex items-center justify-center mb-3">
-                            <div className="w-20 h-12 bg-gray-200 dark:bg-gray-700 rounded-lg animate-pulse" />
-                          </div>
-                          {/* Text skeleton */}
-                          <div className="space-y-2">
-                            <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded animate-pulse w-3/4 mx-auto" />
-                            <div className="h-2 bg-gray-200 dark:bg-gray-700 rounded animate-pulse w-1/2 mx-auto" />
-                          </div>
-                        </div>
-                      </div>
-                    </SwiperSlide>
-                  ))
-                : airlines.map((airline) => (
-                    <SwiperSlide key={airline.airlineId}>
-                      <div className="p-4 transition-all duration-300 group cursor-pointer">
-                        <div className="text-center">
-                          <div className="h-16 flex items-center justify-center mb-3">
-                            <img
-                              src={airline.logo || "/placeholder.svg"}
-                              alt={`${airline.name} logo`}
-                              className="h-full w-auto max-w-[120px] object-contain group-hover:scale-110 transition-transform duration-300 filter grayscale hover:grayscale-0"
-                              style={{
-                                filter:
-                                  "drop-shadow(0 1px 2px rgba(0, 0, 0, 0.1))",
-                              }}
-                            />
-                          </div>
-                          <h4 className="text-sm font-medium text-gray-900 dark:text-white mb-1">
-                            {airline.name}
-                          </h4>
-                        </div>
-                      </div>
-                    </SwiperSlide>
-                  ))}
-            </Swiper>
-          )}
         </section>
 
         <DestinationSection />

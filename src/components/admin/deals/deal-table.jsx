@@ -167,6 +167,8 @@ const DealTable = ({
   };
 
   const handleSelectDeal = (deal, checked) => {
+    if (deal.dealCode?.startsWith("POINTS")) return; // Không cho select deal POINTS
+
     if (checked) {
       setSelectedDeals((prev) => [...prev, deal]);
     } else {
@@ -176,7 +178,9 @@ const DealTable = ({
 
   const handleSelectAll = (checked) => {
     if (checked) {
-      setSelectedDeals(deals || []);
+      setSelectedDeals(
+        (deals || []).filter((deal) => !deal.dealCode?.startsWith("POINTS"))
+      );
     } else {
       setSelectedDeals([]);
     }
@@ -185,14 +189,21 @@ const DealTable = ({
   const handleBulkDelete = async () => {
     if (selectedDeals.length === 0) return;
 
+    // Lọc bỏ deal POINTS (mặc dù đã lọc ở handleSelectDeal)
+    const deletableDeals = selectedDeals.filter(
+      (deal) => !deal.dealCode?.startsWith("POINTS")
+    );
+
+    if (deletableDeals.length === 0) return;
+
     const confirmDelete = window.confirm(
-      `Bạn có chắc chắn muốn xóa ${selectedDeals.length} deal đã chọn?`
+      `Bạn có chắc chắn muốn xóa ${deletableDeals.length} deal đã chọn?`
     );
 
     if (!confirmDelete) return;
 
     try {
-      for (const deal of selectedDeals) {
+      for (const deal of deletableDeals) {
         await onDelete?.(deal.dealId);
       }
       setSelectedDeals([]);
@@ -234,8 +245,11 @@ const DealTable = ({
                   <TableHead className="w-12">
                     <Checkbox
                       checked={
-                        selectedDeals.length === deals?.length &&
-                        deals?.length > 0
+                        selectedDeals.length ===
+                          (deals?.filter(
+                            (d) => !d.dealCode?.startsWith("POINTS")
+                          ).length || 0) &&
+                        deals?.some((d) => !d.dealCode?.startsWith("POINTS"))
                       }
                       onCheckedChange={handleSelectAll}
                       aria-label="Select all"
@@ -272,6 +286,7 @@ const DealTable = ({
                           onCheckedChange={(checked) =>
                             handleSelectDeal(deal, checked)
                           }
+                          disabled={deal.dealCode?.startsWith("POINTS")}
                           aria-label="Select row"
                         />
                       </TableCell>
@@ -344,6 +359,7 @@ const DealTable = ({
                             <DropdownMenuItem
                               onClick={() => handleEditDeal(deal)}
                               className="flex items-center gap-2"
+                              disabled={deal.dealCode?.startsWith("POINTS")}
                             >
                               <Edit className="h-4 w-4" />
                               Chỉnh sửa
@@ -352,6 +368,7 @@ const DealTable = ({
                             <DropdownMenuItem
                               onClick={() => onDelete?.(deal.dealId)}
                               className="flex items-center gap-2 text-destructive"
+                              disabled={deal.dealCode?.startsWith("POINTS")}
                             >
                               <Trash2 className="h-4 w-4" />
                               Xóa

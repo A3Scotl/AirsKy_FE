@@ -35,6 +35,7 @@ const TEXT = {
     failed: "Thất Bại",
     pending: "Đang Chờ",
     refunded: "Đã Hoàn Tiền",
+    cancelled: "Đã Hủy",
   },
   totalFailedTransactions: "Tổng giao dịch được hoàn trả:",
   failureRate: "tỷ lệ hoàn trả",
@@ -79,6 +80,7 @@ const PaymentAnalytics = ({
 
         const response = await paymentApi.getAllPayments(params);
         if (response.success) {
+          console.log("[PaymentAnalytics] Raw payments data:", response.data);
           setPayments(response.data.content || response.data || []);
         }
       } catch (error) {
@@ -92,6 +94,11 @@ const PaymentAnalytics = ({
   }, [dateRange, startDate, endDate]);
   // Calculate analytics data from real payments
   const analyticsData = useMemo(() => {
+    console.log(
+      "[PaymentAnalytics] Calculating analytics from payments:",
+      payments
+    );
+
     if (!payments.length) {
       return {
         revenueMetrics: {
@@ -106,6 +113,7 @@ const PaymentAnalytics = ({
           failed: 0,
           pending: 0,
           refunded: 0,
+          cancelled: 0,
           successRate: 0,
         },
         paymentMethods: [],
@@ -115,11 +123,23 @@ const PaymentAnalytics = ({
 
     // Since API already filters by date range, use all payments
     const filteredPayments = payments;
+    console.log("[PaymentAnalytics] Filtered payments:", filteredPayments);
 
     // Calculate transaction metrics
     const total = filteredPayments.length;
+    console.log("[PaymentAnalytics] Total payments:", total);
+
+    // Check what statuses exist in the data
+    const statusCounts = {};
+    filteredPayments.forEach((p) => {
+      const status = p.status || "UNKNOWN";
+      statusCounts[status] = (statusCounts[status] || 0) + 1;
+    });
+    console.log("[PaymentAnalytics] Status distribution:", statusCounts);
+
+    // Use COMPLETED status for successful payments (as user mentioned)
     const successful = filteredPayments.filter(
-      (p) => p.status === "SUCCESS"
+      (p) => p.status === "COMPLETED"
     ).length;
     const pending = filteredPayments.filter(
       (p) => p.status === "PENDING"
@@ -127,18 +147,45 @@ const PaymentAnalytics = ({
     const refunded = filteredPayments.filter(
       (p) => p.status === "REFUNDED"
     ).length;
-    const failed = total - successful - pending - refunded;
+    const cancelled = filteredPayments.filter(
+      (p) => p.status === "CANCELLED"
+    ).length;
+    const failed = total - successful - pending - refunded - cancelled;
     const successRate = total > 0 ? (successful / total) * 100 : 0;
 
-    // Calculate revenue metrics
+    console.log("[PaymentAnalytics] Transaction metrics:", {
+      total,
+      successful,
+      pending,
+      refunded,
+      failed,
+      successRate,
+    });
+
+    // Calculate revenue metrics - only from COMPLETED payments
     const successfulPayments = filteredPayments.filter(
-      (p) => p.status === "SUCCESS"
+      (p) => p.status === "COMPLETED"
     );
-    const totalRevenue = successfulPayments.reduce(
-      (sum, p) => sum + (p.amount || 0),
-      0
+    console.log(
+      "[PaymentAnalytics] Successful payments for revenue:",
+      successfulPayments
     );
+
+    const totalRevenue = successfulPayments.reduce((sum, p) => {
+      const amount = p.amount || p.totalAmount || 0;
+      console.log(
+        `[PaymentAnalytics] Payment ${p.id}: amount=${amount}, status=${p.status}`
+      );
+      return sum + amount;
+    }, 0);
+
     const averageTransaction = successful > 0 ? totalRevenue / successful : 0;
+
+    console.log("[PaymentAnalytics] Revenue metrics:", {
+      totalRevenue,
+      averageTransaction,
+      successfulPaymentsCount: successfulPayments.length,
+    });
 
     // Simple growth calculation (compare with previous period of same length)
     let dailyGrowth = 0;
@@ -162,10 +209,10 @@ const PaymentAnalytics = ({
           return (
             paymentDate >= previousPeriodStart &&
             paymentDate <= previousPeriodEnd &&
-            p.status === "SUCCESS"
+            p.status === "COMPLETED"
           );
         })
-        .reduce((sum, p) => sum + (p.amount || 0), 0);
+        .reduce((sum, p) => sum + (p.amount || p.totalAmount || 0), 0);
 
       if (previousPeriodRevenue > 0) {
         dailyGrowth =
@@ -183,8 +230,9 @@ const PaymentAnalytics = ({
         methodStats[method] = { count: 0, revenue: 0 };
       }
       methodStats[method].count++;
-      if (payment.status === "SUCCESS") {
-        methodStats[method].revenue += payment.amount || 0;
+      if (payment.status === "COMPLETED") {
+        methodStats[method].revenue +=
+          payment.amount || payment.totalAmount || 0;
       }
     });
 
@@ -205,6 +253,24 @@ const PaymentAnalytics = ({
       })
     );
 
+    console.log("[PaymentAnalytics] Final analytics result:", {
+      revenueMetrics: {
+        totalRevenue,
+        averageTransaction,
+        dailyGrowth,
+        monthlyGrowth,
+      },
+      transactionMetrics: {
+        total,
+        successful,
+        failed,
+        pending,
+        refunded,
+        successRate,
+      },
+      paymentMethodsCount: paymentMethods.length,
+    });
+
     return {
       revenueMetrics: {
         totalRevenue,
@@ -218,6 +284,7 @@ const PaymentAnalytics = ({
         failed,
         pending,
         refunded,
+        cancelled,
         successRate,
       },
       paymentMethods,
@@ -431,10 +498,10 @@ const PaymentAnalytics = ({
             </div>
             <div className="flex items-center justify-between">
               <span className="text-sm text-gray-600">
-                {TEXT.statuses.refunded}
+                {TEXT.statuses.cancelled}
               </span>
-              <span className="font-medium text-purple-600">
-                {analyticsData.transactionMetrics.refunded.toLocaleString()}
+              <span className="font-medium text-gray-600">
+                {analyticsData.transactionMetrics.cancelled.toLocaleString()}
               </span>
             </div>
           </CardContent>

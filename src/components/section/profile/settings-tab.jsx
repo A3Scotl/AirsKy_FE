@@ -96,7 +96,7 @@ const SettingsTab = () => {
   return (
     <div className=" space-y-6">
       {/* Cài đặt chung */}
-      <Card className="shadow-lg">
+      {/* <Card className="shadow-lg">
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-lg">
             <Globe className="h-5 w-5" />
@@ -160,7 +160,7 @@ const SettingsTab = () => {
             </Select>
           </div>
         </CardContent>
-      </Card>
+      </Card> */}
 
       {/* Thông báo */}
       <Card className="shadow-lg">
@@ -183,16 +183,7 @@ const SettingsTab = () => {
                 onCheckedChange={() => handleSwitchChange("emailNotifications")}
               />
             </div>
-            <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-              <div className="flex items-center gap-3">
-                <Smartphone className="h-4 w-4 text-green-600" />
-                <span>Thông báo SMS</span>
-              </div>
-              <Switch
-                checked={settings.smsNotifications}
-                onCheckedChange={() => handleSwitchChange("smsNotifications")}
-              />
-            </div>
+           
           </div>
           <div className="space-y-4">
             <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
@@ -209,7 +200,7 @@ const SettingsTab = () => {
             <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
               <div className="flex items-center gap-3">
                 <Mail className="h-4 w-4 text-orange-600" />
-                <span>Email khuyến mãi</span>
+                <span>Thông Báo khuyến mãi</span>
               </div>
               <Switch
                 checked={settings.promotionalEmails}

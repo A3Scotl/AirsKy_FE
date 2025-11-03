@@ -38,6 +38,12 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
   ChevronLeft,
   ChevronRight,
   RefreshCw,
@@ -48,6 +54,7 @@ import {
   DollarSign,
   CreditCard,
   Star,
+  MoreHorizontal,
 } from "lucide-react";
 import { userApi } from "@/apis/user-api";
 import { bookingApi } from "@/apis/booking-api";
@@ -93,35 +100,57 @@ const MyBookingsTab = () => {
 
       if (response.success) {
         // Transform API data to match component structure
-        const transformedBookings = response.data.map((booking) => ({
-          id: booking.bookingCode || `BK${booking.bookingId}`,
-          bookingId: booking.bookingId,
-          bookingCode: booking.bookingCode,
-          flight: booking.flightNumber,
-          from: "Origin Airport", // This would come from flight data
-          to: "Destination Airport", // This would come from flight data
-          date: booking.bookingDate.split("T")[0],
-          displayDate: new Date(booking.bookingDate).toLocaleDateString(
-            "vi-VN",
-            {
-              year: "numeric",
-              month: "long",
-              day: "numeric",
-            }
-          ),
-          status: booking.status,
-          price: booking.totalAmount,
-          formattedPrice: new Intl.NumberFormat("vi-VN", {
-            style: "currency",
-            currency: "VND",
-          }).format(booking.totalAmount),
-          passengers: booking.passengers,
-          payment: booking.payment,
-          createdAt: booking.createdAt,
-          updatedAt: booking.updatedAt,
-          travelClass: booking.travelClass,
-          userEmail: booking.userEmail,
-        }));
+        const transformedBookings = response.data.map((booking) => {
+          // Get flight information from segments
+          const firstSegment = booking.flightSegments?.[0];
+          const lastSegment =
+            booking.flightSegments?.[booking.flightSegments.length - 1];
+
+          const from = firstSegment
+            ? `${firstSegment.departureAirport?.airportCode || "N/A"} - ${
+                firstSegment.departureAirport?.cityNames?.[0] || "N/A"
+              }`
+            : "N/A";
+          const to = lastSegment
+            ? `${lastSegment.arrivalAirport?.airportCode || "N/A"} - ${
+                lastSegment.arrivalAirport?.cityNames?.[0] || "N/A"
+              }`
+            : "N/A";
+
+          const isRoundTrip = booking.flightSegments?.length > 1;
+
+          return {
+            id: booking.bookingCode || `BK${booking.bookingId}`,
+            bookingId: booking.bookingId,
+            bookingCode: booking.bookingCode,
+            flight: booking.flightNumber,
+            from: from,
+            to: to,
+            isRoundTrip: isRoundTrip,
+            date: booking.bookingDate.split("T")[0],
+            displayDate: new Date(booking.bookingDate).toLocaleDateString(
+              "vi-VN",
+              {
+                year: "numeric",
+                month: "long",
+                day: "numeric",
+              }
+            ),
+            status: booking.status,
+            price: booking.totalAmount,
+            formattedPrice: new Intl.NumberFormat("vi-VN", {
+              style: "currency",
+              currency: "VND",
+            }).format(booking.totalAmount),
+            passengers: booking.passengers,
+            payment: booking.payment,
+            flightSegments: booking.flightSegments,
+            createdAt: booking.createdAt,
+            updatedAt: booking.updatedAt,
+            travelClass: booking.travelClass,
+            userEmail: booking.userEmail,
+          };
+        });
         setBookings(transformedBookings);
       } else {
         setError(response.message || "Failed to load bookings");
@@ -161,6 +190,12 @@ const MyBookingsTab = () => {
       const reviewsResponse = await reviewApi.getReviewsByBookingFlight(
         booking.bookingId
       );
+      console.log(
+        "All reviews response for booking",
+        booking.bookingId,
+        ":",
+        reviewsResponse
+      );
       if (reviewsResponse.success) {
         setBookingReviews(reviewsResponse.data || []);
       }
@@ -169,6 +204,12 @@ const MyBookingsTab = () => {
       const myReviewResponse = await reviewApi.getMyReviewForBooking(
         booking.bookingId,
         user.id
+      );
+      console.log(
+        "My review response for booking",
+        booking.bookingId,
+        ":",
+        myReviewResponse
       );
       if (myReviewResponse.success && myReviewResponse.data) {
         setMyReview(myReviewResponse.data);
@@ -179,6 +220,80 @@ const MyBookingsTab = () => {
       console.error("Error fetching reviews:", error);
       setBookingReviews([]);
       setMyReview(null);
+    }
+  };
+
+  // Handle quick review from table
+  const handleQuickReview = async (booking) => {
+    // First check if user already has a completed review
+    try {
+      const myReviewResponse = await reviewApi.getMyReviewForBooking(
+        booking.bookingId,
+        user.id
+      );
+
+      if (
+        myReviewResponse.success &&
+        myReviewResponse.data &&
+        myReviewResponse.data.status === "COMPLETED"
+      ) {
+        // Already has completed review, just open modal to view
+        setSelectedBooking(booking);
+        setIsModalOpen(true);
+        setIsReviewFormOpen(false);
+
+        setMyReview(myReviewResponse.data);
+
+        // Fetch all reviews for this booking
+        const reviewsResponse = await reviewApi.getReviewsByBookingFlight(
+          booking.bookingId
+        );
+        if (reviewsResponse.success) {
+          setBookingReviews(reviewsResponse.data || []);
+        }
+        return;
+      }
+    } catch (error) {
+      console.error("Error checking existing review:", error);
+    }
+
+    // No completed review, proceed with review creation
+    setSelectedBooking(booking);
+    setIsModalOpen(true);
+    setIsReviewFormOpen(true);
+
+    // Fetch current review if exists (for pre-filling form)
+    try {
+      const myReviewResponse = await reviewApi.getMyReviewForBooking(
+        booking.bookingId,
+        user.id
+      );
+      if (myReviewResponse.success && myReviewResponse.data) {
+        setMyReview(myReviewResponse.data);
+        // Pre-fill form if review exists but not completed
+        if (myReviewResponse.data.status !== "COMPLETED") {
+          setReviewFormData({
+            rating: myReviewResponse.data.rating || 5,
+            comment: myReviewResponse.data.comment || "",
+          });
+        }
+      } else {
+        setMyReview(null);
+        setReviewFormData({ rating: 5, comment: "" });
+      }
+
+      // Fetch all reviews for this booking
+      const reviewsResponse = await reviewApi.getReviewsByBookingFlight(
+        booking.bookingId
+      );
+      if (reviewsResponse.success) {
+        setBookingReviews(reviewsResponse.data || []);
+      }
+    } catch (error) {
+      console.error("Error fetching review data:", error);
+      setMyReview(null);
+      setBookingReviews([]);
+      setReviewFormData({ rating: 5, comment: "" });
     }
   };
 
@@ -290,38 +405,86 @@ const MyBookingsTab = () => {
   const isBookingEligibleForReview = (booking) => {
     if (!booking) return false;
 
+    console.log("Checking review eligibility for booking:", booking.bookingId, {
+      status: booking.status,
+      paymentStatus: booking.payment?.status,
+      passengers: booking.passengers?.map((p) => ({
+        name: p.firstName + " " + p.lastName,
+        checkinStatus: p.checkinStatus,
+      })),
+    });
+
     // Booking must be CONFIRMED
-    if (booking.status !== "CONFIRMED") return false;
+    if (booking.status !== "CONFIRMED") {
+      console.log("Booking not eligible: status is not CONFIRMED");
+      return false;
+    }
 
     // Payment must be COMPLETED
-    if (!booking.payment || booking.payment.status !== "COMPLETED")
+    if (!booking.payment || booking.payment.status !== "COMPLETED") {
+      console.log("Booking not eligible: payment not completed");
       return false;
+    }
 
     // All passengers must have checkin COMPLETED
-    if (!booking.passengers || booking.passengers.length === 0) return false;
+    if (!booking.passengers || booking.passengers.length === 0) {
+      console.log("Booking not eligible: no passengers");
+      return false;
+    }
 
-    return booking.passengers.every(
-      (passenger) => passenger.checkinStatus === "COMPLETED"
-    );
+    // const allCheckedIn = booking.passengers.every(
+    //   (passenger) => passenger.checkinStatus === "COMPLETED"
+    // );
+
+    // if (!allCheckedIn) {
+    //   console.log("Booking not eligible: not all passengers checked in");
+    //   return false;
+    // }
+
+    console.log("Booking is eligible for review");
+    return true;
   };
 
   // Handle create review
   const handleCreateReview = async () => {
     if (!selectedBooking || !user?.id) return;
 
+    // Debug: Log the data being sent
+    console.log("Creating review with data:", {
+      selectedBooking,
+      userId: user.id,
+      reviewFormData,
+    });
+
     setIsSubmittingReview(true);
     try {
+      // Get flight ID from the first flight segment
+      const flightId =
+        selectedBooking.flightSegments?.[0]?.flightId ||
+        selectedBooking.flightSegments?.[0]?.id ||
+        selectedBooking.flightId;
+
+      if (!flightId) {
+        toast.error("Không thể xác định ID chuyến bay để đánh giá");
+        return;
+      }
+
       const reviewData = {
         bookingId: selectedBooking.bookingId,
         userId: user.id,
-        flightId: selectedBooking.flightId || selectedBooking.bookingId, // Assuming flightId is available or use bookingId
+        flightId: flightId,
         rating: reviewFormData.rating,
         comment: reviewFormData.comment,
         reviewDate: new Date().toISOString(),
+        status: "COMPLETED",
         isApproved: true,
       };
 
+      console.log("Review data being sent:", reviewData);
+
+      // Always create new review (system may have created empty review automatically)
       const response = await reviewApi.createReview(reviewData);
+      console.log("Create review response:", response);
 
       if (response.success) {
         toast.success("Đánh giá đã được gửi thành công!");
@@ -341,8 +504,16 @@ const MyBookingsTab = () => {
           selectedBooking.bookingId,
           user.id
         );
+        console.log(
+          "Refresh my review response after create:",
+          myReviewResponse
+        );
         if (myReviewResponse.success && myReviewResponse.data) {
           setMyReview(myReviewResponse.data);
+          // Update review status for this booking
+          setBookingReviewStatuses(
+            (prev) => new Map(prev.set(selectedBooking.bookingId, true))
+          );
         }
       } else {
         toast.error(response.message || "Có lỗi xảy ra khi gửi đánh giá");
@@ -532,15 +703,33 @@ const MyBookingsTab = () => {
                       </Badge>
                     </TableCell>
                     <TableCell>{booking.formattedPrice}</TableCell>
-                    <TableCell className="flex">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="mr-2"
-                        onClick={() => handleViewBooking(booking)}
-                      >
-                        Xem
-                      </Button>
+                    <TableCell>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 w-8 p-0"
+                          >
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem
+                            onClick={() => handleViewBooking(booking)}
+                          >
+                            Xem chi tiết
+                          </DropdownMenuItem>
+                          {booking.status === "CONFIRMED" && (
+                            <DropdownMenuItem
+                              onClick={() => handleQuickReview(booking)}
+                              className="text-blue-600"
+                            >
+                              Đánh giá
+                            </DropdownMenuItem>
+                          )}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -666,38 +855,102 @@ const MyBookingsTab = () => {
                         </div>
                         <div>
                           <Label className="text-sm font-medium text-gray-500">
+                            Loại chuyến
+                          </Label>
+                          <p className="text-lg font-semibold">
+                            {selectedBooking.isRoundTrip
+                              ? "Khứ hồi"
+                              : "Một chiều"}
+                          </p>
+                        </div>
+                        <div>
+                          <Label className="text-sm font-medium text-gray-500">
                             Hạng ghế
                           </Label>
                           <p className="text-lg font-semibold">
                             {selectedBooking.travelClass}
                           </p>
                         </div>
-                        <div>
-                          <Label className="text-sm font-medium text-gray-500">
-                            Ngày khởi hành
-                          </Label>
-                          <p className="text-lg font-semibold flex items-center gap-2">
-                            <Calendar className="h-4 w-4" />
-                            {selectedBooking.displayDate}
-                          </p>
-                        </div>
-                        <div>
-                          <Label className="text-sm font-medium text-gray-500">
-                            Trạng thái
-                          </Label>
-                          <Badge
-                            variant={
-                              selectedBooking.status === "CONFIRMED"
-                                ? "success"
-                                : selectedBooking.status === "PENDING"
-                                ? "warning"
-                                : "destructive"
-                            }
-                          >
-                            {selectedBooking.status}
-                          </Badge>
-                        </div>
                       </div>
+
+                      {/* Flight Segments */}
+                      {selectedBooking.flightSegments &&
+                        selectedBooking.flightSegments.length > 0 && (
+                          <div>
+                            <Label className="text-sm font-medium text-gray-500 mb-2 block">
+                              Chi tiết hành trình
+                            </Label>
+                            <div className="space-y-3">
+                              {selectedBooking.flightSegments.map(
+                                (segment, index) => (
+                                  <div
+                                    key={segment.segmentId}
+                                    className="border rounded-lg p-3 bg-gray-50"
+                                  >
+                                    <div className="flex items-center justify-between mb-2">
+                                      <span className="font-medium text-sm">
+                                        Chặng {segment.segmentOrder}:{" "}
+                                        {segment.flightNumber}
+                                      </span>
+                                      <Badge
+                                        variant="outline"
+                                        className="text-xs"
+                                      >
+                                        {segment.className}
+                                      </Badge>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-4 text-sm">
+                                      <div>
+                                        <span className="font-medium">Từ:</span>{" "}
+                                        {segment.departureAirport?.airportCode}{" "}
+                                        -{" "}
+                                        {
+                                          segment.departureAirport
+                                            ?.cityNames?.[0]
+                                        }
+                                      </div>
+                                      <div>
+                                        <span className="font-medium">
+                                          Đến:
+                                        </span>{" "}
+                                        {segment.arrivalAirport?.airportCode} -{" "}
+                                        {segment.arrivalAirport?.cityNames?.[0]}
+                                      </div>
+                                      <div>
+                                        <span className="font-medium">
+                                          Khởi hành:
+                                        </span>{" "}
+                                        {new Date(
+                                          segment.departureTime
+                                        ).toLocaleString("vi-VN")}
+                                      </div>
+                                      <div>
+                                        <span className="font-medium">
+                                          Đến:
+                                        </span>{" "}
+                                        {new Date(
+                                          segment.arrivalTime
+                                        ).toLocaleString("vi-VN")}
+                                      </div>
+                                      <div>
+                                        <span className="font-medium">
+                                          Thời gian bay:
+                                        </span>{" "}
+                                        {segment.duration}
+                                      </div>
+                                      <div>
+                                        <span className="font-medium">
+                                          Máy bay:
+                                        </span>{" "}
+                                        {segment.aircraft}
+                                      </div>
+                                    </div>
+                                  </div>
+                                )
+                              )}
+                            </div>
+                          </div>
+                        )}
 
                       {/* Passengers Information */}
                       {selectedBooking.passengers &&
@@ -892,58 +1145,71 @@ const MyBookingsTab = () => {
                     </CardContent>
                   </Card>
                   {/* Reviews Section */}
-                  {(selectedBooking.status !== "CANCELLED" ||
-                    selectedBooking.status !== "PENDING") && (
+                  {isBookingEligibleForReview(selectedBooking) && (
                     <Card>
+                      {console.log(
+                        "Reviews Section is rendering for booking:",
+                        selectedBooking.bookingId,
+                        "myReview:",
+                        myReview
+                      )}
                       <CardHeader>
                         <CardTitle className="flex items-center justify-between">
                           <span className="flex items-center gap-2">
                             <Star className="h-5 w-5" />
                             Đánh giá chuyến bay
                           </span>
-                          {isBookingEligibleForReview(selectedBooking) &&
-                            !myReview && (
-                              <Button
-                                onClick={() => setIsReviewFormOpen(true)}
-                                size="sm"
-                                className="bg-blue-600 hover:bg-blue-700"
-                              >
-                                Viết đánh giá
-                              </Button>
-                            )}
+                          {/* Hiển thị nút đánh giá nếu chưa có review COMPLETED */}
+                          {(!myReview || myReview.status !== "COMPLETED") && (
+                            <Button
+                              onClick={() => {
+                                setIsReviewFormOpen(true);
+                                // Reset form cho việc tạo đánh giá mới
+                                setReviewFormData({ rating: 5, comment: "" });
+                              }}
+                              size="sm"
+                              className="bg-blue-600 hover:bg-blue-700"
+                            >
+                              Viết đánh giá
+                            </Button>
+                          )}
                         </CardTitle>
                       </CardHeader>
                       <CardContent className="space-y-4">
                         {/* My Review */}
-                        {myReview && (
-                          <div className="border rounded-lg p-4 bg-blue-50">
-                            <div className="flex items-center justify-between mb-2">
-                              <h4 className="font-medium text-blue-900">
-                                Đánh giá của bạn
-                              </h4>
-                              <div className="flex items-center gap-1">
-                                {[...Array(5)].map((_, i) => (
-                                  <Star
-                                    key={i}
-                                    className={`h-4 w-4 ${
-                                      i < myReview.rating
-                                        ? "fill-yellow-400 text-yellow-400"
-                                        : "text-gray-300"
-                                    }`}
-                                  />
-                                ))}
+                        {myReview &&
+                          myReview.status === "COMPLETED" &&
+                          (myReview.rating || myReview.comment?.trim()) && (
+                            <div className="border rounded-lg p-4 bg-blue-50">
+                              <div className="flex items-center justify-between mb-2">
+                                <h4 className="font-medium text-blue-900">
+                                  Đánh giá của bạn
+                                </h4>
+                                <div className="flex items-center gap-1">
+                                  {[...Array(5)].map((_, i) => (
+                                    <Star
+                                      key={i}
+                                      className={`h-4 w-4 ${
+                                        i < (myReview.rating || 0)
+                                          ? "fill-yellow-400 text-yellow-400"
+                                          : "text-gray-300"
+                                      }`}
+                                    />
+                                  ))}
+                                </div>
                               </div>
-                            </div>
-                            <p className="text-sm text-blue-800">
-                              {myReview.comment}
-                            </p>
-                            <p className="text-xs text-blue-600 mt-1">
-                              {new Date(myReview.reviewDate).toLocaleDateString(
-                                "vi-VN"
+                              {myReview.comment && (
+                                <p className="text-sm text-blue-800">
+                                  {myReview.comment}
+                                </p>
                               )}
-                            </p>
-                          </div>
-                        )}
+                              <p className="text-xs text-blue-600 mt-1">
+                                {new Date(
+                                  myReview.reviewDate
+                                ).toLocaleDateString("vi-VN")}
+                              </p>
+                            </div>
+                          )}
 
                         {/* Other Reviews */}
                         {bookingReviews.length > 0 && (
@@ -988,22 +1254,145 @@ const MyBookingsTab = () => {
                           <div className="text-center py-4 text-gray-500">
                             <Star className="h-8 w-8 mx-auto mb-2 text-gray-300" />
                             <p>Chưa có đánh giá nào cho chuyến bay này</p>
-                            {isBookingEligibleForReview(selectedBooking) && (
-                              <p className="text-sm mt-1">
-                                Hãy là người đầu tiên đánh giá!
-                              </p>
-                            )}
+                            <p className="text-sm mt-1">
+                              Hãy là người đầu tiên đánh giá!
+                            </p>
                           </div>
                         )}
 
-                        {/* Eligibility message */}
-                        {!isBookingEligibleForReview(selectedBooking) &&
+                        {/* Eligibility message - only show if booking is cancelled */}
+                        {selectedBooking.status === "CANCELLED" &&
                           !myReview && (
                             <div className="text-center py-4 text-gray-500">
                               <p className="text-sm">
-                                Bạn có thể đánh giá sau khi chuyến bay hoàn
-                                thành và check-in thành công
+                                Booking đã bị hủy, không thể đánh giá
                               </p>
+                            </div>
+                          )}
+
+                        {/* Ancillary Services */}
+                        {selectedBooking.ancillaryServices &&
+                          selectedBooking.ancillaryServices.length > 0 && (
+                            <div>
+                              <Label className="text-sm font-medium text-gray-500 mb-2 block">
+                                Dịch vụ bổ sung
+                              </Label>
+                              <div className="space-y-2">
+                                {selectedBooking.ancillaryServices.map(
+                                  (service) => (
+                                    <div
+                                      key={service.bookingServiceId}
+                                      className="bg-blue-50 p-3 rounded-lg"
+                                    >
+                                      <div className="grid grid-cols-2 gap-4 text-sm">
+                                        <div>
+                                          <span className="font-medium">
+                                            Dịch vụ:
+                                          </span>{" "}
+                                          {service.serviceName}
+                                        </div>
+                                        <div>
+                                          <span className="font-medium">
+                                            Loại:
+                                          </span>{" "}
+                                          {service.serviceTypeDisplayName}
+                                        </div>
+                                        <div>
+                                          <span className="font-medium">
+                                            Hành khách:
+                                          </span>{" "}
+                                          {service.passengerName}
+                                        </div>
+                                        <div>
+                                          <span className="font-medium">
+                                            Số lượng:
+                                          </span>{" "}
+                                          {service.quantity}
+                                        </div>
+                                        <div>
+                                          <span className="font-medium">
+                                            Đơn giá:
+                                          </span>{" "}
+                                          {formatCurrencyVND(service.unitPrice)}
+                                        </div>
+                                        <div>
+                                          <span className="font-medium">
+                                            Thành tiền:
+                                          </span>{" "}
+                                          {formatCurrencyVND(
+                                            service.totalPrice
+                                          )}
+                                        </div>
+                                      </div>
+                                    </div>
+                                  )
+                                )}
+                              </div>
+                            </div>
+                          )}
+
+                        {/* Baggage Information */}
+                        {selectedBooking.baggage &&
+                          selectedBooking.baggage.length > 0 && (
+                            <div>
+                              <Label className="text-sm font-medium text-gray-500 mb-2 block">
+                                Thông tin hành lý
+                              </Label>
+                              <div className="space-y-2">
+                                {selectedBooking.baggage.map((bag) => (
+                                  <div
+                                    key={bag.baggageId}
+                                    className="bg-green-50 p-3 rounded-lg"
+                                  >
+                                    <div className="grid grid-cols-2 gap-4 text-sm">
+                                      <div>
+                                        <span className="font-medium">
+                                          Loại:
+                                        </span>{" "}
+                                        {bag.type === "CHECK_IN"
+                                          ? "Hành lý ký gửi"
+                                          : "Xách tay"}
+                                      </div>
+                                      <div>
+                                        <span className="font-medium">
+                                          Gói mua:
+                                        </span>{" "}
+                                        {bag.purchasedPackage}
+                                      </div>
+                                      <div>
+                                        <span className="font-medium">
+                                          Giá:
+                                        </span>{" "}
+                                        {formatCurrencyVND(bag.packagePrice)}
+                                      </div>
+                                      {bag.actualWeight && (
+                                        <div>
+                                          <span className="font-medium">
+                                            Khối lượng thực tế:
+                                          </span>{" "}
+                                          {bag.actualWeight}kg
+                                        </div>
+                                      )}
+                                      {bag.excessWeight && (
+                                        <div>
+                                          <span className="font-medium">
+                                            Khối lượng vượt:
+                                          </span>{" "}
+                                          {bag.excessWeight}kg
+                                        </div>
+                                      )}
+                                      {bag.excessFee && (
+                                        <div>
+                                          <span className="font-medium">
+                                            Phí vượt:
+                                          </span>{" "}
+                                          {formatCurrencyVND(bag.excessFee)}
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
                             </div>
                           )}
                       </CardContent>

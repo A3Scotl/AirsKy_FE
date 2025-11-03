@@ -29,7 +29,30 @@ import { bookingApi } from "@/apis/booking-api";
 import { toast } from "sonner";
 import CountrySelect, {
   getVietnamCountry,
+  getCountryByName,
 } from "@/components/ui/country-select";
+
+// Helper function to convert country name to ISO code for phone input
+const getCountryISOCode = (countryName) => {
+  if (!countryName) {
+    console.log("🌍 No country provided, using VN default");
+    return "VN";
+  }
+
+  // Use the getCountryByName function from CountrySelect component
+  // This dynamically gets the ISO code from the country data
+  const country = getCountryByName(countryName);
+  const countryCode = country ? country.code : "VN"; // Default to Vietnam if not found
+
+  console.log("🌍 Country mapping:", {
+    countryName,
+    foundCountry: country,
+    resultCode: countryCode,
+    callingCode: country?.callingCode,
+  });
+
+  return countryCode;
+};
 // Custom Date Input Component with toggle between calendar and text input
 const DateInput = ({
   value,
@@ -91,6 +114,38 @@ const PASSENGER_TYPES = {
   INFANT: "Em bé",
 };
 
+// Separate PhoneInput component to prevent unnecessary re-renders
+const CustomPhoneInput = ({
+  country,
+  value,
+  onChange,
+  placeholder = "Nhập số điện thoại",
+  className = "phone-input",
+  forceKey,
+}) => {
+  
+
+  // Force re-mount when country changes by using a unique key
+  const uniqueKey = `phone-input-${country}-${forceKey}`;
+
+  return (
+    <div className="phone-input-debug">
+      <PhoneInput
+        key={uniqueKey} // Unique key forces complete re-mount
+        international
+        countryCallingCodeEditable={false}
+        country={country}
+        value={value || ""}
+        onChange={(newValue) => {
+          onChange(newValue);
+        }}
+        className={className}
+        placeholder={placeholder}
+        defaultCountry={country}
+      />
+    </div>
+  );
+};
 const removeDiacritics = (str) => {
   if (!str) return "";
   return str
@@ -133,16 +188,16 @@ const MembershipInput = ({
 
         if (normalizedMemberName === normalizedPassengerName) {
           setValidationStatus("valid");
-          setValidationMessage(
-            `Mã hợp lệ - ${response.data.tier} (${response.data.currentPoints} điểm)`
-          );
+          // setValidationMessage(
+          //   `Mã hợp lệ - ${response.data.tier} (${response.data.currentPoints} điểm)`
+          // );
           // Store membership data for payment section
           onChange(code, response.data);
         } else {
           setValidationStatus("invalid");
-          setValidationMessage(
-            `Tên không khớp: ${memberName} ≠ ${passengerName}`
-          );
+          // setValidationMessage(
+          //   `Tên không khớp: ${memberName} ≠ ${passengerName}`
+          // );
           onChange(code, null);
         }
       } else {
@@ -265,6 +320,43 @@ const PassengerForm = memo(
     const age = getAge(passenger.dob, departureDate);
     const showIdFieldForDomestic = age >= 14;
     const firstInputRef = useRef(null);
+    const [phoneKey, setPhoneKey] = useState(0); // Force re-render key for PhoneInput
+
+    // Handle country changes and update phone input
+    const [phoneCountry, setPhoneCountry] = useState(
+      getCountryISOCode(passenger.country || "Vietnam")
+    );
+
+    useEffect(() => {
+      const newCountryCode = getCountryISOCode(passenger.country || "Vietnam");
+      console.log("🔄 Country useEffect triggered for passenger", index, ":", {
+        currentCountry: passenger.country,
+        newCountryCode: newCountryCode,
+        currentPhoneCountry: phoneCountry,
+      });
+
+      if (newCountryCode !== phoneCountry) {
+        console.log(
+          "🔄 Country code changed from",
+          phoneCountry,
+          "to",
+          newCountryCode
+        );
+        setPhoneCountry(newCountryCode);
+
+        // Clear phone value when country changes to avoid confusion
+        if (passenger.phone) {
+          console.log("🔄 Clearing phone value due to country change");
+          updatePassenger(index, "phone", "");
+        }
+      }
+    }, [
+      passenger.country,
+      index,
+      phoneCountry,
+      updatePassenger,
+      passenger.phone,
+    ]);
 
     // Helper function to get field validation status
     const getFieldValidationClass = (
@@ -272,14 +364,23 @@ const PassengerForm = memo(
       value,
       customValidation = null
     ) => {
-      const hasError = validationErrors?.[fieldName];
+      // Debug: Log validation info
+      console.log(`Passenger ${index} - Field ${fieldName}:`, {
+        hasValidationErrors: !!validationErrors,
+        validationErrors,
+        fieldError: validationErrors?.[fieldName],
+        value,
+      });
+
+      // Check if there's a validation error for this field
+      const hasError = validationErrors && validationErrors[fieldName];
 
       // If there's an error, show red border
       if (hasError) {
-        return "border-red-500";
+        return "border-red-500 focus:border-red-500 focus:ring-red-500";
       }
 
-      // If field has value and no error, show green border
+      // If field has value and no error, show success border
       let isValid = false;
 
       switch (fieldName) {
@@ -304,7 +405,8 @@ const PassengerForm = memo(
           break;
         case "phone":
           if (age >= 12) {
-            isValid = /^0[0-9]{8,9}$/.test(value?.trim());
+            // Use more flexible phone validation
+            isValid = value?.trim().length >= 10;
           } else {
             isValid = true; // Not required for under 12
           }
@@ -433,6 +535,11 @@ const PassengerForm = memo(
               error={!!validationErrors?.dateOfBirth}
               className={getFieldValidationClass("dob", passenger.dob)}
             />
+            {validationErrors?.dob && (
+              <p className="mt-1 text-xs text-red-500">
+                {validationErrors.dob}
+              </p>
+            )}
             {validationErrors?.dateOfBirth && (
               <p className="mt-1 text-xs text-red-500">
                 {validationErrors.dateOfBirth}
@@ -530,29 +637,33 @@ const PassengerForm = memo(
                 <Label htmlFor={`p${index}-phone`} className="text-sm">
                   Số điện thoại <span className="text-red-500">*</span>
                 </Label>
-                <div className="mt-1">
-                  <PhoneInput
-                    international
-                    country={passenger.country || "VN"}
-                    value={passenger.phone || ""}
-                    onChange={(value) => {
-                      updatePassenger(index, "phone", value || "");
-                    }}
-                    className={cn(
-                      "phone-input",
-                      getFieldValidationClass("phone", passenger.phone)
-                    )}
-                  />
-                  {validationErrors?.phone && (
-                    <p className="mt-1 text-xs text-red-500">
-                      {validationErrors.phone}
-                    </p>
+                <div
+                  className={cn(
+                    "mt-1 phone-input-wrapper",
+                    // Apply border styling based on validation
+                    validationErrors?.phone && "phone-input-error",
+                    !validationErrors?.phone &&
+                      passenger.phone &&
+                      passenger.phone.length >= 10 &&
+                      "phone-input-success"
                   )}
+                >
+                  <CustomPhoneInput
+                    country={phoneCountry}
+                    value={passenger.phone}
+                    onChange={(value) =>
+                      updatePassenger(index, "phone", value || "")
+                    }
+                    placeholder="Nhập số điện thoại"
+                    className="phone-input"
+                    forceKey={phoneKey}
+                  />
                 </div>
-                <p className="text-xs text-gray-500 mt-1">
-                  Số điện thoại lưu dạng 0xxx... (mã quốc gia tự động theo quốc
-                  gia được chọn)
-                </p>
+                {validationErrors?.phone && (
+                  <p className="mt-1 text-xs text-red-500">
+                    {validationErrors.phone}
+                  </p>
+                )}
               </div>
 
               {/* Country */}
@@ -563,12 +674,9 @@ const PassengerForm = memo(
                 <CountrySelect
                   value={passenger.country || "Vietnam"}
                   onChange={(countryName) => {
+                    console.log("🌍 Country changed to:", countryName);
+                    console.log("🌍 Current passenger data:", passenger);
                     updatePassenger(index, "country", countryName);
-                    // Update phone number display when country changes but keep the local number
-                    if (passenger.phone && passenger.phone.startsWith("0")) {
-                      // Keep the same local number, just update the country context for display
-                      updatePassenger(index, "phone", passenger.phone);
-                    }
                   }}
                   error={!!validationErrors?.country}
                   className={cn(
@@ -682,23 +790,25 @@ const ContactInformation = ({ formData, updateFormData, validationErrors }) => {
 
   // Helper function for contact validation
   const getContactFieldValidationClass = (fieldName, value) => {
-    const hasError = validationErrors?.[fieldName];
+    const hasError = validationErrors && validationErrors[fieldName];
 
     if (hasError) {
-      return "border-red-500";
+      return "border-red-500 focus:border-red-500 focus:ring-red-500";
     }
 
     let isValid = false;
     switch (fieldName) {
       case "contactName":
-        isValid = value?.trim().length > 0;
+        isValid = value?.trim().length >= 2;
         break;
       case "contactEmail":
         isValid = /\S+@\S+\.\S+/.test(value);
         break;
     }
 
-    return isValid && value ? "border-green-500" : "";
+    return isValid && value
+      ? "border-green-500 focus:border-green-500 focus:ring-green-500"
+      : "";
   };
 
   return (
@@ -817,42 +927,6 @@ const PassengerDetails = ({
     }
   }, [formData.passengers, departureDate, updateFormData]);
 
-  // Set default Vietnam country and phone format for new passengers
-  useEffect(() => {
-    const updatedPassengers = formData.passengers.map((passenger, index) => {
-      const updates = {};
-
-      // Set default country to Vietnam if not set
-      if (!passenger.country) {
-        updates.country = "Vietnam";
-      }
-
-      // For adults, set default Vietnam phone prefix if not set
-      const passengerAge = getAge(passenger.dob, departureDate);
-      if (passengerAge >= 12) {
-        // Ensure country is set for adults
-        if (!passenger.country) {
-          updates.country = "Vietnam";
-        }
-
-        // Set default phone with Vietnam prefix if not set
-        if (!passenger.phone) {
-          updates.phone = "+84"; // Vietnam calling code with space for user to enter number
-        }
-      }
-
-      return Object.keys(updates).length > 0
-        ? { ...passenger, ...updates }
-        : passenger;
-    });
-
-    if (
-      JSON.stringify(updatedPassengers) !== JSON.stringify(formData.passengers)
-    ) {
-      updateFormData("passengers", updatedPassengers);
-    }
-  }, [formData.passengers, departureDate, updateFormData]);
-
   const hasAtLeastOneAdult = useMemo(
     () => formData.passengers.some((p) => p.type === "ADULT"),
     [formData.passengers]
@@ -870,6 +944,8 @@ const PassengerDetails = ({
       dob: null,
       gender: "",
       passportNumber: "",
+      country: "Vietnam", // Set default country
+      phone: "", // Initialize phone field
     };
     const newPassengers = [...formData.passengers, newPassenger];
     newPassengerIndex.current = newPassengers.length - 1;
@@ -942,7 +1018,9 @@ const PassengerDetails = ({
             removePassenger={removePassenger}
             isInternationalFlight={isInternationalFlight}
             canBeRemoved={formData.passengers.length > 1}
-            validationErrors={validationErrors[`passenger_${index}`]}
+            validationErrors={
+              validationErrors?.passengers?.[`passenger_${index}`] || {}
+            }
             departureDate={departureDate}
             isNew={
               index === formData.passengers.length - 1 &&

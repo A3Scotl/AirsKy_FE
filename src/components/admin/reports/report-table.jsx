@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo, useEffect, useCallback, memo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -48,6 +48,7 @@ import {
   formatDateVN,
   formatDateTimeVN,
 } from "@/utils/currency-utils";
+import { format } from "date-fns";
 import {
   BOOKING_STATUS_NAMES,
   SEAT_CLASS_NAMES,
@@ -58,256 +59,496 @@ import { userApi } from "@/apis/user-api";
 import { flightApi } from "@/apis/flight-api";
 import { airlineApi } from "@/apis/airline-api";
 import { airportApi } from "@/apis/airport-api";
+import OverviewExportButton from "./overview-export-button";
+import ReportExportButton from "./report-export-button";
 
-const ReportTable = ({ type, dateRange }) => {
-  const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(10);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [sortBy, setSortBy] = useState("date");
-  const [sortOrder, setSortOrder] = useState("desc");
-  const [filterStatus, setFilterStatus] = useState("all");
-  const [filterDateRange, setFilterDateRange] = useState("all");
-  const [minAmount, setMinAmount] = useState("");
-  const [maxAmount, setMaxAmount] = useState("");
-  const [minLoyaltyPoints, setMinLoyaltyPoints] = useState("");
-  const [maxLoyaltyPoints, setMaxLoyaltyPoints] = useState("");
-  const [selectedRow, setSelectedRow] = useState(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [data, setData] = useState([]);
-  const [error, setError] = useState(null);
-  const [userBookingsCount, setUserBookingsCount] = useState(new Map());
-
-  // Helper functions để chuyển đổi enum values
-  const getBookingStatusName = (status) => {
-    if (typeof status === "string") {
-      switch (status.toUpperCase()) {
-        case "CONFIRMED":
-          return "Đã xác nhận";
-        case "PENDING":
-          return "Đang chờ";
-        case "CANCELLED":
-          return "Đã hủy";
-        case "COMPLETED":
-          return "Hoàn thành";
-        default:
-          return status;
-      }
-    } else {
-      // Fallback for numeric status
-      switch (status) {
-        case 0:
-          return "Đang chờ";
-        case 1:
-          return "Đã xác nhận";
-        case 2:
-          return "Đã hủy";
-        default:
-          return "Không xác định";
-      }
-    }
-  };
-
-  const getRoleName = (role) => {
-    switch (role) {
-      case "ADMIN":
-        return "Quản trị viên";
-      case "BUSINESS":
-        return "Doanh nghiệp";
-      case "CUSTOMER":
-        return "Khách hàng";
-      case "FLIGHT_MANAGER":
-        return "Quản lý chuyến bay";
-      case "STAFF":
-        return "Nhân viên";
-      default:
-        return role || "Khách hàng";
-    }
-  };
-
-  const getLoyaltyTierName = (tier) => {
-    switch (tier) {
-      case "GOLD":
-        return "Vàng";
-      case "PLATINUM":
-        return "Bạch kim";
-      case "SILVER":
-        return "Bạc";
-      case "STANDARD":
-        return "Tiêu chuẩn";
-      default:
-        return tier || "Tiêu chuẩn";
-    }
-  };
-
-  const getAuthProviderName = (provider) => {
-    switch (provider) {
-      case "FACEBOOK":
-        return "Facebook";
-      case "GOOGLE":
-        return "Google";
-      case "LOCAL":
-        return "Địa phương";
-      default:
-        return provider || "Địa phương";
-    }
-  };
-
-  const getFlightStatusName = (status) => {
-    switch (status) {
+// Helper functions moved outside component for better performance
+const getBookingStatusName = (status) => {
+  if (typeof status === "string") {
+    switch (status.toUpperCase()) {
+      case "CONFIRMED":
+        return "Đã xác nhận";
+      case "PENDING":
+        return "Đang chờ";
       case "CANCELLED":
         return "Đã hủy";
-      case "DELAYED":
-        return "Trễ";
-      case "DEPARTED":
-        return "Đã khởi hành";
-      case "ON_TIME":
-        return "Đúng giờ";
+      case "COMPLETED":
+        return "Hoàn thành";
       default:
-        return status || "Đã lên lịch";
+        return status;
     }
-  };
-
-  const getTripTypeName = (type) => {
-    switch (type) {
-      case "MULTI_CITY":
-        return "Đa thành phố";
-      case "ONE_WAY":
-        return "Một chiều";
-      case "ROUND_TRIP":
-        return "Khứ hồi";
+  } else {
+    // Fallback for numeric status
+    switch (status) {
+      case 0:
+        return "Đang chờ";
+      case 1:
+        return "Đã xác nhận";
+      case 2:
+        return "Đã hủy";
       default:
-        return type || "Một chiều";
+        return "Không xác định";
     }
-  };
+  }
+};
 
-  const getFlightTypeName = (type) => {
-    switch (type) {
-      case "DOMESTIC":
-        return "Nội địa";
-      case "INTERNATIONAL":
-        return "Quốc tế";
-      case "ONE_WAY":
-        return "Một chiều";
-      default:
-        return type || "Nội địa";
-    }
-  };
+const getRoleName = (role) => {
+  switch (role) {
+    case "ADMIN":
+      return "Quản trị viên";
+    case "BUSINESS":
+      return "Doanh nghiệp";
+    case "CUSTOMER":
+      return "Khách hàng";
+    case "FLIGHT_MANAGER":
+      return "Quản lý chuyến bay";
+    case "STAFF":
+      return "Nhân viên";
+    default:
+      return role || "Khách hàng";
+  }
+};
 
-  // Fetch data từ API dựa trên loại báo cáo
+const getLoyaltyTierName = (tier) => {
+  switch (tier) {
+    case "GOLD":
+      return "Vàng";
+    case "PLATINUM":
+      return "Bạch kim";
+    case "SILVER":
+      return "Bạc";
+    case "STANDARD":
+      return "Tiêu chuẩn";
+    default:
+      return tier || "Tiêu chuẩn";
+  }
+};
+
+const getAuthProviderName = (provider) => {
+  switch (provider) {
+    case "FACEBOOK":
+      return "Facebook";
+    case "GOOGLE":
+      return "Google";
+    case "LOCAL":
+      return "Địa phương";
+    default:
+      return provider || "Địa phương";
+  }
+};
+
+// Helper function to preserve Unicode characters in table display
+const preserveUnicode = (text) => {
+  if (typeof text !== "string") return text;
+  return text;
+};
+
+const getFlightStatusName = (status) => {
+  switch (status) {
+    case "CANCELLED":
+      return "Đã hủy";
+    case "DELAYED":
+      return "Trễ";
+    case "DEPARTED":
+      return "Đã khởi hành";
+    case "ON_TIME":
+      return "Đúng giờ";
+    default:
+      return status || "Đã lên lịch";
+  }
+};
+
+const getTripTypeName = (type) => {
+  switch (type) {
+    case "MULTI_CITY":
+      return "Đa thành phố";
+    case "ONE_WAY":
+      return "Một chiều";
+    case "ROUND_TRIP":
+      return "Khứ hồi";
+    default:
+      return type || "Một chiều";
+  }
+};
+
+const getFlightTypeName = (type) => {
+  switch (type) {
+    case "DOMESTIC":
+      return "Nội địa";
+    case "INTERNATIONAL":
+      return "Quốc tế";
+    default:
+      return type || "Nội địa";
+  }
+};
+
+// Helper function to get data key - moved here to be accessible
+const getDataKey = (header, type) => {
+  const keyMappings = {
+    overview: {
+      Ngày: "date",
+      "Tổng Doanh Thu": "revenue",
+      "Tổng Đặt Vé": "bookings",
+      "Tổng Khách Hàng": "customers",
+      "Tổng Chuyến Bay": "flights",
+      "TB/Đặt Vé": "avgRevenuePerBooking",
+      "Tỷ Lệ Thành Công": "successRate",
+    },
+    revenue: {
+      Ngày: "date",
+      "Doanh Thu": "revenue",
+      "Số Đặt Vé": "bookings",
+      // "Khách Hàng Mới": "newCustomers",
+      "TB Doanh Thu/Vé": "avgRevenuePerBooking",
+      "Tỷ Lệ Xác Nhận": "confirmationRate",
+    },
+    bookings: {
+      "Mã Đặt Vé": "bookingCode",
+      "Khách Hàng": "customerName",
+      "Tuyến Bay": "route",
+      "Ngày Đặt": "bookingDate",
+      "Số Hành Khách": "passengerCount",
+      "Tổng Tiền": "totalAmount",
+      "Phương Thức": "paymentMethod",
+      "Trạng Thái": "status",
+    },
+    customers: {
+      "Khách Hàng": "fullName",
+      Email: "email",
+      "Số Điện Thoại": "phone",
+      "Vai Trò": "role",
+      "Xác Minh": "verified",
+      "Hạng Thành Viên": "loyaltyTier",
+      "Điểm Thưởng": "loyaltyPoints",
+      "Ngày Tham Gia": "joinDate",
+      "Trạng Thái": "status",
+    },
+    flights: {
+      "Mã Chuyến Bay": "flightNumber",
+      "Hãng Hàng Không": "airlineName",
+      "Tuyến Bay": "route",
+      "Khởi Hành": "departureTime",
+      Đến: "arrivalTime",
+      "Thời Lượng": "duration",
+      "Loại Chuyến": "flightType",
+      "Ghế Đặt/Tổng": "seatOccupancy",
+      "Tỷ Lệ Lấp Đầy": "occupancyRate",
+      "Doanh Thu": "revenue",
+      "Trạng Thái": "status",
+    },
+    airlines: {
+      "Tên Hãng": "airlineName",
+      "Mã Hãng": "airlineCode",
+      "Số Lượng Máy Bay": "fleetSize",
+      "Số Lượng Chuyến Bay": "totalFlights",
+      "Doanh Thu": "revenue",
+      "Trạng Thái": "status",
+    },
+    airports: {
+      "Tên Sân Bay": "airportName",
+      "Mã Sân Bay": "airportCode",
+      "Thành Phố": "city",
+      "Quốc Gia": "country",
+      "Nhà Ga": "terminals",
+      "Trạng Thái": "status",
+    },
+  };
+  return (
+    keyMappings[type]?.[header] || header.toLowerCase().replace(/\s+/g, "")
+  );
+};
+
+// Memoized table row component for better performance
+const TableRowItem = memo(({ row, headers, type, onRowClick }) => {
+  return (
+    <TableRow key={row.id} className="hover:bg-muted/50">
+      {headers.map((header) => {
+        const key = getDataKey(header, type);
+        let value = row[key];
+
+        // Debug log for date field
+        if (header === "Ngày" && (type === "overview" || type === "revenue")) {
+          console.log(
+            `Debug - Type: ${type}, Header: ${header}, Key: ${key}, Value:`,
+            value,
+            "Row:",
+            row
+          );
+        }
+
+        // Format dữ liệu theo từng loại
+        if (
+          key.includes("Amount") ||
+          key.includes("amount") ||
+          key.includes("revenue") ||
+          key.includes("cost") ||
+          key.includes("profit") ||
+          key.includes("price") ||
+          key.includes("totalSpent") ||
+          key === "totalAmount" ||
+          key === "revenue" ||
+          key === "cost" ||
+          key === "profit" ||
+          key === "avgRevenuePerBooking"
+        ) {
+          value = formatCurrencyVND(value || 0);
+        } else if (
+          key === "date" &&
+          (type === "overview" || type === "revenue")
+        ) {
+          // Ngày ở overview và revenue đã được format sẵn, không cần format lại
+          value = value || "Chưa có dữ liệu";
+        } else if (
+          key.includes("Date") ||
+          key.includes("date") ||
+          key === "createdAt" ||
+          key === "bookingDate" ||
+          key === "joinDate"
+        ) {
+          // Chỉ format các trường ngày khác chưa được format
+          value = value ? formatDateVN(value) : "Chưa có dữ liệu";
+        } else if (key === "status" && type === "bookings") {
+          value = getBookingStatusName(value);
+        } else if (
+          key === "role" &&
+          (type === "customers" || type === "users")
+        ) {
+          value = getRoleName(value);
+        }
+
+        return (
+          <TableCell key={header} className="font-medium">
+            {key === "customerName" || key === "name" ? (
+              <div className="flex items-center gap-3">
+                <Avatar className="h-8 w-8">
+                  <AvatarImage src="/placeholder-avatar.jpg" />
+                  <AvatarFallback>
+                    {(value || "N/A").charAt(0).toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+                <div>
+                  <div className="font-medium">
+                    {preserveUnicode(value) || "N/A"}
+                  </div>
+                  <div className="text-sm text-muted-foreground">
+                    {row.customerEmail || row.email || ""}
+                  </div>
+                </div>
+              </div>
+            ) : key === "status" ? (
+              <Badge
+                variant={
+                  value === "Đã xác nhận" || value === "Hoàn thành"
+                    ? "default"
+                    : value === "Đang chờ"
+                    ? "secondary"
+                    : "destructive"
+                }
+              >
+                {preserveUnicode(value) || "N/A"}
+              </Badge>
+            ) : (
+              preserveUnicode(value) || "N/A"
+            )}
+          </TableCell>
+        );
+      })}
+      <TableCell>
+        <Button variant="ghost" size="sm" onClick={() => onRowClick(row)}>
+          <Eye className="h-4 w-4" />
+        </Button>
+      </TableCell>
+    </TableRow>
+  );
+});
+
+// (getDataKey is defined later with type-aware mappings)
+
+const ReportTable = ({
+  type,
+  dateRange,
+  realData,
+  isLoading: externalLoading,
+}) => {
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
+
+  // Reset to page 1 when changing type or items per page
   useEffect(() => {
+    setCurrentPage(1);
+  }, [type, itemsPerPage]);
+  const [sortBy, setSortBy] = useState("date");
+  const [sortOrder, setSortOrder] = useState("desc");
+  const [selectedRow, setSelectedRow] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Use external loading state when provided (for synchronized loading with charts)
+  const actualIsLoading =
+    externalLoading !== undefined ? externalLoading : isLoading;
+  const [data, setData] = useState([]);
+  const [error, setError] = useState(null);
+  const [totalItems, setTotalItems] = useState(0);
+  const [userBookingsCount, setUserBookingsCount] = useState(new Map());
+
+  useEffect(() => {
+    // Use realData from parent if available, otherwise fetch from API
     const fetchData = async () => {
       setIsLoading(true);
       setError(null);
 
       try {
-        let result;
+        // If realData is provided, use it (for overview/revenue/aggregate views)
+        if (realData) {
+          // Filter data based on dateRange if provided
+          let filteredData = realData;
+          if (dateRange?.from && dateRange?.to) {
+            const fromDate = new Date(dateRange.from);
+            const toDate = new Date(dateRange.to);
 
-        switch (type) {
-          case "bookings":
-            result = await bookingApi.getAllBookings({
-              page: 0,
-              size: 1000, // Lấy nhiều dữ liệu cho báo cáo
-              sort: "createdAt,desc",
-            });
-            if (result.success) {
-              setData(result.data.content || result.data || []);
-            } else {
-              setError("Không thể tải dữ liệu đặt vé");
-            }
-            break;
-
-          case "customers":
-          case "users":
-            result = await userApi.getAllUsers({
-              page: 0,
-              size: 1000,
-              sort: "createdAt,desc",
-            });
-            if (result.success) {
-              setData(result.data.content || result.data || []);
-            } else {
-              setError("Không thể tải dữ liệu người dùng");
-            }
-            break;
-
-          case "flights":
-            result = await flightApi.getAllFlights({
-              page: 0,
-              size: 1000,
-              sort: "departureTime,desc",
-            });
-            if (result.success) {
-              setData(result.data.content || result.data || []);
-            } else {
-              setError("Không thể tải dữ liệu chuyến bay");
-            }
-            break;
-
-          case "airlines":
-            result = await airlineApi.getAllAirlines({
-              page: 0,
-              size: 1000,
-            });
-            if (result.success) {
-              setData(result.data.content || result.data || []);
-            } else {
-              setError("Không thể tải dữ liệu hãng hàng không");
-            }
-            break;
-
-          case "airports":
-            result = await airportApi.getAllAirports({
-              page: 0,
-              size: 1000,
-            });
-            if (result.success) {
-              setData(result.data.content || result.data || []);
-            } else {
-              setError("Không thể tải dữ liệu sân bay");
-            }
-            break;
-
-          case "overview":
-          case "revenue":
-          default:
-            // Cho overview và revenue, cần fetch nhiều data sources
-            const [bookingsResult, usersResult, flightsResult] =
-              await Promise.all([
-                bookingApi.getAllBookings({
-                  page: 0,
-                  size: 1000,
-                  sort: "createdAt,desc",
+            if (type === "overview" || type === "revenue") {
+              // Filter bookings by date
+              filteredData = {
+                ...realData,
+                bookings: (realData.bookings || []).filter((booking) => {
+                  const bookingDate = new Date(
+                    booking.createdAt || booking.bookingDate
+                  );
+                  return bookingDate >= fromDate && bookingDate <= toDate;
                 }),
-                userApi.getAllUsers({ page: 0, size: 1000 }),
-                flightApi.getAllFlights({ page: 0, size: 1000 }),
-              ]);
-
-            if (
-              bookingsResult.success &&
-              usersResult.success &&
-              flightsResult.success
-            ) {
-              setData({
-                bookings:
-                  bookingsResult.data.content || bookingsResult.data || [],
-                users: usersResult.data.content || usersResult.data || [],
-                flights: flightsResult.data.content || flightsResult.data || [],
-              });
+              };
             } else {
-              setError("Không thể tải dữ liệu tổng quan");
+              // Filter other types by appropriate date field
+              const dateField =
+                type === "customers"
+                  ? "createdAt"
+                  : type === "flights"
+                  ? "departureTime"
+                  : "createdAt";
+              const dataArray =
+                realData[type === "customers" ? "users" : type] || [];
+              filteredData = {
+                ...realData,
+                [type === "customers" ? "users" : type]: dataArray.filter(
+                  (item) => {
+                    const itemDate = new Date(item[dateField]);
+                    return itemDate >= fromDate && itemDate <= toDate;
+                  }
+                ),
+              };
             }
-            break;
+          }
+
+          setData(filteredData);
+          // Set totalItems based on the filtered data type
+          const totalCount =
+            type === "overview" || type === "revenue"
+              ? filteredData.bookings?.length || 0
+              : filteredData[type === "customers" ? "users" : type]?.length ||
+                0;
+          setTotalItems(totalCount);
+          setIsLoading(false);
+          return;
         }
-      } catch (err) {
-        console.error("Lỗi khi tải dữ liệu:", err);
-        setError("Lỗi kết nối đến máy chủ");
+
+        // Server-side pagination for individual table types
+        const serverPagedTypes = [
+          "bookings",
+          "customers",
+          "users",
+          "flights",
+          "airlines",
+          "airports",
+        ];
+
+        if (serverPagedTypes.includes(type)) {
+          const pageParam = Math.max(0, currentPage - 1);
+          const sizeParam = itemsPerPage;
+          let result;
+
+          // Prepare date parameters if dateRange is provided
+          const dateParams = {};
+          if (dateRange?.from && dateRange?.to) {
+            dateParams.fromDate = dateRange.from.toISOString().split("T")[0];
+            dateParams.toDate = dateRange.to.toISOString().split("T")[0];
+          }
+
+          switch (type) {
+            case "bookings":
+              result = await bookingApi.getAllBookings({
+                page: pageParam,
+                size: sizeParam,
+                sort: "createdAt,desc",
+                ...dateParams,
+              });
+              break;
+            case "customers":
+            case "users":
+              result = await userApi.getAllUsers({
+                page: pageParam,
+                size: sizeParam,
+                sort: "createdAt,desc",
+                ...dateParams,
+              });
+              break;
+            case "flights":
+              result = await flightApi.getAllFlights({
+                page: pageParam,
+                size: sizeParam,
+                sort: "departureTime,desc",
+                ...dateParams,
+              });
+              break;
+            case "airlines":
+              result = await airlineApi.getAllAirlines({
+                page: pageParam,
+                size: sizeParam,
+                ...dateParams,
+              });
+              break;
+            case "airports":
+              result = await airportApi.getAllAirports({
+                page: pageParam,
+                size: sizeParam,
+                ...dateParams,
+              });
+              break;
+            default:
+              result = await bookingApi.getAllBookings({
+                page: pageParam,
+                size: sizeParam,
+                ...dateParams,
+              });
+          }
+
+          if (result.success) {
+            const respData = result.data || {};
+            const content =
+              respData.content || (Array.isArray(respData) ? respData : []);
+
+            setData(content);
+            const total =
+              respData.totalElements ||
+              respData.totalItems ||
+              respData.total ||
+              content.length;
+            setTotalItems(Number(total) || content.length);
+          } else {
+            setError("Không thể tải dữ liệu");
+            setData([]);
+            setTotalItems(0);
+          }
+        }
+      } catch (e) {
+        setError(e.message || "Lỗi khi tải dữ liệu");
+        setData([]);
+        setTotalItems(0);
       } finally {
         setIsLoading(false);
       }
     };
 
     fetchData();
-  }, [type]);
+  }, [type, currentPage, itemsPerPage, realData, dateRange]);
 
   // Fetch bookings count for users when data is loaded
   useEffect(() => {
@@ -346,142 +587,105 @@ const ReportTable = ({ type, dateRange }) => {
 
     fetchUserBookingsCount();
   }, [data, type]);
-
-  // Fetch bookings count for users when data is loaded
-  useEffect(() => {
-    const fetchUserBookingsCount = async () => {
-      if (
-        (type === "customers" || type === "users") &&
-        Array.isArray(data) &&
-        data.length > 0
-      ) {
-        const bookingsCountMap = new Map();
-
-        // Fetch bookings count for each user
-        await Promise.all(
-          data.map(async (user) => {
-            try {
-              const result = await userApi.getBookingsByUserId(user.id);
-              if (result.success) {
-                const bookings = result.data || [];
-                bookingsCountMap.set(user.id, bookings.length);
-              } else {
-                bookingsCountMap.set(user.id, 0);
-              }
-            } catch (error) {
-              console.error(
-                `Error fetching bookings for user ${user.id}:`,
-                error
-              );
-              bookingsCountMap.set(user.id, 0);
-            }
-          })
-        );
-
-        setUserBookingsCount(bookingsCountMap);
-      }
-    };
-
-    fetchUserBookingsCount();
-  }, [data, type]);
-
-  // Available filter options for different report types
-  const getFilterOptions = () => {
-    const commonFilters = {
-      status: [
-        { value: "all", label: "Tất cả trạng thái", count: 0 },
-        { value: "confirmed", label: "Đã xác nhận", count: 0 },
-        { value: "pending", label: "Đang chờ", count: 0 },
-        { value: "cancelled", label: "Đã hủy", count: 0 },
-        { value: "completed", label: "Hoàn thành", count: 0 },
-      ],
-      dateRange: [
-        { value: "all", label: "Tất cả thời gian" },
-        { value: "today", label: "Hôm nay" },
-        { value: "week", label: "7 ngày qua" },
-        { value: "month", label: "30 ngày qua" },
-        { value: "quarter", label: "3 tháng qua" },
-      ],
-    };
-
-    const typeSpecific = {
-      bookings: {
-        ...commonFilters,
-        amount: {
-          min: 0,
-          max: 5000,
-          step: 100,
-          description: "Khoảng giá trị đặt vé bằng VND (giá vé)",
-        },
-      },
-      customers: {
-        ...commonFilters,
-        customerType: [
-          { value: "all", label: "Tất cả loại khách hàng" },
-          { value: "VIP", label: "VIP" },
-          { value: "Premium", label: "Cao cấp" },
-          { value: "Standard", label: "Tiêu chuẩn" },
-          { value: "Basic", label: "Cơ bản" },
-        ],
-        amount: {
-          min: 0,
-          max: 50000,
-          step: 1000,
-          description: "Khoảng chi tiêu bằng VND (giá trị trọn đời)",
-        },
-        loyaltyPoints: {
-          min: 0,
-          max: 10000,
-          step: 100,
-          description: "Khoảng điểm thưởng (số điểm tích lũy)",
-        },
-      },
-      revenue: {
-        ...commonFilters,
-        amount: {
-          min: 0,
-          max: 200000,
-          step: 5000,
-          description: "Khoảng doanh thu bằng VND (doanh thu hàng ngày/tháng)",
-        },
-      },
-      flights: {
-        ...commonFilters,
-        amount: {
-          min: 0,
-          max: 100000,
-          step: 2000,
-          description: "Khoảng doanh thu chuyến bay bằng VND (mỗi chuyến bay)",
-        },
-      },
-    };
-
-    return typeSpecific[type] || commonFilters;
-  };
 
   // Xử lý dữ liệu dựa trên loại báo cáo
-  const processData = () => {
+  const processData = useCallback(() => {
     if (!data || (Array.isArray(data) && data.length === 0)) return [];
 
     switch (type) {
       case "bookings":
-        return data.map((booking) => ({
-          id: booking.bookingId,
-          bookingCode: `BK${booking.bookingId}`,
-          customerName: booking.userEmail || "N/A",
-          customerEmail: booking.userEmail || "N/A",
-          flightNumber:
-            booking.flightNumber || `FL${booking.flightId}` || "N/A",
-          route: "N/A", // Không có thông tin tuyến bay trong dữ liệu mới
-          bookingDate: formatDateVN(booking.createdAt || booking.bookingDate),
-          flightDate: "N/A", // Không có thông tin ngày bay trong dữ liệu mới
-          status: getBookingStatusName(booking.status),
-          totalAmount: booking.totalAmount || 0,
-          travelClass: booking.travelClass || "N/A",
-          passengerCount: booking.passengers?.length || 1,
-          paymentMethod: booking.payment?.method || "N/A",
-          tripType: "N/A", // Không có thông tin loại chuyến bay trong dữ liệu mới
-        }));
+        return (Array.isArray(data) ? data : data.bookings || []).map(
+          (booking) => {
+            // Tìm ngày đặt vé với nhiều fallback - GIỮ NGUYÊN RAW VALUE
+            const bookingDateValue =
+              booking.bookingDate ||
+              booking.booking_date ||
+              booking.createdAt ||
+              booking.created_at ||
+              booking.orderDate ||
+              booking.order_date;
+
+            // Tìm ngày chuyến bay - GIỮ NGUYÊN RAW VALUE
+            const flightDateValue =
+              booking.flightSegments?.length > 0 &&
+              booking.flightSegments[0].departureTime
+                ? booking.flightSegments[0].departureTime
+                : booking.departureTime ||
+                  booking.departure_time ||
+                  booking.flightDate ||
+                  booking.flight_date;
+
+            return {
+              id: booking.bookingId || booking.booking_id || booking.id,
+              bookingCode:
+                booking.bookingCode ||
+                booking.booking_code ||
+                `BK${booking.bookingId || booking.id}`,
+              customerName:
+                booking.contactName ||
+                booking.contact_name ||
+                booking.customerName ||
+                booking.customer_name ||
+                booking.userEmail ||
+                booking.user_email ||
+                "N/A",
+              customerEmail:
+                booking.contactEmail ||
+                booking.contact_email ||
+                booking.userEmail ||
+                booking.user_email ||
+                booking.customerEmail ||
+                booking.customer_email ||
+                "N/A",
+              flightNumber:
+                booking.flightNumber ||
+                booking.flight_number ||
+                booking.flight?.flightNumber ||
+                "N/A",
+              route:
+                booking.flightSegments?.length > 0
+                  ? `${
+                      booking.flightSegments[0].departureAirport?.airportCode ||
+                      booking.flightSegments[0].departure_airport_code
+                    } - ${
+                      booking.flightSegments[0].arrivalAirport?.airportCode ||
+                      booking.flightSegments[0].arrival_airport_code
+                    }`
+                  : booking.route ||
+                    `${booking.departureAirportCode || "N/A"} - ${
+                      booking.arrivalAirportCode || "N/A"
+                    }`,
+              bookingDate: bookingDateValue, // Giữ raw value để format sau
+              flightDate: flightDateValue, // Giữ raw value để format sau
+              status: getBookingStatusName(booking.status),
+              totalAmount:
+                booking.totalAmount ||
+                booking.total_amount ||
+                booking.totalPrice ||
+                booking.total_price ||
+                booking.amount ||
+                0,
+              travelClass:
+                booking.travelClass ||
+                booking.travel_class ||
+                booking.seatClass ||
+                booking.seat_class ||
+                "N/A",
+              passengerCount:
+                booking.passengers?.length ||
+                booking.passengerCount ||
+                booking.passenger_count ||
+                1,
+              paymentMethod:
+                booking.payment?.paymentMethod ||
+                booking.paymentMethod ||
+                booking.payment_method ||
+                "N/A",
+              tripType:
+                booking.flightSegments?.length > 1 ? "Khứ hồi" : "Một chiều",
+            };
+          }
+        );
 
       case "customers":
       case "users":
@@ -504,14 +708,14 @@ const ReportTable = ({ type, dateRange }) => {
         return (Array.isArray(data) ? data : data.users || []).map((user) => ({
           id: user.id,
           fullName:
-            user.fullName ||
-            `${user.firstName || ""} ${user.lastName || ""}`.trim() ||
-            "N/A",
+            `${user.firstName || ""} ${user.lastName || ""}`.trim() || "N/A",
           email: user.email || "N/A",
-          phone: user.phone || user.phoneNumber || "N/A",
+          phone: user.phone || "N/A",
           role: getRoleName(user.role),
-          status: user.status || "active",
-          joinDate: formatDateVN(user.createdAt),
+          status: user.active ? "Hoạt động" : "Không hoạt động",
+          joinDate: user.createdAt
+            ? formatDateVN(user.createdAt)
+            : "Chưa có dữ liệu",
           totalBookings: userBookingsCount.get(user.id) || 0,
           totalSpent: userSpendingMap.get(user.id) || 0,
           loyaltyPoints: user.loyaltyPoints || 0,
@@ -520,114 +724,398 @@ const ReportTable = ({ type, dateRange }) => {
             ? formatDateTimeVN(user.lastLogin)
             : "Chưa đăng nhập",
           authProvider: getAuthProviderName(user.authProvider),
+          verified: user.verified ? "Đã xác minh" : "Chưa xác minh",
         }));
 
       case "flights":
-        return data.map((flight) => ({
-          id: flight.id,
-          flightNumber: flight.flightNumber || `FL${flight.id}`,
-          airlineName: flight.airline?.name || flight.airlineName || "N/A",
-          route: `${flight.departureAirport?.code || "DEP"} → ${
-            flight.arrivalAirport?.code || "ARR"
-          }`,
-          departureTime: formatDateTimeVN(flight.departureTime),
-          arrivalTime: formatDateTimeVN(flight.arrivalTime),
-          duration: flight.duration || "N/A",
-          status: getFlightStatusName(flight.status),
-          aircraftModel:
-            flight.aircraft?.model || flight.aircraftModel || "N/A",
-          totalSeats: flight.totalSeats || flight.capacity || 0,
-          availableSeats: flight.availableSeats || 0,
-          bookedSeats:
-            flight.bookedSeats ||
-            flight.totalSeats - flight.availableSeats ||
-            0,
-          price: flight.price || flight.basePrice || 0,
-          revenue: flight.revenue || 0,
-          flightType: getFlightTypeName(flight.type),
-        }));
+        return (Array.isArray(data) ? data : data.flights || []).map(
+          (flight) => {
+            // Tính doanh thu từ các lớp ghế đã đặt với nhiều fallback
+            const computedRevenue =
+              flight.flightTravelClasses?.reduce((sum, travelClass) => {
+                const classRevenue =
+                  (travelClass.price || 0) *
+                  (travelClass.bookedSeat || travelClass.booked_seat || 0);
+                return sum + classRevenue;
+              }, 0) || 0;
+
+            // Fallback cho revenue: computed từ travel classes, hoặc trường revenue trực tiếp, hoặc 0
+            const finalRevenue =
+              computedRevenue ||
+              flight.revenue ||
+              flight.totalRevenue ||
+              flight.total_revenue ||
+              0;
+
+            // Tính bookedSeats với fallback
+            const computedBookedSeats =
+              flight.flightTravelClasses?.reduce(
+                (sum, travelClass) =>
+                  sum +
+                  (travelClass.bookedSeat || travelClass.booked_seat || 0),
+                0
+              ) || 0;
+            const finalBookedSeats =
+              computedBookedSeats ||
+              flight.bookedSeats ||
+              flight.booked_seats ||
+              flight.reservedSeats ||
+              0;
+
+            // Tính tổng ghế
+            const totalSeats =
+              flight.aircraft?.totalSeats ||
+              flight.totalSeats ||
+              flight.total_seats ||
+              flight.flightTravelClasses?.reduce(
+                (sum, travelClass) => sum + (travelClass.capacity || 0),
+                0
+              ) ||
+              0;
+
+            return {
+              id: flight.flightId || flight.id,
+              flightNumber:
+                flight.flightNumber ||
+                flight.flight_number ||
+                `FL${flight.flightId || flight.id}`,
+              airlineName:
+                flight.airline?.airlineName ||
+                flight.airline?.name ||
+                flight.airlineName ||
+                "N/A",
+              route: `${
+                flight.departureAirport?.airportCode ||
+                flight.departure_airport_code ||
+                "N/A"
+              } → ${
+                flight.arrivalAirport?.airportCode ||
+                flight.arrival_airport_code ||
+                "N/A"
+              }`,
+              departureTime:
+                flight.departureTime || flight.departure_time
+                  ? formatDateTimeVN(
+                      flight.departureTime || flight.departure_time
+                    )
+                  : "Chưa có dữ liệu",
+              arrivalTime:
+                flight.arrivalTime || flight.arrival_time
+                  ? formatDateTimeVN(flight.arrivalTime || flight.arrival_time)
+                  : "Chưa có dữ liệu",
+              duration: flight.duration ? `${flight.duration} phút` : "N/A",
+              status: getFlightStatusName(flight.status),
+              seatOccupancy: `${finalBookedSeats}/${totalSeats}`,
+              occupancyRate:
+                totalSeats > 0
+                  ? `${Math.round((finalBookedSeats / totalSeats) * 100)}%`
+                  : "0%",
+              revenue: finalRevenue,
+              flightType: getFlightTypeName(flight.type || flight.flightType),
+              gate: flight.gate || "N/A",
+              terminal: flight.terminal || "N/A",
+              createdAt:
+                flight.createdAt || flight.created_at
+                  ? formatDateVN(flight.createdAt || flight.created_at)
+                  : "Chưa có dữ liệu",
+            };
+          }
+        );
 
       case "airlines":
-        return data.map((airline) => ({
-          id: airline.id,
-          airlineName: airline.name || "N/A",
-          airlineCode: airline.code || airline.iataCode || "N/A",
-          country: airline.country || "N/A",
-          status: airline.status || "active",
-          totalFlights: airline.totalFlights || 0,
-          activeFlights: airline.activeFlights || 0,
-          fleetSize: airline.fleetSize || 0,
-          foundedYear: airline.founded || "N/A",
-          website: airline.website || "N/A",
-        }));
+        return (Array.isArray(data) ? data : data.airlines || []).map(
+          (airline) => ({
+            id: airline.id,
+            airlineName: airline.name || "N/A",
+            airlineCode: airline.code || airline.iataCode || "N/A",
+            country: airline.country || "N/A",
+            status: airline.status || "active",
+            totalFlights: airline.totalFlights || 0,
+            activeFlights: airline.activeFlights || 0,
+            fleetSize: airline.fleetSize || 0,
+            foundedYear: airline.founded || "N/A",
+            website: airline.website || "N/A",
+          })
+        );
 
       case "airports":
-        return data.map((airport) => ({
-          id: airport.id,
-          airportName: airport.name || "N/A",
-          airportCode: airport.code || airport.iataCode || "N/A",
-          city: airport.city || "N/A",
-          country: airport.country || "N/A",
-          airportType: airport.type || "domestic",
-          status: airport.status || "active",
-          timezone: airport.timezone || "UTC+7",
-          runways: airport.runways || 0,
-          terminals: airport.terminals || 0,
-        }));
+        return (Array.isArray(data) ? data : data.airports || []).map(
+          (airport) => ({
+            id: airport.id,
+            airportName: airport.name || "N/A",
+            airportCode: airport.code || airport.iataCode || "N/A",
+            city: airport.city || "N/A",
+            country: airport.country || "N/A",
+            airportType: airport.type || "domestic",
+            status: airport.status || "active",
+            timezone: airport.timezone || "UTC+7",
+            runways: airport.runways || 0,
+            terminals: airport.terminals || 0,
+          })
+        );
 
       case "overview":
-        // Tổng hợp dữ liệu theo ngày cho tổng quan
-        const overviewMap = new Map();
+        // TỔNG QUAN TỔNG HỢP - Khác với Revenue (theo ngày)
         const bookings = Array.isArray(data) ? data : data.bookings || [];
         const users = Array.isArray(data) ? [] : data.users || [];
         const flights = Array.isArray(data) ? [] : data.flights || [];
 
-        // Xử lý đặt vé cho tổng quan
-        bookings.forEach((booking) => {
-          const date = formatDateVN(booking.createdAt || booking.bookingDate);
-          if (!overviewMap.has(date)) {
-            overviewMap.set(date, {
-              date,
-              revenue: 0,
-              bookings: 0,
-              customers: new Set(),
-              flights: new Set(),
-              successRate: 0,
-              totalCount: 0,
-            });
-          }
-          const day = overviewMap.get(date);
-          // Lấy giá trị booking một cách thống nhất
-          const bookingAmount =
-            booking.totalAmount || booking.totalPrice || booking.price || 0;
-          day.revenue += bookingAmount;
-          day.bookings += 1;
-          day.customers.add(booking.userId || booking.customerId);
-          day.flights.add(booking.flightId);
+        // Tạo tổng hợp theo CATEGORY thay vì theo ngày
+        const overviewCategories = [
+          {
+            id: "total-revenue",
+            date: "Tổng Doanh Thu",
+            revenue: bookings.reduce(
+              (sum, booking) =>
+                sum +
+                (booking.totalAmount ||
+                  booking.totalPrice ||
+                  booking.price ||
+                  0),
+              0
+            ),
+            bookings: bookings.length,
+            customers: new Set(bookings.map((b) => b.userId || b.customerId))
+              .size,
+            flights: flights.length,
+            avgRevenuePerBooking:
+              bookings.length > 0
+                ? bookings.reduce(
+                    (sum, booking) =>
+                      sum +
+                      (booking.totalAmount ||
+                        booking.totalPrice ||
+                        booking.price ||
+                        0),
+                    0
+                  ) / bookings.length
+                : 0,
+            successRate:
+              bookings.length > 0
+                ? (
+                    (bookings.filter(
+                      (b) => b.status === 1 || b.status === "CONFIRMED"
+                    ).length /
+                      bookings.length) *
+                    100
+                  ).toFixed(1) + "%"
+                : "0.0%",
+          },
+          {
+            id: "confirmed-bookings",
+            date: "Đặt Vé Xác Nhận",
+            revenue: bookings
+              .filter((b) => b.status === 1 || b.status === "CONFIRMED")
+              .reduce(
+                (sum, booking) =>
+                  sum +
+                  (booking.totalAmount ||
+                    booking.totalPrice ||
+                    booking.price ||
+                    0),
+                0
+              ),
+            bookings: bookings.filter(
+              (b) => b.status === 1 || b.status === "CONFIRMED"
+            ).length,
+            customers: new Set(
+              bookings
+                .filter((b) => b.status === 1 || b.status === "CONFIRMED")
+                .map((b) => b.userId || b.customerId)
+            ).size,
+            flights: new Set(
+              bookings
+                .filter((b) => b.status === 1 || b.status === "CONFIRMED")
+                .map((b) => b.flightId)
+            ).size,
+            avgRevenuePerBooking: (() => {
+              const confirmedBookings = bookings.filter(
+                (b) => b.status === 1 || b.status === "CONFIRMED"
+              );
+              return confirmedBookings.length > 0
+                ? confirmedBookings.reduce(
+                    (sum, booking) =>
+                      sum +
+                      (booking.totalAmount ||
+                        booking.totalPrice ||
+                        booking.price ||
+                        0),
+                    0
+                  ) / confirmedBookings.length
+                : 0;
+            })(),
+            successRate: "100.0%",
+          },
+          {
+            id: "active-flights",
+            date: "Chuyến Bay Hoạt Động",
+            revenue: (() => {
+              const activeFlightIds = flights
+                .filter((f) => new Date(f.departureTime) > new Date())
+                .map((f) => f.flightId || f.id);
+              return bookings
+                .filter((b) => activeFlightIds.includes(b.flightId))
+                .reduce(
+                  (sum, booking) =>
+                    sum +
+                    (booking.totalAmount ||
+                      booking.totalPrice ||
+                      booking.price ||
+                      0),
+                  0
+                );
+            })(),
+            bookings: (() => {
+              const activeFlightIds = flights
+                .filter((f) => new Date(f.departureTime) > new Date())
+                .map((f) => f.flightId || f.id);
+              return bookings.filter((b) =>
+                activeFlightIds.includes(b.flightId)
+              ).length;
+            })(),
+            customers: (() => {
+              const activeFlightIds = flights
+                .filter((f) => new Date(f.departureTime) > new Date())
+                .map((f) => f.flightId || f.id);
+              return new Set(
+                bookings
+                  .filter((b) => activeFlightIds.includes(b.flightId))
+                  .map((b) => b.userId || b.customerId)
+              ).size;
+            })(),
+            flights: flights.filter(
+              (f) => new Date(f.departureTime) > new Date()
+            ).length,
+            avgRevenuePerBooking: (() => {
+              const activeFlightIds = flights
+                .filter((f) => new Date(f.departureTime) > new Date())
+                .map((f) => f.flightId || f.id);
+              const activeBookings = bookings.filter((b) =>
+                activeFlightIds.includes(b.flightId)
+              );
+              return activeBookings.length > 0
+                ? activeBookings.reduce(
+                    (sum, booking) =>
+                      sum +
+                      (booking.totalAmount ||
+                        booking.totalPrice ||
+                        booking.price ||
+                        0),
+                    0
+                  ) / activeBookings.length
+                : 0;
+            })(),
+            successRate: (() => {
+              const activeFlightIds = flights
+                .filter((f) => new Date(f.departureTime) > new Date())
+                .map((f) => f.flightId || f.id);
+              const activeBookings = bookings.filter((b) =>
+                activeFlightIds.includes(b.flightId)
+              );
+              return activeBookings.length > 0
+                ? (
+                    (activeBookings.filter(
+                      (b) => b.status === 1 || b.status === "CONFIRMED"
+                    ).length /
+                      activeBookings.length) *
+                    100
+                  ).toFixed(1) + "%"
+                : "0.0%";
+            })(),
+          },
+          {
+            id: "new-customers",
+            date: "Khách Hàng Mới",
+            revenue: (() => {
+              // Customers created within date range
+              const dateRangeMs = 30 * 24 * 60 * 60 * 1000; // 30 days
+              const cutoffDate = new Date(Date.now() - dateRangeMs);
+              const newUserIds = users
+                .filter((u) => new Date(u.createdAt) > cutoffDate)
+                .map((u) => u.id);
+              return bookings
+                .filter((b) => newUserIds.includes(b.userId))
+                .reduce(
+                  (sum, booking) =>
+                    sum +
+                    (booking.totalAmount ||
+                      booking.totalPrice ||
+                      booking.price ||
+                      0),
+                  0
+                );
+            })(),
+            bookings: (() => {
+              const dateRangeMs = 30 * 24 * 60 * 60 * 1000;
+              const cutoffDate = new Date(Date.now() - dateRangeMs);
+              const newUserIds = users
+                .filter((u) => new Date(u.createdAt) > cutoffDate)
+                .map((u) => u.id);
+              return bookings.filter((b) => newUserIds.includes(b.userId))
+                .length;
+            })(),
+            customers: users.filter((u) => {
+              const dateRangeMs = 30 * 24 * 60 * 60 * 1000;
+              const cutoffDate = new Date(Date.now() - dateRangeMs);
+              return new Date(u.createdAt) > cutoffDate;
+            }).length,
+            flights: (() => {
+              const dateRangeMs = 30 * 24 * 60 * 60 * 1000;
+              const cutoffDate = new Date(Date.now() - dateRangeMs);
+              const newUserIds = users
+                .filter((u) => new Date(u.createdAt) > cutoffDate)
+                .map((u) => u.id);
+              return new Set(
+                bookings
+                  .filter((b) => newUserIds.includes(b.userId))
+                  .map((b) => b.flightId)
+              ).size;
+            })(),
+            avgRevenuePerBooking: (() => {
+              const dateRangeMs = 30 * 24 * 60 * 60 * 1000;
+              const cutoffDate = new Date(Date.now() - dateRangeMs);
+              const newUserIds = users
+                .filter((u) => new Date(u.createdAt) > cutoffDate)
+                .map((u) => u.id);
+              const newCustomerBookings = bookings.filter((b) =>
+                newUserIds.includes(b.userId)
+              );
+              return newCustomerBookings.length > 0
+                ? newCustomerBookings.reduce(
+                    (sum, booking) =>
+                      sum +
+                      (booking.totalAmount ||
+                        booking.totalPrice ||
+                        booking.price ||
+                        0),
+                    0
+                  ) / newCustomerBookings.length
+                : 0;
+            })(),
+            successRate: (() => {
+              const dateRangeMs = 30 * 24 * 60 * 60 * 1000;
+              const cutoffDate = new Date(Date.now() - dateRangeMs);
+              const newUserIds = users
+                .filter((u) => new Date(u.createdAt) > cutoffDate)
+                .map((u) => u.id);
+              const newCustomerBookings = bookings.filter((b) =>
+                newUserIds.includes(b.userId)
+              );
+              return newCustomerBookings.length > 0
+                ? (
+                    (newCustomerBookings.filter(
+                      (b) => b.status === 1 || b.status === "CONFIRMED"
+                    ).length /
+                      newCustomerBookings.length) *
+                    100
+                  ).toFixed(1) + "%"
+                : "0.0%";
+            })(),
+          },
+        ];
 
-          // Kiểm tra booking đã xác nhận (CONFIRMED) - có thể là string hoặc number
-          const isConfirmed =
-            booking.status === 1 ||
-            booking.status === "CONFIRMED" ||
-            booking.status === "confirmed";
-          if (isConfirmed) {
-            day.successRate += 1;
-          }
-          day.totalCount += 1;
-        });
-
-        return Array.from(overviewMap.values()).map((day) => ({
-          id: day.date,
-          date: day.date,
-          revenue: day.revenue,
-          bookings: day.bookings,
-          customers: day.customers.size,
-          flights: day.flights.size,
-          successRate:
-            day.totalCount > 0
-              ? ((day.successRate / day.totalCount) * 100).toFixed(1)
-              : "0.0",
-        }));
+        console.log("Overview categories:", overviewCategories.slice(0, 2));
+        return overviewCategories;
 
       case "revenue":
         // Xử lý dữ liệu doanh thu theo ngày
@@ -638,20 +1126,32 @@ const ReportTable = ({ type, dateRange }) => {
 
         revenueBookings.forEach((booking) => {
           // Tính tất cả booking (không chỉ confirmed) để có dữ liệu đầy đủ
-          const date = formatDateVN(booking.createdAt || booking.bookingDate);
-          if (!revenueMap.has(date)) {
-            revenueMap.set(date, {
-              date,
+          const bookingDateRaw =
+            booking.createdAt ||
+            booking.created_at ||
+            booking.bookingDate ||
+            booking.booking_date;
+          if (!bookingDateRaw) return; // Skip nếu không có ngày
+
+          const isoKey = format(new Date(bookingDateRaw), "yyyy-MM-dd");
+          const displayDate = formatDateVN(bookingDateRaw);
+
+          if (!revenueMap.has(isoKey)) {
+            revenueMap.set(isoKey, {
+              date: displayDate,
+              isoKey: isoKey,
               revenue: 0,
               bookings: 0,
               confirmedBookings: 0,
+              customers: new Set(),
             });
           }
-          const day = revenueMap.get(date);
+          const day = revenueMap.get(isoKey);
           const bookingAmount =
             booking.totalAmount || booking.totalPrice || booking.price || 0;
           day.revenue += bookingAmount;
           day.bookings += 1;
+          day.customers.add(booking.userId || booking.customerId);
 
           // Đếm booking đã xác nhận
           if (booking.status === 1 || booking.status === "CONFIRMED") {
@@ -659,107 +1159,55 @@ const ReportTable = ({ type, dateRange }) => {
           }
         });
 
-        return Array.from(revenueMap.values()).map((day) => {
-          // Tính chi phí (giả định 25% của doanh thu cho chi phí vận hành)
-          const cost = day.revenue * 0.25;
-          const profit = day.revenue - cost;
-          const roi = cost > 0 ? (profit / cost) * 100 : 0;
-
-          // Xác định trạng thái dựa trên lợi nhuận và số lượng booking
-          let status = "Thấp";
-          if (profit > 5000000 && day.confirmedBookings > 5) {
-            status = "Cao";
-          } else if (profit > 2000000 && day.confirmedBookings > 2) {
-            status = "Trung bình";
+        // Tính toán khách hàng mới từ users data nếu có
+        const revenueUsers = Array.isArray(data) ? [] : data.users || [];
+        const usersByDate = new Map();
+        revenueUsers.forEach((user) => {
+          const userDateRaw = user.createdAt || user.created_at;
+          if (!userDateRaw) return;
+          const isoKey = format(new Date(userDateRaw), "yyyy-MM-dd");
+          if (!usersByDate.has(isoKey)) {
+            usersByDate.set(isoKey, 0);
           }
-
-          return {
-            id: day.date,
-            date: day.date,
-            revenue: day.revenue,
-            cost: cost,
-            profit: profit,
-            roi: Math.round(roi * 100) / 100, // Làm tròn 2 chữ số thập phân
-            status: status,
-            bookingCount: day.bookings,
-            confirmedBookings: day.confirmedBookings,
-          };
+          usersByDate.set(isoKey, usersByDate.get(isoKey) + 1);
         });
+
+        const revenueResult = Array.from(revenueMap.values())
+          .sort((a, b) => a.isoKey.localeCompare(b.isoKey))
+          .map((day) => {
+            const newCustomers = usersByDate.get(day.isoKey) || 0;
+            const avgRevenuePerBooking =
+              day.bookings > 0 ? day.revenue / day.bookings : 0;
+            const confirmationRate =
+              day.bookings > 0
+                ? (day.confirmedBookings / day.bookings) * 100
+                : 0;
+
+            return {
+              id: day.isoKey,
+              date: day.date,
+              revenue: day.revenue,
+              bookings: day.bookings,
+              // newCustomers: newCustomers, // Removed as requested
+              avgRevenuePerBooking: avgRevenuePerBooking,
+              confirmationRate: `${confirmationRate.toFixed(1)}%`,
+            };
+          });
+
+        console.log("Revenue data:", revenueResult.slice(0, 3)); // Debug: in 3 dòng đầu
+        return revenueResult;
 
       default:
         return [];
     }
-  };
+  }, [type, data, userBookingsCount]);
 
-  const rawData = useMemo(() => processData(), [type, data]);
+  const rawData = useMemo(() => processData(), [processData]);
 
-  // Filter and search data with enhanced filtering
+  // Data is already filtered by dateRange in fetchData, no need for additional filtering
   const filteredData = useMemo(() => {
-    let filtered = rawData;
-
-    // Status filter
-    if (filterStatus !== "all" && filtered[0]?.status) {
-      filtered = filtered.filter((row) => row.status === filterStatus);
-    }
-
-    // Amount range filter
-    if (minAmount || maxAmount) {
-      filtered = filtered.filter((row) => {
-        const amount =
-          row.value || row.revenue || row.totalSpent || row.totalSpent || 0;
-        const min = minAmount ? parseFloat(minAmount) : 0;
-        const max = maxAmount ? parseFloat(maxAmount) : Infinity;
-        return amount >= min && amount <= max;
-      });
-    }
-
-    // Loyalty points range filter (for customers)
-    if ((minLoyaltyPoints || maxLoyaltyPoints) && type === "customers") {
-      filtered = filtered.filter((row) => {
-        const points = row.loyaltyPoints || 0;
-        const min = minLoyaltyPoints ? parseFloat(minLoyaltyPoints) : 0;
-        const max = maxLoyaltyPoints ? parseFloat(maxLoyaltyPoints) : Infinity;
-        return points >= min && points <= max;
-      });
-    }
-
-    // Date range filter
-    if (filterDateRange !== "all") {
-      const now = new Date();
-      const filterDate = new Date();
-
-      switch (filterDateRange) {
-        case "today":
-          filterDate.setDate(now.getDate());
-          break;
-        case "week":
-          filterDate.setDate(now.getDate() - 7);
-          break;
-        case "month":
-          filterDate.setDate(now.getDate() - 30);
-          break;
-        case "quarter":
-          filterDate.setDate(now.getDate() - 90);
-          break;
-      }
-
-      filtered = filtered.filter((row) => {
-        const rowDate = new Date(row.date || row.bookingDate || row.joinDate);
-        return rowDate >= filterDate;
-      });
-    }
-
-    return filtered;
-  }, [
-    rawData,
-    filterStatus,
-    minAmount,
-    maxAmount,
-    minLoyaltyPoints,
-    maxLoyaltyPoints,
-    filterDateRange,
-    type,
-  ]);
+    return rawData;
+  }, [rawData]);
 
   // Sort data
   const sortedData = useMemo(() => {
@@ -782,53 +1230,92 @@ const ReportTable = ({ type, dateRange }) => {
     return sorted;
   }, [filteredData, sortBy, sortOrder]);
 
-  // Pagination
-  const totalPages = Math.ceil(sortedData.length / itemsPerPage);
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const paginatedData = sortedData.slice(startIndex, startIndex + itemsPerPage);
+  // Pagination logic
+  const paginationData = useMemo(() => {
+    const serverPagedTypes = [
+      "bookings",
+      "customers",
+      "users",
+      "flights",
+      "airlines",
+      "airports",
+    ];
+
+    if (serverPagedTypes.includes(type) && !realData) {
+      // Server-side pagination: API returns paginated results
+      const totalPages =
+        itemsPerPage > 0 ? Math.ceil((totalItems || 0) / itemsPerPage) : 1;
+      const startIndex = (currentPage - 1) * itemsPerPage;
+      // For server pagination, use the data directly as it's already paginated
+      const paginatedData = sortedData;
+      return { totalPages, startIndex, paginatedData, isServerPaged: true };
+    }
+
+    // Client-side pagination for realData or aggregated views
+    const totalPages = Math.max(1, Math.ceil(sortedData.length / itemsPerPage));
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const paginatedData = sortedData.slice(
+      startIndex,
+      startIndex + itemsPerPage
+    );
+
+    return { totalPages, startIndex, paginatedData, isServerPaged: false };
+  }, [sortedData, currentPage, itemsPerPage, totalItems, type, realData]);
+
+  const { totalPages, startIndex, paginatedData } = paginationData;
 
   // Get headers based on type - Vietnamese labels
   const getHeaders = () => {
     const headers = {
       overview: [
         "Ngày",
-        "Doanh Thu",
-        "Đặt Vé",
-        "Khách Hàng",
-        "Chuyến Bay",
+        "Tổng Doanh Thu",
+        "Tổng Đặt Vé",
+        "Tổng Khách Hàng",
+        "Tổng Chuyến Bay",
+        "TB/Đặt Vé",
         "Tỷ Lệ Thành Công",
       ],
       revenue: [
         "Ngày",
         "Doanh Thu",
-        "Chi Phí",
-        "Lợi Nhuận",
-        "ROI",
-        "Trạng Thái",
+        "Số Đặt Vé",
+        // "Khách Hàng Mới",
+        "TB Doanh Thu/Vé",
+        "Tỷ Lệ Xác Nhận",
       ],
       bookings: [
         "Mã Đặt Vé",
         "Khách Hàng",
-        "Chuyến Bay",
+        "Tuyến Bay",
         "Ngày Đặt",
-        "Giá Trị",
+        "Số Hành Khách",
+        "Tổng Tiền",
+        "Phương Thức",
         "Trạng Thái",
       ],
       customers: [
         "Khách Hàng",
         "Email",
-        "Đặt Vé",
-        "Tổng Chi Tiêu",
+        "Số Điện Thoại",
+        "Vai Trò",
+        "Xác Minh",
+        "Hạng Thành Viên",
         "Điểm Thưởng",
         "Ngày Tham Gia",
-        "Loại",
+        "Trạng Thái",
       ],
       flights: [
         "Mã Chuyến Bay",
+        "Hãng Hàng Không",
         "Tuyến Bay",
-        "Ngày",
+        "Khởi Hành",
+        "Đến",
+        "Thời Lượng",
+        "Loại Chuyến",
+        "Ghế Đặt/Tổng",
+        "Tỷ Lệ Lấp Đầy",
         "Doanh Thu",
-        "Hành Khách",
         "Trạng Thái",
       ],
       airlines: [
@@ -851,71 +1338,7 @@ const ReportTable = ({ type, dateRange }) => {
     return headers[type] || headers.overview;
   };
 
-  // Map Vietnamese headers to data keys
-  const getDataKey = (header, type) => {
-    const keyMappings = {
-      overview: {
-        Ngày: "date",
-        "Doanh Thu": "revenue",
-        "Đặt Vé": "bookings",
-        "Khách Hàng": "customers",
-        "Chuyến Bay": "flights",
-        "Tỷ Lệ Thành Công": "successRate",
-      },
-      revenue: {
-        Ngày: "date",
-        "Doanh Thu": "revenue",
-        "Chi Phí": "cost",
-        "Lợi Nhuận": "profit",
-        ROI: "roi",
-        "Trạng Thái": "status",
-      },
-      bookings: {
-        "Mã Đặt Vé": "bookingCode",
-        "Khách Hàng": "customerName",
-        "Chuyến Bay": "flightNumber",
-        "Ngày Đặt": "bookingDate",
-        "Giá Trị": "totalAmount",
-        "Trạng Thái": "status",
-      },
-      customers: {
-        "Khách Hàng": "fullName",
-        Email: "email",
-        "Đặt Vé": "totalBookings",
-        "Tổng Chi Tiêu": "totalSpent",
-        "Điểm Thưởng": "loyaltyPoints",
-        "Ngày Tham Gia": "joinDate",
-        Loại: "loyaltyTier",
-      },
-      flights: {
-        "Mã Chuyến Bay": "flightNumber",
-        "Tuyến Bay": "route",
-        Ngày: "flightDate",
-        "Doanh Thu": "revenue",
-        "Hành Khách": "passengerCount",
-        "Trạng Thái": "status",
-      },
-      airlines: {
-        "Tên Hãng": "airlineName",
-        "Mã Hãng": "airlineCode",
-        "Số Lượng Máy Bay": "fleetSize",
-        "Số Lượng Chuyến Bay": "totalFlights",
-        "Doanh Thu": "revenue",
-        "Trạng Thái": "status",
-      },
-      airports: {
-        "Tên Sân Bay": "airportName",
-        "Mã Sân Bay": "airportCode",
-        "Thành Phố": "city",
-        "Quốc Gia": "country",
-        "Nhà Ga": "terminals",
-        "Trạng Thái": "status",
-      },
-    };
-    return (
-      keyMappings[type]?.[header] || header.toLowerCase().replace(/\s+/g, "")
-    );
-  };
+  // getDataKey is already defined above
 
   const formatCurrency = (amount) => {
     return formatCurrencyVND(amount);
@@ -1085,22 +1508,13 @@ const ReportTable = ({ type, dateRange }) => {
               value: formatCurrency(row.revenue),
               icon: DollarSign,
             },
-            {
-              label: "Chi phí",
-              value: formatCurrency(row.cost),
-            },
-            {
-              label: "Lợi nhuận",
-              value: formatCurrency(row.profit),
-              icon: TrendingUp,
-            },
-            { label: "ROI", value: `${row.roi}%` },
-            { label: "Trạng thái", value: row.status },
+
+            // { label: "Trạng thái", value: row.status },
             { label: "Tổng đặt vé", value: `${row.bookingCount} đặt vé` },
-            {
-              label: "Đặt vé xác nhận",
-              value: `${row.confirmedBookings} đặt vé`,
-            },
+            // {
+            //   label: "Đặt vé xác nhận",
+            //   value: `${row.confirmedBookings} đặt vé`,
+            // },
           ];
         default:
           return Object.entries(row).map(([key, value]) => ({
@@ -1167,193 +1581,60 @@ const ReportTable = ({ type, dateRange }) => {
                 : type}{" "}
               Chi tiết báo cáo
             </CardTitle>
-            <p className="text-sm text-muted-foreground mt-1">
-              Lọc theo trạng thái, khoảng thời gian và khoảng giá trị.{" "}
-              {getFilterOptions().amount?.description}
-            </p>
+            <p className="text-sm text-muted-foreground mt-1"></p>
           </div>
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" onClick={exportData}>
-              <Download className="h-4 w-4 mr-2" />
-              Xuất CSV
-            </Button>
+            {/* Chỉ hiển thị nút export cho 4 tab: revenue, bookings, customers, flights */}
+            {(type === "revenue" ||
+              type === "bookings" ||
+              type === "customers" ||
+              type === "flights") && (
+              <ReportExportButton
+                reportType={type}
+                data={sortedData}
+                dateRange={dateRange}
+                variant="outline"
+                size="sm"
+                isLoading={externalLoading}
+              />
+            )}
+
+            {/* Nút Export cho tab Tổng Quan */}
+            {type === "overview" && (
+              <OverviewExportButton
+                rawData={data}
+                processedData={filteredData}
+                dateRange={dateRange}
+                variant="outline"
+                size="sm"
+              />
+            )}
           </div>
         </div>
       </CardHeader>
       <CardContent>
-        {/* Enhanced Filters - Removed Search */}
-        <div className="space-y-4 mb-6">
-          {/* Basic filters */}
-          <div className="flex items-center gap-4">
-            <div className="flex-1" />
-            <Select
-              value={itemsPerPage.toString()}
-              onValueChange={(value) => setItemsPerPage(Number(value))}
-            >
-              <SelectTrigger className="w-[120px]">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="10">10 hàng</SelectItem>
-                <SelectItem value="25">25 hàng</SelectItem>
-                <SelectItem value="50">50 hàng</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Advanced filters */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 p-4 bg-muted/30 rounded-lg">
-            <div>
-              <Label htmlFor="status-filter">Lọc theo trạng thái</Label>
-              <Select value={filterStatus} onValueChange={setFilterStatus}>
-                <SelectTrigger id="status-filter">
-                  <Filter className="h-4 w-4 mr-2" />
-                  <SelectValue placeholder="Chọn trạng thái" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Tất cả trạng thái</SelectItem>
-                  <SelectItem value="confirmed">Đã xác nhận</SelectItem>
-                  <SelectItem value="pending">Đang chờ</SelectItem>
-                  <SelectItem value="cancelled">Đã hủy</SelectItem>
-                  <SelectItem value="completed">Hoàn thành</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div>
-              <Label htmlFor="date-filter">Lọc theo ngày</Label>
-              <Select
-                value={filterDateRange}
-                onValueChange={setFilterDateRange}
-              >
-                <SelectTrigger id="date-filter">
-                  <Calendar className="h-4 w-4 mr-2" />
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Tất cả thời gian</SelectItem>
-                  <SelectItem value="today">Hôm nay</SelectItem>
-                  <SelectItem value="week">7 ngày qua</SelectItem>
-                  <SelectItem value="month">30 ngày qua</SelectItem>
-                  <SelectItem value="quarter">3 tháng qua</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div>
-              <Label htmlFor="min-amount">
-                Giá trị tối thiểu (VND)
-                {getFilterOptions().amount && (
-                  <span className="text-xs text-muted-foreground ml-2">
-                    Khoảng: 0 -{getFilterOptions().amount.max.toLocaleString()}
-                  </span>
-                )}
-              </Label>
-              <Input
-                id="min-amount"
-                type="number"
-                placeholder="0"
-                value={minAmount}
-                onChange={(e) => setMinAmount(e.target.value)}
-                min="0"
-                max={getFilterOptions().amount?.max}
-                step={getFilterOptions().amount?.step || 100}
-              />
-            </div>
-
-            <div>
-              <Label htmlFor="max-amount">
-                Giá trị tối đa (VND)
-                {getFilterOptions().amount && (
-                  <span className="text-xs text-muted-foreground ml-2">
-                    Đề xuất: {getFilterOptions().amount.max.toLocaleString()}
-                  </span>
-                )}
-              </Label>
-              <Input
-                id="max-amount"
-                type="number"
-                value={maxAmount}
-                onChange={(e) => setMaxAmount(e.target.value)}
-                min="0"
-                max={getFilterOptions().amount?.max}
-                step={getFilterOptions().amount?.step || 100}
-              />
-            </div>
-
-            {/* Loyalty Points Filter - chỉ hiển thị cho customers */}
-            {type === "customers" && getFilterOptions().loyaltyPoints && (
-              <>
-                <div>
-                  <Label htmlFor="min-loyalty-points">
-                    Điểm thưởng tối thiểu
-                    <span className="text-xs text-muted-foreground ml-2">
-                      Khoảng: 0 -{" "}
-                      {getFilterOptions().loyaltyPoints.max.toLocaleString()}
-                    </span>
-                  </Label>
-                  <Input
-                    id="min-loyalty-points"
-                    type="number"
-                    placeholder="0"
-                    value={minLoyaltyPoints}
-                    onChange={(e) => setMinLoyaltyPoints(e.target.value)}
-                    min="0"
-                    max={getFilterOptions().loyaltyPoints.max}
-                    step={getFilterOptions().loyaltyPoints.step || 100}
-                  />
-                </div>
-
-                <div>
-                  <Label htmlFor="max-loyalty-points">
-                    Điểm thưởng tối đa
-                    <span className="text-xs text-muted-foreground ml-2">
-                      Đề xuất:{" "}
-                      {getFilterOptions().loyaltyPoints.max.toLocaleString()}
-                    </span>
-                  </Label>
-                  <Input
-                    id="max-loyalty-points"
-                    type="number"
-                    placeholder="Không giới hạn"
-                    value={maxLoyaltyPoints}
-                    onChange={(e) => setMaxLoyaltyPoints(e.target.value)}
-                    min="0"
-                    max={getFilterOptions().loyaltyPoints.max}
-                    step={getFilterOptions().loyaltyPoints.step || 100}
-                  />
-                </div>
-              </>
+        {/* Simple Pagination Control */}
+        <div className="flex items-center justify-between mb-6">
+          {/* <div className="text-sm text-muted-foreground">
+            {dateRange?.from && dateRange?.to && (
+              <span>
+                Dữ liệu từ {format(new Date(dateRange.from), "dd/MM/yyyy")} đến {format(new Date(dateRange.to), "dd/MM/yyyy")}
+              </span>
             )}
-          </div>
-
-          {/* Filter summary */}
-          {(filterStatus !== "all" ||
-            filterDateRange !== "all" ||
-            minAmount ||
-            maxAmount ||
-            minLoyaltyPoints ||
-            maxLoyaltyPoints) && (
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Filter className="h-4 w-4" />
-              Bộ lọc đã áp dụng - Hiển thị {filteredData.length} /{" "}
-              {rawData.length} kết quả
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => {
-                  setFilterStatus("all");
-                  setFilterDateRange("all");
-                  setMinAmount("");
-                  setMaxAmount("");
-                  setMinLoyaltyPoints("");
-                  setMaxLoyaltyPoints("");
-                }}
-              >
-                Xóa bộ lọc
-              </Button>
-            </div>
-          )}
+          </div> */}
+          <Select
+            value={itemsPerPage.toString()}
+            onValueChange={(value) => setItemsPerPage(Number(value))}
+          >
+            <SelectTrigger className="w-[120px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="10">10 hàng</SelectItem>
+              <SelectItem value="25">25 hàng</SelectItem>
+              <SelectItem value="50">50 hàng</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
 
         {/* Table */}
@@ -1377,67 +1658,49 @@ const ReportTable = ({ type, dateRange }) => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {paginatedData.map((row, index) => (
-                <TableRow key={row.id || index} className="hover:bg-muted/50">
-                  {getHeaders().map((header) => {
-                    const key = getDataKey(header, type);
-                    let value = row[key];
-
-                    // Special formatting based on column type
-                    if (
-                      header.includes("Doanh Thu") ||
-                      header.includes("Chi Phí") ||
-                      header.includes("Lợi Nhuận") ||
-                      header.includes("Giá Trị") ||
-                      header.includes("Tổng Chi Tiêu") ||
-                      header.includes("Giá Trị Trung Bình")
-                    ) {
-                      value = formatCurrency(value);
-                    } else if (header === "ROI") {
-                      value = `${value}%`;
-                    } else if (header === "Trạng Thái") {
-                      return (
-                        <TableCell key={header}>
-                          {getStatusBadge(value)}
-                        </TableCell>
-                      );
-                    } else if (header === "Tỷ Lệ Thành Công") {
-                      value = `${value}%`;
-                    } else if (header === "Loại") {
-                      return (
-                        <TableCell key={header}>
-                          {getStatusBadge(value)}
-                        </TableCell>
-                      );
-                    } else if (header === "Khách Hàng") {
-                      value = row[key];
-                      return (
-                        <TableCell key={header}>
-                          <div className="flex items-center gap-2">
-                            <span className="font-medium">{value}</span>
-                          </div>
-                        </TableCell>
-                      );
-                    }
-
-                    return <TableCell key={header}>{value}</TableCell>;
-                  })}
-                  <TableCell>
-                    <Dialog>
-                      <DialogTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => setSelectedRow(row)}
-                        >
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                      </DialogTrigger>
-                      <DetailModal row={selectedRow} />
-                    </Dialog>
+              {actualIsLoading ? (
+                // Loading skeleton
+                Array.from({ length: itemsPerPage }).map((_, index) => (
+                  <TableRow key={`loading-${index}`}>
+                    {getHeaders().map((header, colIndex) => (
+                      <TableCell key={`loading-${index}-${colIndex}`}>
+                        <div className="h-4 bg-muted animate-pulse rounded"></div>
+                      </TableCell>
+                    ))}
+                    <TableCell>
+                      <div className="h-8 w-8 bg-muted animate-pulse rounded"></div>
+                    </TableCell>
+                  </TableRow>
+                ))
+              ) : error ? (
+                <TableRow>
+                  <TableCell
+                    colSpan={getHeaders().length + 1}
+                    className="text-center py-8 text-red-500"
+                  >
+                    {error}
                   </TableCell>
                 </TableRow>
-              ))}
+              ) : paginatedData.length === 0 ? (
+                <TableRow>
+                  <TableCell
+                    colSpan={getHeaders().length + 1}
+                    className="text-center py-8 text-muted-foreground"
+                  >
+                    Không có dữ liệu để hiển thị
+                  </TableCell>
+                </TableRow>
+              ) : (
+                paginatedData.map((row, index) => (
+                  <TableRowItem
+                    key={row.id || index}
+                    row={row}
+                    headers={getHeaders()}
+                    type={type}
+                    onRowClick={setSelectedRow}
+                  />
+                ))
+              )}
             </TableBody>
           </Table>
         </div>
@@ -1447,7 +1710,9 @@ const ReportTable = ({ type, dateRange }) => {
           currentPage={currentPage}
           totalPages={totalPages}
           itemsPerPage={itemsPerPage}
-          totalItems={sortedData.length}
+          totalItems={
+            paginationData.isServerPaged ? totalItems : sortedData.length
+          }
           onPageChange={setCurrentPage}
           onPageSizeChange={setItemsPerPage}
           showPageSizeSelector={false}
@@ -1455,8 +1720,15 @@ const ReportTable = ({ type, dateRange }) => {
           showInfo={true}
         />
       </CardContent>
+
+      {/* Detail Modal */}
+      {selectedRow && (
+        <Dialog open={!!selectedRow} onOpenChange={() => setSelectedRow(null)}>
+          <DetailModal row={selectedRow} onClose={() => setSelectedRow(null)} />
+        </Dialog>
+      )}
     </Card>
   );
 };
 
-export default ReportTable;
+export default memo(ReportTable);

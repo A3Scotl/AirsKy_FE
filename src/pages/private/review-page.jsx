@@ -41,7 +41,7 @@ import {
 import Pagination from "@/components/ui/pagination";
 import { reviewApi } from "@/apis/review-api";
 import { toast } from "sonner";
-import ExportButton from "@/components/common/export-button";
+
 
 // TanStack Table imports
 import {
@@ -574,7 +574,7 @@ const ReviewPage = () => {
             <RotateCcw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
             Làm mới
           </Button>
-          <ExportButton entity="reviews" />
+      
         </div>
       </div>
 

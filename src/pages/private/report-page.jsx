@@ -1,14 +1,16 @@
 import React, { useState, useEffect } from "react";
 import {
   Card,
+  CardHeader,
   CardContent,
   CardDescription,
-  CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+// Overview cards are now inline in the component
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Select,
   SelectContent,
@@ -29,10 +31,6 @@ import {
   TrendingDown,
   BarChart3,
   PieChart,
-  Users,
-  Plane,
-  DollarSign,
-  Activity,
   Filter,
   RefreshCw,
 } from "lucide-react";
@@ -48,9 +46,93 @@ import BookingChart from "@/components/admin/reports/report-booking-chart";
 import CustomerChart from "@/components/admin/reports/report-customer-chart";
 import FlightChart from "@/components/admin/reports/report-flight-chart";
 import ReportTable from "@/components/admin/reports/report-table";
-import { flightApi } from "@/apis/flight-api";
-import { bookingApi } from "@/apis/booking-api";
-import { userApi } from "@/apis/user-api";
+import OverviewExportButton from "@/components/admin/reports/overview-export-button";
+
+import { useReportsData } from "@/hooks/use-reports-data";
+import { useLazyReports } from "@/hooks/use-lazy-reports";
+
+// Skeleton components for loading states
+const ReportSkeleton = ({ type = "overview" }) => {
+  if (type === "summary") {
+    return (
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        {Array.from({ length: 4 }).map((_, index) => (
+          <Card key={index}>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <Skeleton className="h-4 w-24" />
+              <Skeleton className="h-4 w-4 rounded" />
+            </CardHeader>
+            <CardContent>
+              <Skeleton className="h-8 w-32 mb-2" />
+              <div className="flex items-center space-x-2">
+                <Skeleton className="h-3 w-3 rounded" />
+                <Skeleton className="h-3 w-16" />
+                <Skeleton className="h-3 w-24" />
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    );
+  }
+
+  if (type === "chart") {
+    return (
+      <Card>
+        <CardHeader>
+          <Skeleton className="h-6 w-48" />
+          <Skeleton className="h-4 w-64" />
+        </CardHeader>
+        <CardContent>
+          <Skeleton className="h-64 w-full" />
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (type === "table") {
+    return (
+      <Card>
+        <CardHeader>
+          <div className="flex justify-between items-center">
+            <Skeleton className="h-6 w-32" />
+            <Skeleton className="h-9 w-24" />
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            {/* Table header */}
+            <div className="flex space-x-4">
+              {Array.from({ length: 6 }).map((_, index) => (
+                <Skeleton key={index} className="h-4 w-20 flex-1" />
+              ))}
+            </div>
+            {/* Table rows */}
+            {Array.from({ length: 8 }).map((_, rowIndex) => (
+              <div key={rowIndex} className="flex space-x-4">
+                {Array.from({ length: 6 }).map((_, colIndex) => (
+                  <Skeleton key={colIndex} className="h-4 w-20 flex-1" />
+                ))}
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // Default overview skeleton
+  return (
+    <div className="space-y-6">
+      <ReportSkeleton type="summary" />
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <ReportSkeleton type="chart" />
+        <ReportSkeleton type="chart" />
+      </div>
+      <ReportSkeleton type="table" />
+    </div>
+  );
+};
 
 const AdminReportPage = () => {
   const [dateRange, setDateRange] = useState({
@@ -59,248 +141,167 @@ const AdminReportPage = () => {
   });
   const [period, setPeriod] = useState("30days");
   const [reportType, setReportType] = useState("overview");
-  const [isLoading, setIsLoading] = useState(false);
+  const [showCustomDatePicker, setShowCustomDatePicker] = useState(false);
 
-  // State for real API data
-  const [reportData, setReportData] = useState({
-    summary: {
-      totalRevenue: 0,
-      totalBookings: 0,
-      totalCustomers: 0,
-      totalFlights: 0,
-      revenueChange: 0,
-      bookingsChange: 0,
-      customersChange: 0,
-      flightsChange: 0,
-    },
-    charts: {
-      revenue: [],
-      bookings: [],
-      customers: [],
-      flights: [],
-    },
-  });
-
-  // State for raw data to pass to components
-  const [rawData, setRawData] = useState({
-    bookings: [],
-    users: [],
-    flights: [],
-  });
-
+  // Update dateRange when period changes (except for custom)
   useEffect(() => {
-    fetchReportData();
-  }, [dateRange, period, reportType]);
-
-  const fetchReportData = async () => {
-    setIsLoading(true);
-    try {
-      // Fetch data from APIs
-      const [flightsResponse, bookingsResponse, usersResponse] =
-        await Promise.all([
-          flightApi.getAllFlights({ size: 1000 }), // Get all flights for statistics
-          bookingApi.getAllBookings({ size: 1000 }), // Get all bookings for statistics
-          userApi.getAllUsers({ size: 1000 }), // Get all users for statistics
-        ]);
-
-      if (
-        !flightsResponse.success ||
-        !bookingsResponse.success ||
-        !usersResponse.success
-      ) {
-        throw new Error("Failed to fetch data from APIs");
-      }
-
-      const allFlights = flightsResponse.data?.content || [];
-      const allBookings = bookingsResponse.data?.content || [];
-      const allUsers = usersResponse.data?.content || [];
-
-      // Helper function to filter data by date range
-      const filterByDateRange = (items, dateField) => {
-        if (!dateRange.from || !dateRange.to) return items;
-
-        return items.filter((item) => {
-          const itemDate = new Date(item[dateField]);
-          return itemDate >= dateRange.from && itemDate <= dateRange.to;
-        });
+    if (period !== "custom") {
+      const daysMap = {
+        "7days": 7,
+        "30days": 30,
+        "90days": 90,
       };
 
-      // Filter data by selected date range
-      const bookings = filterByDateRange(allBookings, "createdAt");
-      const flights = filterByDateRange(allFlights, "departureTime");
-      const users = filterByDateRange(allUsers, "createdAt");
+      const days = daysMap[period] || 30;
+      const today = new Date();
+      const fromDate = new Date();
+      fromDate.setDate(today.getDate() - days);
 
-      // Calculate summary statistics for current period
-      const totalRevenue = bookings.reduce(
-        (sum, booking) =>
-          sum +
-          (booking.totalAmount || booking.totalPrice || booking.price || 0),
-        0
+      console.log(
+        `Setting dateRange for ${period}: from ${fromDate.toISOString()} to ${today.toISOString()}`
       );
-      const totalBookings = bookings.length;
-      const totalCustomers = users.length;
-      const totalFlights = flights.length;
 
-      // Calculate previous period (same duration before current period)
-      const periodDuration = dateRange.to.getTime() - dateRange.from.getTime();
-      const previousPeriodStart = new Date(
-        dateRange.from.getTime() - periodDuration
-      );
-      const previousPeriodEnd = new Date(dateRange.from.getTime());
-
-      const previousBookings = allBookings.filter((booking) => {
-        const bookingDate = new Date(booking.createdAt || booking.bookingDate);
-        return (
-          bookingDate >= previousPeriodStart && bookingDate < previousPeriodEnd
-        );
+      setDateRange({
+        from: fromDate,
+        to: today,
       });
+      setShowCustomDatePicker(false);
+    } else {
+      setShowCustomDatePicker(true);
+    }
+  }, [period]);
 
-      const previousUsers = allUsers.filter((user) => {
-        const userDate = new Date(user.createdAt);
-        return userDate >= previousPeriodStart && userDate < previousPeriodEnd;
-      });
+  // Use lazy loading hooks - only load data when needed per tab
+  const {
+    useRevenueData,
+    useBookingsData,
+    useCustomersData,
+    useFlightsData,
+    useOverviewData,
+    prefetchData,
+    clearCache,
+  } = useLazyReports(dateRange, period);
 
-      const previousFlights = allFlights.filter((flight) => {
-        const flightDate = new Date(flight.departureTime);
-        return (
-          flightDate >= previousPeriodStart && flightDate < previousPeriodEnd
-        );
-      });
+  // Alternative: Use unified hook (uncomment to switch)
+  const {
+    rawData: reportsData,
+    processedData,
+    summary,
+    isLoading,
+    error,
+    refetch: fetchReportData,
+  } = useReportsData({
+    dateRange,
+    period,
+    mode: "reports",
+  });
 
-      // Calculate previous period totals
-      const previousRevenue = previousBookings.reduce(
-        (sum, booking) =>
-          sum +
-          (booking.totalAmount || booking.totalPrice || booking.price || 0),
-        0
-      );
-      const previousBookingsCount = previousBookings.length;
-      const previousCustomersCount = previousUsers.length;
-      const previousFlightsCount = previousFlights.length;
+  // Always load overview data for the 4 summary cards (independent of current tab)
+  const overviewSummaryQuery = useOverviewData(true); // Always enabled for summary cards
 
-      // Calculate percentage changes
-      const calculateChange = (current, previous) => {
-        if (previous === 0) return current > 0 ? 100 : 0;
-        return ((current - previous) / previous) * 100;
-      };
+  // Enable data loading based on current tab
+  const overviewQuery = useOverviewData(reportType === "overview");
+  const revenueQuery = useRevenueData(reportType === "revenue");
+  const bookingsQuery = useBookingsData(reportType === "bookings");
+  const customersQuery = useCustomersData(reportType === "customers");
+  const flightsQuery = useFlightsData(reportType === "flights");
 
-      const revenueChange = calculateChange(totalRevenue, previousRevenue);
-      const bookingsChange = calculateChange(
-        totalBookings,
-        previousBookingsCount
-      );
-      const customersChange = calculateChange(
-        totalCustomers,
-        previousCustomersCount
-      );
-      const flightsChange = calculateChange(totalFlights, previousFlightsCount);
+  // Get current tab's data and loading state
+  // const getCurrentTabData = () => {
+  //   switch (reportType) {
+  //     case "overview":
+  //       return overviewQuery;
+  //     case "revenue":
+  //       return revenueQuery;
+  //     case "bookings":
+  //       return bookingsQuery;
+  //     case "customers":
+  //       return customersQuery;
+  //     case "flights":
+  //       return flightsQuery;
+  //     default:
+  //       return overviewQuery;
+  //   }
+  // };
 
-      // Generate chart data based on period and filtered data
-      const generateChartData = (type) => {
-        const data = [];
+  // const currentTabData = getCurrentTabData();
+  // const {
+  //   data: reportsData,
+  //   isLoading,
+  //   error,
+  //   refetch: fetchReportData,
+  // } = currentTabData;
 
-        // Group data by date within the selected range
-        const dateGroups = {};
+  // Smart prefetching: Prefetch next likely tab when user hovers or after delay
+  // useEffect(() => {
+  //   const prefetchTimer = setTimeout(() => {
+  //     // Prefetch overview if not current tab (most commonly accessed)
+  //     if (reportType !== "overview") {
+  //       prefetchData("overview");
+  //     }
 
-        // Initialize date groups for the selected range
-        const currentDate = new Date(dateRange.from);
-        while (currentDate <= dateRange.to) {
-          const dateKey = format(currentDate, "MM/dd");
-          dateGroups[dateKey] = {
-            date: dateKey,
-            revenue: 0,
-            bookings: 0,
-            customers: 0,
-            flights: 0,
-          };
-          currentDate.setDate(currentDate.getDate() + 1);
-        }
+  //     // Prefetch revenue data (second most common)
+  //     if (reportType !== "revenue") {
+  //       prefetchData("revenue");
+  //     }
+  //   }, 2000); // Wait 2 seconds before prefetching
 
-        // Populate data based on type
-        switch (type) {
-          case "revenue":
-            bookings.forEach((booking) => {
-              const bookingDate = new Date(
-                booking.createdAt || booking.bookingDate
-              );
-              const dateKey = format(bookingDate, "MM/dd");
-              if (dateGroups[dateKey]) {
-                dateGroups[dateKey].revenue +=
-                  booking.totalAmount ||
-                  booking.totalPrice ||
-                  booking.price ||
-                  0;
-              }
-            });
-            break;
-          case "bookings":
-            bookings.forEach((booking) => {
-              const bookingDate = new Date(
-                booking.createdAt || booking.bookingDate
-              );
-              const dateKey = format(bookingDate, "MM/dd");
-              if (dateGroups[dateKey]) {
-                dateGroups[dateKey].bookings += 1;
-              }
-            });
-            break;
-          case "customers":
-            users.forEach((user) => {
-              const userDate = new Date(user.createdAt);
-              const dateKey = format(userDate, "MM/dd");
-              if (dateGroups[dateKey]) {
-                dateGroups[dateKey].customers += 1;
-              }
-            });
-            break;
-          case "flights":
-            flights.forEach((flight) => {
-              const flightDate = new Date(flight.departureTime);
-              const dateKey = format(flightDate, "MM/dd");
-              if (dateGroups[dateKey]) {
-                dateGroups[dateKey].flights += 1;
-              }
-            });
-            break;
-        }
+  //   return () => clearTimeout(prefetchTimer);
+  // }, [reportType, prefetchData]);
 
-        // Convert to array and sort by date
-        return Object.values(dateGroups).sort((a, b) => {
-          const dateA = new Date(a.date);
-          const dateB = new Date(b.date);
-          return dateA - dateB;
-        });
-      };
+  // Handle tab change with smooth transition
+  const handleTabChange = (newTab) => {
+    console.log(`🔄 Switching to ${newTab} tab`);
+    setReportType(newTab);
 
-      setReportData({
-        summary: {
-          totalRevenue,
-          totalBookings,
-          totalCustomers,
-          totalFlights,
-          revenueChange,
-          bookingsChange,
-          customersChange,
-          flightsChange,
-        },
-        charts: {
-          revenue: generateChartData("revenue"),
-          bookings: generateChartData("bookings"),
-          customers: generateChartData("customers"),
-          flights: generateChartData("flights"),
-        },
-      });
+    // Optional: Clear cache for other tabs to free memory
+    // clearCache(); // Uncomment if memory usage becomes an issue
+  };
 
-      // Store raw data for components
-      setRawData({
-        bookings,
-        users,
-        flights,
-      });
-    } catch (error) {
-      console.error("Error fetching report data:", error);
-      // Set default values on error
-      setReportData({
+  // Handle data structure from unified hook with proper validation
+  const flights = Array.isArray(reportsData?.flights)
+    ? reportsData.flights
+    : [];
+
+  // Fix for bookings data - correct path to revenue data
+  const bookings =
+    Array.isArray(reportsData?.bookings) && reportsData.bookings.length > 0
+      ? reportsData.bookings
+      : Array.isArray(reportsData?.rawData?.content)
+      ? reportsData.rawData.content
+      : Array.isArray(reportsData?.rawData?.data?.content)
+      ? reportsData.rawData.data.content
+      : [];
+
+  // Debug bookings data path
+  console.log(`📊 Bookings data for ${reportType}:`, {
+    reportsDataBookings: reportsData?.bookings,
+    reportsDataBookingsLength: reportsData?.bookings?.length,
+    rawDataContent: reportsData?.rawData?.content?.length,
+    rawDataDataContent: reportsData?.rawData?.data?.content?.length,
+    finalBookings: bookings.length,
+    finalBookingsType: typeof bookings,
+    fullReportsData: reportsData,
+  });
+
+  // Debug bookings data flow
+  console.log("📈 Bookings data debug:", {
+    reportsDataBookings: reportsData?.bookings,
+    reportsDataBookingsType: typeof reportsData?.bookings,
+    rawDataContent: reportsData?.rawData?.data?.content?.length,
+    rawDataDirectContent: reportsData?.rawData?.content?.length,
+    fullReportsData: reportsData,
+    finalBookings: bookings?.length,
+    finalBookingsType: typeof bookings,
+    currentTab: reportType,
+  });
+
+  const users = Array.isArray(reportsData?.users) ? reportsData.users : [];
+
+  // Process data for components
+  const reportData = React.useMemo(() => {
+    if (!reportsData)
+      return {
         summary: {
           totalRevenue: 0,
           totalBookings: 0,
@@ -317,11 +318,149 @@ const AdminReportPage = () => {
           customers: [],
           flights: [],
         },
+      };
+    const totalFlights = reportsData?.totalFlights || 0;
+    const totalBookings = reportsData?.totalBookings || 0;
+    const totalUsers = reportsData?.totalUsers || 0;
+
+    // Debug log to check data structure
+    console.log("📊 Report data structure:", {
+      type: reportsData?.type,
+      flights: flights.length,
+      bookings: bookings.length,
+      users: users.length,
+      rawData: reportsData,
+    });
+
+    // Calculate summary statistics
+    const totalRevenue = Array.isArray(bookings)
+      ? bookings.reduce(
+          (sum, booking) =>
+            sum +
+            (booking.totalAmount || booking.totalPrice || booking.price || 0),
+          0
+        )
+      : 0;
+
+    // Generate chart data based on period and filtered data
+    const generateChartData = (type) => {
+      const data = [];
+
+      // Group data by date within the selected range
+      const dateGroups = {};
+
+      // Initialize date groups for the selected range
+      const currentDate = new Date(dateRange.from);
+      while (currentDate <= dateRange.to) {
+        const dateKey = format(currentDate, "MM/dd");
+        dateGroups[dateKey] = {
+          date: dateKey,
+          revenue: 0,
+          bookings: 0,
+          customers: 0,
+          flights: 0,
+        };
+        currentDate.setDate(currentDate.getDate() + 1);
+      }
+
+      // Populate data based on type with proper array validation
+      switch (type) {
+        case "revenue":
+          if (Array.isArray(bookings)) {
+            bookings.forEach((booking) => {
+              const bookingDate = new Date(
+                booking.createdAt || booking.bookingDate
+              );
+              const dateKey = format(bookingDate, "MM/dd");
+              if (dateGroups[dateKey]) {
+                dateGroups[dateKey].revenue +=
+                  booking.totalAmount ||
+                  booking.totalPrice ||
+                  booking.price ||
+                  0;
+              }
+            });
+          }
+          break;
+        case "bookings":
+          if (Array.isArray(bookings)) {
+            bookings.forEach((booking) => {
+              const bookingDate = new Date(
+                booking.createdAt || booking.bookingDate
+              );
+              const dateKey = format(bookingDate, "MM/dd");
+              if (dateGroups[dateKey]) {
+                dateGroups[dateKey].bookings += 1;
+              }
+            });
+          }
+          break;
+        case "customers":
+          if (Array.isArray(users)) {
+            users.forEach((user) => {
+              const userDate = new Date(user.createdAt);
+              const dateKey = format(userDate, "MM/dd");
+              if (dateGroups[dateKey]) {
+                dateGroups[dateKey].customers += 1;
+              }
+            });
+          }
+          break;
+        case "flights":
+          if (Array.isArray(flights)) {
+            flights.forEach((flight) => {
+              const flightDate = new Date(flight.departureTime);
+              const dateKey = format(flightDate, "MM/dd");
+              if (dateGroups[dateKey]) {
+                dateGroups[dateKey].flights += 1;
+              }
+            });
+          }
+          break;
+      }
+
+      // Convert to array and sort by date
+      return Object.values(dateGroups).sort((a, b) => {
+        const dateA = new Date(a.date);
+        const dateB = new Date(b.date);
+        return dateA - dateB;
       });
-    } finally {
-      setIsLoading(false);
-    }
-  };
+    };
+
+    // Calculate percentage changes (simplified)
+    const revenueChange = 0; // Would need previous period data
+    const bookingsChange = 0;
+    const customersChange = 0;
+    const flightsChange = 0;
+
+    return {
+      summary: {
+        totalRevenue,
+        totalBookings,
+        totalCustomers: totalUsers,
+        totalFlights,
+        revenueChange,
+        bookingsChange,
+        customersChange,
+        flightsChange,
+      },
+      charts: {
+        revenue: generateChartData("revenue"),
+        bookings: generateChartData("bookings"),
+        customers: generateChartData("customers"),
+        flights: generateChartData("flights"),
+      },
+    };
+  }, [reportsData, dateRange, bookings, users, flights]);
+
+  const rawData = React.useMemo(
+    () => ({
+      bookings: bookings,
+      users: users,
+      flights: flights,
+    }),
+    [bookings, users, flights]
+  );
 
   const handleExportReport = (format) => {
     // Handle export functionality
@@ -350,40 +489,6 @@ const AdminReportPage = () => {
         </div>
 
         <div className="flex flex-wrap gap-2">
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button variant="outline" className="w-auto">
-                <CalendarIcon className="mr-2 h-4 w-4" />
-                {dateRange?.from &&
-                dateRange.from instanceof Date &&
-                !isNaN(dateRange.from.getTime()) ? (
-                  dateRange.to &&
-                  dateRange.to instanceof Date &&
-                  !isNaN(dateRange.to.getTime()) ? (
-                    <>
-                      {format(dateRange.from, "dd/MM/yyyy")} -{" "}
-                      {format(dateRange.to, "dd/MM/yyyy")}
-                    </>
-                  ) : (
-                    format(dateRange.from, "dd/MM/yyyy")
-                  )
-                ) : (
-                  <span>Chọn ngày</span>
-                )}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="start">
-              <Calendar
-                initialFocus
-                mode="range"
-                defaultMonth={dateRange?.from}
-                selected={dateRange}
-                onSelect={setDateRange}
-                numberOfMonths={2}
-              />
-            </PopoverContent>
-          </Popover>
-
           <Select value={period} onValueChange={setPeriod}>
             <SelectTrigger className="w-[140px]">
               <SelectValue placeholder="Chọn khoảng thời gian" />
@@ -396,191 +501,267 @@ const AdminReportPage = () => {
             </SelectContent>
           </Select>
 
+          {showCustomDatePicker && (
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" className="w-auto">
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {dateRange?.from &&
+                  dateRange.from instanceof Date &&
+                  !isNaN(dateRange.from.getTime()) ? (
+                    dateRange.to &&
+                    dateRange.to instanceof Date &&
+                    !isNaN(dateRange.to.getTime()) ? (
+                      <>
+                        {format(dateRange.from, "dd/MM/yyyy")} -{" "}
+                        {format(dateRange.to, "dd/MM/yyyy")}
+                      </>
+                    ) : (
+                      format(dateRange.from, "dd/MM/yyyy")
+                    )
+                  ) : (
+                    <span>Chọn ngày</span>
+                  )}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                  initialFocus
+                  mode="range"
+                  defaultMonth={dateRange?.from}
+                  selected={dateRange}
+                  onSelect={setDateRange}
+                  numberOfMonths={2}
+                />
+              </PopoverContent>
+            </Popover>
+          )}
+
           <Button
             onClick={fetchReportData}
             disabled={isLoading}
             variant="outline"
+            className="relative"
           >
             <RefreshCw
               className={cn("h-4 w-4 mr-2", isLoading && "animate-spin")}
             />
-            Làm Mới
+            {isLoading ? "Đang tải..." : "Làm Mới"}
+            {reportsData?.loadTime && (
+              <Badge variant="secondary" className="ml-2 text-xs">
+                {reportsData.loadTime.toFixed(0)}ms
+              </Badge>
+            )}
           </Button>
 
-          <Button onClick={() => handleExportReport("excel")}>
-            <Download className="h-4 w-4 mr-2" />
-            Xuất Báo Cáo
-          </Button>
+          {/* Performance indicator */}
+          {reportsData?.loadTime && (
+            <div className="text-xs text-muted-foreground">
+              ⚡ {reportsData.loadTime.toFixed(0)}ms
+              {reportType && ` (${reportType} tab)`}
+            </div>
+          )}
         </div>
-      </div>
-
-      {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Tổng Doanh Thu
-            </CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {formatCurrency(reportData.summary.totalRevenue)}
-            </div>
-            <div className="flex items-center text-xs text-muted-foreground">
-              {reportData.summary.revenueChange > 0 ? (
-                <TrendingUp className="h-3 w-3 text-green-500 mr-1" />
-              ) : (
-                <TrendingDown className="h-3 w-3 text-red-500 mr-1" />
-              )}
-              <span
-                className={
-                  reportData.summary.revenueChange > 0
-                    ? "text-green-500"
-                    : "text-red-500"
-                }
-              >
-                {Math.abs(reportData.summary.revenueChange)}%
-              </span>
-              <span className="ml-1">so với tháng trước</span>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Tổng Đặt Vé</CardTitle>
-            <Activity className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {formatNumber(reportData.summary.totalBookings)}
-            </div>
-            <div className="flex items-center text-xs text-muted-foreground">
-              {reportData.summary.bookingsChange > 0 ? (
-                <TrendingUp className="h-3 w-3 text-green-500 mr-1" />
-              ) : (
-                <TrendingDown className="h-3 w-3 text-red-500 mr-1" />
-              )}
-              <span
-                className={
-                  reportData.summary.bookingsChange > 0
-                    ? "text-green-500"
-                    : "text-red-500"
-                }
-              >
-                {Math.abs(reportData.summary.bookingsChange)}%
-              </span>
-              <span className="ml-1">so với tháng trước</span>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Khách Hàng</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {formatNumber(reportData.summary.totalCustomers)}
-            </div>
-            <div className="flex items-center text-xs text-muted-foreground">
-              {reportData.summary.customersChange > 0 ? (
-                <TrendingUp className="h-3 w-3 text-green-500 mr-1" />
-              ) : (
-                <TrendingDown className="h-3 w-3 text-red-500 mr-1" />
-              )}
-              <span
-                className={
-                  reportData.summary.customersChange > 0
-                    ? "text-green-500"
-                    : "text-red-500"
-                }
-              >
-                {Math.abs(reportData.summary.customersChange)}%
-              </span>
-              <span className="ml-1">so với tháng trước</span>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Chuyến Bay</CardTitle>
-            <Plane className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {formatNumber(reportData.summary.totalFlights)}
-            </div>
-            <div className="flex items-center text-xs text-muted-foreground">
-              {reportData.summary.flightsChange > 0 ? (
-                <TrendingUp className="h-3 w-3 text-green-500 mr-1" />
-              ) : (
-                <TrendingDown className="h-3 w-3 text-red-500 mr-1" />
-              )}
-              <span
-                className={
-                  reportData.summary.flightsChange > 0
-                    ? "text-green-500"
-                    : "text-red-500"
-                }
-              >
-                {Math.abs(reportData.summary.flightsChange)}%
-              </span>
-              <span className="ml-1">so với tháng trước</span>
-            </div>
-          </CardContent>
-        </Card>
       </div>
 
       {/* Main Content */}
       <Tabs
         value={reportType}
-        onValueChange={setReportType}
+        onValueChange={handleTabChange}
         className="space-y-6"
       >
-        <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="overview">Tổng Quan</TabsTrigger>
-          <TabsTrigger value="revenue">Doanh Thu</TabsTrigger>
-          <TabsTrigger value="bookings">Đặt Vé</TabsTrigger>
-          <TabsTrigger value="customers">Khách Hàng</TabsTrigger>
+        <TabsList className="grid w-full grid-cols-5">
+          <TabsTrigger value="overview" className="relative">
+            Tổng Quan
+            {overviewQuery.isLoading && (
+              <RefreshCw className="h-3 w-3 ml-1 animate-spin" />
+            )}
+          </TabsTrigger>
+          <TabsTrigger value="revenue" className="relative">
+            Doanh Thu
+            {revenueQuery.isLoading && (
+              <RefreshCw className="h-3 w-3 ml-1 animate-spin" />
+            )}
+          </TabsTrigger>
+          <TabsTrigger value="bookings" className="relative">
+            Đặt Vé
+            {bookingsQuery.isLoading && (
+              <RefreshCw className="h-3 w-3 ml-1 animate-spin" />
+            )}
+          </TabsTrigger>
+          <TabsTrigger value="customers" className="relative">
+            Khách Hàng
+            {customersQuery.isLoading && (
+              <RefreshCw className="h-3 w-3 ml-1 animate-spin" />
+            )}
+          </TabsTrigger>
+          <TabsTrigger value="flights" className="relative">
+            Chuyến Bay
+            {flightsQuery.isLoading && (
+              <RefreshCw className="h-3 w-3 ml-1 animate-spin" />
+            )}
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="space-y-6">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <RevenueChart
-              bookings={rawData.bookings}
-              isLoading={isLoading}
+          {/* Header với nút xuất file */}
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <div>
+              <h2 className="text-2xl font-bold text-gray-900">
+                Tổng Quan Toàn Diện
+              </h2>
+              <p className="text-gray-600">
+                Báo cáo tổng hợp tất cả dữ liệu kinh doanh
+              </p>
+            </div>
+            <OverviewExportButton
+              rawData={reportsData}
+              processedData={reportData.charts.revenue}
               dateRange={dateRange}
-            />
-            <BookingChart
-              bookings={rawData.bookings}
-              isLoading={isLoading}
-              dateRange={dateRange}
-            />
-            <CustomerChart
-              users={rawData.users}
-              isLoading={isLoading}
-              dateRange={dateRange}
-            />
-            <FlightChart
-              flights={rawData.flights}
-              isLoading={isLoading}
-              dateRange={dateRange}
+              variant="default"
+              size="default"
             />
           </div>
-          <ReportTable
-            type="overview"
-            dateRange={dateRange}
-            realData={rawData}
-          />
+
+          {/* Summary Cards - inline overview cards */}
+          {isLoading ? (
+            <ReportSkeleton type="summary" />
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              {/* Total Bookings Card */}
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">
+                    Tổng Đặt Vé
+                  </CardTitle>
+                  <BarChart3 className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">
+                    {formatNumberVN(bookings?.length || 0)}
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {dateRange?.from && dateRange?.to
+                      ? `Từ ${format(dateRange.from, "dd/MM")} - ${format(
+                          dateRange.to,
+                          "dd/MM"
+                        )}`
+                      : "Tất cả thời gian"}
+                  </p>
+                </CardContent>
+              </Card>
+
+              {/* Total Revenue Card */}
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">
+                    Tổng Doanh Thu
+                  </CardTitle>
+                  <TrendingUp className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">
+                    {formatCurrencyVND(
+                      bookings?.reduce(
+                        (sum, b) => sum + (b.totalAmount || b.totalPrice || 0),
+                        0
+                      ) || 0
+                    )}
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Doanh thu từ đặt vé
+                  </p>
+                </CardContent>
+              </Card>
+
+              {/* Total Customers Card */}
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">
+                    Tổng Khách Hàng
+                  </CardTitle>
+                  <PieChart className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">
+                    {formatNumberVN(users?.length || 0)}
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Người dùng đã đăng ký
+                  </p>
+                </CardContent>
+              </Card>
+
+              {/* Total Flights Card */}
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">
+                    Tổng Chuyến Bay
+                  </CardTitle>
+                  <Download className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">
+                    {formatNumberVN(flights?.length || 0)}
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Chuyến bay đã lên lịch
+                  </p>
+                </CardContent>
+              </Card>
+            </div>
+          )}
+
+          {isLoading ? (
+            <div className="space-y-6">
+              <ReportSkeleton />
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <ReportSkeleton />
+                <ReportSkeleton />
+              </div>
+            </div>
+          ) : (
+            <>
+              {/* Biểu đồ tổng quan */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <RevenueChart
+                  bookings={rawData.bookings}
+                  processedData={reportsData?.chartData}
+                  isLoading={false}
+                  dateRange={dateRange}
+                />
+                <BookingChart
+                  bookings={bookings}
+                  isLoading={false}
+                  dateRange={dateRange}
+                />
+              </div>
+
+              {/* Thêm biểu đồ khách hàng và chuyến bay */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <CustomerChart
+                  users={reportsData?.users || []}
+                  isLoading={false}
+                  dateRange={dateRange}
+                />
+                <FlightChart
+                  flights={reportsData?.flights || []}
+                  isLoading={false}
+                  dateRange={dateRange}
+                />
+              </div>
+
+              {/* Summary Cards for Overview Tab */}
+            </>
+          )}
         </TabsContent>
 
         <TabsContent value="revenue" className="space-y-6">
+          {/* Các thẻ thông tin doanh thu bổ sung */}
+
           <RevenueChart
-            bookings={rawData.bookings}
+            bookings={bookings}
+            processedData={reportsData?.chartData}
             isLoading={isLoading}
             detailed={true}
             dateRange={dateRange}
@@ -589,6 +770,7 @@ const AdminReportPage = () => {
             type="revenue"
             dateRange={dateRange}
             realData={rawData}
+            isLoading={isLoading}
           />
         </TabsContent>
 
@@ -603,6 +785,7 @@ const AdminReportPage = () => {
             type="bookings"
             dateRange={dateRange}
             realData={rawData}
+            isLoading={isLoading}
           />
         </TabsContent>
 
@@ -617,6 +800,22 @@ const AdminReportPage = () => {
             type="customers"
             dateRange={dateRange}
             realData={rawData}
+            isLoading={isLoading}
+          />
+        </TabsContent>
+
+        <TabsContent value="flights" className="space-y-6">
+          <FlightChart
+            flights={rawData.flights}
+            isLoading={isLoading}
+            detailed={true}
+            dateRange={dateRange}
+          />
+          <ReportTable
+            type="flights"
+            dateRange={dateRange}
+            realData={rawData}
+            isLoading={isLoading}
           />
         </TabsContent>
       </Tabs>

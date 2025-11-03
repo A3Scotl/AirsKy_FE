@@ -35,7 +35,7 @@ import PaymentTable from "@/components/admin/payments/payment-table"; // Giữ l
 import PaymentDetailsModal from "@/components/admin/payments/payment-details-modal"; // Giữ lại
 import RefundModal from "@/components/admin/payments/payment-refund-modal"; // Giữ lại
 import PaymentMethods from "@/components/admin/payments/payment-methods";
-import ExportButton from "@/components/common/export-button";
+
 import { paymentApi } from "@/apis/payment-api";
 import { formatCurrencyVND } from "@/utils/currency-utils";
 import { toast } from "sonner";
@@ -135,14 +135,19 @@ const AdminPaymentPage = () => {
 
     // Calculate totals
     const totalRevenue = paymentsData
-      .filter((p) => p.status === "SUCCESS")
-      .reduce((sum, p) => sum + (p.amount || 0), 0);
+      .filter((p) => p.status === "COMPLETED")
+      .reduce((sum, p) => sum + (p.amount || p.totalAmount || 0), 0);
 
     const totalTransactions = paymentsData.length;
 
     const successfulTransactions = paymentsData.filter(
-      (p) => p.status === "SUCCESS"
+      (p) => p.status === "COMPLETED"
     ).length;
+
+    const cancelledTransactions = paymentsData.filter(
+      (p) => p.status === "CANCELLED"
+    ).length;
+
     const successRate =
       totalTransactions > 0
         ? (successfulTransactions / totalTransactions) * 100
@@ -154,25 +159,31 @@ const AdminPaymentPage = () => {
     // Calculate pending and refunded amounts
     const pendingAmount = paymentsData
       .filter((p) => p.status === "PENDING")
-      .reduce((sum, p) => sum + (p.amount || 0), 0);
+      .reduce((sum, p) => sum + (p.amount || p.totalAmount || 0), 0);
 
     const refundedAmount = paymentsData
       .filter((p) => p.status === "REFUNDED")
-      .reduce((sum, p) => sum + (p.amount || 0), 0);
+      .reduce((sum, p) => sum + (p.amount || p.totalAmount || 0), 0);
+
+    const cancelledAmount = paymentsData
+      .filter((p) => p.status === "CANCELLED")
+      .reduce((sum, p) => sum + (p.amount || p.totalAmount || 0), 0);
 
     // Calculate growth rates (simplified - comparing with previous period)
     const todayRevenue = paymentsData
-      .filter((p) => p.status === "SUCCESS" && new Date(p.paymentDate) >= today)
-      .reduce((sum, p) => sum + (p.amount || 0), 0);
+      .filter(
+        (p) => p.status === "COMPLETED" && new Date(p.paymentDate) >= today
+      )
+      .reduce((sum, p) => sum + (p.amount || p.totalAmount || 0), 0);
 
     const yesterdayRevenue = paymentsData
       .filter(
         (p) =>
-          p.status === "SUCCESS" &&
+          p.status === "COMPLETED" &&
           new Date(p.paymentDate) >= yesterday &&
           new Date(p.paymentDate) < today
       )
-      .reduce((sum, p) => sum + (p.amount || 0), 0);
+      .reduce((sum, p) => sum + (p.amount || p.totalAmount || 0), 0);
 
     const dailyGrowth =
       yesterdayRevenue > 0
@@ -182,9 +193,9 @@ const AdminPaymentPage = () => {
     // Calculate monthly growth (compare same period)
     const thisMonthRevenue = paymentsData
       .filter(
-        (p) => p.status === "SUCCESS" && new Date(p.paymentDate) >= thisMonth
+        (p) => p.status === "COMPLETED" && new Date(p.paymentDate) >= thisMonth
       )
-      .reduce((sum, p) => sum + (p.amount || 0), 0);
+      .reduce((sum, p) => sum + (p.amount || p.totalAmount || 0), 0);
 
     // For fair comparison, calculate last month revenue for the same number of days
     const daysIntoMonth = now.getDate();
@@ -199,12 +210,12 @@ const AdminPaymentPage = () => {
       .filter((p) => {
         const paymentDate = new Date(p.paymentDate);
         return (
-          p.status === "SUCCESS" &&
+          p.status === "COMPLETED" &&
           paymentDate >= lastMonthStart &&
           paymentDate <= lastMonthEnd
         );
       })
-      .reduce((sum, p) => sum + (p.amount || 0), 0);
+      .reduce((sum, p) => sum + (p.amount || p.totalAmount || 0), 0);
 
     const monthlyGrowth =
       lastMonthRevenue > 0
@@ -220,6 +231,8 @@ const AdminPaymentPage = () => {
       monthlyGrowth,
       pendingAmount,
       refundedAmount,
+      cancelledAmount,
+      cancelledTransactions,
       currentMonth,
       currentYear,
       previousMonth,
@@ -300,12 +313,12 @@ const AdminPaymentPage = () => {
             />
             <span>Làm mới</span>
           </Button>
-          <ExportButton entity="payments" />
+   
         </div>
       </div>
 
       {/* Quick Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
         <Card>
           <CardContent className="flex items-center p-6">
             <div className="flex items-center space-x-4">
@@ -371,20 +384,16 @@ const AdminPaymentPage = () => {
         <Card>
           <CardContent className="flex items-center p-6">
             <div className="flex items-center space-x-4">
-              <div className="bg-orange-100 p-3 rounded-full">
-                <Users className="h-6 w-6 text-orange-600" />
+              <div className="bg-red-100 p-3 rounded-full">
+                <Users className="h-6 w-6 text-red-600" />
               </div>
               <div>
-                <p className="text-xs text-orange-600">
-                  <div>
-                    <p className="text-2xl font-bold">
-                      {formatCurrencyVND(paymentStats.pendingAmount)}
-                    </p>
-                    <p className="text-xs text-gray-500"> Tiền đang chờ</p>
-                    <p className="text-xs text-orange-600">
-                      {formatCurrencyVND(paymentStats.refundedAmount)} hoàn tiền
-                    </p>
-                  </div>
+                <p className="text-2xl font-bold text-red-600">
+                  {formatCurrencyVND(paymentStats.cancelledAmount)}
+                </p>
+                <p className="text-xs text-gray-500">Đã hủy</p>
+                <p className="text-xs text-red-600">
+                  {paymentStats.cancelledTransactions} giao dịch
                 </p>
               </div>
             </div>
@@ -414,9 +423,10 @@ const AdminPaymentPage = () => {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Tất cả</SelectItem>
-                <SelectItem value="SUCCESS">Thành công</SelectItem>
+                <SelectItem value="COMPLETED">Thành công</SelectItem>
                 <SelectItem value="PENDING">Đang chờ</SelectItem>
                 <SelectItem value="REFUNDED">Đã hoàn tiền</SelectItem>
+                <SelectItem value="CANCELLED">Đã hủy</SelectItem>
               </SelectContent>
             </Select>
 
@@ -426,7 +436,7 @@ const AdminPaymentPage = () => {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Tất cả</SelectItem>
-                <SelectItem value="CREDIT_CARD">Thẻ tín dụng</SelectItem>
+                {/* <SelectItem value="CREDIT_CARD">Thẻ tín dụng</SelectItem> */}
                 <SelectItem value="BANK_TRANSFER">Chuyển khoản</SelectItem>
                 <SelectItem value="PAYPAL">PayPal</SelectItem>
               </SelectContent>
@@ -494,27 +504,42 @@ const AdminPaymentPage = () => {
       </Card>
 
       {/* Main Content Tabs */}
-      <div className="space-y-6">
-        <Card>
-          <CardHeader>
-            <CardTitle>Tất cả giao dịch</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <PaymentTable
-              searchTerm={searchTerm}
-              statusFilter={statusFilter}
-              methodFilter={methodFilter}
-              dateRange={dateRange}
-              startDate={startDate}
-              endDate={endDate}
-              refreshKey={refreshKey}
-              onViewDetails={handleViewDetails}
-              onRefund={handleRefund}
-              showActions={true}
-            />
-          </CardContent>
-        </Card>
-      </div>
+      <Tabs defaultValue="table" className="space-y-6">
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="table">Bảng giao dịch</TabsTrigger>
+          <TabsTrigger value="analytics">Phân tích</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="table" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Tất cả giao dịch</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <PaymentTable
+                searchTerm={searchTerm}
+                statusFilter={statusFilter}
+                methodFilter={methodFilter}
+                dateRange={dateRange}
+                startDate={startDate}
+                endDate={endDate}
+                refreshKey={refreshKey}
+                onViewDetails={handleViewDetails}
+                onRefund={handleRefund}
+                showActions={true}
+              />
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="analytics" className="space-y-6">
+          <PaymentAnalytics
+            dateRange={dateRange}
+            startDate={startDate}
+            endDate={endDate}
+          />
+        </TabsContent>
+      </Tabs>
 
       {/* Modals */}
       <PaymentDetailsModal
@@ -533,4 +558,3 @@ const AdminPaymentPage = () => {
 };
 
 export default AdminPaymentPage;
- 

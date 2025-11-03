@@ -25,7 +25,6 @@ const RichTextEditor = ({
       "bold",
       "italic",
       "underline",
-      "strikethrough",
       "|",
       "bulletedList",
       "numberedList",
@@ -41,16 +40,6 @@ const RichTextEditor = ({
       "|",
       "undo",
       "redo",
-      "|",
-      "alignment",
-      "fontColor",
-      "fontBackgroundColor",
-      "|",
-      "code",
-      "codeBlock",
-      "|",
-      "horizontalLine",
-      "pageBreak",
     ],
     placeholder: placeholder,
     image: {
@@ -147,8 +136,8 @@ const RichTextEditor = ({
             if (editorElement) {
               editorElement.style.minHeight = "250px";
               editorElement.style.padding = "16px";
-              editorElement.style.fontSize = "14px";
-              editorElement.style.lineHeight = "1.5";
+              editorElement.style.fontSize = "13px";
+              editorElement.style.lineHeight = "1.6";
             }
           }}
           onChange={(event, editor) => {

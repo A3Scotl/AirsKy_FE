@@ -184,9 +184,7 @@ const normalizeFlightData = (flight) => {
         aircraftCode: leg.aircraft?.aircraftCode || null,
         flightTravelClasses: (leg.flightTravelClasses || []).map((tc) => ({
           ...tc,
-          availableSeats: tc.capacity
-            ? tc.capacity - (tc.bookedSeat || 0)
-            : tc.availableSeats || 0,
+          availableSeats: tc.availableSeats || 0,
         })),
       })),
       totalPrice: flight.totalPrice || flight.price || 0,
@@ -229,9 +227,7 @@ const normalizeFlightData = (flight) => {
       // Use first leg's travel classes as primary
       flightTravelClasses: (firstLeg.flightTravelClasses || []).map((tc) => ({
         ...tc,
-        availableSeats: tc.capacity
-          ? tc.capacity - (tc.bookedSeat || 0)
-          : tc.availableSeats || 0,
+        availableSeats: tc.availableSeats || 0,
       })),
 
       // Status and availability (use minimum across all legs)
@@ -470,9 +466,7 @@ const normalizeFlightData = (flight) => {
       // Travel classes
       flightTravelClasses: (outbound.flightTravelClasses || []).map((tc) => ({
         ...tc,
-        availableSeats: tc.capacity
-          ? tc.capacity - (tc.bookedSeat || 0)
-          : tc.availableSeats || 0,
+        availableSeats: tc.availableSeats || 0,
       })),
 
       // Status and availability
@@ -586,8 +580,7 @@ const normalizeFlightData = (flight) => {
               : 0),
       availableSeatsByClass:
         flight.flightTravelClasses?.reduce((acc, tc) => {
-          acc[tc.travelClass?.className || "Unknown"] =
-            tc.capacity - (tc.bookedSeat || 0);
+          acc[tc.travelClass?.className || "Unknown"] = tc.availableSeats || 0;
           return acc;
         }, {}) || {},
 
@@ -614,9 +607,7 @@ const normalizeFlightData = (flight) => {
         flight.flightTravelClasses && flight.flightTravelClasses.length > 0
           ? flight.flightTravelClasses.map((tc) => ({
               ...tc,
-              availableSeats: tc.capacity
-                ? tc.capacity - (tc.bookedSeat || 0)
-                : tc.availableSeats || 0,
+              availableSeats: tc.availableSeats || 0,
             }))
           : [],
 
@@ -711,7 +702,6 @@ const FareOption = ({
         borderColor: "border-purple-200",
         selectedBg: "bg-gradient-to-br from-purple-100 to-indigo-100",
         accentColor: "text-purple-700",
-        icon: "✈️",
       };
     if (isBusiness)
       return {
@@ -719,14 +709,12 @@ const FareOption = ({
         borderColor: "border-blue-200",
         selectedBg: "bg-gradient-to-br from-blue-100 to-cyan-100",
         accentColor: "text-blue-700",
-        icon: "💼",
       };
     return {
       bgColor: "bg-gradient-to-br from-green-50 to-emerald-50",
       borderColor: "border-green-200",
       selectedBg: "bg-gradient-to-br from-green-100 to-emerald-100",
       accentColor: "text-green-700",
-      icon: "🪑",
     };
   };
 
@@ -744,7 +732,6 @@ const FareOption = ({
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-2">
-            <span className="text-2xl">{styling.icon}</span>
             <CardTitle className={`text-xl font-bold ${styling.accentColor}`}>
               {fare.travelClass?.className || "N/A"}
             </CardTitle>

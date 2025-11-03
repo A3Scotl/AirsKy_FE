@@ -117,7 +117,7 @@ export default function MyFlightsPage() {
     switch (currentStep) {
       case "search":
         return (
-          <div className="w-full space-y-4">
+          <div className="space-y-4">
             {/* Show success message for Pay Later bookings */}
             {state?.paymentPending && state?.bookingCode && (
               <Card className="border-green-200 bg-green-50">

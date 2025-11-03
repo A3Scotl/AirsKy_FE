@@ -20,8 +20,7 @@ import {
 } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import ExportButton from "@/components/common/export-button";
-import { getEntityExportConfig } from "@/utils/export-config";
+
 
 const AdminBlogPage = () => {
   const [blogs, setBlogs] = useState([]);
@@ -97,7 +96,13 @@ const AdminBlogPage = () => {
   };
 
   const handleEditBlog = (blogId, blogData) => {
-    fetchBlogs(); // Refresh data after successful edit
+    if (blogData?.bulkUpdate && blogData?.updatedBlogs) {
+      // Handle bulk update
+      setBlogs(blogData.updatedBlogs);
+    } else {
+      // Handle single blog update
+      fetchBlogs(); // Refresh data after successful edit
+    }
   };
 
   const handleDeleteBlog = (blogId) => {
@@ -199,7 +204,7 @@ const AdminBlogPage = () => {
             <RefreshCw className="h-4 w-4 mr-2" />
             Làm mới
           </Button>
-          <ExportButton entity="blogs" />
+   
         </div>
       </div>
       {/* Stats Cards */}
@@ -282,9 +287,9 @@ const AdminBlogPage = () => {
         onAdd={handleAddBlog}
         onEdit={handleEditBlog}
         onDelete={handleDeleteBlog}
+        onRefresh={fetchBlogs}
         loading={loading}
       />
-      
     </div>
   );
 };

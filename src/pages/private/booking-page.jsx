@@ -33,7 +33,7 @@ import Pagination from "@/components/ui/pagination";
 import { Skeleton } from "@/components/ui/skeleton";
 import { bookingFilters } from "@/utils/filter-configs";
 import { toast } from "sonner";
-import ExportButton from "@/components/common/export-button";
+
 
 // Import modal components
 import BookingDetailsModal from "@/components/admin/bookings/booking-details-modal";
@@ -324,8 +324,8 @@ const AdminBookings = () => {
               />
             </div>
 
-            {/* Export Button */}
-            <ExportButton entity="bookings" />
+     
+     
           </div>
 
           {/* Bookings Table */}

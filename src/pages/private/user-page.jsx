@@ -55,7 +55,7 @@ import { loyaltyApi } from "@/apis/loyalty-api";
 import { toast } from "sonner";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/contexts/auth-context";
-import ExportButton from "@/components/common/export-button";
+
 
 const AdminUsers = () => {
   const { user: currentUser } = useAuth();
@@ -543,8 +543,7 @@ const AdminUsers = () => {
             <RotateCcw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
             Làm mới
           </Button>
-          {/* button export file */}
-          <ExportButton entity="users" />
+   
           <Button onClick={handleAddUser} className="flex items-center gap-2 ">
             <Plus className="h-4 w-4 mr-2" />
             Thêm người dùng

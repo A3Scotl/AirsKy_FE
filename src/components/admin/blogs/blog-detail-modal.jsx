@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/dialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
+import "@/components/ui/ckeditor-theme.css";
 
 const BlogDetailModal = ({ open, onClose, blog }) => {
   if (!blog) return null;
@@ -148,7 +149,7 @@ const BlogDetailModal = ({ open, onClose, blog }) => {
             </CardHeader>
             <CardContent>
               <div
-                className="prose prose-sm max-w-none"
+                className="blog-content"
                 dangerouslySetInnerHTML={{ __html: blog.content }}
               />
             </CardContent>

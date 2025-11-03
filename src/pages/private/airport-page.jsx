@@ -41,7 +41,7 @@ import Pagination from "@/components/ui/pagination";
 import { airportApi } from "@/apis/airport-api";
 import { countryApi } from "@/apis/country-api";
 import { toast } from "sonner";
-import ExportButton from "@/components/common/export-button";
+
 
 // TanStack Table imports
 import {
@@ -502,9 +502,14 @@ const AirportPage = () => {
 
     toast.promise(
       async () => {
+        console.log("Submitting airport data:", formData);
+        console.log("Is update:", isUpdate, "Airport ID:", editData?.airportId);
+
         const response = isUpdate
           ? await airportApi.updateAirport(editData.airportId, formData)
           : await airportApi.createAirport(formData);
+
+        console.log("API Response:", response);
 
         if (response.success) {
           setModalOpen(false);
@@ -518,7 +523,10 @@ const AirportPage = () => {
           }
           return response;
         } else {
-          throw new Error(response.message);
+          console.error("API Error:", response);
+          throw new Error(
+            response.message || "API returned unsuccessful response"
+          );
         }
       },
       {
@@ -556,7 +564,7 @@ const AirportPage = () => {
             <RotateCcw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
             Làm mới
           </Button>
-          <ExportButton entity="airports" />
+   
           <Button onClick={handleAdd}>Thêm sân bay</Button>
         </div>
       </div>

@@ -93,7 +93,6 @@ export function FlightFilters({ filters, onFiltersChange, onReset }) {
     fetchAirlines();
   };
 
-
   // Fallback mock data if API fails
   const mockAirlines = [
     "VietJet Air",
@@ -107,7 +106,6 @@ export function FlightFilters({ filters, onFiltersChange, onReset }) {
     "Qatar Airways",
     "Bamboo Airways",
   ];
-
 
   // Use API data if available, otherwise fallback to mock data
   const airlinesList = airlines.length > 0 ? airlines : mockAirlines;
@@ -375,109 +373,6 @@ export function FlightFilters({ filters, onFiltersChange, onReset }) {
             </div>
           </div>
         </div>
-
-        {/* Airlines */}
-        <div>
-          <Label className="text-xs sm:text-sm font-medium mb-2 sm:mb-3 block">
-            Hãng hàng không
-          </Label>
-          {loading.airlines ? (
-            <div className="flex items-center justify-center py-4">
-              <Loader2 className="w-4 h-4 animate-spin mr-2" />
-              <span className="text-xs text-gray-500">Đang tải...</span>
-            </div>
-          ) : error.airlines ? (
-            <div className="text-xs text-red-500 py-2">
-              <div>Lỗi: {error.airlines}</div>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={retryFetchAirlines}
-                className="text-xs text-blue-600 hover:text-blue-800 mt-1 h-6"
-              >
-                Thử lại
-              </Button>
-            </div>
-          ) : (
-            <>
-              {/* Search input for airlines if list is long */}
-              {airlinesList.length > 10 && (
-                <input
-                  type="text"
-                  placeholder="Tìm hãng hàng không..."
-                  value={airlineSearch}
-                  onChange={(e) => setAirlineSearch(e.target.value)}
-                  className="w-full px-2 py-1 mb-2 text-xs border rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
-                />
-              )}
-              <div className="space-y-1 sm:space-y-2 max-h-32 sm:max-h-48 overflow-y-auto">
-                {filteredAirlines.map((airline) => {
-                  // Handle both API data (object) and mock data (string)
-                  const airlineValue =
-                    typeof airline === "object" ? airline.airlineName : airline;
-                  const airlineKey =
-                    typeof airline === "object"
-                      ? airline.airlineId || airline.airlineName
-                      : airline;
-
-                  return (
-                    <div
-                      key={airlineKey}
-                      className="flex items-center space-x-2"
-                    >
-                      <Checkbox
-                        id={airlineKey}
-                        checked={filters.airlines.includes(airlineValue)}
-                        onCheckedChange={(checked) =>
-                          handleAirlineChange(airlineValue, checked)
-                        }
-                        className="h-3 w-3 sm:h-4 sm:w-4"
-                      />
-                      <Label
-                        htmlFor={airlineKey}
-                        className="text-xs sm:text-sm font-normal"
-                      >
-                        {airlineValue}
-                      </Label>
-                    </div>
-                  );
-                })}
-                {filteredAirlines.length === 0 && airlineSearch && (
-                  <div className="text-xs text-gray-500 py-2">
-                    Không tìm thấy hãng hàng không nào
-                  </div>
-                )}
-              </div>
-            </>
-          )}
-        </div>
-
-        {/* Stops */}
-        {/* <div>
-          <Label className="text-xs sm:text-sm font-medium mb-2 sm:mb-3 block">
-            Số điểm dừng
-          </Label>
-          <div className="space-y-1 sm:space-y-2">
-            {stopsOptions.map((stop) => (
-              <div key={stop.value} className="flex items-center space-x-2">
-                <Checkbox
-                  id={stop.value}
-                  checked={(filters.stops || []).includes(stop.value)}
-                  onCheckedChange={(checked) =>
-                    handleStopsChange(stop.value, checked)
-                  }
-                  className="h-3 w-3 sm:h-4 sm:w-4"
-                />
-                <Label
-                  htmlFor={stop.value}
-                  className="text-xs sm:text-sm font-normal"
-                >
-                  {stop.label}
-                </Label>
-              </div>
-            ))}
-          </div>
-        </div> */}
 
         {/* Departure Time */}
         <div>

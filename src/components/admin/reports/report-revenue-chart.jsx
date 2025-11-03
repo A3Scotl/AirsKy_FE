@@ -48,7 +48,21 @@ ChartJS.register(
   Filler
 );
 
-const RevenueChart = ({ bookings, isLoading, detailed = false, dateRange }) => {
+const RevenueChart = ({
+  bookings,
+  processedData,
+  isLoading,
+  detailed = false,
+  dateRange,
+}) => {
+  console.log("💰 RevenueChart received data:", {
+    bookingsType: typeof bookings,
+    bookingsValue: bookings,
+    bookingsLength: bookings?.length,
+    isLoading,
+    hasBookings: Array.isArray(bookings),
+  });
+
   if (isLoading) {
     return (
       <Card className={detailed ? "col-span-full" : ""}>
@@ -57,15 +71,24 @@ const RevenueChart = ({ bookings, isLoading, detailed = false, dateRange }) => {
             <DollarSign className="h-5 w-5" />
             Phân tích doanh thu
           </CardTitle>
+          <CardDescription>Đang tải dữ liệu doanh thu...</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
+          {/* Loading skeleton for metrics */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
             {[...Array(3)].map((_, i) => (
-              <div key={i} className="animate-pulse">
-                <div className="h-4 bg-gray-200 rounded mb-2"></div>
-                <div className="h-8 bg-gray-200 rounded"></div>
+              <div key={i} className="p-4 rounded-lg border animate-pulse">
+                <div className="h-4 bg-gray-200 rounded mb-3 w-2/3"></div>
+                <div className="h-8 bg-gray-300 rounded mb-2"></div>
+                <div className="h-3 bg-gray-200 rounded w-1/2"></div>
               </div>
             ))}
+          </div>
+
+          {/* Loading skeleton for chart */}
+          <div className="space-y-4">
+            <div className="h-6 bg-gray-200 rounded w-1/3 animate-pulse"></div>
+            <div className="h-64 bg-gray-100 rounded animate-pulse flex items-center justify-center"></div>
           </div>
         </CardContent>
       </Card>
@@ -95,8 +118,22 @@ const RevenueChart = ({ bookings, isLoading, detailed = false, dateRange }) => {
 
   // Process bookings data to create chart data
   const processBookingsData = () => {
-    // Group bookings by date
+    // Use processed data from Web Worker if available
+    if (processedData?.revenue?.revenueByMonth) {
+      return processedData.revenue.revenueByMonth.map((item) => ({
+        date: item.month,
+        revenue: item.revenue,
+        bookings: 0, // Will be calculated from other data if needed
+      }));
+    }
+
+    // Fallback to manual processing
     const revenueByDate = {};
+
+    // Validate bookings is an array before forEach
+    if (!Array.isArray(bookings) || bookings.length === 0) {
+      return [];
+    }
 
     bookings.forEach((booking) => {
       const date = new Date(booking.createdAt || booking.bookingDate);
@@ -145,11 +182,57 @@ const RevenueChart = ({ bookings, isLoading, detailed = false, dateRange }) => {
         100
       : 0;
 
-  // Additional revenue metrics
+  // Enhanced revenue metrics - ACCURATE calculations
+  const totalBookings = Array.isArray(bookings) ? bookings.length : 0;
+
+  // FIX: Get actual unique customers and flights from bookings data
+  const uniqueCustomers =
+    Array.isArray(bookings) && bookings.length > 0
+      ? new Set(
+          bookings
+            .map((b) => b.userId || b.customerId || b.user?.id)
+            .filter((id) => id)
+        ).size
+      : 0;
+
+  const totalFlights =
+    Array.isArray(bookings) && bookings.length > 0
+      ? new Set(
+          bookings
+            .map((b) => b.flightId || b.flight?.id || b.outboundFlightId)
+            .filter((id) => id)
+        ).size
+      : 0;
+
+  // Key business metrics with proper validation
+  const revenuePerCustomer =
+    uniqueCustomers > 0 ? totalRevenue / uniqueCustomers : 0;
+  const revenuePerFlight = totalFlights > 0 ? totalRevenue / totalFlights : 0;
+  const avgBookingValue = totalBookings > 0 ? totalRevenue / totalBookings : 0;
+
+  // Debug metrics calculation
+  console.log("📊 Revenue Metrics Debug:", {
+    totalRevenue,
+    totalBookings,
+    uniqueCustomers,
+    totalFlights,
+    revenuePerCustomer,
+    revenuePerFlight,
+    avgBookingValue,
+    sampleBooking: bookings[0],
+    bookingKeys: bookings[0] ? Object.keys(bookings[0]) : [],
+    userIds: bookings.slice(0, 3).map((b) => ({
+      userId: b.userId,
+      customerId: b.customerId,
+      userField: b.user,
+      flightId: b.flightId,
+      flightField: b.flight,
+      outboundFlightId: b.outboundFlightId,
+    })),
+  });
+
   const revenueTarget = totalRevenue * 1.15;
   const targetAchievement = (totalRevenue / revenueTarget) * 100;
-  const avgTransactionValue =
-    totalRevenue / data.reduce((sum, d) => sum + (d.bookings || 0), 0);
 
   const formatCurrency = (amount) => formatCurrencyVND(amount, false);
 
@@ -281,38 +364,62 @@ const RevenueChart = ({ bookings, isLoading, detailed = false, dateRange }) => {
         </CardDescription>
       </CardHeader>
       <CardContent>
-        {/* Key Revenue Metrics */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-          <div className="text-center p-4 bg-green-50 rounded-lg border">
-            <div className="text-2xl font-bold text-green-600">
+        {/* Key Revenue Metrics - STREAMLINED (only 3 main metrics) */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+          <div className="p-4 rounded-lg bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200">
+            <div className="flex items-center gap-2 mb-1">
+              <DollarSign className="h-4 w-4 text-green-600" />
+              <span className="text-sm font-medium text-green-900">
+                Tổng Doanh Thu
+              </span>
+            </div>
+            <div className="text-xl font-bold text-green-800">
               {formatCurrency(totalRevenue)}
             </div>
-            <div className="text-sm text-gray-600">Tổng Doanh Thu</div>
-          </div>
-          <div className="text-center p-4 bg-blue-50 rounded-lg border">
-            <div className="text-2xl font-bold text-blue-600">
-              {formatCurrency(avgRevenue)}
-            </div>
-            <div className="text-sm text-gray-600">Trung Bình Ngày</div>
-          </div>
-          <div className="text-center p-4 bg-purple-50 rounded-lg border">
-            <div className="text-2xl font-bold text-purple-600">
-              {Math.abs(revenueGrowth).toFixed(1)}%
-            </div>
-            <div className="text-sm text-gray-600 flex items-center justify-center gap-1">
+            <div className="text-xs text-green-600 mt-1">
               {revenueGrowth > 0 ? (
-                <TrendingUp className="h-3 w-3 text-green-500" />
+                <span className="flex items-center gap-1">
+                  <TrendingUp className="h-3 w-3" />+{revenueGrowth.toFixed(1)}%
+                </span>
+              ) : revenueGrowth < 0 ? (
+                <span className="flex items-center gap-1">
+                  <TrendingDown className="h-3 w-3" />
+                  {revenueGrowth.toFixed(1)}%
+                </span>
               ) : (
-                <TrendingDown className="h-3 w-3 text-red-500" />
+                <span>Không đổi</span>
               )}
-              Tăng Trưởng
             </div>
           </div>
-          <div className="text-center p-4 bg-orange-50 rounded-lg border">
-            <div className="text-2xl font-bold text-orange-600">
-              {formatCurrency(avgTransactionValue)}
+
+          <div className="p-4 rounded-lg bg-gradient-to-r from-blue-50 to-cyan-50 border border-blue-200">
+            <div className="flex items-center gap-2 mb-1">
+              <CreditCard className="h-4 w-4 text-blue-600" />
+              <span className="text-sm font-medium text-blue-900">
+                Giá Trị Trung Bình/Vé
+              </span>
             </div>
-            <div className="text-sm text-gray-600">Giá Trị TB/Giao Dịch</div>
+            <div className="text-xl font-bold text-blue-800">
+              {formatCurrency(avgBookingValue)}
+            </div>
+            <div className="text-xs text-blue-600 mt-1">
+              {totalBookings} vé đã bán
+            </div>
+          </div>
+
+          <div className="p-4 rounded-lg bg-gradient-to-r from-purple-50 to-violet-50 border border-purple-200">
+            <div className="flex items-center gap-2 mb-1">
+              <Target className="h-4 w-4 text-purple-600" />
+              <span className="text-sm font-medium text-purple-900">
+                Hiệu Suất Bán Hàng
+              </span>
+            </div>
+            <div className="text-xl font-bold text-purple-800">
+              {formatNumber(totalBookings)}
+            </div>
+            <div className="text-xs text-purple-600 mt-1">
+              {uniqueCustomers} khách hàng • {totalFlights} chuyến bay
+            </div>
           </div>
         </div>
 
@@ -325,7 +432,11 @@ const RevenueChart = ({ bookings, isLoading, detailed = false, dateRange }) => {
               Hiệu suất doanh thu
             </h4>
             <div className="h-64 w-full">
-              <Bar data={chartData} options={chartOptions} />
+              <Bar
+                id="revenue-bar-chart"
+                data={chartData}
+                options={chartOptions}
+              />
             </div>
           </div>
 
@@ -338,68 +449,38 @@ const RevenueChart = ({ bookings, isLoading, detailed = false, dateRange }) => {
                   Phân tích xu hướng
                 </h4>
                 <div className="h-64 w-full">
-                  <Line data={trendData} options={trendOptions} />
+                  <Line
+                    id="revenue-line-chart"
+                    data={trendData}
+                    options={trendOptions}
+                  />
                 </div>
               </div>
 
-              {/* Performance Metrics */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-4">
-                  <h5 className="font-medium text-sm">Hiệu suất tài chính</h5>
-                  <div className="space-y-3">
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm flex items-center gap-2">
-                        <Target className="h-4 w-4 text-blue-500" />
-                        Mục tiêu đạt được
-                      </span>
-                      <Badge
-                        variant={
-                          targetAchievement >= 100 ? "default" : "secondary"
-                        }
+              <div className="space-y-4">
+                <h5 className="font-medium text-sm">
+                  Top doanh thu trong các ngày
+                </h5>
+                <div className="space-y-3">
+                  {data
+                    .sort((a, b) => b.revenue - a.revenue)
+                    .slice(0, 4)
+                    .map((item, index) => (
+                      <div
+                        key={index}
+                        className="flex justify-between items-center p-3 bg-gray-50 rounded-lg"
                       >
-                        {targetAchievement.toFixed(1)}%
-                      </Badge>
-                    </div>
-                    <Progress
-                      value={Math.min(targetAchievement, 100)}
-                      className="h-2"
-                    />
-
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm">Hiệu suất doanh thu</span>
-                      <Badge variant="outline">87.5%</Badge>
-                    </div>
-                    <Progress value={87.5} className="h-2" />
-                  </div>
-                </div>
-
-                <div className="space-y-4">
-                  <h5 className="font-medium text-sm">
-                    Top doanh thu trong các ngày
-                  </h5>
-                  <div className="space-y-3">
-                    {data
-                      .sort((a, b) => b.revenue - a.revenue)
-                      .slice(0, 4)
-                      .map((item, index) => (
-                        <div
-                          key={index}
-                          className="flex justify-between items-center p-3 bg-gray-50 rounded-lg"
-                        >
-                          <span className="text-sm font-medium">
-                            {item.date}
-                          </span>
-                          <div className="text-right">
-                            <div className="font-medium text-green-600">
-                              {formatCurrency(item.revenue)}
-                            </div>
-                            <div className="text-xs text-gray-500">
-                              {item.bookings || 0} bookings
-                            </div>
+                        <span className="text-sm font-medium">{item.date}</span>
+                        <div className="text-right">
+                          <div className="font-medium text-green-600">
+                            {formatCurrency(item.revenue)}
+                          </div>
+                          <div className="text-xs text-gray-500">
+                            {item.bookings || 0} bookings
                           </div>
                         </div>
-                      ))}
-                  </div>
+                      </div>
+                    ))}
                 </div>
               </div>
             </>

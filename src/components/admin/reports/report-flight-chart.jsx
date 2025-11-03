@@ -8,14 +8,12 @@ import {
 } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
-import { Bar, Radar, Doughnut } from "react-chartjs-2";
+import { Bar, Line, Doughnut } from "react-chartjs-2";
 import {
   Chart as ChartJS,
   CategoryScale,
   LinearScale,
   BarElement,
-  RadialLinearScale,
-  PointElement,
   LineElement,
   ArcElement,
   Title,
@@ -44,8 +42,6 @@ ChartJS.register(
   CategoryScale,
   LinearScale,
   BarElement,
-  RadialLinearScale,
-  PointElement,
   LineElement,
   ArcElement,
   Title,
@@ -57,7 +53,7 @@ ChartJS.register(
 const FlightChart = ({ flights, isLoading, detailed = false, dateRange }) => {
   // Process flight data from database
   const processFlightsData = () => {
-    if (!flights || flights.length === 0) {
+    if (!flights || !Array.isArray(flights) || flights.length === 0) {
       return { chartData: [], statusCounts: {}, topRoutes: [] };
     }
 
@@ -101,22 +97,39 @@ const FlightChart = ({ flights, isLoading, detailed = false, dateRange }) => {
       (a, b) => new Date(a.date) - new Date(b.date)
     );
 
-    // Calculate status counts for doughnut chart
+    // Calculate status counts for doughnut chart using correct enum values
     const statusCounts = {
-      onTime: flights.filter(
-        (f) => f.status === "completed" || f.status === "arrived"
-      ).length,
-      delayed: flights.filter((f) => f.status === "delayed").length,
-      cancelled: flights.filter((f) => f.status === "cancelled").length,
+      onTime: flights.filter((f) => f.status === "ON_TIME").length,
+      delayed: flights.filter((f) => f.status === "DELAYED").length,
+      cancelled: flights.filter((f) => f.status === "CANCELLED").length,
+      departed: flights.filter((f) => f.status === "DEPARTED").length,
     };
 
-    // Calculate top routes with real metrics
+    // Calculate top routes with real metrics and flight type analysis
     const routeCounts = {};
+    const flightTypeStats = {
+      DOMESTIC: 0,
+      INTERNATIONAL: 0,
+    };
+
     flights.forEach((flight) => {
-      const route = `${flight.departureAirport?.code || "DEP"} - ${
-        flight.arrivalAirport?.code || "ARR"
+      const route = `${
+        flight.departureAirport?.airportCode ||
+        flight.departureAirport?.code ||
+        "DEP"
+      } - ${
+        flight.arrivalAirport?.airportCode ||
+        flight.arrivalAirport?.code ||
+        "ARR"
       }`;
       routeCounts[route] = (routeCounts[route] || 0) + 1;
+
+      // Count flight types
+      if (flight.type === "DOMESTIC") {
+        flightTypeStats.DOMESTIC++;
+      } else if (flight.type === "INTERNATIONAL") {
+        flightTypeStats.INTERNATIONAL++;
+      }
     });
 
     // Get top routes with additional metrics
@@ -132,37 +145,80 @@ const FlightChart = ({ flights, isLoading, detailed = false, dateRange }) => {
             }` === route
         );
 
-        const totalPassengers = routeFlights.reduce(
-          (sum, f) => sum + (f.passengers || f.bookedSeats || 0),
-          0
-        );
-        const totalCapacity = routeFlights.reduce(
-          (sum, f) => sum + (f.totalSeats || f.capacity || 200),
-          0
-        );
+        // Calculate occupancy using correct data structure
+        const totalBookedSeats = routeFlights.reduce((sum, f) => {
+          // Sum all booked seats from flight travel classes
+          if (f.flightTravelClasses && Array.isArray(f.flightTravelClasses)) {
+            return (
+              sum +
+              f.flightTravelClasses.reduce(
+                (classSum, travelClass) =>
+                  classSum + (travelClass.bookedSeat || 0),
+                0
+              )
+            );
+          }
+          return sum + (f.bookedSeats || 0);
+        }, 0);
+
+        const totalCapacity = routeFlights.reduce((sum, f) => {
+          if (f.aircraft && f.aircraft.totalSeats) {
+            return sum + f.aircraft.totalSeats;
+          }
+          // Fallback calculation from travel classes
+          if (f.flightTravelClasses && Array.isArray(f.flightTravelClasses)) {
+            return (
+              sum +
+              f.flightTravelClasses.reduce(
+                (classSum, travelClass) =>
+                  classSum + (travelClass.capacity || 0),
+                0
+              )
+            );
+          }
+          return sum + 180; // Default capacity
+        }, 0);
+
         const occupancyRate =
           totalCapacity > 0
-            ? Math.round((totalPassengers / totalCapacity) * 100)
+            ? Math.round((totalBookedSeats / totalCapacity) * 100)
             : 0;
 
-        const totalRevenue = routeFlights.reduce(
-          (sum, f) => sum + (f.revenue || f.totalRevenue || 0),
-          0
-        );
+        // Calculate revenue from base price and flight travel classes
+        const totalRevenue = routeFlights.reduce((sum, f) => {
+          if (f.flightTravelClasses && Array.isArray(f.flightTravelClasses)) {
+            return (
+              sum +
+              f.flightTravelClasses.reduce(
+                (classSum, travelClass) =>
+                  classSum +
+                  (travelClass.price || 0) * (travelClass.bookedSeat || 0),
+                0
+              )
+            );
+          }
+          return sum + (f.basePrice || 0);
+        }, 0);
 
         return {
           route,
           flights: count,
           occupancy: occupancyRate,
           revenue: formatCurrencyVND(totalRevenue),
-          passengers: totalPassengers,
+          passengers: totalBookedSeats,
+          type: routeFlights[0]?.type || "DOMESTIC", // Add flight type info
         };
       });
 
-    return { chartData, statusCounts, topRoutes };
+    return { chartData, statusCounts, topRoutes, flightTypeStats };
   };
 
-  const { chartData: data, statusCounts, topRoutes } = processFlightsData();
+  const {
+    chartData: data,
+    statusCounts,
+    topRoutes,
+    flightTypeStats,
+  } = processFlightsData();
   if (isLoading) {
     return (
       <Card className={detailed ? "col-span-full" : ""}>
@@ -235,16 +291,36 @@ const FlightChart = ({ flights, isLoading, detailed = false, dateRange }) => {
         ).size || 18
       : 18;
 
+  // Calculate accurate occupancy rate from real flight data
   const avgOccupancyRate =
     flights && flights.length > 0
       ? Math.round(
           flights.reduce((sum, f) => {
-            const passengers = f.passengers || f.bookedSeats || 0;
-            const capacity = f.totalSeats || f.capacity || 200;
-            return sum + (capacity > 0 ? (passengers / capacity) * 100 : 0);
+            let bookedSeats = 0;
+            let totalCapacity = 0;
+
+            if (f.flightTravelClasses && Array.isArray(f.flightTravelClasses)) {
+              bookedSeats = f.flightTravelClasses.reduce(
+                (classSum, travelClass) =>
+                  classSum + (travelClass.bookedSeat || 0),
+                0
+              );
+              totalCapacity = f.flightTravelClasses.reduce(
+                (classSum, travelClass) =>
+                  classSum + (travelClass.capacity || 0),
+                0
+              );
+            } else {
+              totalCapacity = f.aircraft?.totalSeats || 180;
+            }
+
+            return (
+              sum +
+              (totalCapacity > 0 ? (bookedSeats / totalCapacity) * 100 : 0)
+            );
           }, 0) / flights.length
         )
-      : 78.5;
+      : 0;
 
   const formatNumber = (number) => formatNumberVN(number);
 
@@ -298,24 +374,84 @@ const FlightChart = ({ flights, isLoading, detailed = false, dateRange }) => {
     },
   };
 
-  // Flight Status Doughnut Chart
+  // Flight Trend Line Chart - Show flights over time
+  const routeLabels = data
+    .slice(0, detailed ? 20 : 12)
+    .map((item) => item.date);
+  const routeData = data
+    .slice(0, detailed ? 20 : 12)
+    .map((item) => item.flights);
+  const lineChartData = {
+    labels: routeLabels,
+    datasets: [
+      {
+        label: "Xu Hướng Chuyến Bay",
+        data: routeData,
+        borderColor: "#3B82F6",
+        backgroundColor: "rgba(59, 130, 246, 0.1)",
+        fill: true,
+        tension: 0.4,
+        pointRadius: 4,
+        pointHoverRadius: 6,
+      },
+    ],
+  };
+
+  const lineChartOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        display: false,
+      },
+      tooltip: {
+        callbacks: {
+          label: function (context) {
+            return `Chuyến Bay: ${formatNumber(context.parsed.y)}`;
+          },
+        },
+        backgroundColor: "rgba(0, 0, 0, 0.8)",
+      },
+    },
+    scales: {
+      y: {
+        beginAtZero: true,
+        grid: {
+          color: "rgba(0, 0, 0, 0.1)",
+        },
+      },
+      x: {
+        grid: {
+          display: false,
+        },
+        ticks: {
+          maxRotation: 45,
+        },
+      },
+    },
+  };
+
+  // Flight Status Doughnut Chart with all status types
   const statusData = {
-    labels: ["Đúng Giờ", "Trễ", "Hủy"],
+    labels: ["Đúng Giờ", "Trễ", "Đã Khởi Hành", "Hủy"],
     datasets: [
       {
         data: [
           statusCounts.onTime,
           statusCounts.delayed,
+          statusCounts.departed,
           statusCounts.cancelled,
         ],
         backgroundColor: [
           "rgba(34, 197, 94, 0.8)",
           "rgba(251, 191, 36, 0.8)",
+          "rgba(59, 130, 246, 0.8)",
           "rgba(239, 68, 68, 0.8)",
         ],
         borderColor: [
           "rgba(34, 197, 94, 1)",
           "rgba(251, 191, 36, 1)",
+          "rgba(59, 130, 246, 1)",
           "rgba(239, 68, 68, 1)",
         ],
         borderWidth: 2,
@@ -340,53 +476,6 @@ const FlightChart = ({ flights, isLoading, detailed = false, dateRange }) => {
             return `${context.label}: ${context.parsed}%`;
           },
         },
-      },
-    },
-  };
-
-  // Radar Chart for Route Performance
-  const radarData = {
-    labels: topRoutes.slice(0, 5).map((route) => route.route),
-    datasets: [
-      {
-        label: "Tần Suất Chuyến Bay",
-        data: topRoutes.slice(0, 5).map((route) => route.flights),
-        borderColor: "rgba(59, 130, 246, 1)",
-        backgroundColor: "rgba(59, 130, 246, 0.2)",
-        pointBackgroundColor: "rgba(59, 130, 246, 1)",
-        pointBorderColor: "#fff",
-        pointHoverBackgroundColor: "#fff",
-        pointHoverBorderColor: "rgba(59, 130, 246, 1)",
-      },
-      {
-        label: "Tỷ Lệ Lấp Đầy",
-        data: topRoutes.slice(0, 5).map((route) => route.occupancy),
-        borderColor: "rgba(34, 197, 94, 1)",
-        backgroundColor: "rgba(34, 197, 94, 0.2)",
-        pointBackgroundColor: "rgba(34, 197, 94, 1)",
-        pointBorderColor: "#fff",
-        pointHoverBackgroundColor: "#fff",
-        pointHoverBorderColor: "rgba(34, 197, 94, 1)",
-      },
-    ],
-  };
-
-  const radarOptions = {
-    responsive: true,
-    maintainAspectRatio: false,
-    plugins: {
-      legend: {
-        position: "bottom",
-        labels: {
-          padding: 15,
-          usePointStyle: true,
-        },
-      },
-    },
-    scales: {
-      r: {
-        beginAtZero: true,
-        max: 100,
       },
     },
   };
@@ -432,6 +521,24 @@ const FlightChart = ({ flights, isLoading, detailed = false, dateRange }) => {
             </div>
             <div className="text-sm text-gray-600">Trung Bình Ngày</div>
           </div>
+
+          {detailed && (
+            <>
+              <div className="text-center p-4 bg-indigo-50 rounded-lg border">
+                <div className="text-2xl font-bold text-indigo-600">
+                  {formatNumber(flightTypeStats.DOMESTIC)}
+                </div>
+                <div className="text-sm text-gray-600">Chuyến Nội Địa</div>
+              </div>
+
+              <div className="text-center p-4 bg-teal-50 rounded-lg border">
+                <div className="text-2xl font-bold text-teal-600">
+                  {formatNumber(flightTypeStats.INTERNATIONAL)}
+                </div>
+                <div className="text-sm text-gray-600">Chuyến Quốc Tế</div>
+              </div>
+            </>
+          )}
         </div>
 
         {/* Charts Section */}
@@ -443,189 +550,43 @@ const FlightChart = ({ flights, isLoading, detailed = false, dateRange }) => {
               Hoạt Động Chuyến Bay
             </h4>
             <div className="h-64 w-full">
-              <Bar data={barChartData} options={barChartOptions} />
+              <Bar
+                id="flights-bar-chart"
+                data={barChartData}
+                options={barChartOptions}
+              />
             </div>
           </div>
 
-          {/* Flight Performance Charts */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Flight Status Distribution */}
-            <div className="space-y-3">
-              <h5 className="font-medium text-sm">
-                Phân Bổ Trạng Thái Chuyến Bay
-              </h5>
-              <div className="h-64 w-full">
-                <Doughnut data={statusData} options={statusOptions} />
-              </div>
-            </div>
-
-            {/* Route Performance Radar */}
-            {detailed && (
-              <div className="space-y-3">
-                <h5 className="font-medium text-sm">
-                  Phân Tích Hiệu Suất Tuyến Bay
-                </h5>
-                <div className="h-64 w-full">
-                  <Radar data={radarData} options={radarOptions} />
-                </div>
-              </div>
-            )}
-
-            {/* Top Routes (shown when not detailed or as second chart when detailed) */}
-            {!detailed && (
-              <div className="space-y-3">
-                <h5 className="font-medium text-sm">Các Tuyến Bay Hàng Đầu</h5>
-                <div className="space-y-3">
-                  {topRoutes.slice(0, 4).map((route, index) => (
-                    <div
-                      key={index}
-                      className="flex justify-between items-center p-3 bg-gray-50 rounded-lg"
-                    >
-                      <div>
-                        <div className="font-medium text-sm">{route.route}</div>
-                        <div className="text-xs text-gray-500">
-                          {route.flights} chuyến bay
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <div className="font-medium text-sky-600">
-                          {route.occupancy}%
-                        </div>
-                        <div className="text-xs text-gray-500">
-                          {route.revenue}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Performance Indicators */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="flex items-center justify-between p-4 bg-green-50 rounded-lg border">
-              <div className="flex items-center gap-3">
-                <CheckCircle className="h-8 w-8 text-green-500" />
-                <div>
-                  <div className="font-medium">Đúng Giờ</div>
-                  <div className="text-sm text-gray-600">
-                    {totalFlights > 0
-                      ? Math.round((statusCounts.onTime / totalFlights) * 100)
-                      : 0}
-                    % chuyến bay
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="flex items-center justify-between p-4 bg-yellow-50 rounded-lg border">
-              <div className="flex items-center gap-3">
-                <AlertTriangle className="h-8 w-8 text-yellow-500" />
-                <div>
-                  <div className="font-medium">Trễ</div>
-                  <div className="text-sm text-gray-600">
-                    {totalFlights > 0
-                      ? Math.round((statusCounts.delayed / totalFlights) * 100)
-                      : 0}
-                    % chuyến bay
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="flex items-center justify-between p-4 bg-red-50 rounded-lg border">
-              <div className="flex items-center gap-3">
-                <XCircle className="h-8 w-8 text-red-500" />
-                <div>
-                  <div className="font-medium">Hủy</div>
-                  <div className="text-sm text-gray-600">
-                    {totalFlights > 0
-                      ? Math.round(
-                          (statusCounts.cancelled / totalFlights) * 100
-                        )
-                      : 0}
-                    % chuyến bay
-                  </div>
-                </div>
-              </div>
+          {/* Flight Trend Line Chart */}
+          <div>
+            <h4 className="font-medium mb-3 flex items-center gap-2">
+              <TrendingUp className="h-4 w-4" />
+              Xu Hướng Chuyến Bay
+            </h4>
+            <div className="h-64 w-full">
+              <Line
+                id="flights-line-chart"
+                data={lineChartData}
+                options={lineChartOptions}
+              />
             </div>
           </div>
 
-          {detailed && (
-            <div className="space-y-4 pt-4 border-t">
-              {/* Detailed Route Performance */}
-              <div>
-                <h5 className="font-medium text-sm mb-3 flex items-center gap-2">
-                  <MapPin className="h-4 w-4" />
-                  Route Performance Details
-                </h5>
-                <div className="space-y-2">
-                  {topRoutes.map((route, index) => (
-                    <div
-                      key={index}
-                      className="flex justify-between items-center p-4 border rounded-lg"
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center text-sm font-medium text-blue-600">
-                          {index + 1}
-                        </div>
-                        <div>
-                          <div className="font-medium">{route.route}</div>
-                          <div className="text-sm text-gray-600">
-                            {route.flights} chuyến bay
-                          </div>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <div className="font-medium text-green-600">
-                          {route.revenue}
-                        </div>
-                        <div className="text-sm text-gray-600">
-                          {route.occupancy}% lấp đầy
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Additional Metrics */}
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
-                <div>
-                  <div className="text-lg font-bold">
-                    {formatNumber(maxFlights)}
-                  </div>
-                  <div className="text-xs text-gray-600">
-                    Chuyến Bay Ngày Cao Điểm
-                  </div>
-                </div>
-                <div>
-                  <div className="text-lg font-bold">{avgFlightDuration}h</div>
-                  <div className="text-xs text-gray-600">
-                    Thời Gian Trung Bình
-                  </div>
-                </div>
-                <div>
-                  <div className="text-lg font-bold">{activeAircraft}</div>
-                  <div className="text-xs text-gray-600">Máy Bay Hoạt Động</div>
-                </div>
-                <div>
-                  <div className="text-lg font-bold">
-                    {Math.abs(flightGrowth).toFixed(1)}%
-                  </div>
-                  <div className="text-xs text-gray-600 flex items-center justify-center gap-1">
-                    {flightGrowth > 0 ? (
-                      <TrendingUp className="h-3 w-3 text-green-500" />
-                    ) : (
-                      <TrendingDown className="h-3 w-3 text-red-500" />
-                    )}
-                    Tăng Trưởng
-                  </div>
-                </div>
-              </div>
+          {/* Flight Status Doughnut Chart */}
+          <div>
+            <h4 className="font-medium mb-3 flex items-center gap-2">
+              <Plane className="h-4 w-4" />
+              Trạng Thái Chuyến Bay
+            </h4>
+            <div className="h-64 w-full flex justify-center">
+              <Doughnut
+                id="flights-doughnut-chart"
+                data={statusData}
+                options={statusOptions}
+              />
             </div>
-          )}
+          </div>
         </div>
       </CardContent>
     </Card>

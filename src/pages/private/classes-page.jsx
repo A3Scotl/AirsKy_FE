@@ -23,7 +23,7 @@ import { classesApi } from "@/apis/classes-api";
 import { handleFetch } from "@/utils/fetch-helper.js";
 import { toast } from "sonner";
 
-import ExportButton from "@/components/common/export-button";
+
 import TravelClassModal from "@/components/admin/travel-classes/travel-class-modal";
 import ClassesTableSkeleton from "@/components/admin/travel-classes/classes-table-skeleton";
 
@@ -144,6 +144,12 @@ const ClassesPage = () => {
   };
 
   const handleEdit = (travelClass) => {
+    console.log("[ClassesPage] Editing travel class:", travelClass);
+    console.log("[ClassesPage] Available ID fields:", {
+      id: travelClass.id,
+      classId: travelClass.classId,
+      travelClassId: travelClass.travelClassId,
+    });
     setEditData(travelClass);
     setModalOpen(true);
   };
@@ -182,9 +188,24 @@ const ClassesPage = () => {
     const isUpdate = !!editData;
     const className = formData.className;
 
+    // Get the correct ID field
+    const classId =
+      editData?.classId || editData?.id || editData?.travelClassId;
+    console.log(
+      "[ClassesPage] Submitting with ID:",
+      classId,
+      "EditData:",
+      editData
+    );
+
+    if (isUpdate && !classId) {
+      toast.error("Không tìm thấy ID của hạng vé để cập nhật");
+      return;
+    }
+
     toast.promise(
       isUpdate
-        ? classesApi.updateTravelClass(editData.classId, formData)
+        ? classesApi.updateTravelClass(classId, formData)
         : classesApi.createTravelClass(formData),
       {
         loading: isUpdate ? "Đang cập nhật hạng vé..." : "Đang tạo hạng vé...",
@@ -225,7 +246,7 @@ const ClassesPage = () => {
           </p>
         </div>
         <div className="flex gap-2">
-          <ExportButton entity="classes" />
+    
           {/* <Button onClick={handleAdd}>Thêm hạng vé</Button> */}
         </div>
       </div>

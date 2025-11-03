@@ -93,22 +93,27 @@
 }
 
 /* Error state */
-.phone-input.border-red-500 .PhoneInput {
-  border-color: #ef4444;
+.phone-input.border-red-500 .PhoneInput,
+.phone-input-error .PhoneInput {
+  border-color: #ef4444 !important;
 }
 
-.phone-input.border-red-500 .PhoneInput:focus-within {
+.phone-input.border-red-500 .PhoneInput:focus-within,
+.phone-input-error .PhoneInput:focus-within {
   outline: 2px solid #ef4444;
   outline-offset: 2px;
-  border-color: #ef4444;
+  border-color: #ef4444 !important;
+  box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.2);
 }
 
 /* Success state */
-.phone-input.border-green-500 .PhoneInput {
+.phone-input.border-green-500 .PhoneInput,
+.phone-input-success .PhoneInput {
   border-color: #22c55e;
 }
 
-.phone-input.border-green-500 .PhoneInput:focus-within {
+.phone-input.border-green-500 .PhoneInput:focus-within,
+.phone-input-success .PhoneInput:focus-within {
   outline: 2px solid #22c55e;
   outline-offset: 2px;
   border-color: #22c55e;

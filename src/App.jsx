@@ -20,6 +20,7 @@ import LoadingPage from "@/pages/loading/loading-page";
 import PageTransition from "@/components/common/page-transition";
 import AdminRoute from "@/routes/admin-route";
 import webSocketService from "@/services/websocket-service";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 const HomePage = lazy(() => import("@/pages/public/home-page"));
 const AuthPage = lazy(() => import("@/pages/public/auth/auth-page"));
@@ -78,6 +79,7 @@ const AdminNotificationPage = lazy(() =>
   import("@/pages/private/notification-page")
 );
 
+
 function AppRoutes() {
   const { user, loading } = useAuth();
   const location = useLocation();
@@ -86,8 +88,6 @@ function AppRoutes() {
   // WebSocket connection management
   useEffect(() => {
     if (user?.id && localStorage.getItem("token")) {
-      // Connect WebSocket when user is authenticated
-      console.log("🚀 Connecting WebSocket for user:", user.id);
       webSocketService
         .connect(user.id, localStorage.getItem("token"))
         .then(() => {
@@ -286,6 +286,7 @@ function AppRoutes() {
               />
               <Route path="notifications" element={<AdminNotificationPage />} />
               <Route path="profile" element={<AdminProfile />} />
+             
             </Route>
 
             {/* 404 - fallback */}
@@ -305,36 +306,50 @@ function AppRoutes() {
 }
 
 function App() {
+  // Create QueryClient instance
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: {
+        staleTime: 5 * 60 * 1000, // 5 minutes
+        cacheTime: 10 * 60 * 1000, // 10 minutes
+        refetchOnWindowFocus: false,
+        retry: 1,
+      },
+    },
+  });
+
   return (
-    <HelmetProvider>
-      <Router>
-        <ThemeProvider>
-          <AuthProvider>
-            <SearchProvider>
-              <Toaster
-                position="top-right"
-                richColors
-                closeButton
-                duration={3000}
-              />
-              <ToastContainer
-                position="top-right"
-                autoClose={5000}
-                hideProgressBar={false}
-                newestOnTop={false}
-                closeOnClick
-                rtl={false}
-                pauseOnFocusLoss
-                draggable
-                pauseOnHover
-                theme="light"
-              />
-              <AppRoutes />
-            </SearchProvider>
-          </AuthProvider>
-        </ThemeProvider>
-      </Router>
-    </HelmetProvider>
+    <QueryClientProvider client={queryClient}>
+      <HelmetProvider>
+        <Router>
+          <ThemeProvider>
+            <AuthProvider>
+              <SearchProvider>
+                <Toaster
+                  position="top-right"
+                  richColors
+                  closeButton
+                  duration={3000}
+                />
+                <ToastContainer
+                  position="top-right"
+                  autoClose={5000}
+                  hideProgressBar={false}
+                  newestOnTop={false}
+                  closeOnClick
+                  rtl={false}
+                  pauseOnFocusLoss
+                  draggable
+                  pauseOnHover
+                  theme="light"
+                />
+                <AppRoutes />
+              </SearchProvider>
+            </AuthProvider>
+          </ThemeProvider>
+        </Router>
+      </HelmetProvider>
+    </QueryClientProvider>
   );
 }
 

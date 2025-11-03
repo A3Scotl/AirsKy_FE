@@ -40,7 +40,7 @@ import Pagination from "@/components/ui/pagination";
 import { aircraftApi } from "@/apis/aircraft-api";
 import { useAircraft } from "@/hooks/use-aircraft";
 import { toast } from "sonner";
-import ExportButton from "@/components/common/export-button";
+
 import AircraftTableSkeleton from "@/components/admin/aircrafts/aircraft-table-skeleton";
 
 // TanStack Table imports
@@ -386,7 +386,7 @@ const AircraftPage = () => {
             <RotateCcw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
             Làm mới
           </Button>
-          <ExportButton entity="aircrafts" />
+          
           <Button onClick={handleAdd}>Thêm máy bay</Button>
         </div>
       </div>

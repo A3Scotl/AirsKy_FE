@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import ExportButton from "@/components/common/export-button";
+
 import { toast } from "sonner";
 
 const AdminDealPage = () => {
@@ -303,7 +303,7 @@ const AdminDealPage = () => {
             <RefreshCw className="h-4 w-4 mr-2" />
             Làm mới
           </Button>
-          <ExportButton entity="deals" />
+
         </div>
       </div>
 

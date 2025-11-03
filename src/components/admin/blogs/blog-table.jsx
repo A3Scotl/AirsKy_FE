@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import {
   Eye,
   Edit,
@@ -13,6 +13,10 @@ import {
   Clock,
   Plus,
   MoreHorizontal,
+  ArrowUpDown,
+  RefreshCw,
+  Search,
+  Filter,
 } from "lucide-react";
 import { toast } from "sonner";
 import BlogFormModal from "./blog-form-modal";
@@ -21,6 +25,8 @@ import BlogTableSkeleton from "./blog-table-skeleton";
 import { blogApi } from "@/apis/blog-api";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Table,
   TableBody,
@@ -43,8 +49,26 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import Pagination from "@/components/ui/pagination";
+
+// TanStack Table imports
+import {
+  useReactTable,
+  getCoreRowModel,
+  getFilteredRowModel,
+  getPaginationRowModel,
+  getSortedRowModel,
+  flexRender,
+  createColumnHelper,
+} from "@tanstack/react-table";
 
 const BlogTable = ({
   blogs,
@@ -58,14 +82,314 @@ const BlogTable = ({
   onEdit,
   onDelete,
   loading,
+  onRefresh,
 }) => {
   const [selectedBlog, setSelectedBlog] = useState(null);
   const [showFormModal, setShowFormModal] = useState(false);
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [formMode, setFormMode] = useState("add");
 
-  // No client-side filtering since data is already filtered by backend
-  const displayBlogs = blogs || [];
+  // Row selection state
+  const [rowSelection, setRowSelection] = useState({});
+
+  // Create column helper
+  const columnHelper = createColumnHelper();
+
+  // Column definitions
+  const columns = useMemo(
+    () => [
+      // Selection column
+      columnHelper.display({
+        id: "select",
+        header: ({ table }) => (
+          <Checkbox
+            checked={
+              table.getIsAllPageRowsSelected() ||
+              (table.getIsSomePageRowsSelected() && "indeterminate")
+            }
+            onCheckedChange={(value) =>
+              table.toggleAllPageRowsSelected(!!value)
+            }
+            aria-label="Select all"
+          />
+        ),
+        cell: ({ row }) => (
+          <Checkbox
+            checked={row.getIsSelected()}
+            onCheckedChange={(value) => row.toggleSelected(!!value)}
+            aria-label="Select row"
+          />
+        ),
+      }),
+
+      // Title column
+      columnHelper.accessor("title", {
+        header: ({ column }) => (
+          <Button
+            variant="ghost"
+            onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+            className="h-auto p-0 font-medium"
+          >
+            Tiêu đề
+            <ArrowUpDown className="ml-2 h-4 w-4" />
+          </Button>
+        ),
+        cell: (info) => (
+          <div className="space-y-1">
+            <div className="font-medium truncate max-w-xs">
+              {info.getValue()}
+            </div>
+            <div className="text-sm text-muted-foreground truncate max-w-xs">
+              {info.row.original.excerpt}
+            </div>
+          </div>
+        ),
+      }),
+
+      // Categories column
+      columnHelper.accessor("categories", {
+        header: "Danh mục",
+        cell: (info) => (
+          <div className="flex flex-wrap gap-1">
+            {info.getValue()?.map((category) => (
+              <Badge key={category.categoryId} variant="secondary">
+                {category.name}
+              </Badge>
+            ))}
+          </div>
+        ),
+      }),
+
+      // Status column
+      columnHelper.accessor("isPublished", {
+        header: "Trạng thái",
+        cell: (info) => (
+          <Badge
+            variant={info.getValue() ? "success" : "secondary"}
+            className="flex items-center gap-1 w-fit"
+          >
+            {info.getValue() ? (
+              <CheckCircle className="h-3 w-3" />
+            ) : (
+              <Clock className="h-3 w-3" />
+            )}
+            {info.getValue() ? "Đã xuất bản" : "Bản nháp"}
+          </Badge>
+        ),
+      }),
+
+      // View count column
+      columnHelper.accessor("viewCount", {
+        header: ({ column }) => (
+          <Button
+            variant="ghost"
+            onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+            className="h-auto p-0 font-medium"
+          >
+            Lượt xem
+            <ArrowUpDown className="ml-2 h-4 w-4" />
+          </Button>
+        ),
+        cell: (info) => (
+          <div className="flex items-center gap-1">
+            <Eye className="h-4 w-4 text-muted-foreground" />
+            {info.getValue() || 0}
+          </div>
+        ),
+      }),
+
+      // Like count column
+      columnHelper.accessor("likeCount", {
+        header: ({ column }) => (
+          <Button
+            variant="ghost"
+            onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+            className="h-auto p-0 font-medium"
+          >
+            Lượt thích
+            <ArrowUpDown className="ml-2 h-4 w-4" />
+          </Button>
+        ),
+        cell: (info) => (
+          <div className="flex items-center gap-1">
+            <ThumbsUp className="h-4 w-4 text-muted-foreground" />
+            {info.getValue() || 0}
+          </div>
+        ),
+      }),
+
+      // Created date column
+      columnHelper.accessor("createdAt", {
+        header: ({ column }) => (
+          <Button
+            variant="ghost"
+            onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+            className="h-auto p-0 font-medium"
+          >
+            Ngày tạo
+            <ArrowUpDown className="ml-2 h-4 w-4" />
+          </Button>
+        ),
+        cell: (info) => (
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger>
+                <div className="flex items-center gap-1 text-sm">
+                  <Calendar className="h-4 w-4" />
+                  {formatDate(info.getValue())}
+                </div>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>{formatDateTime(info.getValue())}</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        ),
+      }),
+
+      // Actions column
+      columnHelper.display({
+        id: "actions",
+        header: "Thao tác",
+        cell: (info) => (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" className="h-8 w-8 p-0">
+                <span className="sr-only">Mở menu</span>
+                <MoreHorizontal className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuLabel>Thao tác</DropdownMenuLabel>
+              <DropdownMenuItem
+                onClick={() => handleViewBlog(info.row.original)}
+                className="flex items-center gap-2"
+              >
+                <Eye className="h-4 w-4" />
+                Xem chi tiết
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => handleEditBlog(info.row.original)}
+                className="flex items-center gap-2"
+              >
+                <Edit className="h-4 w-4" />
+                Chỉnh sửa
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => handleTogglePublish(info.row.original)}
+                className="flex items-center gap-2"
+              >
+                {info.row.original.isPublished ? (
+                  <XCircle className="h-4 w-4" />
+                ) : (
+                  <CheckCircle className="h-4 w-4" />
+                )}
+                {info.row.original.isPublished ? "Hủy đăng" : "Xuất bản"}
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onClick={() => handleDeleteBlog(info.row.original)}
+                className="flex items-center gap-2 text-red-600"
+              >
+                <Trash2 className="h-4 w-4" />
+                Xóa
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        ),
+      }),
+    ],
+    []
+  );
+
+  // Create table instance
+  const table = useReactTable({
+    data: blogs || [],
+    columns,
+    getCoreRowModel: getCoreRowModel(),
+    getFilteredRowModel: getFilteredRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+    onRowSelectionChange: setRowSelection,
+    state: {
+      rowSelection,
+    },
+    enableRowSelection: true,
+    pageCount: Math.ceil(totalItems / itemsPerPage),
+    manualPagination: true,
+    manualSorting: true,
+  });
+
+  // Bulk actions
+  const selectedRows = table.getFilteredSelectedRowModel().rows;
+  const selectedBlogs = selectedRows.map((row) => row.original);
+
+  // Handle bulk delete
+  const handleBulkDelete = async () => {
+    if (selectedBlogs.length === 0) return;
+
+    const confirmMessage = `Bạn có chắc chắn muốn xóa ${selectedBlogs.length} bài viết đã chọn?`;
+    if (!window.confirm(confirmMessage)) return;
+
+    try {
+      const deletePromises = selectedBlogs.map((blog) =>
+        blogApi.deleteBlog(blog.blogId)
+      );
+
+      await Promise.all(deletePromises);
+
+      // Update local state
+      setRowSelection({});
+      toast.success(`Đã xóa ${selectedBlogs.length} bài viết thành công!`);
+      onRefresh?.();
+    } catch (error) {
+      toast.error("Có lỗi xảy ra khi xóa bài viết");
+    }
+  };
+
+  // Handle bulk publish
+  const handleBulkPublish = async (publish = true) => {
+    if (selectedBlogs.length === 0) return;
+
+    const actionText = publish ? "xuất bản" : "hủy đăng";
+    const confirmMessage = `Bạn có chắc chắn muốn ${actionText} ${selectedBlogs.length} bài viết đã chọn?`;
+    if (!window.confirm(confirmMessage)) return;
+
+    try {
+      const updatePromises = selectedBlogs.map((blog) =>
+        publish
+          ? blogApi.publishBlog(blog.blogId)
+          : blogApi.unpublishBlog(blog.blogId)
+      );
+
+      await Promise.all(updatePromises);
+
+      // Update local state immediately
+      const updatedBlogs = blogs.map((blog) => {
+        const isSelected = selectedBlogs.some(
+          (selected) => selected.blogId === blog.blogId
+        );
+        if (isSelected) {
+          return { ...blog, isPublished: publish };
+        }
+        return blog;
+      });
+
+      // Update parent component's blogs state
+      onEdit?.(null, { bulkUpdate: true, updatedBlogs });
+
+      // Clear selection and show success
+      setRowSelection({});
+      toast.success(
+        `Đã ${actionText} ${selectedBlogs.length} bài viết thành công!`
+      );
+
+      // Refresh data from server
+      onRefresh?.();
+    } catch (error) {
+      toast.error(`Có lỗi xảy ra khi ${actionText} bài viết`);
+    }
+  };
 
   const handleItemsPerPageChange = (newItemsPerPage) => {
     // Reset to page 1 when changing items per page to avoid showing empty data
@@ -123,7 +447,15 @@ const BlogTable = ({
     }
   };
 
-  const handleDeleteBlog = async (blogId) => {
+  const handleDeleteBlog = async (blogOrId) => {
+    let blogId;
+
+    if (typeof blogOrId === "object" && blogOrId.blogId) {
+      blogId = blogOrId.blogId;
+    } else {
+      blogId = blogOrId;
+    }
+
     if (window.confirm("Bạn có chắc chắn muốn xóa bài viết này?")) {
       try {
         const response = await blogApi.deleteBlog(blogId);
@@ -139,20 +471,32 @@ const BlogTable = ({
     }
   };
 
-  const handleTogglePublish = async (blogId, isPublished) => {
+  const handleTogglePublish = async (blogOrId, isPublished) => {
+    let blogId, currentIsPublished;
+
+    if (typeof blogOrId === "object" && blogOrId.blogId) {
+      // If it's a blog object
+      blogId = blogOrId.blogId;
+      currentIsPublished = blogOrId.isPublished;
+    } else {
+      // If it's just an ID
+      blogId = blogOrId;
+      currentIsPublished = isPublished;
+    }
+
     try {
-      const response = isPublished
+      const response = currentIsPublished
         ? await blogApi.unpublishBlog(blogId)
         : await blogApi.publishBlog(blogId);
 
       if (response.success) {
-        onEdit?.(blogId, { isPublished: !isPublished });
+        onEdit?.(blogId, { isPublished: !currentIsPublished });
         toast.success(
-          `Bài viết đã ${isPublished ? "hủy đăng" : "đăng"} thành công!`
+          `Bài viết đã ${currentIsPublished ? "hủy đăng" : "đăng"} thành công!`
         );
       } else {
         toast.error(
-          `Lỗi ${isPublished ? "hủy đăng" : "đăng"} bài viết: ` +
+          `Lỗi ${currentIsPublished ? "hủy đăng" : "đăng"} bài viết: ` +
             response.message
         );
       }
@@ -185,7 +529,7 @@ const BlogTable = ({
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="flex items-center gap-2">
             <BookOpen className="h-5 w-5" />
-            Quản lý Blog
+            Quản lý Blog ({totalItems} bài viết)
           </CardTitle>
           <Button onClick={handleAddBlog} className="flex items-center gap-2">
             <Plus className="h-4 w-4" />
@@ -193,167 +537,123 @@ const BlogTable = ({
           </Button>
         </CardHeader>
         <CardContent>
+          {/* Bulk Actions Bar */}
+          {selectedRows.length > 0 && (
+            <div className="bg-blue-50 border border-blue-200 rounded-md p-4 mb-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-medium text-blue-900">
+                    Đã chọn {selectedRows.length} bài viết
+                  </span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setRowSelection({})}
+                    className="text-blue-700 border-blue-300 hover:bg-blue-100"
+                  >
+                    Bỏ chọn
+                  </Button>
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleBulkPublish(true)}
+                    className="text-green-700 border-green-300 hover:bg-green-100"
+                  >
+                    <CheckCircle className="h-4 w-4 mr-2" />
+                    Xuất bản ({selectedRows.length})
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleBulkPublish(false)}
+                    className="text-yellow-700 border-yellow-300 hover:bg-yellow-100"
+                  >
+                    <XCircle className="h-4 w-4 mr-2" />
+                    Hủy đăng ({selectedRows.length})
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleBulkDelete}
+                    className="text-red-700 border-red-300 hover:bg-red-100"
+                  >
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Xóa ({selectedRows.length})
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
+
           <div className="rounded-md border">
             <Table>
               <TableHeader>
-                <TableRow>
-                  <TableHead>Tiêu đề</TableHead>
-
-                  <TableHead>Danh mục</TableHead>
-                  <TableHead>Trạng thái</TableHead>
-                  <TableHead>Lượt xem</TableHead>
-                  <TableHead>Lượt thích</TableHead>
-                  <TableHead>Ngày tạo</TableHead>
-                  <TableHead>Thao tác</TableHead>
-                </TableRow>
+                {table.getHeaderGroups().map((headerGroup) => (
+                  <TableRow key={headerGroup.id}>
+                    {headerGroup.headers.map((header) => (
+                      <TableHead key={header.id} className="text-left">
+                        {header.isPlaceholder
+                          ? null
+                          : flexRender(
+                              header.column.columnDef.header,
+                              header.getContext()
+                            )}
+                      </TableHead>
+                    ))}
+                  </TableRow>
+                ))}
               </TableHeader>
               <TableBody>
                 {loading ? (
                   <BlogTableSkeleton />
-                ) : displayBlogs.length === 0 ? (
+                ) : table.getRowModel().rows?.length ? (
+                  table.getRowModel().rows.map((row) => (
+                    <TableRow
+                      key={row.id}
+                      data-state={row.getIsSelected() && "selected"}
+                      className="hover:bg-gray-50"
+                    >
+                      {row.getVisibleCells().map((cell) => (
+                        <TableCell key={cell.id}>
+                          {flexRender(
+                            cell.column.columnDef.cell,
+                            cell.getContext()
+                          )}
+                        </TableCell>
+                      ))}
+                    </TableRow>
+                  ))
+                ) : (
                   <TableRow>
-                    <TableCell colSpan={8} className="text-center py-8">
+                    <TableCell
+                      colSpan={columns.length}
+                      className="h-24 text-center"
+                    >
                       Không có blog nào
                     </TableCell>
                   </TableRow>
-                ) : (
-                  displayBlogs.map((blog) => (
-                    <TableRow key={blog.blogId}>
-                      <TableCell>
-                        <div className="space-y-1">
-                          <div className="font-medium truncate max-w-xs">
-                            {blog.title}
-                          </div>
-                          <div className="text-sm text-muted-foreground truncate max-w-xs">
-                            {blog.excerpt}
-                          </div>
-                        </div>
-                      </TableCell>
-
-                      <TableCell>
-                        <div className="flex flex-wrap gap-1">
-                          {blog.categories?.map((category) => (
-                            <Badge
-                              key={category.categoryId}
-                              variant="secondary"
-                            >
-                              {category.name}
-                            </Badge>
-                          ))}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <Badge
-                          variant={blog.isPublished ? "success" : "secondary"}
-                          className="flex items-center gap-1 w-fit"
-                        >
-                          {blog.isPublished ? (
-                            <CheckCircle className="h-3 w-3" />
-                          ) : (
-                            <Clock className="h-3 w-3" />
-                          )}
-                          {blog.isPublished ? "Đã xuất bản" : "Bản nháp"}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-1">
-                          <Eye className="h-4 w-4 text-muted-foreground" />
-                          {blog.viewCount || 0}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-1">
-                          <ThumbsUp className="h-4 w-4 text-muted-foreground" />
-                          {blog.likeCount || 0}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger>
-                              <div className="flex items-center gap-1 text-sm">
-                                <Calendar className="h-4 w-4" />
-                                {formatDate(blog.createdAt)}
-                              </div>
-                            </TooltipTrigger>
-                            <TooltipContent>
-                              <p>{formatDateTime(blog.createdAt)}</p>
-                            </TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
-                      </TableCell>
-                      <TableCell>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" className="h-8 w-8 p-0">
-                              <span className="sr-only">Mở menu</span>
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuLabel>Thao tác</DropdownMenuLabel>
-                            <DropdownMenuItem
-                              onClick={() => handleViewBlog(blog)}
-                              className="flex items-center gap-2"
-                            >
-                              <Eye className="h-4 w-4" />
-                              Xem chi tiết
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={() => handleEditBlog(blog)}
-                              className="flex items-center gap-2"
-                            >
-                              <Edit className="h-4 w-4" />
-                              Chỉnh sửa
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={() =>
-                                handleTogglePublish(
-                                  blog.blogId,
-                                  blog.isPublished
-                                )
-                              }
-                              className="flex items-center gap-2"
-                            >
-                              {blog.isPublished ? (
-                                <>
-                                  <XCircle className="h-4 w-4" />
-                                  Hủy đăng
-                                </>
-                              ) : (
-                                <>
-                                  <CheckCircle className="h-4 w-4" />
-                                  Đăng bài
-                                </>
-                              )}
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem
-                              onClick={() => handleDeleteBlog(blog.blogId)}
-                              className="flex items-center gap-2 text-destructive"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                              Xóa
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </TableCell>
-                    </TableRow>
-                  ))
                 )}
               </TableBody>
             </Table>
           </div>
 
           {/* Pagination */}
-          <Pagination
-            currentPage={currentPage}
-            totalPages={Math.max(1, Math.ceil(totalItems / itemsPerPage))}
-            itemsPerPage={itemsPerPage}
-            totalItems={totalItems}
-            onPageChange={onPageChange}
-            onPageSizeChange={onItemsPerPageChange}
-          />
+          {Math.ceil(totalItems / itemsPerPage) > 1 && (
+            <div className="bg-white px-4 py-3 border-t border-gray-200">
+              <Pagination
+                currentPage={currentPage}
+                totalPages={Math.ceil(totalItems / itemsPerPage)}
+                itemsPerPage={itemsPerPage}
+                totalItems={totalItems}
+                onPageChange={onPageChange}
+                onPageSizeChange={handleItemsPerPageChange}
+                showPageSizeSelector={true}
+                showInfo={true}
+              />
+            </div>
+          )}
         </CardContent>
       </Card>
 

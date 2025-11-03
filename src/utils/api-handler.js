@@ -46,12 +46,12 @@ export const apiHandler = async (method, url, data = null, config = {}) => {
         });
     return {
       success: true,
-      data: response.data || response,
-      message: response.message || "Thành công",
+      data: response?.data || response,
+      message: response?.message || "Thành công",
       error: null,
     };
   } catch (error) {
-    console.log("API Error caught:", error);
+    console.error(`[apiHandler] API call failed: ${method.toUpperCase()} ${url}`, error);
     console.log("Error response:", error?.response);
     console.log("Error response data:", error?.response?.data);
 

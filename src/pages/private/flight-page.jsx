@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import {
   Search,
   Filter,
@@ -53,13 +53,23 @@ import { aircraftApi } from "@/apis/aircraft-api";
 import { handleFetch } from "@/utils/fetch-helper.js";
 import { toast } from "sonner";
 import FlightTableSkeleton from "@/components/admin/flights/flight-table-skeleton";
-import ExportButton from "@/components/common/export-button";
+
 
 // Utility functions for flight statistics
 const getWeekKey = (date) => {
   const d = new Date(date);
   const year = d.getFullYear();
-  const weekNum = Math.ceil((d.getDate() - d.getDay() + 1) / 7);
+
+  // Tính ngày đầu tiên của năm
+  const firstDayOfYear = new Date(year, 0, 1);
+  // Tính số ngày từ đầu năm đến ngày hiện tại
+  const daysSinceStartOfYear = Math.floor(
+    (d - firstDayOfYear) / (1000 * 60 * 60 * 24)
+  );
+
+  // Tính tuần (bắt đầu từ 1)
+  const weekNum = Math.floor(daysSinceStartOfYear / 7) + 1;
+
   return `${year}-W${weekNum}`;
 };
 
@@ -90,19 +100,29 @@ const saveWeeklyStats = (stats) => {
 const getLastWeekStats = () => {
   try {
     const stored = localStorage.getItem("flight_weekly_stats");
-    if (!stored) return null;
+    if (!stored) {
+      // Không có dữ liệu lưu trữ, trả về null
+      console.log("No stored weekly stats data");
+      return null;
+    }
 
     const weeklyData = JSON.parse(stored);
     const currentWeek = getWeekKey(new Date());
 
-    // Tìm tuần trước
-    const weeks = Object.keys(weeklyData).sort().reverse();
-    const lastWeekIndex = weeks.findIndex((week) => week !== currentWeek);
+    // Tính tuần trước bằng cách trừ 7 ngày
+    const lastWeekDate = new Date();
+    lastWeekDate.setDate(lastWeekDate.getDate() - 7);
+    const lastWeekKey = getWeekKey(lastWeekDate);
 
-    if (lastWeekIndex !== -1) {
-      return weeklyData[weeks[lastWeekIndex]];
+    // Trả về dữ liệu của tuần trước nếu có
+    const lastWeekData = weeklyData[lastWeekKey];
+    if (lastWeekData) {
+      console.log("Found last week data:", lastWeekData);
+      return lastWeekData;
     }
 
+    // Không có dữ liệu tuần trước
+    console.log("No data for last week:", lastWeekKey);
     return null;
   } catch (error) {
     console.error("Error getting last week stats:", error);
@@ -173,7 +193,44 @@ const AdminFlights = () => {
   // Tự động cập nhật thống kê khi dữ liệu flights thay đổi
   useEffect(() => {
     if (flights.length > 0) {
-      calculateFlightStats(flights);
+      // Tính toán thống kê tổng hợp cho tuần hiện tại
+      const stats = calculateFlightStats(flights);
+
+      // Lưu dữ liệu tổng hợp cho tuần này để so sánh với tuần sau
+      const weeklyStats = {
+        totalFlights: flights.length, // Tổng số chuyến bay trong tuần
+        activeFlights: flights.filter((f) => f.status !== "CANCELLED").length, // Chuyến bay hoạt động
+        onTimeRate: parseFloat(
+          stats
+            .find((s) => s.title === "Tỷ lệ đúng giờ")
+            ?.value?.replace("%", "") || 0
+        ), // % đúng giờ
+        occupancyRate: parseFloat(
+          stats
+            .find((s) => s.title === "Tỷ lệ lấp đầy")
+            ?.value?.replace("%", "") || 0
+        ), // % lấp đầy
+        estimatedRevenue: flights.reduce((sum, flight) => {
+          // Tổng doanh thu ước tính
+          const aircraftSeats = flight?.aircraft?.totalSeats || 0;
+          const availableSeats = flight.availableSeats || 0;
+          const bookedSeatsCount = Math.max(0, aircraftSeats - availableSeats);
+          const pricePerSeat = flight.priceNumeric || flight.price || 0;
+          return sum + bookedSeatsCount * pricePerSeat;
+        }, 0),
+        totalSeats: flights.reduce(
+          (sum, flight) => sum + (flight?.aircraft?.totalSeats || 0),
+          0
+        ), // Tổng ghế
+        bookedSeats: flights.reduce((sum, flight) => {
+          // Ghế đã đặt
+          const aircraftSeats = flight?.aircraft?.totalSeats || 0;
+          const availableSeats = flight.availableSeats || 0;
+          return sum + Math.max(0, aircraftSeats - availableSeats);
+        }, 0),
+      };
+
+      saveWeeklyStats(weeklyStats);
     }
   }, [flights]);
 
@@ -283,18 +340,6 @@ const AdminFlights = () => {
       lastWeekStats?.occupancyRate
     );
 
-    // === LƯU DỮ LIỆU HIỆN TẠI CHO TUẦN SAU ===
-    const currentStats = {
-      totalFlights,
-      activeFlights,
-      onTimeRate: parseFloat(onTimeRate),
-      occupancyRate: parseFloat(occupancyRate),
-      estimatedRevenue,
-      totalSeats,
-      bookedSeats,
-    };
-    saveWeeklyStats(currentStats);
-
     return [
       {
         title: "Tổng chuyến bay",
@@ -344,8 +389,6 @@ const AdminFlights = () => {
       },
     ];
   };
-
-  // Tính toán flightStats dựa trên dữ liệu thực
   const flightStats = calculateFlightStats(flights);
 
   const aircraftTypes = aircrafts.map((a) => ({
@@ -553,9 +596,17 @@ const AdminFlights = () => {
             <RotateCcw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
             Làm mới
           </Button>
-         
-          {/* button export file */}
-          <ExportButton entity="flights" />
+
+          {/* Clear stats button */}
+          {/* <Button
+            variant="outline"
+            onClick={clearWeeklyStats}
+            className="flex items-center gap-2"
+          >
+            Clear Stats
+          </Button> */}
+
+
 
           {/* Chỉ hiển thị khi role là BUSINESS */}
           {user?.role !== "ADMIN" && (
@@ -635,7 +686,7 @@ const AdminFlights = () => {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              {/* Filters */}
+              {/* Filters - vẫn giữ để tìm kiếm nhưng bảng luôn hiển thị tất cả */}
               <div className="flex flex-col lg:flex-row gap-4 mb-6">
                 <div className="relative flex-1">
                   <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
@@ -691,7 +742,7 @@ const AdminFlights = () => {
                   aircraftFilter={aircraftFilter}
                   onViewFlight={handleViewFlight}
                   onEditFlight={handleEditFlight}
-                  onDeleteFlight={openCancelModal} // Thay đổi ở đây
+                  onDeleteFlight={openCancelModal}
                 />
               )}
             </CardContent>

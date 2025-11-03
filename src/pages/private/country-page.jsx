@@ -40,7 +40,7 @@ import Pagination from "@/components/ui/pagination";
 import { countryApi } from "@/apis/country-api";
 import { useCountry } from "@/hooks/use-country";
 import { toast } from "sonner";
-import ExportButton from "@/components/common/export-button";
+
 
 // TanStack Table imports
 import {
@@ -422,7 +422,7 @@ const CountryPage = () => {
             <RotateCcw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
             Làm mới
           </Button>
-          <ExportButton entity="countries" />
+    
           <Button onClick={handleAdd}>Thêm quốc gia</Button>
         </div>
       </div>

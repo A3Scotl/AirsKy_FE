@@ -47,6 +47,7 @@ import {
   RedditShareButton,
   EmailShareButton,
 } from "react-share";
+import "@/components/ui/ckeditor-theme.css";
 
 const BlogDetailPage = () => {
   const { slug } = useParams();
@@ -481,7 +482,7 @@ const BlogDetailPage = () => {
           {/* Article Content */}
           <div className="bg-white rounded-xl shadow-sm p-8 mb-12">
             <div
-              className="prose prose-lg max-w-none dark:text-gray-600"
+              className="blog-content"
               dangerouslySetInnerHTML={{ __html: post.content }}
             />
 
