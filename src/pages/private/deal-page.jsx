@@ -293,7 +293,7 @@ const AdminDealPage = () => {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Quản lý Deal</h1>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Quản lý Deal</h1>
           <p className="text-gray-600">
             Quản lý các ưu đãi và mã giảm giá cho trang web đặt vé máy bay
           </p>
@@ -314,7 +314,7 @@ const AdminDealPage = () => {
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-600">
+                  <p className="text-sm font-medium text-gray-600 dark:text-white">
                     {stat.title}
                   </p>
                   <p className="text-2xl font-bold">{stat.value}</p>

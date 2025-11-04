@@ -285,7 +285,7 @@ const AdminPaymentPage = () => {
       {/* Header Section */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
             Quản lý thanh toán
           </h1>
           <p className="text-gray-600 mt-1">
@@ -318,7 +318,7 @@ const AdminPaymentPage = () => {
       </div>
 
       {/* Quick Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <Card>
           <CardContent className="flex items-center p-6">
             <div className="flex items-center space-x-4">
@@ -412,7 +412,7 @@ const AdminPaymentPage = () => {
                   placeholder="Tìm theo mã thanh toán, mã đặt chỗ..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10"
+                  className="pl-10 dark:text-black"
                 />
               </div>
             </div>

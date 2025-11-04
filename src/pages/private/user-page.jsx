@@ -557,10 +557,10 @@ const AdminUsers = () => {
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">
+                <p className="text-sm font-medium text-gray-600  dark:text-white">
                   Tổng người dùng
                 </p>
-                <p className="text-2xl font-bold text-gray-900 mt-2">
+                <p className="text-2xl font-bold text-gray-900  dark:text-white mt-2">
                   {userStats.totalCustomers}
                 </p>
                 {/* Change calculation can be added if needed */}
@@ -575,10 +575,10 @@ const AdminUsers = () => {
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">
-                  Tài khoản đã được kích hoạt
+                <p className="text-sm font-medium text-gray-600 dark:text-white ">
+                  Tài khoản đã được kích hoạt 
                 </p>
-                <p className="text-2xl font-bold text-gray-900 mt-2">
+                <p className="text-2xl font-bold text-gray-900  dark:text-white mt-2">
                   {userStats.activeCustomers}
                 </p>
               </div>
@@ -592,10 +592,10 @@ const AdminUsers = () => {
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">
+                <p className="text-sm font-medium text-gray-600  dark:text-white">
                   Đang hoạt động
                 </p>
-                <p className="text-2xl font-bold text-gray-900 mt-2">
+                <p className="text-2xl font-bold text-gray-900  dark:text-white mt-2">
                   {userStats.activeCustomers}
                 </p>
                 {/* Change calculation can be added if needed */}
@@ -610,10 +610,10 @@ const AdminUsers = () => {
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">
+                <p className="text-sm font-medium text-gray-600  dark:text-white">
                   Đăng ký mới (30 ngày)
                 </p>
-                <p className="text-2xl font-bold text-gray-900 mt-2">
+                <p className="text-2xl font-bold text-gray-900  dark:text-white mt-2">
                   {userStats.newRegistrations}
                 </p>
               </div>
@@ -642,7 +642,7 @@ const AdminUsers = () => {
                 placeholder="Tìm kiếm theo tên, email, hoặc ID..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10"
+                className="pl-10 dark:text-black"
               />
             </div>
 

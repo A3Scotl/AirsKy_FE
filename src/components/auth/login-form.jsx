@@ -281,6 +281,7 @@ export default function LoginForm({ setCurrentView }) {
                     }`}
                     value={formData.email}
                     onChange={handleInputChange("email")}
+                    disabled={loading}
                     required
                   />
                   {validationErrors.email && touchedFields.email && (
@@ -305,6 +306,7 @@ export default function LoginForm({ setCurrentView }) {
                       }`}
                       value={formData.password}
                       onChange={handleInputChange("password")}
+                      disabled={loading}
                       required
                     />
                     <button
@@ -330,7 +332,10 @@ export default function LoginForm({ setCurrentView }) {
                   <button
                     type="button"
                     onClick={() => setCurrentView("reset")}
-                    className="text-blue-600 text-sm hover:underline"
+                    disabled={loading}
+                    className={`text-blue-600 text-sm hover:underline ${
+                      loading ? "opacity-50 cursor-not-allowed" : ""
+                    }`}
                   >
                     Quên mật khẩu?
                   </button>

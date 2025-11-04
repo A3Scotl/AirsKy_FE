@@ -110,7 +110,7 @@ const CheckInBookingDetails = ({
       {/* Booking Status */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
+          <CardTitle className="flex items-center gap-2 dark:text-white">
             <User className="w-5 h-5 text-blue-500" />
             <span>Thông tin đặt chỗ</span>
           </CardTitle>
@@ -118,20 +118,28 @@ const CheckInBookingDetails = ({
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <p className="text-sm text-gray-600">Mã đặt chỗ</p>
-              <p className="font-semibold text-lg">{booking.bookingCode}</p>
+              <p className="text-sm text-gray-600 dark:text-gray-300">
+                Mã đặt chỗ
+              </p>
+              <p className="font-semibold text-lg dark:text-gray-100">
+                {booking.bookingCode}
+              </p>
             </div>
             <div>
-              <p className="text-sm text-gray-600">Hành khách</p>
-              <p className="font-semibold">
+              <p className="text-sm text-gray-600 dark:text-gray-300">
+                Hành khách
+              </p>
+              <p className="font-semibold dark:text-gray-100">
                 {booking.checkinEligiblePassengers?.[0]?.fullName ||
                   `${booking.checkinEligiblePassengers?.[0]?.firstName} ${booking.checkinEligiblePassengers?.[0]?.lastName}`}
               </p>
             </div>
             {booking.checkinEligiblePassengers?.[0]?.passportNumber && (
               <div>
-                <p className="text-sm text-gray-600">Số hộ chiếu</p>
-                <p className="font-semibold">
+                <p className="text-sm text-gray-600 dark:text-gray-300">
+                  Số hộ chiếu
+                </p>
+                <p className="font-semibold dark:text-gray-100">
                   {booking.checkinEligiblePassengers[0].passportNumber}
                 </p>
               </div>
@@ -203,10 +211,10 @@ const CheckInBookingDetails = ({
 
                 <div className="flex flex-col items-center px-4">
                   <ArrowRight className="w-6 h-6 text-blue-600" />
-                  <p className="text-xs text-gray-500 mt-1">
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                     {segment.flightNumber}
                   </p>
-                  <p className="text-xs text-gray-500">
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
                     {segment.duration || "N/A"}
                   </p>
                 </div>
@@ -218,10 +226,10 @@ const CheckInBookingDetails = ({
                       {segment.arrivalAirport?.airportCode || "N/A"}
                     </p>
                   </div>
-                  <p className="text-sm text-gray-600">
+                  <p className="text-sm text-gray-600 dark:text-gray-300">
                     {segment.arrivalAirport?.airportName || "Arrival"}
                   </p>
-                  <p className="text-xs text-gray-500">
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
                     {arrivalDateTime.time}
                   </p>
                 </div>
@@ -230,18 +238,28 @@ const CheckInBookingDetails = ({
               {/* Flight Details */}
               <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                 <div>
-                  <p className="text-sm text-gray-600">Ngày bay</p>
-                  <p className="font-medium">{departureDateTime.date}</p>
+                  <p className="text-sm text-gray-600 dark:text-gray-300">
+                    Ngày bay
+                  </p>
+                  <p className="font-medium dark:text-gray-100">
+                    {departureDateTime.date}
+                  </p>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-600">Hạng ghế</p>
-                  <p className="font-medium">
+                  <p className="text-sm text-gray-600 dark:text-gray-300">
+                    Hạng ghế
+                  </p>
+                  <p className="font-medium dark:text-gray-100">
                     {segment.className || booking.travelClass}
                   </p>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-600">Máy bay</p>
-                  <p className="font-medium">{segment.aircraft || "N/A"}</p>
+                  <p className="text-sm text-gray-600 dark:text-gray-300">
+                    Máy bay
+                  </p>
+                  <p className="font-medium dark:text-gray-100">
+                    {segment.aircraft || "N/A"}
+                  </p>
                 </div>
               </div>
 
@@ -298,7 +316,7 @@ const CheckInBookingDetails = ({
               {/* Selected segment indicator */}
               {selectedSegment?.segmentId === segment.segmentId && (
                 <div className="pt-4 border-t">
-                  <div className="flex items-center gap-2 text-blue-600">
+                  <div className="flex items-center gap-2 text-blue-600 dark:text-blue-400">
                     <CheckCircle className="w-4 h-4" />
                     <span className="font-medium">Đã chọn để check-in</span>
                   </div>

@@ -168,7 +168,7 @@ const CountryPage = () => {
       columnHelper.accessor("countryCode", {
         header: "Mã quốc gia",
         cell: (info) => (
-          <div className="font-mono font-medium text-gray-900">
+          <div className="font-mono font-medium text-gray-900  dark:text-white">
             {info.getValue()}
           </div>
         ),
@@ -178,7 +178,7 @@ const CountryPage = () => {
       columnHelper.accessor("countryName", {
         header: "Tên quốc gia",
         cell: (info) => (
-          <div className="font-medium text-gray-900">{info.getValue()}</div>
+          <div className="font-medium text-gray-900 dark:text-white">{info.getValue()}</div>
         ),
       }),
 
@@ -438,7 +438,7 @@ const CountryPage = () => {
                 placeholder="Tìm kiếm theo tên hoặc mã quốc gia..."
                 value={globalFilter ?? ""}
                 onChange={(event) => setGlobalFilter(event.target.value)}
-                className="pl-10"
+                className="pl-10 dark:text-black"
               />
             </div>
           </div>

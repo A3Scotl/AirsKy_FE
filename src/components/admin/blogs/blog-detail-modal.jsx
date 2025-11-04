@@ -27,25 +27,29 @@ const BlogDetailModal = ({ open, onClose, blog }) => {
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto dark:bg-gray-900 dark:border-gray-700">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
+          <DialogTitle className="flex items-center gap-2 dark:text-white">
             <Globe className="h-5 w-5" />
             Chi tiết Blog
           </DialogTitle>
-          <DialogDescription>
+          <DialogDescription className="dark:text-gray-400">
             Xem thông tin chi tiết và nội dung đầy đủ của blog
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-6">
           {/* Header Information */}
-          <Card>
+          <Card className="dark:bg-gray-800 dark:border-gray-700">
             <CardHeader>
               <div className="flex items-start justify-between">
                 <div className="space-y-2">
-                  <h1 className="text-2xl font-bold">{blog.title}</h1>
-                  <p className="text-muted-foreground">{blog.excerpt}</p>
+                  <h1 className="text-2xl font-bold dark:text-white">
+                    {blog.title}
+                  </h1>
+                  <p className="text-muted-foreground dark:text-gray-400">
+                    {blog.excerpt}
+                  </p>
                 </div>
                 <Badge
                   variant={blog.isPublished ? "success" : "secondary"}
@@ -74,30 +78,32 @@ const BlogDetailModal = ({ open, onClose, blog }) => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-3">
                   <div className="flex items-center gap-2">
-                    <User className="h-4 w-4 text-muted-foreground" />
+                    <User className="h-4 w-4 text-muted-foreground dark:text-gray-500" />
                     <div>
-                      <span className="font-medium">{blog.authorName}</span>
-                      <p className="text-sm text-muted-foreground">
+                      <span className="font-medium dark:text-white">
+                        {blog.authorName}
+                      </span>
+                      <p className="text-sm text-muted-foreground dark:text-gray-400">
                         {blog.authorEmail}
                       </p>
                     </div>
                   </div>
 
                   <div className="flex items-center gap-2">
-                    <Calendar className="h-4 w-4 text-muted-foreground" />
+                    <Calendar className="h-4 w-4 text-muted-foreground dark:text-gray-500" />
                     <div>
-                      <p className="text-sm">
+                      <p className="text-sm dark:text-gray-300">
                         <span className="font-medium">Tạo:</span>{" "}
                         {formatDate(blog.createdAt)}
                       </p>
                       {blog.updatedAt !== blog.createdAt && (
-                        <p className="text-sm text-muted-foreground">
+                        <p className="text-sm text-muted-foreground dark:text-gray-400">
                           <span className="font-medium">Cập nhật:</span>{" "}
                           {formatDate(blog.updatedAt)}
                         </p>
                       )}
                       {blog.publishedDate && (
-                        <p className="text-sm text-muted-foreground">
+                        <p className="text-sm text-muted-foreground dark:text-gray-400">
                           <span className="font-medium">Xuất bản:</span>{" "}
                           {formatDate(blog.publishedDate)}
                         </p>
@@ -109,14 +115,14 @@ const BlogDetailModal = ({ open, onClose, blog }) => {
                 <div className="space-y-3">
                   <div className="flex items-center gap-4">
                     <div className="flex items-center gap-1">
-                      <Eye className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-sm">
+                      <Eye className="h-4 w-4 text-muted-foreground dark:text-gray-500" />
+                      <span className="text-sm dark:text-gray-300">
                         {blog.viewCount || 0} lượt xem
                       </span>
                     </div>
                     <div className="flex items-center gap-1">
-                      <ThumbsUp className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-sm">
+                      <ThumbsUp className="h-4 w-4 text-muted-foreground dark:text-gray-500" />
+                      <span className="text-sm dark:text-gray-300">
                         {blog.likeCount || 0} lượt thích
                       </span>
                     </div>
@@ -124,8 +130,10 @@ const BlogDetailModal = ({ open, onClose, blog }) => {
 
                   <div className="space-y-2">
                     <div className="flex items-center gap-2">
-                      <Tag className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-sm font-medium">Danh mục:</span>
+                      <Tag className="h-4 w-4 text-muted-foreground dark:text-gray-500" />
+                      <span className="text-sm font-medium dark:text-white">
+                        Danh mục:
+                      </span>
                     </div>
                     <div className="flex flex-wrap gap-1">
                       {blog.categories?.map((category) => (
@@ -143,9 +151,9 @@ const BlogDetailModal = ({ open, onClose, blog }) => {
           <Separator />
 
           {/* Blog Content */}
-          <Card>
+          <Card className="dark:bg-gray-800 dark:border-gray-700">
             <CardHeader>
-              <CardTitle>Nội dung Blog</CardTitle>
+              <CardTitle className="dark:text-white">Nội dung Blog</CardTitle>
             </CardHeader>
             <CardContent>
               <div
@@ -156,20 +164,20 @@ const BlogDetailModal = ({ open, onClose, blog }) => {
           </Card>
 
           {/* Additional Information */}
-          <Card>
+          <Card className="dark:bg-gray-800 dark:border-gray-700">
             <CardHeader>
-              <CardTitle>Thông tin SEO</CardTitle>
+              <CardTitle className="dark:text-white">Thông tin SEO</CardTitle>
             </CardHeader>
             <CardContent className="space-y-2">
               <div>
-                <span className="font-medium">Slug: </span>
-                <code className="bg-muted px-2 py-1 rounded text-sm">
+                <span className="font-medium dark:text-white">Slug: </span>
+                <code className="bg-muted dark:bg-gray-700 px-2 py-1 rounded text-sm dark:text-gray-300">
                   {blog.slug}
                 </code>
               </div>
               <div>
-                <span className="font-medium">URL: </span>
-                <code className="bg-muted px-2 py-1 rounded text-sm">
+                <span className="font-medium dark:text-white">URL: </span>
+                <code className="bg-muted dark:bg-gray-700 px-2 py-1 rounded text-sm dark:text-gray-300">
                   /blog/{blog.slug}
                 </code>
               </div>
@@ -178,7 +186,11 @@ const BlogDetailModal = ({ open, onClose, blog }) => {
         </div>
 
         <div className="flex justify-end pt-4">
-          <Button variant="outline" onClick={onClose}>
+          <Button
+            variant="outline"
+            onClick={onClose}
+            className="dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
+          >
             Đóng
           </Button>
         </div>

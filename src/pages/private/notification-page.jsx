@@ -354,6 +354,7 @@ const AdminNotificationPage = () => {
                   <Input
                     id="broadcast-title"
                     placeholder="Để trống sẽ dùng tiêu đề mặc định"
+                    className="dark:text-black"
                     value={broadcastNotification.title}
                     onChange={(e) =>
                       setBroadcastNotification((prev) => ({
@@ -371,6 +372,7 @@ const AdminNotificationPage = () => {
                   <Textarea
                     id="broadcast-message"
                     placeholder="Nhập nội dung thông báo"
+                    className="dark:text-black"
                     value={broadcastNotification.message}
                     onChange={(e) =>
                       setBroadcastNotification((prev) => ({
@@ -390,6 +392,7 @@ const AdminNotificationPage = () => {
                     id="broadcast-related-id"
                     placeholder="ID của booking, flight, etc."
                     value={broadcastNotification.relatedId}
+                    className="dark:text-black"
                     onChange={(e) =>
                       setBroadcastNotification((prev) => ({
                         ...prev,

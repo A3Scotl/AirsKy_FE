@@ -22,6 +22,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Calendar } from "@/components/ui/calendar";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { format } from "date-fns";
+import { cn } from "@/lib/utils";
 import {
   User,
   Mail,
@@ -33,7 +41,8 @@ import {
   Bell,
   Eye,
   EyeOff,
-  Calendar,
+  Calendar as CalendarIcon,
+  CalendarCheck,
   Clock,
   Save,
   Upload,
@@ -63,6 +72,14 @@ const AdminProfilePage = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [loadingProfile, setLoadingProfile] = useState(true);
   const [avatarFile, setAvatarFile] = useState(null);
+
+  // Form submission states
+  const [isProfileSubmitting, setIsProfileSubmitting] = useState(false);
+  const [isPasswordSubmitting, setIsPasswordSubmitting] = useState(false);
+
+  // Initial data for comparison
+  const [initialProfileData, setInitialProfileData] = useState({});
+  const [initialPasswordData, setInitialPasswordData] = useState({});
   const [profileData, setProfileData] = useState({
     id: "",
     firstName: "",
@@ -103,6 +120,13 @@ const AdminProfilePage = () => {
     language: "English",
     theme: "light",
   });
+
+  // Calendar state for date of birth
+  const [calendarOpen, setCalendarOpen] = useState(false);
+
+  // Validation errors
+  const [profileErrors, setProfileErrors] = useState({});
+  const [passwordErrors, setPasswordErrors] = useState({});
 
   // Admin statistics
   const [adminStats, setAdminStats] = useState({
@@ -163,6 +187,22 @@ const AdminProfilePage = () => {
     fetchProfileData();
   }, [user]);
 
+  // Set initial data when profile data is loaded
+  useEffect(() => {
+    if (profileData && Object.keys(profileData).length > 0 && !loadingProfile) {
+      setInitialProfileData({ ...profileData });
+    }
+  }, [profileData, loadingProfile]);
+
+  // Set initial password data
+  useEffect(() => {
+    setInitialPasswordData({
+      currentPassword: "",
+      newPassword: "",
+      confirmPassword: "",
+    });
+  }, []);
+
   // Get loyalty tier display info based on enum value
   const getLoyaltyTierDisplay = (tier) => {
     switch (tier) {
@@ -195,6 +235,212 @@ const AdminProfilePage = () => {
           color: "text-orange-600",
           bgColor: "bg-orange-100",
         };
+    }
+  };
+
+  // Validation functions
+  const validateProfileField = (field, value) => {
+    const errors = { ...profileErrors };
+
+    switch (field) {
+      case "firstName":
+        if (!value.trim()) {
+          errors.firstName = "Họ không được để trống";
+        } else if (value.trim().length < 2) {
+          errors.firstName = "Họ phải có ít nhất 2 ký tự";
+        } else {
+          delete errors.firstName;
+        }
+        break;
+      case "lastName":
+        if (!value.trim()) {
+          errors.lastName = "Tên không được để trống";
+        } else if (value.trim().length < 2) {
+          errors.lastName = "Tên phải có ít nhất 2 ký tự";
+        } else {
+          delete errors.lastName;
+        }
+        break;
+      case "email":
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!value.trim()) {
+          errors.email = "Email không được để trống";
+        } else if (!emailRegex.test(value)) {
+          errors.email = "Email không hợp lệ";
+        } else {
+          delete errors.email;
+        }
+        break;
+      case "phone":
+        const phoneRegex = /^[0-9+\-\s()]+$/;
+        if (!value.trim()) {
+          errors.phone = "Số điện thoại không được để trống";
+        } else if (!phoneRegex.test(value)) {
+          errors.phone = "Số điện thoại không hợp lệ";
+        } else if (value.replace(/\D/g, "").length < 10) {
+          errors.phone = "Số điện thoại phải có ít nhất 10 chữ số";
+        } else {
+          delete errors.phone;
+        }
+        break;
+      case "dateOfBirth":
+        if (!value) {
+          errors.dateOfBirth = "Ngày sinh không được để trống";
+        } else {
+          const birthDate = new Date(value);
+          const today = new Date();
+          const age = today.getFullYear() - birthDate.getFullYear();
+          if (age < 18) {
+            errors.dateOfBirth = "Bạn phải từ 18 tuổi trở lên";
+          } else if (age > 120) {
+            errors.dateOfBirth = "Ngày sinh không hợp lệ";
+          } else {
+            delete errors.dateOfBirth;
+          }
+        }
+        break;
+    }
+
+    setProfileErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
+  const validatePasswordField = (field, value) => {
+    const errors = { ...passwordErrors };
+
+    switch (field) {
+      case "currentPassword":
+        if (!value) {
+          errors.currentPassword = "Mật khẩu hiện tại không được để trống";
+        } else {
+          delete errors.currentPassword;
+        }
+        break;
+      case "newPassword":
+        if (!value) {
+          errors.newPassword = "Mật khẩu mới không được để trống";
+        } else if (value.length < 8) {
+          errors.newPassword = "Mật khẩu mới phải có ít nhất 8 ký tự";
+        } else if (
+          !/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])/.test(value)
+        ) {
+          errors.newPassword =
+            "Mật khẩu phải chứa chữ hoa, chữ thường, số và ký tự đặc biệt";
+        } else if (value === passwordData.currentPassword) {
+          errors.newPassword =
+            "Mật khẩu mới không được giống mật khẩu hiện tại";
+        } else {
+          delete errors.newPassword;
+        }
+        break;
+      case "confirmPassword":
+        if (!value) {
+          errors.confirmPassword = "Xác nhận mật khẩu không được để trống";
+        } else if (value !== passwordData.newPassword) {
+          errors.confirmPassword = "Mật khẩu xác nhận không khớp";
+        } else {
+          delete errors.confirmPassword;
+        }
+        break;
+    }
+
+    setPasswordErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
+  // Check if profile data has changed
+  const hasProfileChanged = () => {
+    return JSON.stringify(profileData) !== JSON.stringify(initialProfileData);
+  };
+
+  // Check if password data has changed (only check if newPassword is filled)
+  const hasPasswordChanged = () => {
+    return (
+      passwordData.newPassword.trim() !== "" &&
+      passwordData.confirmPassword.trim() !== "" &&
+      passwordData.currentPassword.trim() !== ""
+    );
+  };
+
+  // Handle profile form changes with validation
+  const handleProfileChange = (field, value) => {
+    setProfileData((prev) => ({ ...prev, [field]: value }));
+    validateProfileField(field, value);
+  };
+
+  // Handle password form changes with validation
+  const handlePasswordFieldChange = (field, value) => {
+    setPasswordData((prev) => ({ ...prev, [field]: value }));
+    validatePasswordField(field, value);
+
+    // Disable confirm password field when new password is empty
+    if (field === "newPassword") {
+      if (!value.trim()) {
+        setPasswordData((prev) => ({ ...prev, confirmPassword: "" }));
+        setPasswordErrors((prev) => {
+          const errors = { ...prev };
+          delete errors.confirmPassword;
+          return errors;
+        });
+      }
+    }
+  };
+
+  // Handle profile form submission
+  const handleProfileSubmit = async (e) => {
+    e.preventDefault();
+
+    // Validate all profile fields
+    const isValid = Object.keys(profileData).every((field) =>
+      validateProfileField(field, profileData[field])
+    );
+
+    if (!isValid) {
+      toast.error("Vui lòng kiểm tra lại thông tin");
+      return;
+    }
+
+    setIsProfileSubmitting(true);
+    try {
+      // Simulate API call
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+      toast.success("Cập nhật thông tin thành công");
+    } catch (error) {
+      toast.error("Có lỗi xảy ra khi cập nhật thông tin");
+    } finally {
+      setIsProfileSubmitting(false);
+    }
+  };
+
+  // Handle password form submission
+  const handlePasswordSubmit = async (e) => {
+    e.preventDefault();
+
+    // Validate all password fields
+    const isValid = Object.keys(passwordData).every((field) =>
+      validatePasswordField(field, passwordData[field])
+    );
+
+    if (!isValid) {
+      toast.error("Vui lòng kiểm tra lại mật khẩu");
+      return;
+    }
+
+    setIsPasswordSubmitting(true);
+    try {
+      // Simulate API call
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+      toast.success("Đổi mật khẩu thành công");
+      setPasswordData({
+        currentPassword: "",
+        newPassword: "",
+        confirmPassword: "",
+      });
+      setPasswordErrors({});
+    } catch (error) {
+      toast.error("Có lỗi xảy ra khi đổi mật khẩu");
+    } finally {
+      setIsPasswordSubmitting(false);
     }
   };
 
@@ -433,12 +679,14 @@ const AdminProfilePage = () => {
   // Show loading state while fetching profile data
   if (loadingProfile) {
     return (
-      <div className="min-h-screen bg-gray-50 p-6">
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-6">
         <div className="max-w-6xl mx-auto space-y-6">
           <div className="flex items-center justify-center min-h-96">
             <div className="text-center">
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-              <p className="text-gray-600">Đang tải thông tin profile...</p>
+              <p className="text-gray-600 dark:text-gray-400">
+                Đang tải thông tin profile...
+              </p>
             </div>
           </div>
         </div>
@@ -447,13 +695,15 @@ const AdminProfilePage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-6">
       <div className="max-w-6xl mx-auto space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Trang cá nhân</h1>
-            <p className="text-gray-600 mt-1">
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+              Trang cá nhân
+            </h1>
+            <p className="text-gray-600 dark:text-gray-400 mt-1">
               Quản lý cài đặt và tùy chọn tài khoản quản trị viên của bạn
             </p>
           </div>
@@ -470,7 +720,7 @@ const AdminProfilePage = () => {
               <div className="relative">
                 <Avatar className="h-20 w-20">
                   <AvatarImage src={profileData.avatar} alt="Profile" />
-                  <AvatarFallback className="text-xl font-bold bg-blue-100">
+                  <AvatarFallback className="text-xl font-bold bg-blue-100 dark:bg-blue-900">
                     {(profileData.firstName?.[0] || "").toUpperCase()}
                     {(profileData.lastName?.[0] || "").toUpperCase()}
                   </AvatarFallback>
@@ -490,10 +740,12 @@ const AdminProfilePage = () => {
                 />
               </div>
               <div className="flex-1">
-                <h2 className="text-2xl font-bold">
+                <h2 className="text-2xl font-bold dark:text-white">
                   {profileData.firstName} {profileData.lastName}
                 </h2>
-                <p className="text-gray-600">{profileData.email}</p>
+                <p className="text-gray-600 dark:text-gray-400">
+                  {profileData.email}
+                </p>
                 <div className="flex items-center gap-4 mt-2">
                   <Badge className={getStatusColor(profileData.status)}>
                     {profileData.status === "Active" && (
@@ -501,7 +753,7 @@ const AdminProfilePage = () => {
                     )}
                     {profileData.status}
                   </Badge>
-                  <span className="text-sm text-gray-500">
+                  <span className="text-sm text-gray-500 dark:text-gray-400">
                     ID: {profileData.id}
                   </span>
                 </div>
@@ -547,96 +799,174 @@ const AdminProfilePage = () => {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <Card>
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
+                  <CardTitle className="flex items-center gap-2 dark:text-white">
                     <User className="h-5 w-5" />
                     Thông tin cá nhân
                   </CardTitle>
-                  <CardDescription>
+                  <CardDescription className="dark:text-gray-400">
                     Cập nhật thông tin cá nhân và thông tin liên hệ của bạn
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <form onSubmit={handleProfileUpdate} className="space-y-4">
+                  <form onSubmit={handleProfileSubmit} className="space-y-4">
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
-                        <Label htmlFor="firstName">Họ</Label>
+                        <Label
+                          htmlFor="firstName"
+                          className="dark:text-gray-300"
+                        >
+                          Họ
+                        </Label>
                         <Input
                           id="firstName"
                           value={profileData.firstName}
+                          className="dark:text-black"
+                          disabled={isProfileSubmitting}
                           onChange={(e) =>
-                            setProfileData({
-                              ...profileData,
-                              firstName: e.target.value,
-                            })
+                            handleProfileChange("firstName", e.target.value)
                           }
                         />
+                        {profileErrors.firstName && (
+                          <p className="text-sm text-red-500">
+                            {profileErrors.firstName}
+                          </p>
+                        )}
                       </div>
                       <div className="space-y-2">
-                        <Label htmlFor="lastName">Tên</Label>
+                        <Label
+                          htmlFor="lastName"
+                          className="dark:text-gray-300"
+                        >
+                          Tên
+                        </Label>
                         <Input
                           id="lastName"
                           value={profileData.lastName}
+                          className="dark:text-black"
+                          disabled={isProfileSubmitting}
                           onChange={(e) =>
-                            setProfileData({
-                              ...profileData,
-                              lastName: e.target.value,
-                            })
+                            handleProfileChange("lastName", e.target.value)
                           }
                         />
+                        {profileErrors.lastName && (
+                          <p className="text-sm text-red-500">
+                            {profileErrors.lastName}
+                          </p>
+                        )}
                       </div>
                     </div>
 
                     <div className="space-y-2">
-                      <Label htmlFor="email">Email</Label>
+                      <Label htmlFor="email" className="dark:text-gray-300">
+                        Email
+                      </Label>
                       <Input
                         id="email"
                         type="email"
                         value={profileData.email}
+                        className="dark:text-black"
+                        disabled={isProfileSubmitting}
                         onChange={(e) =>
-                          setProfileData({
-                            ...profileData,
-                            email: e.target.value,
-                          })
+                          handleProfileChange("email", e.target.value)
                         }
                       />
+                      {profileErrors.email && (
+                        <p className="text-sm text-red-500">
+                          {profileErrors.email}
+                        </p>
+                      )}
                     </div>
 
                     <div className="space-y-2">
-                      <Label htmlFor="phone">Số điện thoại</Label>
+                      <Label htmlFor="phone" className="dark:text-gray-300">
+                        Số điện thoại
+                      </Label>
                       <Input
                         id="phone"
                         value={profileData.phone}
+                        className="dark:text-black"
+                        disabled={isProfileSubmitting}
                         onChange={(e) =>
-                          setProfileData({
-                            ...profileData,
-                            phone: e.target.value,
-                          })
+                          handleProfileChange("phone", e.target.value)
                         }
                       />
+                      {profileErrors.phone && (
+                        <p className="text-sm text-red-500">
+                          {profileErrors.phone}
+                        </p>
+                      )}
                     </div>
 
                     <div className="space-y-2">
-                      <Label htmlFor="dateOfBirth">Ngày sinh</Label>
-                      <Input
-                        id="dateOfBirth"
-                        type="date"
-                        value={profileData.dateOfBirth}
-                        onChange={(e) =>
-                          setProfileData({
-                            ...profileData,
-                            dateOfBirth: e.target.value,
-                          })
-                        }
-                      />
+                      <Label
+                        htmlFor="dateOfBirth"
+                        className="dark:text-gray-300"
+                      >
+                        Ngày sinh
+                      </Label>
+                      <Popover
+                        open={calendarOpen}
+                        onOpenChange={setCalendarOpen}
+                      >
+                        <PopoverTrigger asChild>
+                          <Button
+                            variant="outline"
+                            className={cn(
+                              "w-full justify-start text-left font-normal dark:bg-gray-800 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700",
+                              !profileData.dateOfBirth &&
+                                "text-muted-foreground"
+                            )}
+                            disabled={isProfileSubmitting}
+                          >
+                            <CalendarIcon className="mr-2 h-4 w-4" />
+                            {profileData.dateOfBirth ? (
+                              format(
+                                new Date(profileData.dateOfBirth),
+                                "dd/MM/yyyy"
+                              )
+                            ) : (
+                              <span>Chọn ngày sinh</span>
+                            )}
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                          <Calendar
+                            mode="single"
+                            selected={
+                              profileData.dateOfBirth
+                                ? new Date(profileData.dateOfBirth)
+                                : undefined
+                            }
+                            onSelect={(date) => {
+                              handleProfileChange(
+                                "dateOfBirth",
+                                date ? date.toISOString().split("T")[0] : ""
+                              );
+                              setCalendarOpen(false);
+                            }}
+                            disabled={(date) =>
+                              date > new Date() || date < new Date("1900-01-01")
+                            }
+                            initialFocus
+                          />
+                        </PopoverContent>
+                      </Popover>
+                      {profileErrors.dateOfBirth && (
+                        <p className="text-sm text-red-500">
+                          {profileErrors.dateOfBirth}
+                        </p>
+                      )}
                     </div>
 
                     <Button
                       type="submit"
-                      disabled={isLoading}
+                      disabled={isProfileSubmitting}
                       className="w-full"
                     >
                       <Save className="h-4 w-4 mr-2" />
-                      {isLoading ? "Đang cập nhật" : "Cập nhật thông tin"}
+                      {isProfileSubmitting
+                        ? "Đang cập nhật"
+                        : "Cập nhật thông tin"}
                     </Button>
                   </form>
 
@@ -645,7 +975,7 @@ const AdminProfilePage = () => {
                   <div className="space-y-4">
                     <div className="flex items-center gap-2">
                       <Upload className="h-5 w-5" />
-                      <Label className="text-base font-medium">
+                      <Label className="text-base font-medium dark:text-gray-300">
                         Cập nhật ảnh đại diện
                       </Label>
                     </div>
@@ -686,7 +1016,7 @@ const AdminProfilePage = () => {
                     </div>
 
                     {avatarFile && (
-                      <div className="text-sm text-gray-600">
+                      <div className="text-sm text-gray-600 dark:text-gray-400">
                         Đã chọn: {avatarFile.name} (
                         {(avatarFile.size / 1024 / 1024).toFixed(2)} MB)
                       </div>
@@ -697,21 +1027,21 @@ const AdminProfilePage = () => {
 
               <Card>
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
+                  <CardTitle className="flex items-center gap-2 dark:text-white">
                     <Shield className="h-5 w-5" />
                     Thông tin quản trị
                   </CardTitle>
-                  <CardDescription>
+                  <CardDescription className="dark:text-gray-400">
                     Thông tin về vai trò và quyền hạn của bạn
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <Label className="text-sm font-medium text-gray-600">
+                      <Label className="text-sm font-medium text-gray-600 dark:text-gray-400">
                         Phòng ban
                       </Label>
-                      <p className="text-sm font-semibold">
+                      <p className="text-sm font-semibold dark:text-white">
                         {profileData.department}
                       </p>
                     </div>
@@ -719,19 +1049,19 @@ const AdminProfilePage = () => {
 
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <Label className="text-sm font-medium text-gray-600">
+                      <Label className="text-sm font-medium text-gray-600 dark:text-gray-400">
                         Ngày tham gia
                       </Label>
-                      <p className="text-sm font-semibold flex items-center gap-1">
-                        <Calendar className="h-4 w-4" />
-                        {new Date(profileData.joinDate).toLocaleDateString()}
-                      </p>
+                      <div className="text-sm font-semibold flex items-center gap-1 dark:text-white">
+                        <CalendarCheck className="h-4 w-4" />
+                        {profileData.joinDate}
+                      </div>
                     </div>
                     <div>
-                      <Label className="text-sm font-medium text-gray-600">
+                      <Label className="text-sm font-medium text-gray-600 dark:text-gray-400">
                         Lần đăng nhập cuối
                       </Label>
-                      <p className="text-sm font-semibold flex items-center gap-1">
+                      <p className="text-sm font-semibold flex items-center gap-1 dark:text-white">
                         <Clock className="h-4 w-4" />
                         {new Date(profileData.lastLogin).toLocaleString()}
                       </p>
@@ -748,11 +1078,11 @@ const AdminProfilePage = () => {
           <TabsContent value="loyalty">
             <Card>
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
+                <CardTitle className="flex items-center gap-2 dark:text-white">
                   <Award className="h-5 w-5" />
                   Chương trình điểm thưởng
                 </CardTitle>
-                <CardDescription>
+                <CardDescription className="dark:text-gray-400">
                   Theo dõi điểm thưởng và hạng thành viên của bạn
                 </CardDescription>
               </CardHeader>
@@ -760,12 +1090,14 @@ const AdminProfilePage = () => {
                 {loyaltyLoading ? (
                   <div className="flex items-center justify-center py-8">
                     <Loader2 className="h-6 w-6 animate-spin mr-2" />
-                    <span>Đang tải thông tin...</span>
+                    <span className="dark:text-gray-300">
+                      Đang tải thông tin...
+                    </span>
                   </div>
                 ) : loyaltyStats ? (
                   <div className="space-y-6">
                     {/* Current Tier */}
-                    <div className="flex items-center justify-between p-4 border rounded-lg bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20">
+                    <div className="flex items-center justify-between p-4 border rounded-lg bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 dark:border-blue-800">
                       <div className="flex items-center space-x-3">
                         {(() => {
                           const tierInfo = getLoyaltyTierDisplay(
@@ -782,10 +1114,10 @@ const AdminProfilePage = () => {
                                 />
                               </div>
                               <div>
-                                <p className="font-semibold text-lg">
+                                <p className="font-semibold text-lg dark:text-white">
                                   {tierInfo.name}
                                 </p>
-                                <p className="text-sm text-gray-600">
+                                <p className="text-sm text-gray-600 dark:text-gray-400">
                                   Hạng thành viên hiện tại
                                 </p>
                               </div>
@@ -810,51 +1142,57 @@ const AdminProfilePage = () => {
 
                     {/* Points and Bookings */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="p-4 border rounded-lg">
+                      <div className="p-4 border rounded-lg dark:border-gray-600">
                         <div className="flex items-center space-x-2 mb-2">
                           <Star className="h-5 w-5 text-yellow-500" />
-                          <span className="font-medium">Điểm thưởng</span>
+                          <span className="font-medium dark:text-gray-300">
+                            Điểm thưởng
+                          </span>
                         </div>
-                        <p className="text-2xl font-bold text-blue-600">
+                        <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
                           {loyaltyStats.currentPoints?.toLocaleString() || 0}
                         </p>
-                        <p className="text-sm text-gray-600">điểm</p>
+                        <p className="text-sm text-gray-600 dark:text-gray-400">
+                          điểm
+                        </p>
                       </div>
 
-                      <div className="p-4 border rounded-lg">
+                      <div className="p-4 border rounded-lg dark:border-gray-600">
                         <div className="flex items-center space-x-2 mb-2">
                           <Plane className="h-5 w-5 text-blue-500" />
-                          <span className="font-medium">
+                          <span className="font-medium dark:text-gray-300">
                             Chuyến bay hoàn thành
                           </span>
                         </div>
-                        <p className="text-2xl font-bold text-green-600">
+                        <p className="text-2xl font-bold text-green-600 dark:text-green-400">
                           {loyaltyStats.completedBookings?.toLocaleString() ||
                             0}
                         </p>
-                        <p className="text-sm text-gray-600">chuyến</p>
+                        <p className="text-sm text-gray-600 dark:text-gray-400">
+                          chuyến
+                        </p>
                       </div>
                     </div>
 
                     {/* Next Tier Progress */}
                     {loyaltyStats.nextTier &&
                       loyaltyStats.nextTierRequirements && (
-                        <div className="p-4 border rounded-lg bg-gray-50 dark:bg-gray-800/50">
-                          <h4 className="font-semibold mb-3 flex items-center">
+                        <div className="p-4 border rounded-lg bg-gray-50 dark:bg-gray-800/50 dark:border-gray-600">
+                          <h4 className="font-semibold mb-3 flex items-center dark:text-white">
                             <Award className="h-5 w-5 mr-2 text-purple-500" />
                             Tiến độ nâng hạng tiếp theo
                           </h4>
 
                           <div className="space-y-3">
                             <div className="flex justify-between items-center">
-                              <span className="text-sm">
+                              <span className="text-sm dark:text-gray-300">
                                 Hạng{" "}
                                 {
                                   getLoyaltyTierDisplay(loyaltyStats.nextTier)
                                     .name
                                 }
                               </span>
-                              <span className="text-sm font-medium">
+                              <span className="text-sm font-medium dark:text-white">
                                 {Math.round(
                                   (loyaltyStats.overallProgress || 0) * 100
                                 )}
@@ -862,7 +1200,7 @@ const AdminProfilePage = () => {
                               </span>
                             </div>
 
-                            <div className="w-full bg-gray-200 rounded-full h-2">
+                            <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
                               <div
                                 className="bg-purple-500 h-2 rounded-full transition-all duration-300"
                                 style={{
@@ -876,10 +1214,10 @@ const AdminProfilePage = () => {
 
                             <div className="grid grid-cols-2 gap-4 text-sm">
                               <div>
-                                <span className="text-gray-600">
+                                <span className="text-gray-600 dark:text-gray-400">
                                   Điểm cần thêm:
                                 </span>
-                                <span className="font-medium ml-1">
+                                <span className="font-medium ml-1 dark:text-white">
                                   {Math.max(
                                     0,
                                     (loyaltyStats.nextTierRequirements.points ||
@@ -888,10 +1226,10 @@ const AdminProfilePage = () => {
                                 </span>
                               </div>
                               <div>
-                                <span className="text-gray-600">
+                                <span className="text-gray-600 dark:text-gray-400">
                                   Chuyến bay cần thêm:
                                 </span>
-                                <span className="font-medium ml-1">
+                                <span className="font-medium ml-1 dark:text-white">
                                   {Math.max(
                                     0,
                                     (loyaltyStats.nextTierRequirements
@@ -906,8 +1244,8 @@ const AdminProfilePage = () => {
                       )}
 
                     {/* Tier Benefits */}
-                    <div className="p-4 border rounded-lg">
-                      <h4 className="font-semibold mb-3">
+                    <div className="p-4 border rounded-lg dark:border-gray-600">
+                      <h4 className="font-semibold mb-3 dark:text-white">
                         Quyền lợi hạng{" "}
                         {getLoyaltyTierDisplay(loyaltyStats.currentTier).name}
                       </h4>
@@ -916,15 +1254,21 @@ const AdminProfilePage = () => {
                           <>
                             <div className="flex items-center space-x-2">
                               <Star className="h-4 w-4 text-blue-500" />
-                              <span>Ưu tiên check-in và chọn ghế</span>
+                              <span className="dark:text-gray-300">
+                                Ưu tiên check-in và chọn ghế
+                              </span>
                             </div>
                             <div className="flex items-center space-x-2">
                               <Star className="h-4 w-4 text-blue-500" />
-                              <span>Miễn phí hành lý ký gửi</span>
+                              <span className="dark:text-gray-300">
+                                Miễn phí hành lý ký gửi
+                              </span>
                             </div>
                             <div className="flex items-center space-x-2">
                               <Star className="h-4 w-4 text-blue-500" />
-                              <span>Phòng chờ hạng thương gia</span>
+                              <span className="dark:text-gray-300">
+                                Phòng chờ hạng thương gia
+                              </span>
                             </div>
                           </>
                         )}
@@ -932,11 +1276,15 @@ const AdminProfilePage = () => {
                           <>
                             <div className="flex items-center space-x-2">
                               <Star className="h-4 w-4 text-yellow-500" />
-                              <span>Ưu tiên check-in</span>
+                              <span className="dark:text-gray-300">
+                                Ưu tiên check-in
+                              </span>
                             </div>
                             <div className="flex items-center space-x-2">
                               <Star className="h-4 w-4 text-yellow-500" />
-                              <span>Giảm 20% hành lý thêm</span>
+                              <span className="dark:text-gray-300">
+                                Giảm 20% hành lý thêm
+                              </span>
                             </div>
                           </>
                         )}
@@ -944,7 +1292,9 @@ const AdminProfilePage = () => {
                           <>
                             <div className="flex items-center space-x-2">
                               <Star className="h-4 w-4 text-gray-500" />
-                              <span>Giảm 10% hành lý thêm</span>
+                              <span className="dark:text-gray-300">
+                                Giảm 10% hành lý thêm
+                              </span>
                             </div>
                           </>
                         )}
@@ -952,7 +1302,9 @@ const AdminProfilePage = () => {
                           <>
                             <div className="flex items-center space-x-2">
                               <Star className="h-4 w-4 text-orange-500" />
-                              <span>Tích điểm cho mỗi chuyến bay</span>
+                              <span className="dark:text-gray-300">
+                                Tích điểm cho mỗi chuyến bay
+                              </span>
                             </div>
                           </>
                         )}
@@ -960,7 +1312,7 @@ const AdminProfilePage = () => {
                     </div>
                   </div>
                 ) : (
-                  <div className="text-center py-8 text-gray-500">
+                  <div className="text-center py-8 text-gray-500 dark:text-gray-400">
                     Không thể tải thông tin điểm thưởng
                   </div>
                 )}
@@ -973,29 +1325,36 @@ const AdminProfilePage = () => {
             <div className="grid grid-cols-1 gap-6">
               <Card>
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
+                  <CardTitle className="flex items-center gap-2 dark:text-white">
                     <Key className="h-5 w-5" />
                     Đổi mật khẩu
                   </CardTitle>
-                  <CardDescription>
+                  <CardDescription className="dark:text-gray-400">
                     Cập nhật mật khẩu của bạn để giữ cho tài khoản của bạn an
                     toàn
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <form onSubmit={handlePasswordChange} className="space-y-4">
+                  <form onSubmit={handlePasswordSubmit} className="space-y-4">
                     <div className="space-y-2">
-                      <Label htmlFor="currentPassword">Mật khẩu hiện tại</Label>
+                      <Label
+                        htmlFor="currentPassword"
+                        className="dark:text-gray-300"
+                      >
+                        Mật khẩu hiện tại
+                      </Label>
                       <div className="relative">
                         <Input
                           id="currentPassword"
                           type={showCurrentPassword ? "text" : "password"}
                           value={passwordData.currentPassword}
+                          className="dark:text-black"
+                          disabled={isPasswordSubmitting}
                           onChange={(e) =>
-                            setPasswordData({
-                              ...passwordData,
-                              currentPassword: e.target.value,
-                            })
+                            handlePasswordFieldChange(
+                              "currentPassword",
+                              e.target.value
+                            )
                           }
                           required
                         />
@@ -1007,6 +1366,7 @@ const AdminProfilePage = () => {
                           onClick={() =>
                             setShowCurrentPassword(!showCurrentPassword)
                           }
+                          disabled={isPasswordSubmitting}
                         >
                           {showCurrentPassword ? (
                             <EyeOff className="h-4 w-4" />
@@ -1015,20 +1375,32 @@ const AdminProfilePage = () => {
                           )}
                         </Button>
                       </div>
+                      {passwordErrors.currentPassword && (
+                        <p className="text-sm text-red-500">
+                          {passwordErrors.currentPassword}
+                        </p>
+                      )}
                     </div>
 
                     <div className="space-y-2">
-                      <Label htmlFor="newPassword">Mật khẩu mới</Label>
+                      <Label
+                        htmlFor="newPassword"
+                        className="dark:text-gray-300"
+                      >
+                        Mật khẩu mới
+                      </Label>
                       <div className="relative">
                         <Input
                           id="newPassword"
                           type={showNewPassword ? "text" : "password"}
                           value={passwordData.newPassword}
+                          className="dark:text-black"
+                          disabled={isPasswordSubmitting}
                           onChange={(e) =>
-                            setPasswordData({
-                              ...passwordData,
-                              newPassword: e.target.value,
-                            })
+                            handlePasswordFieldChange(
+                              "newPassword",
+                              e.target.value
+                            )
                           }
                           required
                           minLength={8}
@@ -1039,6 +1411,7 @@ const AdminProfilePage = () => {
                           size="sm"
                           className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
                           onClick={() => setShowNewPassword(!showNewPassword)}
+                          disabled={isPasswordSubmitting}
                         >
                           {showNewPassword ? (
                             <EyeOff className="h-4 w-4" />
@@ -1047,10 +1420,18 @@ const AdminProfilePage = () => {
                           )}
                         </Button>
                       </div>
+                      {passwordErrors.newPassword && (
+                        <p className="text-sm text-red-500">
+                          {passwordErrors.newPassword}
+                        </p>
+                      )}
                     </div>
 
                     <div className="space-y-2">
-                      <Label htmlFor="confirmPassword">
+                      <Label
+                        htmlFor="confirmPassword"
+                        className="dark:text-gray-300"
+                      >
                         Xác nhận mật khẩu mới
                       </Label>
                       <div className="relative">
@@ -1058,11 +1439,16 @@ const AdminProfilePage = () => {
                           id="confirmPassword"
                           type={showConfirmPassword ? "text" : "password"}
                           value={passwordData.confirmPassword}
+                          className="dark:text-black"
+                          disabled={
+                            isPasswordSubmitting ||
+                            !passwordData.newPassword.trim()
+                          }
                           onChange={(e) =>
-                            setPasswordData({
-                              ...passwordData,
-                              confirmPassword: e.target.value,
-                            })
+                            handlePasswordFieldChange(
+                              "confirmPassword",
+                              e.target.value
+                            )
                           }
                           required
                           minLength={8}
@@ -1075,6 +1461,10 @@ const AdminProfilePage = () => {
                           onClick={() =>
                             setShowConfirmPassword(!showConfirmPassword)
                           }
+                          disabled={
+                            isPasswordSubmitting ||
+                            !passwordData.newPassword.trim()
+                          }
                         >
                           {showConfirmPassword ? (
                             <EyeOff className="h-4 w-4" />
@@ -1083,9 +1473,14 @@ const AdminProfilePage = () => {
                           )}
                         </Button>
                       </div>
+                      {passwordErrors.confirmPassword && (
+                        <p className="text-sm text-red-500">
+                          {passwordErrors.confirmPassword}
+                        </p>
+                      )}
                     </div>
 
-                    <div className="text-xs text-gray-500 bg-gray-50 p-3 rounded-md">
+                    <div className="text-xs text-gray-500 bg-gray-50 p-3 rounded-md dark:bg-gray-800 dark:text-gray-400">
                       <p>Yêu cầu mật khẩu:</p>
                       <ul className="list-disc list-inside mt-1 space-y-1">
                         <li>Ít nhất 8 ký tự</li>
@@ -1097,11 +1492,13 @@ const AdminProfilePage = () => {
 
                     <Button
                       type="submit"
-                      disabled={isLoading}
+                      disabled={isPasswordSubmitting}
                       className="w-full"
                     >
                       <Lock className="h-4 w-4 mr-2" />
-                      {isLoading ? "Updating..." : "Update Password"}
+                      {isPasswordSubmitting
+                        ? "Đang đổi mật khẩu"
+                        : "Đổi mật khẩu"}
                     </Button>
                   </form>
                 </CardContent>
@@ -1113,23 +1510,27 @@ const AdminProfilePage = () => {
           <TabsContent value="notifications">
             <Card>
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
+                <CardTitle className="flex items-center gap-2 dark:text-white">
                   <Bell className="h-5 w-5" />
                   Tùy chọn thông báo
                 </CardTitle>
-                <CardDescription>
+                <CardDescription className="dark:text-gray-400">
                   Cấu hình cách bạn muốn nhận thông báo
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-4">
-                    <h4 className="font-medium">Tùy chọn giao tiếp</h4>
+                    <h4 className="font-medium dark:text-gray-300">
+                      Tùy chọn giao tiếp
+                    </h4>
 
                     <div className="flex items-center justify-between">
                       <div className="space-y-0.5">
-                        <Label>Email Notifications</Label>
-                        <p className="text-sm text-gray-600">
+                        <Label className="dark:text-gray-300">
+                          Email Notifications
+                        </Label>
+                        <p className="text-sm text-gray-600 dark:text-gray-400">
                           Nhận thông báo qua email
                         </p>
                       </div>
@@ -1143,33 +1544,19 @@ const AdminProfilePage = () => {
                         }
                       />
                     </div>
-
-                    <div className="flex items-center justify-between">
-                      <div className="space-y-0.5">
-                        <Label>SMS Notifications</Label>
-                        <p className="text-sm text-gray-600">
-                          Nhận thông báo qua SMS
-                        </p>
-                      </div>
-                      <Switch
-                        checked={notificationSettings.smsNotifications}
-                        onCheckedChange={(checked) =>
-                          setNotificationSettings({
-                            ...notificationSettings,
-                            smsNotifications: checked,
-                          })
-                        }
-                      />
-                    </div>
                   </div>
 
                   <div className="space-y-4">
-                    <h4 className="font-medium">Thông báo hệ thống</h4>
+                    <h4 className="font-medium dark:text-gray-300">
+                      Thông báo hệ thống
+                    </h4>
 
                     <div className="flex items-center justify-between">
                       <div className="space-y-0.5">
-                        <Label>Thông báo chuyến bay</Label>
-                        <p className="text-sm text-gray-600">
+                        <Label className="dark:text-gray-300">
+                          Thông báo chuyến bay
+                        </Label>
+                        <p className="text-sm text-gray-600 dark:text-gray-400">
                           Thông báo về sự chậm trễ, hủy chuyến, cập nhật
                         </p>
                       </div>
@@ -1198,11 +1585,11 @@ const AdminProfilePage = () => {
           <TabsContent value="settings">
             <Card>
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
+                <CardTitle className="flex items-center gap-2 dark:text-white">
                   <Settings className="h-5 w-5" />
                   Tùy chọn tài khoản
                 </CardTitle>
-                <CardDescription>
+                <CardDescription className="dark:text-gray-400">
                   Cấu hình sở thích tài khoản và cài đặt hệ thống
                 </CardDescription>
               </CardHeader>
@@ -1210,37 +1597,7 @@ const AdminProfilePage = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-4">
                     <div className="space-y-2">
-                      <Label>Timezone</Label>
-                      <Select
-                        value={accountSettings.timezone}
-                        onValueChange={(value) =>
-                          setAccountSettings({
-                            ...accountSettings,
-                            timezone: value,
-                          })
-                        }
-                      >
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="UTC-8">
-                            Giờ Thái Bình Dương (UTC-8)
-                          </SelectItem>
-                          <SelectItem value="UTC-7">Giờ Núi (UTC-7)</SelectItem>
-                          <SelectItem value="UTC-6">
-                            Giờ Trung (UTC-6)
-                          </SelectItem>
-                          <SelectItem value="UTC-5">
-                            Giờ Miền Đông (UTC-5)
-                          </SelectItem>
-                          <SelectItem value="UTC+0">UTC</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label>Ngôn ngữ</Label>
+                      <Label className="dark:text-gray-300">Ngôn ngữ</Label>
                       <Select
                         value={accountSettings.language}
                         onValueChange={(value) =>
@@ -1265,7 +1622,7 @@ const AdminProfilePage = () => {
 
                   <div className="space-y-4">
                     <div className="space-y-2">
-                      <Label>Chủ đề</Label>
+                      <Label className="dark:text-gray-300">Chủ đề</Label>
                       <Select
                         value={accountSettings.theme}
                         onValueChange={(value) =>
@@ -1293,21 +1650,23 @@ const AdminProfilePage = () => {
                 <Separator />
 
                 <div className="space-y-4">
-                  <h4 className="font-medium text-red-600 flex items-center gap-2">
+                  <h4 className="font-medium text-red-600 dark:text-red-400 flex items-center gap-2">
                     <AlertTriangle className="h-4 w-4" />
                     Cảnh báo quan trọng
                   </h4>
-                  <div className="border border-red-200 rounded-lg p-4 space-y-3">
+                  <div className="border border-red-200 dark:border-red-800 rounded-lg p-4 space-y-3 bg-red-50 dark:bg-red-900/20">
                     <div>
-                      <h5 className="font-medium">Vô hiệu hóa tài khoản</h5>
-                      <p className="text-sm text-gray-600">
+                      <h5 className="font-medium dark:text-white">
+                        Vô hiệu hóa tài khoản
+                      </h5>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">
                         Tạm thời vô hiệu hóa quyền truy cập quản trị viên của
                         bạn
                       </p>
                     </div>
                     <Button
                       variant="outline"
-                      className="border-red-200 text-red-600 hover:bg-red-50"
+                      className="border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30"
                     >
                       Yêu cầu vô hiệu hóa tài khoản
                     </Button>

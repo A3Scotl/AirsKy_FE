@@ -176,7 +176,7 @@ const AirlinePage = () => {
       columnHelper.accessor("airlineCode", {
         header: "Mã hãng bay",
         cell: (info) => (
-          <div className="font-mono font-medium text-gray-900">
+          <div className="font-mono font-medium text-gray-900 dark:text-white">
             {info.getValue()}
           </div>
         ),
@@ -186,7 +186,7 @@ const AirlinePage = () => {
       columnHelper.accessor("airlineName", {
         header: "Tên hãng bay",
         cell: (info) => (
-          <div className="font-medium text-gray-900">{info.getValue()}</div>
+          <div className="font-medium text-gray-900 dark:text-white">{info.getValue()}</div>
         ),
       }),
 
@@ -194,7 +194,7 @@ const AirlinePage = () => {
       columnHelper.accessor("contact", {
         header: "Liên hệ",
         cell: (info) => (
-          <div className="text-sm text-gray-900">
+          <div className="text-sm text-gray-900 dark:text-white">
             {info.getValue() || "N/A"}
           </div>
         ),
@@ -457,7 +457,7 @@ const AirlinePage = () => {
                 placeholder="Tìm kiếm theo tên, mã hoặc liên hệ..."
                 value={globalFilter ?? ""}
                 onChange={(event) => setGlobalFilter(event.target.value)}
-                className="pl-10"
+                className="pl-10 dark:text-black"
               />
             </div>
           </div>

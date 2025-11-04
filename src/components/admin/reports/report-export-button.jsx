@@ -504,17 +504,17 @@ const ReportExportButton = ({
       </Button>
 
       <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-        <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-y-auto">
+        <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-y-auto dark:bg-gray-900 dark:border-gray-700">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
+            <DialogTitle className="flex items-center gap-2 dark:text-white">
               <Download className="h-5 w-5" />
               Xuất {config.displayName}
             </DialogTitle>
-            <DialogDescription>
+            <DialogDescription className="dark:text-gray-400">
               Chọn định dạng và trường dữ liệu ({data.length} bản ghi)
             </DialogDescription>
             {dateRange?.from && dateRange?.to && (
-              <div className="text-sm text-muted-foreground -mt-2">
+              <div className="text-sm text-muted-foreground -mt-2 dark:text-gray-500">
                 <Calendar className="h-4 w-4 inline mr-1" />
                 Từ {format(dateRange.from, "dd/MM/yyyy")} đến{" "}
                 {format(dateRange.to, "dd/MM/yyyy")}
@@ -525,23 +525,32 @@ const ReportExportButton = ({
           <div className="space-y-6 py-4">
             {/* Định dạng */}
             <div className="space-y-2">
-              <Label>Định dạng file</Label>
+              <Label className="dark:text-white">Định dạng file</Label>
               <Select value={exportFormat} onValueChange={setExportFormat}>
-                <SelectTrigger>
+                <SelectTrigger className="dark:bg-gray-800 dark:border-gray-600 dark:text-white">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="xlsx">
+                <SelectContent className="dark:bg-gray-800 dark:border-gray-600">
+                  <SelectItem
+                    value="xlsx"
+                    className="dark:text-white dark:focus:bg-gray-700"
+                  >
                     <div className="flex items-center gap-2">
                       <FileSpreadsheet className="h-4 w-4" /> Excel (.xlsx)
                     </div>
                   </SelectItem>
-                  <SelectItem value="csv">
+                  <SelectItem
+                    value="csv"
+                    className="dark:text-white dark:focus:bg-gray-700"
+                  >
                     <div className="flex items-center gap-2">
                       <FileText className="h-4 w-4" /> CSV (.csv)
                     </div>
                   </SelectItem>
-                  <SelectItem value="pdf">
+                  <SelectItem
+                    value="pdf"
+                    className="dark:text-white dark:focus:bg-gray-700"
+                  >
                     <div className="flex items-center gap-2">
                       <FileType className="h-4 w-4" /> PDF (.pdf)
                     </div>
@@ -585,7 +594,7 @@ const ReportExportButton = ({
             {/* Trường dữ liệu */}
             <div className="space-y-3">
               <div className="flex justify-between items-center">
-                <Label>
+                <Label className="dark:text-white">
                   Chọn trường ({selectedFields.length}/{config.fields.length})
                 </Label>
                 <div className="flex items-center gap-2">
@@ -593,13 +602,14 @@ const ReportExportButton = ({
                     id="all"
                     checked={selectedFields.length === config.fields.length}
                     onCheckedChange={handleSelectAll}
+                    className="dark:border-gray-600"
                   />
-                  <Label htmlFor="all" className="text-sm">
+                  <Label htmlFor="all" className="text-sm dark:text-white">
                     Tất cả
                   </Label>
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-2 max-h-60 overflow-y-auto border rounded-md p-3">
+              <div className="space-y-3 border rounded-md p-4 max-h-48 overflow-y-auto dark:border-gray-700 dark:bg-gray-800">
                 {config.fields.map((field) => (
                   <div key={field.key} className="flex items-center gap-2">
                     <Checkbox
@@ -616,13 +626,18 @@ const ReportExportButton = ({
             </div>
           </div>
 
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsModalOpen(false)}>
+          <DialogFooter className="dark:bg-gray-900 dark:border-gray-700">
+            <Button
+              variant="outline"
+              onClick={() => setIsModalOpen(false)}
+              className="dark:border-gray-600 dark:text-white dark:hover:bg-gray-800"
+            >
               Hủy
             </Button>
             <Button
               onClick={handleExport}
               disabled={isExporting || !selectedFields.length}
+              className="dark:bg-blue-600 dark:hover:bg-blue-700"
             >
               {isExporting
                 ? "Đang xuất..."

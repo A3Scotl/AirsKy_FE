@@ -25,6 +25,12 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import {
   AlertCircle,
   Edit,
   Lock,
@@ -42,8 +48,11 @@ import {
   Shield,
   Award,
   Plane,
+  Calendar as CalendarIcon,
 } from "lucide-react";
 import { toast } from "sonner";
+import { format } from "date-fns";
+import { cn } from "@/lib/utils";
 import { authApi } from "@/apis/auth-api";
 import { userApi } from "@/apis/user-api";
 import { loyaltyApi } from "@/apis/loyalty-api";
@@ -83,6 +92,85 @@ const AccountTab = ({ userProfile, onProfileUpdate }) => {
     newPassword: "",
     confirmPassword: "",
   });
+
+  // Validation state
+  const [formErrors, setFormErrors] = useState({});
+  const [passwordErrors, setPasswordErrors] = useState({});
+
+  // Validation functions
+  const validateField = (field, value) => {
+    switch (field) {
+      case "firstName":
+        if (!value.trim()) return "Họ không được để trống";
+        if (value.trim().length < 1) return "Họ phải có ít nhất 1 ký tự";
+        break;
+      case "lastName":
+        if (!value.trim()) return "Tên không được để trống";
+        if (value.trim().length < 1) return "Tên phải có ít nhất 1 ký tự";
+        break;
+      case "phone":
+        if (value && !/^(\+84|84|0)[3|5|7|8|9][0-9]{8}$/.test(value)) {
+          return "Số điện thoại phải là số có định dạng hợp lệ (10-11 chữ số)";
+        }
+        break;
+      case "dateOfBirth":
+        if (value) {
+          const birthDate = new Date(value);
+          const today = new Date();
+          if (birthDate >= today) {
+            return "Ngày sinh phải là ngày trong quá khứ";
+          }
+        }
+        break;
+      case "passportNumber":
+        if (value && !/^[A-Z0-9]{6,12}$/.test(value)) {
+          return "Số hộ chiếu phải có 6-12 ký tự (chữ hoa và số)";
+        }
+        break;
+      case "passportExpiry":
+        if (value) {
+          const expiryDate = new Date(value);
+          const today = new Date();
+          if (expiryDate <= today) {
+            return "Ngày hết hạn hộ chiếu phải là ngày trong tương lai";
+          }
+        }
+        break;
+      default:
+        return "";
+    }
+    return "";
+  };
+
+  const validatePasswordField = (field, value, allData = passwordData) => {
+    switch (field) {
+      case "oldPassword":
+        if (!value) return "Vui lòng nhập mật khẩu hiện tại";
+        break;
+      case "newPassword":
+        if (!value) return "Vui lòng nhập mật khẩu mới";
+        if (value.length < 8)
+          return "Mật khẩu phải có ít nhất 8 ký tự, bao gồm chữ hoa, chữ thường, số và ký tự đặc biệt";
+        if (
+          !/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/.test(
+            value
+          )
+        ) {
+          return "Mật khẩu phải có ít nhất 8 ký tự, bao gồm chữ hoa, chữ thường, số và ký tự đặc biệt";
+        }
+        if (value === allData.oldPassword)
+          return "Mật khẩu mới phải khác mật khẩu cũ";
+        break;
+      case "confirmPassword":
+        if (!value) return "Vui lòng xác nhận mật khẩu mới";
+        if (value !== allData.newPassword)
+          return "Mật khẩu xác nhận không khớp";
+        break;
+      default:
+        return "";
+    }
+    return "";
+  };
 
   // Vietnamese social accounts data
   const [socialAccounts] = useState([
@@ -160,11 +248,39 @@ const AccountTab = ({ userProfile, onProfileUpdate }) => {
 
   // Optimized handlers
   const handleInputChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+    setFormData({ ...formData, [name]: value });
+
+    // Real-time validation
+    const error = validateField(name, value);
+    setFormErrors((prev) => ({ ...prev, [name]: error }));
   };
 
   const handlePasswordChange = (e) => {
-    setPasswordData({ ...passwordData, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+    setPasswordData({ ...passwordData, [name]: value });
+
+    // Real-time validation
+    const error = validatePasswordField(name, value);
+    setPasswordErrors((prev) => ({ ...prev, [name]: error }));
+
+    // Special case: re-validate confirmPassword when newPassword changes
+    if (name === "newPassword") {
+      const confirmError = validatePasswordField(
+        "confirmPassword",
+        passwordData.confirmPassword,
+        { ...passwordData, newPassword: value }
+      );
+      setPasswordErrors((prev) => ({ ...prev, confirmPassword: confirmError }));
+    }
+  };
+
+  const handlePasswordPaste = (e) => {
+    // Prevent paste for confirmPassword field for security
+    if (e.target.name === "confirmPassword") {
+      e.preventDefault();
+      toast.warning("Không được phép dán mật khẩu xác nhận để đảm bảo bảo mật");
+    }
   };
 
   const handleAvatarUpload = (previewUrl, file) => {
@@ -192,6 +308,25 @@ const AccountTab = ({ userProfile, onProfileUpdate }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    // Validate all fields before submission
+    const errors = {};
+    Object.keys(formData).forEach((field) => {
+      if (field !== "avatar") {
+        // Skip avatar validation
+        const error = validateField(field, formData[field]);
+        if (error) errors[field] = error;
+      }
+    });
+
+    setFormErrors(errors);
+
+    // Check if there are any errors
+    if (Object.values(errors).some((error) => error)) {
+      toast.error("Vui lòng kiểm tra lại thông tin đã nhập");
+      return;
+    }
+
     setLoading(true);
     try {
       // Validate user ID
@@ -276,11 +411,29 @@ const AccountTab = ({ userProfile, onProfileUpdate }) => {
         // Exit edit mode
         setEditMode(false);
       } else {
-        toast.error(
-          response.message || "Cập nhật hồ sơ thất bại. Vui lòng thử lại."
-        );
+        // Handle API validation errors
+        if (response.errors) {
+          const apiErrors = {};
+          Object.entries(response.errors).forEach(([field, message]) => {
+            if (field === "phone") {
+              apiErrors.phone =
+                "Số điện thoại phải là số hợp lệ (10-15 chữ số)";
+            } else if (field === "dateOfBirth") {
+              apiErrors.dateOfBirth = "Ngày sinh phải là ngày trong quá khứ";
+            } else {
+              apiErrors[field] = message;
+            }
+          });
+          setFormErrors(apiErrors);
+          toast.error("Vui lòng kiểm tra lại thông tin đã nhập");
+        } else {
+          toast.error(
+            response.message || "Cập nhật hồ sơ thất bại. Vui lòng thử lại."
+          );
+        }
       }
     } catch (error) {
+      console.error("Update profile error:", error);
       toast.error("Có lỗi xảy ra khi cập nhật hồ sơ. Vui lòng thử lại.");
     } finally {
       setLoading(false);
@@ -289,53 +442,63 @@ const AccountTab = ({ userProfile, onProfileUpdate }) => {
 
   const handlePasswordSubmit = async (e) => {
     e.preventDefault();
+
+    // Validate all password fields before submission
+    const errors = {};
+    Object.keys(passwordData).forEach((field) => {
+      const error = validatePasswordField(field, passwordData[field]);
+      if (error) errors[field] = error;
+    });
+
+    setPasswordErrors(errors);
+
+    // Check if there are any errors
+    if (Object.values(errors).some((error) => error)) {
+      toast.error("Vui lòng kiểm tra lại thông tin đã nhập");
+      return;
+    }
+
     setLoading(true);
-
     try {
-      // Validate password fields
-      if (!passwordData.oldPassword) {
-        toast.error("Vui lòng nhập mật khẩu hiện tại");
-        setLoading(false);
-        return;
-      }
-      if (!passwordData.newPassword) {
-        toast.error("Vui lòng nhập mật khẩu mới");
-        setLoading(false);
-        return;
-      }
-      if (passwordData.newPassword !== passwordData.confirmPassword) {
-        toast.error("Mật khẩu xác nhận không khớp");
-        setLoading(false);
-        return;
-      }
-      if (passwordData.newPassword.length < 6) {
-        toast.error("Mật khẩu mới phải có ít nhất 6 ký tự");
-        setLoading(false);
-        return;
-      }
-
-      // Call API to change password
-      const response = await authApi.changePassword(passwordData);
+      const response = await authApi.changePassword({
+        email: passwordData.email,
+        oldPassword: passwordData.oldPassword,
+        newPassword: passwordData.newPassword,
+      });
 
       if (response.success) {
         toast.success("Đổi mật khẩu thành công!");
 
-        // Reset password form
+        // Reset form
         setPasswordData({
           email: userProfile?.email || "",
           oldPassword: "",
           newPassword: "",
           confirmPassword: "",
         });
-
-        // Exit password mode
+        setPasswordErrors({});
         setPasswordMode(false);
       } else {
-        toast.error(
-          response.message || "Đổi mật khẩu thất bại. Vui lòng thử lại."
-        );
+        // Handle API validation errors
+        if (response.errors) {
+          const apiErrors = {};
+          Object.entries(response.errors).forEach(([field, message]) => {
+            if (field === "oldPassword") {
+              apiErrors.oldPassword = "Mật khẩu hiện tại không đúng";
+            } else if (field === "newPassword") {
+              apiErrors.newPassword = "Mật khẩu mới không hợp lệ";
+            } else {
+              apiErrors[field] = message;
+            }
+          });
+          setPasswordErrors(apiErrors);
+          toast.error("Vui lòng kiểm tra lại thông tin đã nhập");
+        } else {
+          toast.error(response.message || "Đổi mật khẩu thất bại");
+        }
       }
     } catch (error) {
+      console.error("Password change error:", error);
       toast.error("Có lỗi xảy ra khi đổi mật khẩu. Vui lòng thử lại.");
     } finally {
       setLoading(false);
@@ -467,8 +630,19 @@ const AccountTab = ({ userProfile, onProfileUpdate }) => {
                     value={formData.firstName}
                     onChange={handleInputChange}
                     placeholder="Nhập họ"
+                    disabled={loading}
                     required
+                    className={`dark:text-black ${
+                      formErrors.firstName
+                        ? "border-red-500 focus:border-red-500"
+                        : ""
+                    }`}
                   />
+                  {formErrors.firstName && (
+                    <p className="text-sm text-red-600">
+                      {formErrors.firstName}
+                    </p>
+                  )}
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="lastName">Tên *</Label>
@@ -479,8 +653,19 @@ const AccountTab = ({ userProfile, onProfileUpdate }) => {
                     value={formData.lastName}
                     onChange={handleInputChange}
                     placeholder="Nhập tên"
+                    disabled={loading}
                     required
+                    className={`dark:text-black ${
+                      formErrors.lastName
+                        ? "border-red-500 focus:border-red-500"
+                        : ""
+                    }`}
                   />
+                  {formErrors.lastName && (
+                    <p className="text-sm text-red-600">
+                      {formErrors.lastName}
+                    </p>
+                  )}
                 </div>
               </div>
 
@@ -511,17 +696,76 @@ const AccountTab = ({ userProfile, onProfileUpdate }) => {
                     value={formData.phone}
                     onChange={handleInputChange}
                     placeholder="Nhập số điện thoại"
+                    disabled={loading}
+                    className={`dark:text-black ${
+                      formErrors.phone
+                        ? "border-red-500 focus:border-red-500"
+                        : ""
+                    }`}
                   />
+                  {formErrors.phone && (
+                    <p className="text-sm text-red-600">{formErrors.phone}</p>
+                  )}
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="dateOfBirth">Ngày sinh</Label>
-                  <Input
-                    id="dateOfBirth"
-                    name="dateOfBirth"
-                    type="date"
-                    value={formData.dateOfBirth}
-                    onChange={handleInputChange}
-                  />
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className={cn(
+                          "w-full justify-start text-left font-normal",
+                          !formData.dateOfBirth && "text-muted-foreground",
+                          formErrors.dateOfBirth &&
+                            "border-red-500 focus:border-red-500"
+                        )}
+                        disabled={loading}
+                      >
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {formData.dateOfBirth ? (
+                          format(new Date(formData.dateOfBirth), "dd/MM/yyyy")
+                        ) : (
+                          <span>Chọn ngày sinh</span>
+                        )}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={
+                          formData.dateOfBirth
+                            ? new Date(formData.dateOfBirth)
+                            : undefined
+                        }
+                        onSelect={(date) => {
+                          const formattedDate = date
+                            ? date.toISOString().split("T")[0]
+                            : "";
+                          setFormData((prev) => ({
+                            ...prev,
+                            dateOfBirth: formattedDate,
+                          }));
+                          const error = validateField(
+                            "dateOfBirth",
+                            formattedDate
+                          );
+                          setFormErrors((prev) => ({
+                            ...prev,
+                            dateOfBirth: error,
+                          }));
+                        }}
+                        disabled={(date) =>
+                          date > new Date() || date < new Date(1900, 0, 1)
+                        }
+                        initialFocus
+                      />
+                    </PopoverContent>
+                  </Popover>
+                  {formErrors.dateOfBirth && (
+                    <p className="text-sm text-red-600">
+                      {formErrors.dateOfBirth}
+                    </p>
+                  )}
                 </div>
               </div>
 
@@ -536,17 +780,79 @@ const AccountTab = ({ userProfile, onProfileUpdate }) => {
                     value={formData.passportNumber}
                     onChange={handleInputChange}
                     placeholder="Nhập số hộ chiếu"
+                    disabled={loading}
+                    className={`dark:text-black ${
+                      formErrors.passportNumber
+                        ? "border-red-500 focus:border-red-500"
+                        : ""
+                    }`}
                   />
+                  {formErrors.passportNumber && (
+                    <p className="text-sm text-red-600">
+                      {formErrors.passportNumber}
+                    </p>
+                  )}
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="passportExpiry">Ngày hết hạn hộ chiếu</Label>
-                  <Input
-                    id="passportExpiry"
-                    name="passportExpiry"
-                    type="date"
-                    value={formData.passportExpiry}
-                    onChange={handleInputChange}
-                  />
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className={cn(
+                          "w-full justify-start text-left font-normal",
+                          !formData.passportExpiry && "text-muted-foreground",
+                          formErrors.passportExpiry &&
+                            "border-red-500 focus:border-red-500"
+                        )}
+                        disabled={loading}
+                      >
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {formData.passportExpiry ? (
+                          format(
+                            new Date(formData.passportExpiry),
+                            "dd/MM/yyyy"
+                          )
+                        ) : (
+                          <span>Chọn ngày hết hạn</span>
+                        )}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={
+                          formData.passportExpiry
+                            ? new Date(formData.passportExpiry)
+                            : undefined
+                        }
+                        onSelect={(date) => {
+                          const formattedDate = date
+                            ? date.toISOString().split("T")[0]
+                            : "";
+                          setFormData((prev) => ({
+                            ...prev,
+                            passportExpiry: formattedDate,
+                          }));
+                          const error = validateField(
+                            "passportExpiry",
+                            formattedDate
+                          );
+                          setFormErrors((prev) => ({
+                            ...prev,
+                            passportExpiry: error,
+                          }));
+                        }}
+                        disabled={(date) => date < new Date()}
+                        initialFocus
+                      />
+                    </PopoverContent>
+                  </Popover>
+                  {formErrors.passportExpiry && (
+                    <p className="text-sm text-red-600">
+                      {formErrors.passportExpiry}
+                    </p>
+                  )}
                 </div>
               </div>
 
@@ -697,6 +1003,12 @@ const AccountTab = ({ userProfile, onProfileUpdate }) => {
                     onChange={handlePasswordChange}
                     placeholder="Nhập mật khẩu hiện tại"
                     required
+                    disabled={loading}
+                    className={`dark:text-black ${
+                      passwordErrors.oldPassword
+                        ? "border-red-500 focus:border-red-500"
+                        : ""
+                    }`}
                   />
                   <Button
                     type="button"
@@ -712,6 +1024,11 @@ const AccountTab = ({ userProfile, onProfileUpdate }) => {
                     )}
                   </Button>
                 </div>
+                {passwordErrors.oldPassword && (
+                  <p className="text-sm text-red-600">
+                    {passwordErrors.oldPassword}
+                  </p>
+                )}
               </div>
 
               <div className="space-y-2">
@@ -725,6 +1042,12 @@ const AccountTab = ({ userProfile, onProfileUpdate }) => {
                     onChange={handlePasswordChange}
                     placeholder="Nhập mật khẩu mới"
                     required
+                    disabled={loading}
+                    className={`dark:text-black ${
+                      passwordErrors.newPassword
+                        ? "border-red-500 focus:border-red-500"
+                        : ""
+                    }`}
                   />
                   <Button
                     type="button"
@@ -740,6 +1063,11 @@ const AccountTab = ({ userProfile, onProfileUpdate }) => {
                     )}
                   </Button>
                 </div>
+                {passwordErrors.newPassword && (
+                  <p className="text-sm text-red-600">
+                    {passwordErrors.newPassword}
+                  </p>
+                )}
               </div>
 
               <div className="space-y-2">
@@ -751,8 +1079,15 @@ const AccountTab = ({ userProfile, onProfileUpdate }) => {
                     type={showPasswords.confirm ? "text" : "password"}
                     value={passwordData.confirmPassword}
                     onChange={handlePasswordChange}
+                    onPaste={handlePasswordPaste}
                     placeholder="Nhập lại mật khẩu mới"
                     required
+                    disabled={loading}
+                    className={`dark:text-black ${
+                      passwordErrors.confirmPassword
+                        ? "border-red-500 focus:border-red-500"
+                        : ""
+                    }`}
                   />
                   <Button
                     type="button"
@@ -768,17 +1103,14 @@ const AccountTab = ({ userProfile, onProfileUpdate }) => {
                     )}
                   </Button>
                 </div>
+                {passwordErrors.confirmPassword && (
+                  <p className="text-sm text-red-600">
+                    {passwordErrors.confirmPassword}
+                  </p>
+                )}
               </div>
 
               <div className="flex justify-end space-x-2 pt-4">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setPasswordMode(false)}
-                  disabled={loading}
-                >
-                  Hủy
-                </Button>
                 <Button type="submit" disabled={loading}>
                   {loading ? (
                     <>
@@ -991,7 +1323,7 @@ const AccountTab = ({ userProfile, onProfileUpdate }) => {
               )}
 
               {/* Tier Benefits */}
-              <div className="p-4 border rounded-lg">
+              {/* <div className="p-4 border rounded-lg">
                 <h4 className="font-semibold mb-3">
                   Quyền lợi hạng{" "}
                   {getLoyaltyTierDisplay(loyaltyStats.currentTier).name}
@@ -1042,7 +1374,7 @@ const AccountTab = ({ userProfile, onProfileUpdate }) => {
                     </>
                   )}
                 </div>
-              </div>
+              </div> */}
             </div>
           ) : (
             <div className="text-center py-8 text-gray-500">

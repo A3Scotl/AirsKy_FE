@@ -228,7 +228,7 @@ const BlogSection = () => {
   }
 
   return (
-    <section className="py-16 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 relative overflow-hidden">
+    <section className="py-12 sm:py-16 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 relative overflow-hidden dark:bg-gray-500">
       {/* Background Pattern */}
       <div className="absolute inset-0 opacity-5">
         <div className="absolute top-20 left-10 w-32 h-32 bg-blue-500 rounded-full blur-3xl"></div>
@@ -239,25 +239,25 @@ const BlogSection = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
         {/* Featured Blog Carousel */}
         {blogs.length > 0 && (
-          <div className="mb-16 relative">
+          <div className="mb-12 sm:mb-16 relative">
             {/* Custom Navigation Buttons */}
-            <div className="absolute left-0 top-1/2 -translate-y-1/2 z-10 -ml-6 hidden md:block">
+            <div className="absolute left-2 sm:left-0 top-1/2 -translate-y-1/2 z-10 hidden sm:block">
               <button
                 onClick={handlePrev}
-                className="group flex items-center justify-center w-12 h-12 bg-white/90 hover:bg-white dark:bg-gray-800/90 dark:hover:bg-gray-800 backdrop-blur-sm rounded-full shadow-lg hover:shadow-xl transition-all duration-300 border border-gray-200 dark:border-gray-700 hover:scale-110"
+                className="group flex items-center justify-center w-10 h-10 sm:w-12 sm:h-12 bg-white/90 hover:bg-white dark:bg-gray-800/90 dark:hover:bg-gray-800 backdrop-blur-sm rounded-full shadow-lg hover:shadow-xl transition-all duration-300 border border-gray-200 dark:border-gray-700 hover:scale-110"
                 aria-label="Previous slide"
               >
-                <ChevronLeft className="w-6 h-6 text-gray-600 dark:text-gray-300 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors duration-200" />
+                <ChevronLeft className="w-5 h-5 sm:w-6 sm:h-6 text-gray-600 dark:text-gray-300 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors duration-200" />
               </button>
             </div>
 
-            <div className="absolute right-0 top-1/2 -translate-y-1/2 z-10 -mr-6 hidden md:block">
+            <div className="absolute right-2 sm:right-0 top-1/2 -translate-y-1/2 z-10 hidden sm:block">
               <button
                 onClick={handleNext}
-                className="group flex items-center justify-center w-12 h-12 bg-white/90 hover:bg-white dark:bg-gray-800/90 dark:hover:bg-gray-800 backdrop-blur-sm rounded-full shadow-lg hover:shadow-xl transition-all duration-300 border border-gray-200 dark:border-gray-700 hover:scale-110"
+                className="group flex items-center justify-center w-10 h-10 sm:w-12 sm:h-12 bg-white/90 hover:bg-white dark:bg-gray-800/90 dark:hover:bg-gray-800 backdrop-blur-sm rounded-full shadow-lg hover:shadow-xl transition-all duration-300 border border-gray-200 dark:border-gray-700 hover:scale-110"
                 aria-label="Next slide"
               >
-                <ChevronRight className="w-6 h-6 text-gray-600 dark:text-gray-300 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors duration-200" />
+                <ChevronRight className="w-5 h-5 sm:w-6 sm:h-6 text-gray-600 dark:text-gray-300 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors duration-200" />
               </button>
             </div>
 
@@ -285,6 +285,9 @@ const BlogSection = () => {
               }}
               navigation={false} // Disable default navigation
               breakpoints={{
+                480: {
+                  slidesPerView: 1,
+                },
                 640: {
                   slidesPerView: 1.2,
                 },
@@ -431,14 +434,14 @@ const BlogSection = () => {
 
         {/* View All Button */}
         {blogs.length > 0 && (
-          <div className="text-center mt-12">
+          <div className="text-center mt-8 sm:mt-12">
             <button
               onClick={() => navigate("/blog")}
-              className="inline-flex items-center px-8 py-4 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold rounded-2xl shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:scale-105"
+              className="inline-flex items-center px-6 sm:px-8 py-3 sm:py-4 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold rounded-2xl shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:scale-105 text-sm sm:text-base"
             >
               Xem tất cả bài viết
               <svg
-                className="w-6 h-6 ml-3"
+                className="w-4 h-4 sm:w-6 sm:h-6 ml-2 sm:ml-3"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"

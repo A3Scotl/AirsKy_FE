@@ -293,7 +293,7 @@ const FlightInfo = ({ flightDetails, fare }) => {
       </div>
 
       {/* Flight details */}
-      <div className="border rounded-lg p-4 bg-blue-50 border-blue-200">
+      <div className="border rounded-lg p-4 bg-blue-50 dark:bg-gray-900 border-blue-200">
         <div className="flex items-center gap-2 mb-2">
           <Badge variant="outline" className="bg-blue-100 text-blue-700">
             {flightDetails.flightNumber}

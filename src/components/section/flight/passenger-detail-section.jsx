@@ -123,8 +123,6 @@ const CustomPhoneInput = ({
   className = "phone-input",
   forceKey,
 }) => {
-  
-
   // Force re-mount when country changes by using a unique key
   const uniqueKey = `phone-input-${country}-${forceKey}`;
 
@@ -471,7 +469,10 @@ const PassengerForm = memo(
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           <div>
-            <Label htmlFor={`p${index}-lastname`} className="text-sm">
+            <Label
+              htmlFor={`p${index}-lastname`}
+              className="text-sm dark:text-gray-200"
+            >
               Họ <span className="text-red-500">*</span>
             </Label>
             <Input
@@ -479,7 +480,7 @@ const PassengerForm = memo(
               id={`p${index}-lastname`}
               placeholder="Họ (viết hoa, không dấu)"
               className={cn(
-                "text-sm dark:bg-[#171717]",
+                "text-sm dark:bg-[#171717] dark:text-white",
                 getFieldValidationClass("lastName", passenger.lastName)
               )}
               value={passenger.lastName || ""}
@@ -498,14 +499,17 @@ const PassengerForm = memo(
             )}
           </div>
           <div>
-            <Label htmlFor={`p${index}-firstname`} className="text-sm">
+            <Label
+              htmlFor={`p${index}-firstname`}
+              className="text-sm dark:text-gray-200"
+            >
               Tên đệm và Tên <span className="text-red-500">*</span>
             </Label>
             <Input
               id={`p${index}-firstname`}
               placeholder="Tên đệm và Tên (viết hoa, không dấu)"
               className={cn(
-                "text-sm dark:bg-[#171717]",
+                "text-sm dark:bg-[#171717] dark:text-white",
                 getFieldValidationClass("firstName", passenger.firstName)
               )}
               value={passenger.firstName || ""}
@@ -524,7 +528,10 @@ const PassengerForm = memo(
             )}
           </div>
           <div>
-            <Label htmlFor={`p${index}-dob`} className="text-sm">
+            <Label
+              htmlFor={`p${index}-dob`}
+              className="text-sm dark:text-gray-200"
+            >
               Ngày sinh <span className="text-red-500">*</span>
             </Label>
             <DateInput
@@ -553,7 +560,10 @@ const PassengerForm = memo(
             )}
           </div>
           <div>
-            <Label htmlFor={`p${index}-gender`} className="text-sm">
+            <Label
+              htmlFor={`p${index}-gender`}
+              className="text-sm dark:text-gray-200"
+            >
               Giới tính <span className="text-red-500">*</span>
             </Label>
             <Select
@@ -562,7 +572,7 @@ const PassengerForm = memo(
             >
               <SelectTrigger
                 className={cn(
-                  "text-sm dark:bg-[#171717]",
+                  "text-sm dark:bg-[#171717] dark:text-white",
                   getFieldValidationClass("gender", passenger.gender)
                 )}
               >
@@ -582,7 +592,10 @@ const PassengerForm = memo(
 
           {(isInternationalFlight || showIdFieldForDomestic) && (
             <div className="sm:col-span-2">
-              <Label htmlFor={`p${index}-id`} className="text-sm">
+              <Label
+                htmlFor={`p${index}-id`}
+                className="text-sm dark:text-gray-200"
+              >
                 {isInternationalFlight ? "Số hộ chiếu" : "Căn cước công dân"}{" "}
                 <span className="text-red-500">*</span>
               </Label>
@@ -594,7 +607,7 @@ const PassengerForm = memo(
                     : "Nhập số căn cước công dân"
                 }
                 className={cn(
-                  "text-sm dark:bg-[#171717]",
+                  "text-sm dark:bg-[#171717] dark:text-white",
                   getFieldValidationClass(
                     "passportNumber",
                     passenger.passportNumber
@@ -634,7 +647,10 @@ const PassengerForm = memo(
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 border border-blue-200 rounded-lg bg-blue-50/30 dark:bg-blue-900/10">
               {/* Phone Number */}
               <div>
-                <Label htmlFor={`p${index}-phone`} className="text-sm">
+                <Label
+                  htmlFor={`p${index}-phone`}
+                  className="text-sm dark:text-gray-200"
+                >
                   Số điện thoại <span className="text-red-500">*</span>
                 </Label>
                 <div
@@ -668,7 +684,10 @@ const PassengerForm = memo(
 
               {/* Country */}
               <div>
-                <Label htmlFor={`p${index}-country`} className="text-sm">
+                <Label
+                  htmlFor={`p${index}-country`}
+                  className="text-sm dark:text-gray-200"
+                >
                   Quốc gia <span className="text-red-500">*</span>
                 </Label>
                 <CountrySelect
@@ -680,7 +699,7 @@ const PassengerForm = memo(
                   }}
                   error={!!validationErrors?.country}
                   className={cn(
-                    "text-sm dark:bg-[#171717]",
+                    "text-sm dark:bg-[#171717] dark:text-white",
                     getFieldValidationClass("country", passenger.country)
                   )}
                   placeholder="Chọn quốc gia"
@@ -696,14 +715,17 @@ const PassengerForm = memo(
 
               {/* Current Address */}
               <div className="sm:col-span-2">
-                <Label htmlFor={`p${index}-address`} className="text-sm">
+                <Label
+                  htmlFor={`p${index}-address`}
+                  className="text-sm dark:text-gray-200"
+                >
                   Nơi ở hiện tại <span className="text-red-500">*</span>
                 </Label>
                 <Input
                   id={`p${index}-address`}
                   placeholder="Nhập địa chỉ hiện tại"
                   className={cn(
-                    "text-sm dark:bg-[#171717]",
+                    "text-sm dark:bg-[#171717] dark:text-white",
                     getFieldValidationClass(
                       "currentAddress",
                       passenger.currentAddress
@@ -723,7 +745,10 @@ const PassengerForm = memo(
 
               {/* Membership Code */}
               <div className="sm:col-span-2">
-                <Label htmlFor={`p${index}-membership`} className="text-sm">
+                <Label
+                  htmlFor={`p${index}-membership`}
+                  className="text-sm dark:text-gray-200"
+                >
                   Mã hội viên AirSky (tùy chọn)
                 </Label>
                 <MembershipInput
@@ -819,7 +844,7 @@ const ContactInformation = ({ formData, updateFormData, validationErrors }) => {
       </h6>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 border rounded-lg bg-gray-50 dark:bg-gray-800">
         <div>
-          <Label htmlFor="contact-name" className="text-sm">
+          <Label htmlFor="contact-name" className="text-sm dark:text-gray-200">
             Họ và tên người liên hệ <span className="text-red-500">*</span>
           </Label>
           <Input
@@ -830,7 +855,7 @@ const ContactInformation = ({ formData, updateFormData, validationErrors }) => {
             onChange={(e) => updateFormData("contactName", e.target.value)}
             readOnly={!!user}
             className={cn(
-              "text-sm dark:bg-[#171717]",
+              "text-sm dark:bg-[#171717] dark:text-white",
               user && "cursor-not-allowed bg-gray-100",
               getContactFieldValidationClass(
                 "contactName",
@@ -846,7 +871,7 @@ const ContactInformation = ({ formData, updateFormData, validationErrors }) => {
           )}
         </div>
         <div>
-          <Label htmlFor="contact-email" className="text-sm">
+          <Label htmlFor="contact-email" className="text-sm dark:text-gray-200">
             Email liên hệ <span className="text-red-500">*</span>
           </Label>
           <Input
@@ -857,7 +882,7 @@ const ContactInformation = ({ formData, updateFormData, validationErrors }) => {
             onChange={(e) => updateFormData("contactEmail", e.target.value)}
             readOnly={!!user}
             className={cn(
-              "text-sm dark:bg-[#171717]",
+              "text-sm dark:bg-[#171717] dark:text-white",
               user && "cursor-not-allowed bg-gray-100",
               getContactFieldValidationClass(
                 "contactEmail",

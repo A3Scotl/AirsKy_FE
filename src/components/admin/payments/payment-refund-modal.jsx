@@ -167,7 +167,6 @@ const RefundModal = ({ open, onClose, paymentData }) => {
         processedAt: new Date().toISOString(),
       };
 
-   
       alert(
         TEXT.messages.refundSuccess.replace(
           "{amount}",
@@ -218,23 +217,28 @@ const RefundModal = ({ open, onClose, paymentData }) => {
       />
 
       {/* Modal */}
-      <div className="relative bg-white rounded-lg shadow-xl w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto">
+      <div className="relative bg-white dark:bg-gray-900 rounded-lg shadow-xl w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto dark:text-white">
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-200">
+        <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
           <div className="flex items-center space-x-3">
-            <div className="bg-purple-100 p-2 rounded-full">
+            <div className="bg-purple-100 dark:bg-purple-900 p-2 rounded-full">
               <RefreshCw className="h-6 w-6 text-purple-600" />
             </div>
             <div>
-              <h2 className="text-xl font-bold text-gray-900">
+              <h2 className="text-xl font-bold text-gray-900 dark:text-white">
                 {TEXT.processRefund}
               </h2>
-              <p className="text-sm text-gray-500">
+              <p className="text-sm text-gray-500 dark:text-gray-400">
                 {TEXT.transaction} {paymentData.transactionId}
               </p>
             </div>
           </div>
-          <Button variant="ghost" size="sm" onClick={onClose}>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onClose}
+            className="dark:text-gray-300 dark:hover:bg-gray-700"
+          >
             <X className="h-5 w-5" />
           </Button>
         </div>
@@ -318,14 +322,14 @@ const RefundModal = ({ open, onClose, paymentData }) => {
                     {TEXT.fields.refundAmount} *
                   </Label>
                   <div className="relative">
-                    <DollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                    <DollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 dark:text-gray-500 h-4 w-4" />
                     <Input
                       id="refundAmount"
                       type="number"
                       value={refundAmount}
                       onChange={(e) => setRefundAmount(e.target.value)}
                       placeholder={TEXT.placeholders.refundAmount}
-                      className={`pl-10 ${
+                      className={`text-black pl-10 ${
                         errors.refundAmount ? "border-red-500" : ""
                       }`}
                       min="0"
@@ -382,6 +386,7 @@ const RefundModal = ({ open, onClose, paymentData }) => {
                   onChange={(e) => setRefundNotes(e.target.value)}
                   placeholder={TEXT.placeholders.additionalNotes}
                   rows={3}
+                  className="text-black"
                 />
               </div>
 
@@ -489,8 +494,12 @@ const RefundModal = ({ open, onClose, paymentData }) => {
           </Card>
 
           {/* Action Buttons */}
-          <div className="flex items-center justify-end space-x-3 pt-6 border-t">
-            <Button variant="outline" onClick={onClose}>
+          <div className="flex items-center justify-end space-x-3 pt-6 border-t dark:border-gray-700">
+            <Button
+              variant="outline"
+              onClick={onClose}
+              className="dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
+            >
               {TEXT.buttons.cancel}
             </Button>
             <Button

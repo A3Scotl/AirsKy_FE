@@ -235,6 +235,7 @@ export default function ResetForm({ setCurrentView }) {
           className="w-full pr-10"
           value={formData[field]}
           onChange={handleInputChange(field)}
+          disabled={loading}
           required
           minLength={6}
         />
@@ -301,10 +302,10 @@ export default function ResetForm({ setCurrentView }) {
           <Card className="shadow-lg border-0">
             <CardContent className="p-8">
               <div className="text-center mb-8">
-                <h2 className="text-2xl font-bold text-gray-900 mb-4">
+                <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
                   Đặt lại mật khẩu
                 </h2>
-                <p className="text-gray-600">
+                <p className="text-gray-600 dark:text-gray-200">
                   {step === 1
                     ? "Nhập địa chỉ email của bạn và chúng tôi sẽ gửi cho bạn mã xác minh để đặt lại mật khẩu."
                     : `Chúng tôi đã gửi mã xác minh đến ${formData.email}. Vui lòng kiểm tra email của bạn và nhập mã bên dưới.`}
@@ -314,15 +315,16 @@ export default function ResetForm({ setCurrentView }) {
               {step === 1 ? (
                 <form className="space-y-6" onSubmit={handleSendReset}>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
                       Email
                     </label>
                     <Input
                       type="email"
                       placeholder="Nhập địa chỉ email của bạn"
-                      className="w-full"
+                      className="w-full dark:text-black"
                       value={formData.email}
                       onChange={handleInputChange("email")}
+                      disabled={loading}
                       required
                     />
                   </div>
@@ -337,7 +339,10 @@ export default function ResetForm({ setCurrentView }) {
                     <button
                       type="button"
                       onClick={() => setCurrentView("login")}
-                      className="text-blue-600 hover:underline font-medium inline-flex items-center"
+                      disabled={loading}
+                      className={`text-blue-600 hover:underline font-medium inline-flex items-center ${
+                        loading ? "opacity-50 cursor-not-allowed" : ""
+                      }`}
                     >
                       <ArrowLeft className="w-4 h-4 mr-2" />
                       Quay lại đăng nhập
@@ -356,6 +361,7 @@ export default function ResetForm({ setCurrentView }) {
                       className="w-full"
                       value={formData.otpCode}
                       onChange={handleInputChange("otpCode")}
+                      disabled={loading}
                       maxLength={6}
                       required
                     />

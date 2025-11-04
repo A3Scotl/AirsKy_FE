@@ -169,7 +169,7 @@ const AdminSidebar = ({ sidebarOpen, setSidebarOpen }) => {
               src="https://res.cloudinary.com/dzwjgfd7t/image_upload/v1755141382/flight%20booking/main_logo-removebg_xyofym.png"
               alt="AirsSky"
             /> */}
-            <span className="ml-2 text-xl font-bold text-black">AirSky</span>
+            <span className="ml-2 text-xl font-bold text-black dark:text-white">AirSky</span>
           </div>
           <div className="flex items-center space-x-2">
             <Button

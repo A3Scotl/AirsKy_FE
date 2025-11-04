@@ -2894,7 +2894,7 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
   return (
     <div className="max-w-7xl mx-auto py-4 px-4 sm:py-8">
       <div className="mb-6">
-        <h2 className="text-xl sm:text-2xl font-bold mb-2">
+        <h2 className="text-xl sm:text-2xl font-bold mb-2 dark:text-white">
           Xem Lại & Thanh Toán
         </h2>
         <p className="text-gray-600 text-sm sm:text-base dark:text-gray-300">
@@ -2903,14 +2903,16 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
       </div>
 
       {/* Booking Summary Info - Responsive Grid */}
-      <div className="mb-6 p-3 sm:p-4 bg-blue-50 rounded-lg">
-        <h3 className="font-semibold text-blue-800 mb-3 text-sm sm:text-base">
+      <div className="mb-6 p-3 sm:p-4 bg-blue-50 dark:bg-gray-900 rounded-lg">
+        <h3 className="font-semibold text-blue-800 dark:text-blue-200 mb-3 text-sm sm:text-base">
           📋 Tóm tắt đặt vé
         </h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 text-xs sm:text-sm">
           <div className="space-y-1">
-            <span className="text-gray-600 block">Chuyến bay:</span>
-            <p className="font-medium text-gray-900 break-words">
+            <span className="text-gray-600 dark:text-gray-300 block">
+              Chuyến bay:
+            </span>
+            <p className="font-medium text-gray-900 dark:text-gray-100 break-words">
               {flight?.type === "MULTI_CITY"
                 ? flight?.flightNumber ||
                   `Multi-City (${flight?.legs?.length || 0} chặng)`
@@ -2920,8 +2922,10 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
             </p>
           </div>
           <div className="space-y-1">
-            <span className="text-gray-600 block">Loại vé:</span>
-            <p className="font-medium text-gray-900">
+            <span className="text-gray-600 dark:text-gray-300 block">
+              Loại vé:
+            </span>
+            <p className="font-medium text-gray-900 dark:text-gray-100">
               {flight?.type === "MULTI_CITY"
                 ? `Đa thành phố (${flight?.legs?.length || 0} chặng)`
                 : flight?.isRoundTrip || flight?.type === "ROUND_TRIP"
@@ -2930,14 +2934,18 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
             </p>
           </div>
           <div className="space-y-1">
-            <span className="text-gray-600 block">Hành khách:</span>
-            <p className="font-medium text-gray-900">
+            <span className="text-gray-600 dark:text-gray-300 block">
+              Hành khách:
+            </span>
+            <p className="font-medium text-gray-900 dark:text-gray-100">
               {formData.passengers.length} người
             </p>
           </div>
           <div className="space-y-1">
-            <span className="text-gray-600 block">Ghế đã chọn:</span>
-            <p className="font-medium text-gray-900">
+            <span className="text-gray-600 dark:text-gray-300 block">
+              Ghế đã chọn:
+            </span>
+            <p className="font-medium text-gray-900 dark:text-gray-100">
               {(() => {
                 const selectedSeatsCount =
                   Object.keys(extrasData?.selectedSeats || {}).length +
@@ -2961,7 +2969,7 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
         <div className="w-full xl:w-2/3 space-y-4 sm:space-y-6">
           <Card>
             <CardHeader className="pb-3 sm:pb-6">
-              <CardTitle className="text-lg sm:text-xl">
+              <CardTitle className="text-lg sm:text-xl dark:text-white">
                 Chi Tiết Chuyến Bay
               </CardTitle>
             </CardHeader>
@@ -4039,7 +4047,7 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
                       disabled={pointsApplied}
                       min="500"
                       max={userPoints}
-                      className="flex-1"
+                      className="flex-1 dark:text-black"
                     />
                     {!pointsApplied ? (
                       <Button
@@ -4110,7 +4118,7 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
                     value={dealCode}
                     onChange={(e) => setDealCode(e.target.value.toUpperCase())}
                     disabled={dealApplied}
-                    className="flex-1"
+                    className="flex-1 dark:text-black"
                   />
                   {!dealApplied ? (
                     <Button
@@ -4231,7 +4239,7 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
                   onValueChange={setPaymentMethod}
                   className="space-y-2"
                 >
-                  <div className="flex items-center space-x-3 p-3 border rounded-lg hover:border-blue-300 hover:bg-blue-50 transition-colors">
+                  <div className="flex items-center space-x-3 p-3 border rounded-lg hover:border-blue-300 hover:bg-blue-50 dark:hover:bg-gray-900 transition-colors">
                     <RadioGroupItem value="BANK_TRANSFER" id="qr" />
                     <Label htmlFor="qr" className="flex-1 cursor-pointer">
                       <div className="flex items-center space-x-2">
@@ -4242,7 +4250,7 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
                       </div>
                     </Label>
                   </div>
-                  <div className="flex items-center space-x-3 p-3 border rounded-lg hover:border-blue-300 hover:bg-blue-50 transition-colors">
+                  <div className="flex items-center space-x-3 p-3 border rounded-lg hover:border-blue-300 hover:bg-blue-50 dark:hover:bg-gray-900 transition-colors">
                     <RadioGroupItem value="PAYPAL" id="paypal" />
                     <Label htmlFor="paypal" className="flex-1 cursor-pointer">
                       <div className="flex items-center space-x-2">

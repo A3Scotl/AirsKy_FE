@@ -93,13 +93,12 @@ const DealFormModal = ({
         const response = await airportApi.getAllAirports({ size: 1000 });
         if (response.success && response.data) {
           const airportsData = response.data.content || response.data;
-        
+
           setAirports(airportsData);
         } else {
           setAirportsError("Không thể tải danh sách sân bay");
         }
       } catch (error) {
-
         setAirportsError("Lỗi khi tải danh sách sân bay");
       } finally {
         setAirportsLoading(false);
@@ -273,7 +272,7 @@ const DealFormModal = ({
     if (!validateForm()) {
       return;
     }
-   
+
     // Chỉ gửi thumbnail là file nếu có file, nếu không thì gửi url string
     const dealData = {
       ...formData,
@@ -322,9 +321,9 @@ const DealFormModal = ({
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto dark:bg-gray-900 dark:text-white">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
+          <DialogTitle className="flex items-center gap-2 dark:text-white">
             {isEditMode ? (
               <>
                 <Edit className="h-5 w-5" />
@@ -337,7 +336,7 @@ const DealFormModal = ({
               </>
             )}
           </DialogTitle>
-          <DialogDescription>
+          <DialogDescription className="dark:text-gray-300">
             {isEditMode
               ? "Cập nhật thông tin deal khuyến mại"
               : "Tạo deal khuyến mại mới cho trang web đặt vé máy bay"}
@@ -348,16 +347,16 @@ const DealFormModal = ({
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Left Column */}
             <div className="space-y-4">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
+              <Card className="dark:bg-gray-800 dark:border-gray-700">
+                <CardHeader className="dark:bg-gray-800 dark:border-gray-700">
+                  <CardTitle className="flex items-center gap-2 dark:text-white">
                     <FileText className="h-4 w-4" />
                     Thông tin cơ bản
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-4">
+                <CardContent className="space-y-4 dark:bg-gray-800">
                   <div className="space-y-2">
-                    <Label htmlFor="dealCode">
+                    <Label htmlFor="dealCode" className="dark:text-gray-300">
                       Mã deal <span className="text-destructive">*</span>
                     </Label>
                     <div className="flex gap-2">
@@ -371,13 +370,15 @@ const DealFormModal = ({
                             e.target.value.toUpperCase()
                           )
                         }
-                        className={errors.dealCode ? "border-destructive" : ""}
+                        className={`text-black ${
+                          errors.dealCode ? "border-destructive" : ""
+                        }`}
                       />
                       <Button
                         type="button"
                         variant="outline"
                         onClick={generateDealCode}
-                        className="flex-shrink-0"
+                        className="flex-shrink-0 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
                       >
                         Tạo mã
                       </Button>
@@ -390,7 +391,7 @@ const DealFormModal = ({
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="title">
+                    <Label htmlFor="title" className="dark:text-gray-300">
                       Tiêu đề <span className="text-destructive">*</span>
                     </Label>
                     <Input
@@ -400,7 +401,9 @@ const DealFormModal = ({
                       onChange={(e) =>
                         handleInputChange("title", e.target.value)
                       }
-                      className={errors.title ? "border-destructive" : ""}
+                      className={`text-black ${
+                        errors.title ? "border-destructive" : ""
+                      }`}
                     />
                     {errors.title && (
                       <p className="text-sm text-destructive">{errors.title}</p>
@@ -408,7 +411,7 @@ const DealFormModal = ({
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="description">
+                    <Label htmlFor="description" className="dark:text-gray-300">
                       Mô tả <span className="text-destructive">*</span>
                     </Label>
                     <Textarea
@@ -419,7 +422,9 @@ const DealFormModal = ({
                         handleInputChange("description", e.target.value)
                       }
                       rows={3}
-                      className={errors.description ? "border-destructive" : ""}
+                      className={`text-black ${
+                        errors.description ? "border-destructive" : ""
+                      }`}
                     />
                     {errors.description && (
                       <p className="text-sm text-destructive">
@@ -429,7 +434,7 @@ const DealFormModal = ({
                   </div>
 
                   <div className="space-y-2">
-                    <Label>Hình ảnh Deal</Label>
+                    <Label className="dark:text-gray-300">Hình ảnh Deal</Label>
                     <ImageUpload
                       value={formData.thumbnail}
                       onChange={(url, file) => {
@@ -443,17 +448,20 @@ const DealFormModal = ({
                 </CardContent>
               </Card>
 
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
+              <Card className="dark:bg-gray-800 dark:border-gray-700">
+                <CardHeader className="dark:bg-gray-800 dark:border-gray-700">
+                  <CardTitle className="flex items-center gap-2 dark:text-white">
                     <Percent className="h-4 w-4" />
                     Thông tin giảm giá
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-4">
+                <CardContent className="space-y-4 dark:bg-gray-800">
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="discountPercentage">
+                      <Label
+                        htmlFor="discountPercentage"
+                        className="dark:text-gray-300"
+                      >
                         Phần trăm giảm{" "}
                         <span className="text-destructive">*</span>
                       </Label>
@@ -471,13 +479,13 @@ const DealFormModal = ({
                               e.target.value
                             )
                           }
-                          className={
+                          className={`text-black ${
                             errors.discountPercentage
                               ? "border-destructive pr-8"
                               : "pr-8"
-                          }
+                          }`}
                         />
-                        <Percent className="absolute right-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Percent className="absolute right-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground dark:text-gray-400" />
                       </div>
                       {errors.discountPercentage && (
                         <p className="text-sm text-destructive">
@@ -487,7 +495,10 @@ const DealFormModal = ({
                     </div>
 
                     <div className="space-y-2">
-                      <Label htmlFor="maxDiscountAmount">
+                      <Label
+                        htmlFor="maxDiscountAmount"
+                        className="dark:text-gray-300"
+                      >
                         Giảm tối đa (VND)
                       </Label>
                       <Input
@@ -499,9 +510,9 @@ const DealFormModal = ({
                         onChange={(e) =>
                           handleInputChange("maxDiscountAmount", e.target.value)
                         }
-                        className={
+                        className={`text-black ${
                           errors.maxDiscountAmount ? "border-destructive" : ""
-                        }
+                        }`}
                       />
                       {errors.maxDiscountAmount && (
                         <p className="text-sm text-destructive">
@@ -512,7 +523,10 @@ const DealFormModal = ({
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="minimumOrderAmount">
+                    <Label
+                      htmlFor="minimumOrderAmount"
+                      className="dark:text-gray-300"
+                    >
                       Đơn hàng tối thiểu (VND){" "}
                       <span className="text-destructive">*</span>
                     </Label>
@@ -525,9 +539,9 @@ const DealFormModal = ({
                       onChange={(e) =>
                         handleInputChange("minimumOrderAmount", e.target.value)
                       }
-                      className={
+                      className={`text-black ${
                         errors.minimumOrderAmount ? "border-destructive" : ""
-                      }
+                      }`}
                     />
                     {errors.minimumOrderAmount && (
                       <p className="text-sm text-destructive">
@@ -846,7 +860,12 @@ const DealFormModal = ({
           </div>
 
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={handleClose}>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleClose}
+              className="dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
+            >
               Hủy
             </Button>
             <Button type="submit" className="flex items-center gap-2">

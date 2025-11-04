@@ -232,33 +232,47 @@ const SeatLegend = ({ seatLegend }) => {
 
   return (
     <div className="mb-6">
-      <h4 className="font-semibold mb-3 text-gray-700">Chú Thích Ghế</h4>
+      <h4 className="font-semibold mb-3 text-gray-700 dark:text-gray-200">
+        Chú Thích Ghế
+      </h4>
 
       {/* Travel Classes */}
       <div className="mb-4">
-        <h5 className="text-sm font-medium text-gray-600 mb-2">
+        <h5 className="text-sm font-medium text-gray-600 dark:text-gray-300 mb-2">
           Hạng vé (ghế có sẵn)
         </h5>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
           <div className="flex items-center gap-2">
             <div className="w-4 h-4 bg-purple-600 rounded border border-purple-700"></div>
             <div className="text-sm">
-              <div className="font-medium text-gray-700">Hạng nhất</div>
-              <div className="text-gray-500 text-xs">First Class</div>
+              <div className="font-medium text-gray-700 dark:text-gray-200">
+                Hạng nhất
+              </div>
+              <div className="text-gray-500 dark:text-gray-400 text-xs">
+                First Class
+              </div>
             </div>
           </div>
           <div className="flex items-center gap-2">
             <div className="w-4 h-4 bg-indigo-600 rounded border border-indigo-700"></div>
             <div className="text-sm">
-              <div className="font-medium text-gray-700">Thương gia</div>
-              <div className="text-gray-500 text-xs">Business Class</div>
+              <div className="font-medium text-gray-700 dark:text-gray-200">
+                Thương gia
+              </div>
+              <div className="text-gray-500 dark:text-gray-400 text-xs">
+                Business Class
+              </div>
             </div>
           </div>
           <div className="flex items-center gap-2">
             <div className="w-4 h-4 bg-green-600 rounded border border-green-700"></div>
             <div className="text-sm">
-              <div className="font-medium text-gray-700">Phổ thông</div>
-              <div className="text-gray-500 text-xs">Economy Class</div>
+              <div className="font-medium text-gray-700 dark:text-gray-200">
+                Phổ thông
+              </div>
+              <div className="text-gray-500 dark:text-gray-400 text-xs">
+                Economy Class
+              </div>
             </div>
           </div>
         </div>
@@ -266,7 +280,7 @@ const SeatLegend = ({ seatLegend }) => {
 
       {/* Seat Status */}
       <div className="mb-4">
-        <h5 className="text-sm font-medium text-gray-600 mb-2">
+        <h5 className="text-sm font-medium text-gray-600 dark:text-gray-300 mb-2">
           Trạng thái ghế
         </h5>
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
@@ -274,7 +288,9 @@ const SeatLegend = ({ seatLegend }) => {
             <div key={legend.status} className="flex items-center gap-2">
               <div className={`w-4 h-4 rounded ${legend.color} border`}></div>
               <div className="text-sm">
-                <div className="font-medium text-gray-700">{legend.label}</div>
+                <div className="font-medium text-gray-700 dark:text-gray-200">
+                  {legend.label}
+                </div>
               </div>
             </div>
           ))}
@@ -283,7 +299,7 @@ const SeatLegend = ({ seatLegend }) => {
 
       {/* Seat Types */}
       <div>
-        <h5 className="text-sm font-medium text-gray-600 mb-2">
+        <h5 className="text-sm font-medium text-gray-600 dark:text-gray-300 mb-2">
           Loại ghế đặc biệt
         </h5>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
@@ -293,7 +309,9 @@ const SeatLegend = ({ seatLegend }) => {
                 {legend.shortLabel}
               </span>
               <div className="text-sm">
-                <div className="font-medium text-gray-700">{legend.label}</div>
+                <div className="font-medium text-gray-700 dark:text-gray-200">
+                  {legend.label}
+                </div>
                 <div className="text-green-600 font-medium">{legend.price}</div>
               </div>
             </div>
@@ -1958,9 +1976,9 @@ const SeatSelectionCard = ({
                   {/* Auto Assign Button */}
                   <div className="mb-4 flex justify-center"></div>
 
-                  <div className="bg-white p-6 rounded-lg border max-h-[600px] overflow-y-auto">
+                  <div className="bg-white dark:bg-gray-400 p-6 rounded-lg border max-h-[600px] overflow-y-auto">
                     <div className="text-center mb-4">
-                      <p className="text-sm text-gray-500 mt-2">
+                      <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
                         Cuộn xuống để xem thêm hàng ghế
                       </p>
                     </div>
@@ -2128,7 +2146,7 @@ const BaggagePackageOption = ({
         return (
           <div
             key={packageKey}
-            className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50"
+            className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 dark:hover:bg-gray-900"
           >
             <div className="flex items-center space-x-3">
               <RadioGroupItem
@@ -2530,7 +2548,7 @@ const AncillaryServicesCard = ({
             )}
           </Button>
         </CardTitle>
-        <p className="text-sm text-gray-600 mt-1">
+        <p className="text-sm text-gray-600 dark:text-gray-300 mt-1">
           Chọn các dịch vụ bổ sung để nâng cao trải nghiệm bay của bạn
         </p>
       </CardHeader>
@@ -2541,8 +2559,8 @@ const AncillaryServicesCard = ({
               const typeInfo = getServiceTypeInfo(type);
               return (
                 <div key={type} className="space-y-3">
-                  <h4 className="font-semibold text-gray-800 flex items-center gap-2">
-                    <span>{typeInfo.icon}</span>
+                  <h4 className="font-semibold text-gray-800 dark:text-gray-200 flex items-center gap-2">
+                  
                     {typeInfo.vietnameseName}
                   </h4>
                   <div className="space-y-3 pl-4">
@@ -2563,7 +2581,7 @@ const AncillaryServicesCard = ({
             })}
 
             {availableServices.length === 0 && (
-              <div className="text-center py-8 text-gray-500">
+              <div className="text-center py-8 text-gray-500 dark:text-gray-400">
                 <p>Hiện tại không có dịch vụ nào khả dụng</p>
               </div>
             )}
@@ -2630,17 +2648,17 @@ const AncillaryServiceOption = ({
   };
 
   return (
-    <div className="border rounded-lg p-4 bg-gray-50">
+    <div className="border rounded-lg p-4 bg-gray-50 dark:bg-gray-900">
       <div className="flex items-start justify-between">
         <div className="flex-1">
           <div className="flex items-center gap-3 mb-2">
-            <h5 className="font-medium text-gray-800">{service.serviceName}</h5>
+            <h5 className="font-medium text-gray-800 dark:text-white">{service.serviceName}</h5>
             <Badge variant="outline" className="text-xs">
               {formatCurrencyVND(service.price)}
             </Badge>
           </div>
           {service.description && (
-            <p className="text-sm text-gray-600 mb-3">{service.description}</p>
+            <p className="text-sm text-gray-600 dark:text-gray-100 mb-3">{service.description}</p>
           )}
 
           {isPerPassenger ? (
@@ -2843,8 +2861,8 @@ const BookingSummary = ({
 }) => (
   <div className="sticky top-8">
     <Card className="shadow-lg border-2 border-blue-100">
-      <CardHeader className="bg-blue-50">
-        <CardTitle className="flex items-center gap-2 text-blue-800">
+      <CardHeader className="bg-blue-50 dark:bg-gray-600">
+        <CardTitle className="flex items-center gap-2 text-blue-800 dark:text-white">
           Tóm Tắt Đặt Vé
           {isMultiCity && (
             <Badge variant="secondary" className="ml-2">

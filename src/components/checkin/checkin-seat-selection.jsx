@@ -955,7 +955,7 @@ const CheckInSeatSelection = ({
       {/* Header */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
+          <CardTitle className="flex items-center gap-2 dark:text-white">
             <Plane className="w-5 h-5 text-blue-500" />
             Chọn chỗ ngồi -{" "}
             {selectedSegment?.flightNumber ||
@@ -971,8 +971,8 @@ const CheckInSeatSelection = ({
         <CardContent>
           <div className="grid grid-cols-2 gap-4 text-sm">
             <div>
-              <p className="text-gray-600">Hành khách</p>
-              <p className="font-medium">
+              <p className="text-gray-600 dark:text-gray-300">Hành khách</p>
+              <p className="font-medium dark:text-gray-100">
                 {currentPassenger?.fullName ||
                   currentPassenger?.firstName +
                     " " +
@@ -980,8 +980,8 @@ const CheckInSeatSelection = ({
               </p>
             </div>
             <div>
-              <p className="text-gray-600">Chuyến bay</p>
-              <p className="font-medium">
+              <p className="text-gray-600 dark:text-gray-300">Chuyến bay</p>
+              <p className="font-medium dark:text-gray-100">
                 {selectedSegment?.flightNumber ||
                   booking.flightSegments?.[0]?.flightNumber ||
                   booking.flightNumber}{" "}
@@ -994,7 +994,7 @@ const CheckInSeatSelection = ({
                   booking.flightSegments?.[0]?.arrivalAirport?.airportCode ||
                   booking.to}
               </p>
-              <p className="text-sm text-gray-500 mt-1">
+              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
                 {selectedSegment?.departureTime
                   ? new Date(selectedSegment.departureTime).toLocaleString(
                       "vi-VN"
@@ -1185,18 +1185,18 @@ const CheckInSeatSelection = ({
       )}
       {/* Current Seat Information */}
       {currentSeat && (
-        <Card className="border-green-200 bg-green-50">
+        <Card className="border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-900/20">
           <CardContent className="pt-6">
             <div className="flex items-center gap-3">
-              <CheckCircle className="w-6 h-6 text-green-600" />
+              <CheckCircle className="w-6 h-6 text-green-600 dark:text-green-400" />
               <div>
-                <p className="font-semibold text-green-800">
+                <p className="font-semibold text-green-800 dark:text-green-200">
                   Ghế hiện tại của bạn: {currentSeat}
                 </p>
-                <p className="text-sm text-green-700">
+                <p className="text-sm text-green-700 dark:text-green-300">
                   Loại ghế: {getSeatTypeDescription(getSeatType(currentSeat))}
                 </p>
-                <p className="text-xs text-green-600 mt-1">
+                <p className="text-xs text-green-600 dark:text-green-400 mt-1">
                   Ghế này sẽ được highlight màu xanh lá trong sơ đồ bên dưới
                 </p>
               </div>
@@ -1850,8 +1850,8 @@ const CheckInSeatSelection = ({
                   </span>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span>Loại ghế mới:</span>
-                  <span className="font-medium">
+                  <span className="dark:text-gray-200">Loại ghế mới:</span>
+                  <span className="font-medium dark:text-gray-100">
                     {getSeatTypeDescription(
                       pendingSeatSelection?.seatType || "STANDARD"
                     )}
@@ -1862,28 +1862,30 @@ const CheckInSeatSelection = ({
                 {seatChangeCalculation && (
                   <div className="border-t pt-2 mt-2 space-y-2">
                     <div className="flex justify-between text-sm">
-                      <span>Giá ghế cũ:</span>
-                      <span>
+                      <span className="dark:text-gray-200">Giá ghế cũ:</span>
+                      <span className="dark:text-gray-100">
                         {formatCurrencyVND(
                           seatChangeCalculation.oldSeatPrice || 0
                         )}
                       </span>
                     </div>
                     <div className="flex justify-between text-sm">
-                      <span>Giá ghế mới:</span>
-                      <span>
+                      <span className="dark:text-gray-200">Giá ghế mới:</span>
+                      <span className="dark:text-gray-100">
                         {formatCurrencyVND(
                           seatChangeCalculation.newSeatPrice || 0
                         )}
                       </span>
                     </div>
                     <div className="flex justify-between text-sm font-medium">
-                      <span>Chênh lệch ghế:</span>
+                      <span className="dark:text-gray-200">
+                        Chênh lệch ghế:
+                      </span>
                       <span
                         className={
                           seatChangeCalculation.priceDifference >= 0
-                            ? "text-orange-600"
-                            : "text-green-600"
+                            ? "text-orange-600 dark:text-orange-400"
+                            : "text-green-600 dark:text-green-400"
                         }
                       >
                         {seatChangeCalculation.priceDifference >= 0 ? "+" : ""}
@@ -1892,9 +1894,11 @@ const CheckInSeatSelection = ({
                         )}
                       </span>
                     </div>
-                    <div className="flex justify-between font-medium text-orange-600 border-t pt-2">
-                      <span>Phí thay đổi ghế:</span>
-                      <span>
+                    <div className="flex justify-between font-medium text-orange-600 border-t pt-2 dark:text-orange-400">
+                      <span className="dark:text-gray-200">
+                        Phí thay đổi ghế:
+                      </span>
+                      <span className="dark:text-gray-100">
                         {seatChangeCalculation.priceDifference >= 0 ? "+" : ""}
                         {formatCurrencyVND(
                           seatChangeCalculation.priceDifference || 0
@@ -1902,7 +1906,7 @@ const CheckInSeatSelection = ({
                       </span>
                     </div>
                     {seatChangeCalculation.priceDifference > 0 && (
-                      <p className="text-xs text-gray-600 mt-1">
+                      <p className="text-xs text-gray-600 mt-1 dark:text-gray-400">
                         Sau khi xác nhận, bạn có thể tiếp tục chọn thêm dịch vụ
                         trước khi thanh toán
                       </p>
@@ -1913,7 +1917,7 @@ const CheckInSeatSelection = ({
             </div>{" "}
             <Alert>
               <Info className="h-4 w-4" />
-              <AlertDescription>
+              <AlertDescription className="dark:text-gray-200">
                 {seatChangeCalculation?.priceDifference > 0
                   ? "Xác nhận thay đổi ghế. Sau đó bạn có thể chọn thêm dịch vụ bổ sung trước khi thanh toán tổng cộng."
                   : "Thay đổi này miễn phí. Bạn có thể xác nhận và check-in ngay lập tức."}

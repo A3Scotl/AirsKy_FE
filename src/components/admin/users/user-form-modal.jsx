@@ -194,10 +194,10 @@ const UserFormModal = ({
             phone: formData.phone,
             role: formData.role,
           };
-         
+
           const response = await authApi.adminRegister(registerData);
           if (response.success) {
-           // Debug log
+            // Debug log
             toast.success("Tạo người dùng thành công");
             onSave(response.data, false); // Pass the created user data
             onClose();
@@ -205,7 +205,6 @@ const UserFormModal = ({
             toast.error(response.message || "Tạo người dùng thất bại");
           }
         } catch (error) {
-          
           toast.error("Lỗi khi tạo người dùng");
         }
       } else {
@@ -242,8 +241,6 @@ const UserFormModal = ({
 
             // Add avatar file
             formDataToSend.append("avatar", avatarFile);
-
-        
 
             response = await userApi.updateUser(user.id, formDataToSend);
           } else {
@@ -351,14 +348,14 @@ const UserFormModal = ({
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       {/* Backdrop */}
       <div
-        className="absolute inset-0 bg-black bg-opacity-50"
+        className="absolute inset-0 bg-black bg-opacity-50 dark:bg-opacity-70"
         onClick={onClose}
       />
 
       {/* Modal */}
-      <div className="relative bg-white rounded-lg shadow-xl w-full max-w-4xl mx-4 max-h-[90vh] overflow-y-auto">
+      <div className="relative bg-white dark:bg-gray-900 rounded-lg shadow-xl w-full max-w-4xl mx-4 max-h-[90vh] overflow-y-auto">
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-200">
+        <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
           <div className="flex items-center space-x-3">
             {isEditMode ? (
               <Edit className="h-6 w-6 text-blue-600" />
@@ -366,17 +363,22 @@ const UserFormModal = ({
               <Plus className="h-6 w-6 text-blue-600" />
             )}
             <div>
-              <h2 className="text-xl font-semibold text-gray-900">
+              <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
                 {isEditMode ? "Chỉnh sửa người dùng" : "Thêm người dùng mới"}
               </h2>
-              <p className="text-sm text-gray-500">
+              <p className="text-sm text-gray-500 dark:text-gray-400">
                 {isEditMode
                   ? `Cập nhật thông tin ${user?.name || user?.email || ""}`
                   : "Nhập thông tin người dùng để tạo tài khoản mới"}
               </p>
             </div>
           </div>
-          <Button variant="ghost" size="sm" onClick={onClose}>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onClose}
+            className="dark:text-gray-400 dark:hover:bg-gray-800"
+          >
             <X className="h-5 w-5" />
           </Button>
         </div>
@@ -384,19 +386,21 @@ const UserFormModal = ({
         {/* Form */}
         <form onSubmit={handleSubmit} className="p-6 space-y-6">
           {/* Personal Information */}
-          <Card>
+          <Card className="dark:bg-gray-800 dark:border-gray-700">
             <CardHeader>
-              <CardTitle className="flex items-center space-x-2">
+              <CardTitle className="flex items-center space-x-2 dark:text-white">
                 <User className="h-4 w-4" />
                 <span>Thông tin cá nhân</span>
               </CardTitle>
-              <CardDescription>
+              <CardDescription className="dark:text-gray-400">
                 Thông tin cá nhân cơ bản và thông tin liên hệ
               </CardDescription>
             </CardHeader>
             <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="firstName">Tên *</Label>
+                <Label htmlFor="firstName" className="dark:text-gray-300">
+                  Tên *
+                </Label>
                 <Input
                   id="firstName"
                   value={formData.firstName}
@@ -404,7 +408,9 @@ const UserFormModal = ({
                     handleInputChange("firstName", e.target.value)
                   }
                   placeholder="Nhập tên"
-                  className={errors.firstName ? "border-red-500" : ""}
+                  className={`text-black ${
+                    errors.firstName ? "border-red-500" : ""
+                  }`}
                 />
                 {errors.firstName && (
                   <p className="text-red-500 text-xs mt-1">
@@ -414,7 +420,9 @@ const UserFormModal = ({
               </div>
 
               <div>
-                <Label htmlFor="lastName">Họ *</Label>
+                <Label htmlFor="lastName" className="dark:text-gray-300">
+                  Họ *
+                </Label>
                 <Input
                   id="lastName"
                   value={formData.lastName}
@@ -422,7 +430,9 @@ const UserFormModal = ({
                     handleInputChange("lastName", e.target.value)
                   }
                   placeholder="Nhập họ"
-                  className={errors.lastName ? "border-red-500" : ""}
+                  className={`text-black ${
+                    errors.lastName ? "border-red-500" : ""
+                  }`}
                 />
                 {errors.lastName && (
                   <p className="text-red-500 text-xs mt-1">{errors.lastName}</p>
@@ -430,14 +440,18 @@ const UserFormModal = ({
               </div>
 
               <div>
-                <Label htmlFor="email">Địa chỉ email *</Label>
+                <Label htmlFor="email" className="dark:text-gray-300">
+                  Địa chỉ email *
+                </Label>
                 <Input
                   id="email"
                   type="email"
                   value={formData.email}
                   onChange={(e) => handleInputChange("email", e.target.value)}
                   placeholder="Nhập địa chỉ email"
-                  className={errors.email ? "border-red-500" : ""}
+                  className={`text-black ${
+                    errors.email ? "border-red-500" : ""
+                  }`}
                   disabled={isEditMode} // Usually email shouldn't be editable
                 />
                 {errors.email && (
@@ -446,14 +460,18 @@ const UserFormModal = ({
               </div>
 
               <div>
-                <Label htmlFor="phone">Số điện thoại</Label>
+                <Label htmlFor="phone" className="dark:text-gray-300">
+                  Số điện thoại
+                </Label>
                 <Input
                   id="phone"
                   type="tel"
                   value={formData.phone}
                   onChange={(e) => handleInputChange("phone", e.target.value)}
                   placeholder="Nhập số điện thoại"
-                  className={errors.phone ? "border-red-500" : ""}
+                  className={`text-black ${
+                    errors.phone ? "border-red-500" : ""
+                  }`}
                 />
                 {errors.phone && (
                   <p className="text-red-500 text-xs mt-1">{errors.phone}</p>
@@ -486,7 +504,9 @@ const UserFormModal = ({
                       handleInputChange("password", e.target.value)
                     }
                     placeholder="Nhập mật khẩu"
-                    className={errors.password ? "border-red-500" : ""}
+                    className={`text-black ${
+                      errors.password ? "border-red-500" : ""
+                    }`}
                   />
                   {errors.password && (
                     <p className="text-red-500 text-xs mt-1">
@@ -577,7 +597,9 @@ const UserFormModal = ({
                       onChange={(e) =>
                         handleInputChange("dateOfBirth", e.target.value)
                       }
-                      className={errors.dateOfBirth ? "border-red-500" : ""}
+                      className={`text-black ${
+                        errors.dateOfBirth ? "border-red-500" : ""
+                      }`}
                     />
                     {errors.dateOfBirth && (
                       <p className="text-red-500 text-xs mt-1">
@@ -595,6 +617,7 @@ const UserFormModal = ({
                         handleInputChange("passportNumber", e.target.value)
                       }
                       placeholder="Nhập số hộ chiếu"
+                      className="text-black"
                     />
                   </div>
 
@@ -609,7 +632,9 @@ const UserFormModal = ({
                       onChange={(e) =>
                         handleInputChange("passportExpiry", e.target.value)
                       }
-                      className={errors.passportExpiry ? "border-red-500" : ""}
+                      className={`text-black ${
+                        errors.passportExpiry ? "border-red-500" : ""
+                      }`}
                     />
                     {errors.passportExpiry && (
                       <p className="text-red-500 text-xs mt-1">
@@ -632,6 +657,7 @@ const UserFormModal = ({
                       }
                       placeholder="0"
                       min="0"
+                      className="text-black"
                     />
                   </div>
 
@@ -696,11 +722,21 @@ const UserFormModal = ({
           </Card>
 
           {/* Form Actions */}
-          <div className="flex items-center justify-end space-x-3 pt-6 border-t border-gray-200">
-            <Button type="button" variant="outline" onClick={handleReset}>
+          <div className="flex items-center justify-end space-x-3 pt-6 border-t border-gray-200 dark:border-gray-700">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleReset}
+              className="dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
+            >
               Đặt lại
             </Button>
-            <Button type="button" variant="outline" onClick={onClose}>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={onClose}
+              className="dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
+            >
               Hủy
             </Button>
             <Button type="submit" className="bg-blue-600 hover:bg-blue-700">

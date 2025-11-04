@@ -179,19 +179,19 @@ const MyFlightsBookingDetails = ({ booking, onProceed, onBack }) => {
     <div className="max-w-4xl mx-auto space-y-6">
       {/* Header with Booking Status */}
       <Card className="border-l-4 border-l-blue-500">
-        <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50">
+        <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950 dark:to-indigo-950">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-blue-100 rounded-full">
-                <Plane className="w-6 h-6 text-blue-600" />
+              <div className="p-2 bg-blue-100 dark:bg-blue-900 rounded-full">
+                <Plane className="w-6 h-6 text-blue-600 dark:text-blue-400" />
               </div>
               <div>
-                <CardTitle className="text-xl text-gray-800">
+                <CardTitle className="text-xl text-gray-800 dark:text-gray-200">
                   Chi tiết đặt chỗ
                 </CardTitle>
-                <p className="text-sm text-gray-600 mt-1">
+                <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
                   Mã đặt chỗ:{" "}
-                  <span className="font-mono font-semibold">
+                  <span className="font-mono font-semibold dark:text-white">
                     {booking.bookingCode}
                   </span>
                 </p>
@@ -220,19 +220,23 @@ const MyFlightsBookingDetails = ({ booking, onProceed, onBack }) => {
         <CardContent className="pt-6">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
             <div className="space-y-1">
-              <p className="text-sm font-medium text-gray-500">Email đặt chỗ</p>
+              <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                Email đặt chỗ
+              </p>
               <div className="flex items-center gap-2">
-                <Mail className="w-4 h-4 text-gray-400" />
-                <p className="font-medium">
+                <Mail className="w-4 h-4 text-gray-400 dark:text-gray-500" />
+                <p className="font-medium dark:text-white">
                   {booking.contactEmail || booking.userEmail || "N/A"}
                 </p>
               </div>
             </div>
             <div className="space-y-1">
-              <p className="text-sm font-medium text-gray-500">Ngày đặt</p>
+              <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                Ngày đặt
+              </p>
               <div className="flex items-center gap-2">
-                <Calendar className="w-4 h-4 text-gray-400" />
-                <p className="font-medium">
+                <Calendar className="w-4 h-4 text-gray-400 dark:text-gray-500" />
+                <p className="font-medium dark:text-white">
                   {booking.createdAt || booking.bookingDate
                     ? formatDateTime(booking.createdAt || booking.bookingDate)
                         .date
@@ -241,17 +245,21 @@ const MyFlightsBookingDetails = ({ booking, onProceed, onBack }) => {
               </div>
             </div>
             <div className="space-y-1">
-              <p className="text-sm font-medium text-gray-500">Số hành khách</p>
+              <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                Số hành khách
+              </p>
               <div className="flex items-center gap-2">
-                <User className="w-4 h-4 text-gray-400" />
-                <p className="font-medium text-blue-600">
+                <User className="w-4 h-4 text-gray-400 dark:text-gray-500" />
+                <p className="font-medium text-blue-600 dark:text-blue-400">
                   {booking.passengers ? booking.passengers.length : 0} người
                 </p>
               </div>
             </div>
             <div className="space-y-1">
-              <p className="text-sm font-medium text-gray-500">Tổng tiền</p>
-              <p className="text-2xl font-bold text-blue-600">
+              <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                Tổng tiền
+              </p>
+              <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
                 {formatCurrencyVND(booking.totalAmount || 0)}
               </p>
             </div>
@@ -259,10 +267,10 @@ const MyFlightsBookingDetails = ({ booking, onProceed, onBack }) => {
 
           {/* Deal Code */}
           {booking.appliedDealCode && (
-            <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg">
+            <div className="mt-4 p-3 bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-800 rounded-lg">
               <div className="flex items-center gap-2">
-                <Tag className="w-4 h-4 text-green-600" />
-                <span className="text-sm font-medium text-green-800">
+                <Tag className="w-4 h-4 text-green-600 dark:text-green-400" />
+                <span className="text-sm font-medium text-green-800 dark:text-green-200">
                   Mã giảm giá: {booking.appliedDealCode}
                   {booking.discountPercentage && (
                     <span className="ml-2">
@@ -279,7 +287,7 @@ const MyFlightsBookingDetails = ({ booking, onProceed, onBack }) => {
       {/* Passengers */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
+          <CardTitle className="flex items-center gap-2 dark:text-white">
             <User className="w-5 h-5 text-blue-500" />
             Hành khách
           </CardTitle>
@@ -293,17 +301,22 @@ const MyFlightsBookingDetails = ({ booking, onProceed, onBack }) => {
                   className="border rounded-lg p-4"
                 >
                   <div className="flex justify-between items-start mb-3">
-                    <h4 className="font-semibold">
+                    <h4 className="font-semibold dark:text-white">
                       {passenger.lastName || ""} {passenger.firstName || ""}
                     </h4>
-                    <Badge variant="outline">
+                    <Badge
+                      variant="outline"
+                      className="dark:text-gray-300 dark:border-gray-600"
+                    >
                       {passenger.type === "ADULT" ? "Người lớn" : "Trẻ em"}
                     </Badge>
                   </div>
                   <div className="grid grid-cols-2 gap-4 text-sm">
                     <div>
-                      <p className="text-gray-600">Ngày sinh</p>
-                      <p>
+                      <p className="text-gray-600 dark:text-gray-400">
+                        Ngày sinh
+                      </p>
+                      <p className="dark:text-white">
                         {passenger.dateOfBirth
                           ? new Date(passenger.dateOfBirth).toLocaleDateString(
                               "vi-VN"
@@ -312,33 +325,49 @@ const MyFlightsBookingDetails = ({ booking, onProceed, onBack }) => {
                       </p>
                     </div>
                     <div>
-                      <p className="text-gray-600">Giới tính</p>
-                      <p>{passenger.gender === "MALE" ? "Nam" : "Nữ"}</p>
+                      <p className="text-gray-600 dark:text-gray-400">
+                        Giới tính
+                      </p>
+                      <p className="dark:text-white">
+                        {passenger.gender === "MALE" ? "Nam" : "Nữ"}
+                      </p>
                     </div>
                     <div>
-                      <p className="text-gray-600">Số hộ chiếu</p>
-                      <p>{passenger.passportNumber || "N/A"}</p>
+                      <p className="text-gray-600 dark:text-gray-400">
+                        Số hộ chiếu
+                      </p>
+                      <p className="dark:text-white">
+                        {passenger.passportNumber || "N/A"}
+                      </p>
                     </div>
                     <div>
-                      <p className="text-gray-600">Chỗ ngồi</p>
-                      <p className="font-medium text-blue-600">
+                      <p className="text-gray-600 dark:text-gray-400">
+                        Chỗ ngồi
+                      </p>
+                      <p className="font-medium text-blue-600 dark:text-blue-400">
                         {passenger.seatNumber || "Chưa chọn"}
                       </p>
                     </div>
                     <div>
-                      <p className="text-gray-600">Hạng vé</p>
-                      <p>{passenger.className || "N/A"}</p>
+                      <p className="text-gray-600 dark:text-gray-400">
+                        Hạng vé
+                      </p>
+                      <p className="dark:text-white">
+                        {passenger.className || "N/A"}
+                      </p>
                     </div>
                     <div>
-                      <p className="text-gray-600">Email</p>
-                      <p>{passenger.email || "N/A"}</p>
+                      <p className="text-gray-600 dark:text-gray-400">Email</p>
+                      <p className="dark:text-white">
+                        {passenger.email || "N/A"}
+                      </p>
                     </div>
                   </div>
                 </div>
               ))
             ) : (
-              <div className="text-center py-8 text-gray-500">
-                <User className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+              <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+                <User className="w-12 h-12 mx-auto mb-4 text-gray-300 dark:text-gray-600" />
                 <p>Không có thông tin hành khách</p>
               </div>
             )}
@@ -349,7 +378,7 @@ const MyFlightsBookingDetails = ({ booking, onProceed, onBack }) => {
       {/* Flight Segments */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
+          <CardTitle className="flex items-center gap-2 dark:text-white">
             <Plane className="w-5 h-5 text-blue-500" />
             Chuyến bay
           </CardTitle>
@@ -369,24 +398,28 @@ const MyFlightsBookingDetails = ({ booking, onProceed, onBack }) => {
                     <div className="flex items-center justify-between mb-4">
                       <div className="flex items-center gap-4">
                         <div className="text-center">
-                          <p className="text-2xl font-bold text-blue-600">
+                          <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
                             {segment.departureAirport?.airportCode || "N/A"}
                           </p>
-                          <p className="text-sm text-gray-600">Khởi hành</p>
+                          <p className="text-sm text-gray-600 dark:text-gray-400">
+                            Khởi hành
+                          </p>
                         </div>
-                        <ArrowRight className="w-6 h-6 text-gray-400" />
+                        <ArrowRight className="w-6 h-6 text-gray-400 dark:text-gray-500" />
                         <div className="text-center">
-                          <p className="text-2xl font-bold text-blue-600">
+                          <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
                             {segment.arrivalAirport?.airportCode || "N/A"}
                           </p>
-                          <p className="text-sm text-gray-600">Đến</p>
+                          <p className="text-sm text-gray-600 dark:text-gray-400">
+                            Đến
+                          </p>
                         </div>
                       </div>
                       <div className="text-right">
-                        <p className="text-lg font-semibold">
+                        <p className="text-lg font-semibold dark:text-white">
                           {segment.flightNumber || "N/A"}
                         </p>
-                        <p className="text-sm text-gray-600">
+                        <p className="text-sm text-gray-600 dark:text-gray-400">
                           {segment.aircraft || "N/A"}
                         </p>
                       </div>
@@ -394,45 +427,57 @@ const MyFlightsBookingDetails = ({ booking, onProceed, onBack }) => {
 
                     <div className="grid grid-cols-2 gap-4 text-sm">
                       <div className="flex items-center gap-2">
-                        <Calendar className="w-4 h-4 text-gray-500" />
+                        <Calendar className="w-4 h-4 text-gray-500 dark:text-gray-400" />
                         <div>
-                          <p className="text-gray-600">Ngày bay</p>
-                          <p className="font-medium">
+                          <p className="text-gray-600 dark:text-gray-400">
+                            Ngày bay
+                          </p>
+                          <p className="font-medium dark:text-white">
                             {departureDateTime.date}
                           </p>
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
-                        <Clock className="w-4 h-4 text-gray-500" />
+                        <Clock className="w-4 h-4 text-gray-500 dark:text-gray-400" />
                         <div>
-                          <p className="text-gray-600">Giờ khởi hành</p>
-                          <p className="font-medium">
+                          <p className="text-gray-600 dark:text-gray-400">
+                            Giờ khởi hành
+                          </p>
+                          <p className="font-medium dark:text-white">
                             {departureDateTime.time}
                           </p>
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
-                        <Clock className="w-4 h-4 text-gray-500" />
+                        <Clock className="w-4 h-4 text-gray-500 dark:text-gray-400" />
                         <div>
-                          <p className="text-gray-600">Giờ đến</p>
-                          <p className="font-medium">{arrivalDateTime.time}</p>
+                          <p className="text-gray-600 dark:text-gray-400">
+                            Giờ đến
+                          </p>
+                          <p className="font-medium dark:text-white">
+                            {arrivalDateTime.time}
+                          </p>
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
-                        <MapPin className="w-4 h-4 text-gray-500" />
+                        <MapPin className="w-4 h-4 text-gray-500 dark:text-gray-400" />
                         <div>
-                          <p className="text-gray-600">Thời gian bay</p>
-                          <p className="font-medium">
+                          <p className="text-gray-600 dark:text-gray-400">
+                            Thời gian bay
+                          </p>
+                          <p className="font-medium dark:text-white">
                             {segment.duration || "N/A"}
                           </p>
                         </div>
                       </div>
                     </div>
 
-                    <div className="mt-4 pt-4 border-t">
+                    <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
                       <div className="flex justify-between items-center">
-                        <span className="text-sm text-gray-600">Giá vé:</span>
-                        <span className="font-medium">
+                        <span className="text-sm text-gray-600 dark:text-gray-400">
+                          Giá vé:
+                        </span>
+                        <span className="font-medium dark:text-white">
                           {formatCurrencyVND(segment.price || 0)}
                         </span>
                       </div>
@@ -441,8 +486,8 @@ const MyFlightsBookingDetails = ({ booking, onProceed, onBack }) => {
                 );
               })
             ) : (
-              <div className="text-center py-8 text-gray-500">
-                <Plane className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+              <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+                <Plane className="w-12 h-12 mx-auto mb-4 text-gray-300 dark:text-gray-600" />
                 <p>Không có thông tin chuyến bay</p>
               </div>
             )}
@@ -454,7 +499,7 @@ const MyFlightsBookingDetails = ({ booking, onProceed, onBack }) => {
       {booking.seatAssignments && booking.seatAssignments.length > 0 && (
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
+            <CardTitle className="flex items-center gap-2 dark:text-white">
               <span>💺</span>
               Ghế ngồi đã chọn
             </CardTitle>
@@ -472,26 +517,26 @@ const MyFlightsBookingDetails = ({ booking, onProceed, onBack }) => {
                 return (
                   <div
                     key={seat.seatAssignmentId}
-                    className="border rounded-lg p-4 bg-gray-50"
+                    className="border rounded-lg p-4 bg-gray-50 dark:bg-gray-800"
                   >
                     <div className="flex justify-between items-start">
                       <div>
-                        <h4 className="font-semibold">
+                        <h4 className="font-semibold dark:text-white">
                           Ghế {seat.seatNumber}
                           {seat.seatTypeDescription && (
-                            <span className="ml-2 text-sm bg-blue-100 text-blue-800 px-2 py-1 rounded">
+                            <span className="ml-2 text-sm bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 px-2 py-1 rounded">
                               {seat.seatTypeDescription}
                             </span>
                           )}
                         </h4>
-                        <p className="text-sm text-gray-600">
+                        <p className="text-sm text-gray-600 dark:text-gray-400">
                           Hành khách:{" "}
                           {passenger
                             ? `${passenger.firstName} ${passenger.lastName}`
                             : "Không xác định"}
                         </p>
                         {segment && (
-                          <p className="text-sm text-gray-600">
+                          <p className="text-sm text-gray-600 dark:text-gray-400">
                             Chuyến bay: {segment.departureAirport?.airportCode}{" "}
                             → {segment.arrivalAirport?.airportCode}
                           </p>
@@ -499,8 +544,10 @@ const MyFlightsBookingDetails = ({ booking, onProceed, onBack }) => {
                       </div>
                       {seat.additionalPrice > 0 && (
                         <div className="text-right">
-                          <p className="text-sm text-gray-600">Phụ phí</p>
-                          <p className="font-semibold text-orange-600">
+                          <p className="text-sm text-gray-600 dark:text-gray-400">
+                            Phụ phí
+                          </p>
+                          <p className="font-semibold text-orange-600 dark:text-orange-400">
                             +{formatCurrencyVND(seat.additionalPrice)}
                           </p>
                         </div>
@@ -518,7 +565,7 @@ const MyFlightsBookingDetails = ({ booking, onProceed, onBack }) => {
       {booking.baggage && booking.baggage.length > 0 && (
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
+            <CardTitle className="flex items-center gap-2 dark:text-white">
               <Luggage className="w-5 h-5 text-blue-500" />
               Hành lý ({booking.baggage.length} gói)
             </CardTitle>
@@ -551,18 +598,18 @@ const MyFlightsBookingDetails = ({ booking, onProceed, onBack }) => {
                           </Badge>
                         </div>
                         {passenger && (
-                          <p className="text-sm text-gray-600">
+                          <p className="text-sm text-gray-600 dark:text-gray-400">
                             Hành khách: {passenger.firstName}{" "}
                             {passenger.lastName}
                           </p>
                         )}
                         {item.actualWeight && (
-                          <p className="text-sm text-gray-600">
+                          <p className="text-sm text-gray-600 dark:text-gray-400">
                             Trọng lượng thực: {item.actualWeight} kg
                           </p>
                         )}
                         {item.excessWeight > 0 && (
-                          <p className="text-sm text-orange-600">
+                          <p className="text-sm text-orange-600 dark:text-orange-400">
                             Vượt cước: {item.excessWeight} kg
                             {item.excessFee &&
                               ` - Phí: ${formatCurrencyVND(item.excessFee)}`}
@@ -570,7 +617,7 @@ const MyFlightsBookingDetails = ({ booking, onProceed, onBack }) => {
                         )}
                       </div>
                       <div className="text-right">
-                        <p className="font-medium text-blue-600">
+                        <p className="font-medium text-blue-600 dark:text-blue-400">
                           {formatCurrencyVND(item.packagePrice)}
                         </p>
                       </div>
@@ -587,7 +634,7 @@ const MyFlightsBookingDetails = ({ booking, onProceed, onBack }) => {
       {booking.ancillaryServices && booking.ancillaryServices.length > 0 && (
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
+            <CardTitle className="flex items-center gap-2 dark:text-white">
               <DollarSign className="w-5 h-5 text-blue-500" />
               Dịch vụ bổ sung ({booking.ancillaryServices.length} dịch vụ)
             </CardTitle>
@@ -607,7 +654,7 @@ const MyFlightsBookingDetails = ({ booking, onProceed, onBack }) => {
                           {service.serviceTypeDisplayName}
                         </Badge>
                       </div>
-                      <div className="text-sm text-gray-600 space-y-1">
+                      <div className="text-sm text-gray-600 dark:text-gray-400 space-y-1">
                         {service.passengerName ? (
                           <p>👤 Hành khách: {service.passengerName}</p>
                         ) : (
@@ -621,11 +668,11 @@ const MyFlightsBookingDetails = ({ booking, onProceed, onBack }) => {
                       </div>
                     </div>
                     <div className="text-right">
-                      <p className="font-medium text-blue-600">
+                      <p className="font-medium text-blue-600 dark:text-blue-400">
                         {formatCurrencyVND(service.totalPrice)}
                       </p>
                       {service.quantity > 1 && (
-                        <p className="text-xs text-gray-500">
+                        <p className="text-xs text-gray-500 dark:text-gray-500">
                           ({service.quantity} ×{" "}
                           {formatCurrencyVND(service.unitPrice)})
                         </p>
@@ -636,10 +683,12 @@ const MyFlightsBookingDetails = ({ booking, onProceed, onBack }) => {
               ))}
 
               {/* Tổng cộng dịch vụ bổ sung */}
-              <div className="border-t pt-3 mt-3">
+              <div className="border-t border-gray-200 dark:border-gray-700 pt-3 mt-3">
                 <div className="flex justify-between items-center">
-                  <span className="font-medium">Tổng dịch vụ bổ sung:</span>
-                  <span className="font-bold text-blue-600">
+                  <span className="font-medium dark:text-white">
+                    Tổng dịch vụ bổ sung:
+                  </span>
+                  <span className="font-bold text-blue-600 dark:text-blue-400">
                     {formatCurrencyVND(
                       booking.ancillaryServicesAmount ||
                         booking.ancillaryServices.reduce(
@@ -658,7 +707,7 @@ const MyFlightsBookingDetails = ({ booking, onProceed, onBack }) => {
       {/* Payment Status */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
+          <CardTitle className="flex items-center gap-2 dark:text-white">
             <CreditCard className="w-5 h-5 text-blue-500" />
             Trạng thái thanh toán
           </CardTitle>
@@ -666,13 +715,15 @@ const MyFlightsBookingDetails = ({ booking, onProceed, onBack }) => {
         <CardContent>
           {isPaid ? (
             <div className="flex items-center gap-3">
-              <CheckCircle className="w-6 h-6 text-green-600" />
+              <CheckCircle className="w-6 h-6 text-green-600 dark:text-green-400" />
               <div>
-                <p className="font-semibold text-green-800">Đã thanh toán</p>
-                <p className="text-sm text-green-700">
+                <p className="font-semibold text-green-800 dark:text-green-200">
+                  Đã thanh toán
+                </p>
+                <p className="text-sm text-green-700 dark:text-green-300">
                   Mã giao dịch: {booking.payment.transactionId}
                 </p>
-                <p className="text-sm text-green-700">
+                <p className="text-sm text-green-700 dark:text-green-300">
                   Ngày thanh toán:{" "}
                   {formatDateTime(booking.payment.paymentDate).date}
                 </p>
@@ -681,13 +732,13 @@ const MyFlightsBookingDetails = ({ booking, onProceed, onBack }) => {
           ) : booking.status === "PENDING" ? (
             <div className="space-y-4">
               <div className="flex items-center gap-3">
-                <AlertTriangle className="w-6 h-6 text-yellow-600" />
+                <AlertTriangle className="w-6 h-6 text-yellow-600 dark:text-yellow-400" />
                 <div>
-                  <p className="font-semibold text-yellow-800">
+                  <p className="font-semibold text-yellow-800 dark:text-yellow-200">
                     Chưa thanh toán
                   </p>
                   {!isCancelled ? (
-                    <p className="text-sm text-yellow-700">
+                    <p className="text-sm text-yellow-700 dark:text-yellow-300">
                       Vui lòng hoàn tất thanh toán để có thể check-in
                     </p>
                   ) : null}
@@ -695,13 +746,15 @@ const MyFlightsBookingDetails = ({ booking, onProceed, onBack }) => {
               </div>
 
               {/* Payment Options */}
-              <div className="border-t pt-4">
-                <h4 className="font-medium mb-3">
+              <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
+                <h4 className="font-medium dark:text-white mb-3">
                   Chọn phương thức thanh toán:
                 </h4>
                 {paymentError && (
-                  <div className="mb-3 p-3 bg-red-50 border border-red-200 rounded-lg">
-                    <p className="text-sm text-red-700">{paymentError}</p>
+                  <div className="mb-3 p-3 bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800 rounded-lg">
+                    <p className="text-sm text-red-700 dark:text-red-300">
+                      {paymentError}
+                    </p>
                   </div>
                 )}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -727,18 +780,20 @@ const MyFlightsBookingDetails = ({ booking, onProceed, onBack }) => {
                       : "Thanh toán bằng thẻ tín dụng"}
                   </Button>
                 </div>
-                <p className="text-xs text-gray-500 mt-2">
+                <p className="text-xs text-gray-500 dark:text-gray-500 mt-2">
                   * Bạn sẽ được chuyển hướng đến cổng thanh toán an toàn
                 </p>
               </div>
             </div>
           ) : (
             <div className="flex items-center gap-3">
-              <AlertTriangle className="w-6 h-6 text-gray-400" />
+              <AlertTriangle className="w-6 h-6 text-gray-400 dark:text-gray-500" />
               <div>
-                <p className="font-semibold text-gray-800">Chưa thanh toán</p>
+                <p className="font-semibold text-gray-800 dark:text-gray-200">
+                  Chưa thanh toán
+                </p>
                 {!isCancelled ? (
-                  <p className="text-sm text-yellow-700">
+                  <p className="text-sm text-yellow-700 dark:text-yellow-300">
                     Vui lòng hoàn tất thanh toán để có thể check-in
                   </p>
                 ) : null}
@@ -953,10 +1008,12 @@ const MyFlightsBookingDetails = ({ booking, onProceed, onBack }) => {
               </div>
             )}
 
-            <div className="border-t pt-3">
+            <div className="border-t border-gray-200 dark:border-gray-700 pt-3">
               <div className="flex justify-between items-center">
-                <span className="font-semibold text-lg">💰 Tổng cộng:</span>
-                <span className="text-xl font-bold text-blue-600">
+                <span className="font-semibold text-lg dark:text-white">
+                  💰 Tổng cộng:
+                </span>
+                <span className="text-xl font-bold text-blue-600 dark:text-blue-400">
                   {formatCurrencyVND(booking.totalAmount)}
                 </span>
               </div>
@@ -969,7 +1026,7 @@ const MyFlightsBookingDetails = ({ booking, onProceed, onBack }) => {
       {canProceedToPayment && (
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
+            <CardTitle className="flex items-center gap-2 dark:text-white">
               <CreditCard className="w-5 h-5 text-blue-500" />
               Chọn phương thức thanh toán
             </CardTitle>
@@ -1002,16 +1059,18 @@ const MyFlightsBookingDetails = ({ booking, onProceed, onBack }) => {
                 onClick={() => handlePayment("BANK_TRANSFER")}
                 disabled={isProcessingPayment}
                 variant="outline"
-                className="h-auto p-4 flex flex-col items-center gap-2 border-2 border-blue-200 hover:border-blue-300"
+                className="h-auto p-4 flex flex-col items-center gap-2 border-2 border-blue-200 hover:border-blue-300 dark:border-blue-700 dark:hover:border-blue-600"
               >
                 {isProcessingPayment ? (
-                  <div className="animate-spin w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full" />
+                  <div className="animate-spin w-6 h-6 border-2 border-blue-500 dark:border-blue-400 border-t-transparent rounded-full" />
                 ) : (
                   <>
                     <div className="text-2xl">🏦</div>
                     <div className="text-center">
-                      <p className="font-semibold">Chuyển khoản</p>
-                      <p className="text-sm text-gray-600">
+                      <p className="font-semibold dark:text-white">
+                        Chuyển khoản
+                      </p>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">
                         QR Code thanh toán
                       </p>
                     </div>
@@ -1021,8 +1080,10 @@ const MyFlightsBookingDetails = ({ booking, onProceed, onBack }) => {
             </div>
 
             {paymentError && (
-              <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg">
-                <p className="text-red-800 text-sm">{paymentError}</p>
+              <div className="mt-4 p-3 bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800 rounded-lg">
+                <p className="text-red-800 dark:text-red-200 text-sm">
+                  {paymentError}
+                </p>
               </div>
             )}
           </CardContent>

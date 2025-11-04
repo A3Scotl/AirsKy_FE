@@ -465,10 +465,10 @@ const CheckInCompletion = ({
           <CardContent className="pt-6">
             <div className="text-center">
               <CreditCard className="w-16 h-16 mx-auto mb-4 text-orange-600" />
-              <h2 className="text-2xl font-bold mb-2 text-orange-800">
+              <h2 className="text-2xl font-bold mb-2 text-orange-800 dark:text-orange-200">
                 Thanh toán bổ sung
               </h2>
-              <p className="text-orange-700">
+              <p className="text-orange-700 dark:text-orange-300">
                 Vui lòng hoàn tất thanh toán để tiếp tục check-in
               </p>
             </div>
@@ -489,7 +489,9 @@ const CheckInCompletion = ({
               />
               <h2
                 className={`text-2xl font-bold mb-2 ${
-                  isAlreadyCheckedIn ? "text-green-800" : "text-blue-800"
+                  isAlreadyCheckedIn
+                    ? "text-green-800 dark:text-green-200"
+                    : "text-blue-800 dark:text-blue-200"
                 }`}
               >
                 {isAlreadyCheckedIn
@@ -498,7 +500,9 @@ const CheckInCompletion = ({
               </h2>
               <p
                 className={
-                  isAlreadyCheckedIn ? "text-green-700" : "text-blue-700"
+                  isAlreadyCheckedIn
+                    ? "text-green-700 dark:text-green-300"
+                    : "text-blue-700 dark:text-blue-300"
                 }
               >
                 {isAlreadyCheckedIn
@@ -552,12 +556,14 @@ const CheckInCompletion = ({
                       </span>
                     </div>
                     <div className="flex justify-between">
-                      <span>Phí thay đổi ghế:</span>
+                      <span className="dark:text-gray-200">
+                        Phí thay đổi ghế:
+                      </span>
                       <span
                         className={
                           booking.seatChangeCalculation.priceDifference >= 0
-                            ? "text-orange-600"
-                            : "text-green-600"
+                            ? "text-orange-600 dark:text-orange-400"
+                            : "text-green-600 dark:text-green-400"
                         }
                       >
                         {booking.seatChangeCalculation.priceDifference >= 0
@@ -570,8 +576,10 @@ const CheckInCompletion = ({
                     </div>
                     {booking.seatChangeCalculation.servicesCharge > 0 && (
                       <div className="flex justify-between">
-                        <span>Phí dịch vụ bổ sung:</span>
-                        <span>
+                        <span className="dark:text-gray-200">
+                          Phí dịch vụ bổ sung:
+                        </span>
+                        <span className="dark:text-gray-100">
                           +
                           {formatCurrencyVND(
                             booking.seatChangeCalculation.servicesCharge
@@ -585,8 +593,10 @@ const CheckInCompletion = ({
                 {/* Fallback for seat change without calculation */}
                 {!booking.seatChangeCalculation && selectedSeat && (
                   <div className="flex justify-between">
-                    <span>Phí thay đổi ghế ({selectedSeat.seatNumber})</span>
-                    <span>
+                    <span className="dark:text-gray-200">
+                      Phí thay đổi ghế ({selectedSeat.seatNumber})
+                    </span>
+                    <span className="dark:text-gray-100">
                       {formatCurrencyVND(selectedSeat.additionalPrice || 0)}
                     </span>
                   </div>
@@ -595,8 +605,12 @@ const CheckInCompletion = ({
                 {/* Services */}
                 {selectedServices.map((service, index) => (
                   <div key={index} className="flex justify-between">
-                    <span>{service.name || service.serviceName}</span>
-                    <span>+{formatCurrencyVND(service.price || 0)}</span>
+                    <span className="dark:text-gray-200">
+                      {service.name || service.serviceName}
+                    </span>
+                    <span className="dark:text-gray-100">
+                      +{formatCurrencyVND(service.price || 0)}
+                    </span>
                   </div>
                 ))}
 
@@ -1168,7 +1182,7 @@ const CheckInCompletion = ({
       )}
 
       {/* Footer Note */}
-      <div className="text-center text-sm text-gray-600 bg-gray-50 p-4 rounded-lg">
+      <div className="text-center text-sm text-gray-600 dark:text-gray-300 bg-gray-50 dark:bg-gray-800 p-4 rounded-lg">
         <p>
           Cảm ơn bạn đã chọn AirSky. Chúc bạn có một chuyến bay an toàn và thoải
           mái!

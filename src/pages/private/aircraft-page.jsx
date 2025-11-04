@@ -99,6 +99,13 @@ const AircraftPage = () => {
 
   const handleDelete = useCallback(
     async (aircraft) => {
+      // Prevent deleting if aircraft is currently on an active flight
+      const isInFlight = aircraft.isInFlight ?? aircraft.is_in_flight ?? false;
+      if (isInFlight) {
+        toast.error(`Không thể xóa máy bay ${aircraft.aircraftName}: đang trong chuyến bay`);
+        return;
+      }
+
       if (
         window.confirm(
           `Bạn có chắc muốn xóa hẳn máy bay ${aircraft.aircraftName}?`
@@ -155,7 +162,7 @@ const AircraftPage = () => {
       columnHelper.accessor("aircraftCode", {
         header: "Mã máy bay",
         cell: (info) => (
-          <div className="font-mono font-medium text-gray-900">
+          <div className="font-mono font-medium text-gray-900 dark:text-white">
             {info.getValue()}
           </div>
         ),
@@ -165,7 +172,7 @@ const AircraftPage = () => {
       columnHelper.accessor("aircraftName", {
         header: "Tên máy bay",
         cell: (info) => (
-          <div className="font-medium text-gray-900">{info.getValue()}</div>
+          <div className="font-medium text-gray-900 dark:text-white">{info.getValue()}</div>
         ),
       }),
 
@@ -194,6 +201,45 @@ const AircraftPage = () => {
           if (!filterValue) return true;
           const value = row.getValue(columnId) || "";
           return value.toLowerCase().includes(filterValue.toLowerCase());
+        },
+      }),
+
+      // Active status column
+      columnHelper.display({
+        id: "active",
+        header: "Đang hoạt động",
+        cell: ({ row }) => {
+          const orig = row.original;
+          // Use isActive field directly
+          const isActive = orig.isActive ?? orig.is_active ?? orig.isActive ?? false;
+          return (
+            <div className="text-center">
+              {isActive ? (
+                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">Hoạt động</span>
+              ) : (
+                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300">Không</span>
+              )}
+            </div>
+          );
+        },
+      }),
+
+      // In-flight column (true if aircraft is used by any ON_TIME flight)
+      columnHelper.display({
+        id: "inFlight",
+        header: "Đang trong chuyến bay",
+        cell: ({ row }) => {
+          const orig = row.original;
+          const isInFlight = orig.isInFlight ?? orig.is_in_flight ?? false;
+          return (
+            <div className="text-center">
+              {isInFlight ? (
+                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">Bận</span>
+              ) : (
+                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300">Rảnh</span>
+              )}
+            </div>
+          );
         },
       }),
 
@@ -261,20 +307,31 @@ const AircraftPage = () => {
 
   const handleBulkDelete = useCallback(async () => {
     if (selectedAircrafts.length === 0) return;
+    // Split into deletable and blocked (in-flight)
+    const blocked = selectedAircrafts.filter((a) => a.isInFlight ?? a.is_in_flight ?? false);
+    const deletable = selectedAircrafts.filter((a) => !(a.isInFlight ?? a.is_in_flight ?? false));
+
+    if (blocked.length > 0) {
+      // Inform user which aircrafts are blocked
+      const names = blocked.map((a) => a.aircraftName).join(", ");
+      toast.error(`Không thể xóa: máy bay đang trong chuyến bay - ${names}`);
+    }
+
+    if (deletable.length === 0) return;
 
     if (
       !window.confirm(
-        `Bạn có chắc chắn muốn xóa ${selectedAircrafts.length} máy bay đã chọn?`
+        `Bạn có chắc chắn muốn xóa ${deletable.length} máy bay? Các máy bay đang trong chuyến bay sẽ được bỏ qua.`
       )
     )
       return;
 
     try {
-      const deletePromises = selectedAircrafts.map((aircraft) =>
+      const deletePromises = deletable.map((aircraft) =>
         aircraftApi.deleteAircraft(aircraft.aircraftId)
       );
       await Promise.all(deletePromises);
-      toast.success(`Đã xóa ${selectedAircrafts.length} máy bay thành công!`);
+      toast.success(`Đã xóa ${deletable.length} máy bay thành công!`);
       fetchAircrafts();
       setRowSelection({});
     } catch (error) {
@@ -402,13 +459,13 @@ const AircraftPage = () => {
                 placeholder="Tìm kiếm theo tên hoặc mã máy bay..."
                 value={globalFilter ?? ""}
                 onChange={(event) => setGlobalFilter(event.target.value)}
-                className="pl-10"
+                className="pl-10 dark:text-black"
               />
             </div>
           </div>
 
           {/* Seats Range Filter */}
-          <div className="flex gap-2 items-center">
+          {/* <div className="flex gap-2 items-center">
             <span className="text-sm font-medium text-gray-700 whitespace-nowrap">
               Số ghế:
             </span>
@@ -429,10 +486,10 @@ const AircraftPage = () => {
               className="w-24"
               min="0"
             />
-          </div>
+          </div> */}
 
           {/* Seat Layout Filter */}
-          <div className="flex items-center gap-2">
+          {/* <div className="flex items-center gap-2">
             <span className="text-sm font-medium text-gray-700 whitespace-nowrap">
               Bố trí ghế:
             </span>
@@ -452,7 +509,7 @@ const AircraftPage = () => {
                 ))}
               </SelectContent>
             </Select>
-          </div>
+          </div> */}
 
           {/* Clear Filters Button */}
           {(minSeats ||

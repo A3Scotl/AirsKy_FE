@@ -43,7 +43,7 @@ const FAQSection = () => {
   ];
 
   return (
-    <section className="py-16 bg-gradient-to-br from-gray-50 via-blue-50 to-indigo-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 relative overflow-hidden">
+    <section className="py-12 sm:py-16 bg-gradient-to-br from-gray-50 via-blue-50 to-indigo-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 relative overflow-hidden">
       {/* Background Pattern */}
       <div className="absolute inset-0 opacity-5">
         <div className="absolute top-10 left-10 w-20 h-20 bg-blue-500 rounded-full blur-2xl"></div>
@@ -53,42 +53,42 @@ const FAQSection = () => {
 
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
         {/* Header */}
-        <div className="text-center mb-12">
-          <h2 className="text-4xl md:text-5xl font-bold mb-4 bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+        <div className="text-center mb-8 sm:mb-12">
+          <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold mb-2 sm:mb-4 bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
             Câu Hỏi Thường Gặp
           </h2>
-          <p className="text-lg text-gray-600 dark:text-gray-300 max-w-2xl mx-auto">
+          <p className="text-base sm:text-lg text-gray-600 dark:text-gray-300 max-w-2xl mx-auto px-4">
             Tìm hiểu thêm về dịch vụ đặt vé máy bay và các chính sách của chúng
             tôi
           </p>
         </div>
 
         {/* FAQ Items */}
-        <div className="space-y-4">
+        <div className="space-y-3 sm:space-y-4">
           {faqData.map((faq, index) => (
             <div
               key={index}
-              className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden"
+              className="bg-white dark:bg-gray-800 rounded-xl sm:rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden"
             >
               <button
                 onClick={() => toggleItem(index)}
-                className="w-full px-6 py-5 text-left flex items-center justify-between hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors duration-200 group"
+                className="w-full px-4 sm:px-6 py-4 sm:py-5 text-left flex items-center justify-between hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors duration-200 group"
               >
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors duration-200 pr-4">
+                <h3 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors duration-200 pr-4">
                   {faq.question}
                 </h3>
                 <div className="flex-shrink-0">
                   {openItems.has(index) ? (
-                    <ChevronUp className="w-6 h-6 text-blue-600 dark:text-blue-400 transition-transform duration-200" />
+                    <ChevronUp className="w-5 h-5 sm:w-6 sm:h-6 text-blue-600 dark:text-blue-400 transition-transform duration-200" />
                   ) : (
-                    <ChevronDown className="w-6 h-6 text-gray-400 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors duration-200" />
+                    <ChevronDown className="w-5 h-5 sm:w-6 sm:h-6 text-gray-400 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors duration-200" />
                   )}
                 </div>
               </button>
 
               {openItems.has(index) && (
-                <div className="px-6 pb-5 border-t border-gray-100 dark:border-gray-700">
-                  <p className="text-gray-600 dark:text-gray-300 leading-relaxed pt-4">
+                <div className="px-4 sm:px-6 pb-4 sm:pb-5 border-t border-gray-100 dark:border-gray-700">
+                  <p className="text-sm sm:text-base text-gray-600 dark:text-gray-300 leading-relaxed pt-3 sm:pt-4">
                     {faq.answer}
                   </p>
                 </div>

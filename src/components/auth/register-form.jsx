@@ -410,6 +410,12 @@ export default function RegisterForm({ setCurrentView }) {
               }`}
               value={formData[field]}
               onChange={handleInputChange(field)}
+              onPaste={
+                field === "confirmPassword"
+                  ? (e) => e.preventDefault()
+                  : undefined
+              }
+              disabled={loading}
               required={isRequired}
             />
             <button
@@ -435,6 +441,7 @@ export default function RegisterForm({ setCurrentView }) {
             }`}
             value={formData[field]}
             onChange={handleInputChange(field)}
+            disabled={loading}
             required={isRequired}
           />
         )}
@@ -532,7 +539,10 @@ export default function RegisterForm({ setCurrentView }) {
                     <button
                       type="button"
                       onClick={() => setCurrentView("login")}
-                      className="text-blue-600 hover:underline font-medium"
+                      disabled={loading}
+                      className={`text-blue-600 hover:underline font-medium ${
+                        loading ? "opacity-50 cursor-not-allowed" : ""
+                      }`}
                     >
                       Đăng nhập
                     </button>

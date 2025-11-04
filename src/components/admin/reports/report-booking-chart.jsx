@@ -47,9 +47,13 @@ ChartJS.register(
 const BookingChart = ({ bookings, isLoading, detailed = false, dateRange }) => {
   if (isLoading) {
     return (
-      <Card className={detailed ? "col-span-full" : ""}>
+      <Card
+        className={
+          detailed ? "col-span-full" : "dark:bg-gray-900 dark:border-gray-700"
+        }
+      >
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
+          <CardTitle className="flex items-center gap-2 dark:text-white">
             <Activity className="h-5 w-5" />
             Phân Tích Đặt Vé
           </CardTitle>
@@ -58,8 +62,8 @@ const BookingChart = ({ bookings, isLoading, detailed = false, dateRange }) => {
           <div className="space-y-4">
             {[...Array(5)].map((_, i) => (
               <div key={i} className="animate-pulse">
-                <div className="h-4 bg-gray-200 rounded mb-2"></div>
-                <div className="h-8 bg-gray-200 rounded"></div>
+                <div className="h-4 bg-gray-200 rounded mb-2 dark:bg-gray-700"></div>
+                <div className="h-8 bg-gray-200 rounded dark:bg-gray-700"></div>
               </div>
             ))}
           </div>
@@ -71,19 +75,25 @@ const BookingChart = ({ bookings, isLoading, detailed = false, dateRange }) => {
   // Ensure bookings data exists
   if (!bookings || bookings.length === 0) {
     return (
-      <Card className={detailed ? "col-span-full" : ""}>
+      <Card
+        className={
+          detailed ? "col-span-full" : "dark:bg-gray-900 dark:border-gray-700"
+        }
+      >
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
+          <CardTitle className="flex items-center gap-2 dark:text-white">
             <Activity className="h-5 w-5" />
             Phân Tích Đặt Vé
           </CardTitle>
-          <CardDescription>
+          <CardDescription className="dark:text-gray-400">
             Theo dõi xu hướng đặt vé theo thời gian
           </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="text-center py-8">
-            <p className="text-gray-500">Không có dữ liệu đặt vé</p>
+            <p className="text-gray-500 dark:text-gray-400">
+              Không có dữ liệu đặt vé
+            </p>
           </div>
         </CardContent>
       </Card>
@@ -256,13 +266,17 @@ const BookingChart = ({ bookings, isLoading, detailed = false, dateRange }) => {
   };
 
   return (
-    <Card className={detailed ? "col-span-full" : ""}>
+    <Card
+      className={
+        detailed ? "col-span-full" : "dark:bg-gray-900 dark:border-gray-700"
+      }
+    >
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
+        <CardTitle className="flex items-center gap-2 dark:text-white">
           <Activity className="h-5 w-5" />
           Phân tích Đặt Vé
         </CardTitle>
-        <CardDescription>
+        <CardDescription className="dark:text-gray-400">
           Theo dõi xu hướng đặt vé theo thời gian
         </CardDescription>
       </CardHeader>
@@ -270,30 +284,40 @@ const BookingChart = ({ bookings, isLoading, detailed = false, dateRange }) => {
         {detailed && (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
             <div className="space-y-2">
-              <p className="text-sm font-medium">Tổng Đặt Vé</p>
-              <p className="text-2xl font-bold">
+              <p className="text-sm font-medium dark:text-white">Tổng Đặt Vé</p>
+              <p className="text-2xl font-bold dark:text-white">
                 {formatNumber(totalBookings)}
               </p>
             </div>
             <div className="space-y-2">
-              <p className="text-sm font-medium">Trung Bình/Ngày</p>
-              <p className="text-2xl font-bold">
+              <p className="text-sm font-medium dark:text-white">
+                Trung Bình/Ngày
+              </p>
+              <p className="text-2xl font-bold dark:text-white">
                 {formatNumber(Math.round(avgBookings))}
               </p>
             </div>
             <div className="space-y-2">
-              <p className="text-sm font-medium">Tỷ Lệ Tăng Trưởng</p>
+              <p className="text-sm font-medium dark:text-white">
+                Tỷ Lệ Tăng Trưởng
+              </p>
               <div className="flex items-center gap-2">
-                <p className="text-2xl font-bold">
+                <p className="text-2xl font-bold dark:text-white">
                   {Math.abs(bookingGrowth).toFixed(1)}%
                 </p>
                 {bookingGrowth > 0 ? (
-                  <Badge variant="success" className="gap-1">
+                  <Badge
+                    variant="success"
+                    className="gap-1 dark:bg-green-900 dark:text-green-100"
+                  >
                     <TrendingUp className="h-3 w-3" />
                     Tăng
                   </Badge>
                 ) : (
-                  <Badge variant="destructive" className="gap-1">
+                  <Badge
+                    variant="destructive"
+                    className="gap-1 dark:bg-red-900 dark:text-red-100"
+                  >
                     <TrendingDown className="h-3 w-3" />
                     Giảm
                   </Badge>
@@ -306,7 +330,7 @@ const BookingChart = ({ bookings, isLoading, detailed = false, dateRange }) => {
         <div className="space-y-4">
           {/* Chart.js Bar Chart */}
           <div className="space-y-4">
-            <h4 className="font-medium flex items-center gap-2">
+            <h4 className="font-medium flex items-center gap-2 dark:text-white">
               <Calendar className="h-4 w-4" />
               Hoạt động Đặt Vé
             </h4>
@@ -349,14 +373,16 @@ const BookingChart = ({ bookings, isLoading, detailed = false, dateRange }) => {
                     .map((item, index) => (
                       <div
                         key={index}
-                        className="flex justify-between items-center p-3 bg-gray-50 rounded-lg"
+                        className="flex justify-between items-center p-3 bg-gray-50 rounded-lg dark:bg-gray-800"
                       >
-                        <span className="text-sm font-medium">{item.date}</span>
+                        <span className="text-sm font-medium dark:text-white">
+                          {item.date}
+                        </span>
                         <div className="text-right">
-                          <div className="font-medium text-green-600">
+                          <div className="font-medium text-green-600 dark:text-green-400">
                             {formatNumber(item.bookings)}
                           </div>
-                          <div className="text-xs text-gray-500">
+                          <div className="text-xs text-gray-500 dark:text-gray-400">
                             {formatCurrency(item.bookings * 250)}
                           </div>
                         </div>
@@ -369,30 +395,38 @@ const BookingChart = ({ bookings, isLoading, detailed = false, dateRange }) => {
 
           {/* Booking Analytics Summary */}
           {detailed && (
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6 pt-4 border-t">
-              <div className="text-center p-4 bg-green-50 rounded-lg border">
-                <div className="text-2xl font-bold text-green-600">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6 pt-4 border-t dark:border-gray-700">
+              <div className="text-center p-4 bg-green-50 rounded-lg border dark:bg-green-900/20 dark:border-green-800">
+                <div className="text-2xl font-bold text-green-600 dark:text-green-400">
                   {formatNumber(Math.max(...data.map((d) => d.bookings)))}
                 </div>
-                <div className="text-sm text-gray-600">Peak Bookings</div>
+                <div className="text-sm text-gray-600 dark:text-gray-400">
+                  Peak Bookings
+                </div>
               </div>
-              <div className="text-center p-4 bg-blue-50 rounded-lg border">
-                <div className="text-2xl font-bold text-blue-600">
+              <div className="text-center p-4 bg-blue-50 rounded-lg border dark:bg-blue-900/20 dark:border-blue-800">
+                <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
                   {formatNumber(Math.min(...data.map((d) => d.bookings)))}
                 </div>
-                <div className="text-sm text-gray-600">Lowest Bookings</div>
+                <div className="text-sm text-gray-600 dark:text-gray-400">
+                  Lowest Bookings
+                </div>
               </div>
-              <div className="text-center p-4 bg-emerald-50 rounded-lg border">
-                <div className="text-2xl font-bold text-emerald-600">
+              <div className="text-center p-4 bg-emerald-50 rounded-lg border dark:bg-emerald-900/20 dark:border-emerald-800">
+                <div className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">
                   {successRate.toFixed(1)}%
                 </div>
-                <div className="text-sm text-gray-600">Tỷ Lệ Thành Công</div>
+                <div className="text-sm text-gray-600 dark:text-gray-400">
+                  Tỷ Lệ Thành Công
+                </div>
               </div>
-              <div className="text-center p-4 bg-red-50 rounded-lg border">
-                <div className="text-2xl font-bold text-red-600">
+              <div className="text-center p-4 bg-red-50 rounded-lg border dark:bg-red-900/20 dark:border-red-800">
+                <div className="text-2xl font-bold text-red-600 dark:text-red-400">
                   {(100 - successRate).toFixed(1)}%
                 </div>
-                <div className="text-sm text-gray-600">Tỷ Lệ Hủy</div>
+                <div className="text-sm text-gray-600 dark:text-gray-400">
+                  Tỷ Lệ Hủy
+                </div>
               </div>
             </div>
           )}
@@ -400,7 +434,7 @@ const BookingChart = ({ bookings, isLoading, detailed = false, dateRange }) => {
 
         {!detailed && (
           <div className="mt-4 space-y-2">
-            <div className="flex justify-between text-sm">
+            <div className="flex justify-between text-sm dark:text-white">
               <span>Tổng Đặt Vé</span>
               <span className="font-medium">{formatNumber(totalBookings)}</span>
             </div>

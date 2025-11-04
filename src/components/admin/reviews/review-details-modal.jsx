@@ -120,25 +120,30 @@ const ReviewDetailsModal = ({
       />
 
       {/* Modal */}
-      <div className="relative bg-white rounded-lg shadow-xl w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto">
+      <div className="relative bg-white dark:bg-gray-900 rounded-lg shadow-xl w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto dark:text-white">
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-200">
+        <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
           <div className="flex items-center space-x-4">
-            <div className="bg-blue-100 p-2 rounded-full">
+            <div className="bg-blue-100 dark:bg-blue-900 p-2 rounded-full">
               <MessageSquare className="h-6 w-6 text-blue-600" />
             </div>
             <div>
-              <h2 className="text-xl font-bold text-gray-900">
+              <h2 className="text-xl font-bold text-gray-900 dark:text-white">
                 Chi Tiết Đánh Giá
               </h2>
-              <p className="text-sm text-gray-500">
+              <p className="text-sm text-gray-500 dark:text-gray-400">
                 Review ID: {reviewData.reviewId}
               </p>
             </div>
           </div>
           <div className="flex items-center space-x-2">
             {getStatusBadge(reviewData.isApproved)}
-            <Button variant="ghost" size="sm" onClick={onClose}>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={onClose}
+              className="dark:text-gray-300 dark:hover:bg-gray-700"
+            >
               <X className="h-5 w-5" />
             </Button>
           </div>
@@ -147,11 +152,11 @@ const ReviewDetailsModal = ({
         {/* Content */}
         <div className="p-6 space-y-6">
           {/* Rating */}
-          <Card>
-            <CardContent className="p-4">
+          <Card className="dark:bg-gray-800 dark:border-gray-700">
+            <CardContent className="p-4 dark:bg-gray-800">
               <div className="text-center">
                 <div className="mb-4">{renderStars(reviewData.rating)}</div>
-                <p className="text-gray-600 text-sm">
+                <p className="text-gray-600 dark:text-gray-400 text-sm">
                   Đánh giá vào {formatDateVN(reviewData.reviewDate)}
                 </p>
               </div>
@@ -159,14 +164,14 @@ const ReviewDetailsModal = ({
           </Card>
 
           {/* User Information */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center space-x-2">
+          <Card className="dark:bg-gray-800 dark:border-gray-700">
+            <CardHeader className="dark:bg-gray-800 dark:border-gray-700">
+              <CardTitle className="flex items-center space-x-2 dark:text-white">
                 <User className="h-4 w-4" />
                 <span>Thông Tin Người Dùng</span>
               </CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="dark:bg-gray-800">
               <div className="flex items-center space-x-4">
                 <Avatar className="h-16 w-16">
                   <AvatarImage
@@ -181,79 +186,99 @@ const ReviewDetailsModal = ({
                   </AvatarFallback>
                 </Avatar>
                 <div>
-                  <h3 className="text-lg font-semibold">
+                  <h3 className="text-lg font-semibold dark:text-white">
                     {reviewData.userName}
                   </h3>
-                  <p className="text-gray-600">User ID: {reviewData.userId}</p>
+                  <p className="text-gray-600 dark:text-gray-400">
+                    User ID: {reviewData.userId}
+                  </p>
                 </div>
               </div>
             </CardContent>
           </Card>
 
           {/* Flight Information */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center space-x-2">
+          <Card className="dark:bg-gray-800 dark:border-gray-700">
+            <CardHeader className="dark:bg-gray-800 dark:border-gray-700">
+              <CardTitle className="flex items-center space-x-2 dark:text-white">
                 <Plane className="h-4 w-4" />
                 <span>Thông Tin Chuyến Bay</span>
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-3">
+            <CardContent className="space-y-3 dark:bg-gray-800">
               <div className="flex justify-between">
-                <span className="text-gray-600">Mã chuyến bay:</span>
-                <span className="font-medium">{reviewData.flightCode}</span>
+                <span className="text-gray-600 dark:text-gray-400">
+                  Mã chuyến bay:
+                </span>
+                <span className="font-medium dark:text-white">
+                  {reviewData.flightCode}
+                </span>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-600">Mã đặt chỗ:</span>
-                <span className="font-medium">#{reviewData.bookingId}</span>
+                <span className="text-gray-600 dark:text-gray-400">
+                  Mã đặt chỗ:
+                </span>
+                <span className="font-medium dark:text-white">
+                  #{reviewData.bookingId}
+                </span>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-600">Flight ID:</span>
-                <span className="font-medium">{reviewData.flightId}</span>
+                <span className="text-gray-600 dark:text-gray-400">
+                  Flight ID:
+                </span>
+                <span className="font-medium dark:text-white">
+                  {reviewData.flightId}
+                </span>
               </div>
             </CardContent>
           </Card>
 
           {/* Comment */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center space-x-2">
+          <Card className="dark:bg-gray-800 dark:border-gray-700">
+            <CardHeader className="dark:bg-gray-800 dark:border-gray-700">
+              <CardTitle className="flex items-center space-x-2 dark:text-white">
                 <MessageSquare className="h-4 w-4" />
                 <span>Nội Dung Đánh Giá</span>
               </CardTitle>
             </CardHeader>
-            <CardContent>
-              <p className="text-gray-700 whitespace-pre-wrap">
+            <CardContent className="dark:bg-gray-800">
+              <p className="text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
                 {reviewData.comment}
               </p>
             </CardContent>
           </Card>
 
           {/* Timestamps */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center space-x-2">
+          <Card className="dark:bg-gray-800 dark:border-gray-700">
+            <CardHeader className="dark:bg-gray-800 dark:border-gray-700">
+              <CardTitle className="flex items-center space-x-2 dark:text-white">
                 <Calendar className="h-4 w-4" />
                 <span>Thời Gian</span>
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-3">
+            <CardContent className="space-y-3 dark:bg-gray-800">
               <div className="flex justify-between">
-                <span className="text-gray-600">Ngày đánh giá:</span>
-                <span className="font-medium">
+                <span className="text-gray-600 dark:text-gray-400">
+                  Ngày đánh giá:
+                </span>
+                <span className="font-medium dark:text-white">
                   {formatDateVN(reviewData.reviewDate)}
                 </span>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-600">Ngày tạo:</span>
-                <span className="font-medium">
+                <span className="text-gray-600 dark:text-gray-400">
+                  Ngày tạo:
+                </span>
+                <span className="font-medium dark:text-white">
                   {formatDateVN(reviewData.createdAt)}
                 </span>
               </div>
               {reviewData.updatedAt && (
                 <div className="flex justify-between">
-                  <span className="text-gray-600">Cập nhật cuối:</span>
-                  <span className="font-medium">
+                  <span className="text-gray-600 dark:text-gray-400">
+                    Cập nhật cuối:
+                  </span>
+                  <span className="font-medium dark:text-white">
                     {formatDateVN(reviewData.updatedAt)}
                   </span>
                 </div>
@@ -262,12 +287,12 @@ const ReviewDetailsModal = ({
           </Card>
 
           {/* Actions */}
-          <div className="flex items-center justify-end space-x-3 pt-6 border-t">
+          <div className="flex items-center justify-end space-x-3 pt-6 border-t dark:border-gray-700">
             <Button
               variant="outline"
               onClick={handleDelete}
               disabled={actionLoading}
-              className="text-red-600 hover:text-red-700"
+              className="text-red-600 hover:text-red-700 dark:border-red-600 dark:text-red-400 dark:hover:bg-red-900"
             >
               <Trash2 className="h-4 w-4 mr-2" />
               Xóa đánh giá
@@ -279,7 +304,7 @@ const ReviewDetailsModal = ({
                   variant="outline"
                   onClick={handleReject}
                   disabled={actionLoading}
-                  className="text-red-600 hover:text-red-700"
+                  className="text-red-600 hover:text-red-700 dark:border-red-600 dark:text-red-400 dark:hover:bg-red-900"
                 >
                   <XCircle className="h-4 w-4 mr-2" />
                   Từ chối
@@ -295,7 +320,11 @@ const ReviewDetailsModal = ({
               </>
             )}
 
-            <Button variant="outline" onClick={onClose}>
+            <Button
+              variant="outline"
+              onClick={onClose}
+              className="dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
+            >
               Đóng
             </Button>
           </div>

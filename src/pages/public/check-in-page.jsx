@@ -514,8 +514,21 @@ export default function CheckInPage() {
             toast.error("Không có chuyến bay đủ điều kiện check-in");
         }
       } else {
-        const errorMessage =
+        // Handle specific error cases
+        let errorMessage =
           response.message || "Không tìm thấy đặt chỗ với thông tin đã nhập.";
+
+        // Check if it's a "Booking not found" error
+        if (
+          response.error === "Booking not found" ||
+          response.message?.toLowerCase().includes("booking not found") ||
+          response.message?.toLowerCase().includes("không tìm thấy") ||
+          response.message === "Đã xảy ra lỗi không mong muốn"
+        ) {
+          errorMessage =
+            "Không tìm thấy đặt chỗ với thông tin đã nhập. Vui lòng kiểm tra lại mã đặt chỗ và tên hành khách.";
+        }
+
         setError(errorMessage);
         toast.error(errorMessage);
       }

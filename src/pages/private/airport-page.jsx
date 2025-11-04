@@ -181,7 +181,7 @@ const AirportPage = () => {
       columnHelper.accessor("airportCode", {
         header: "Mã sân bay",
         cell: (info) => (
-          <div className="font-mono font-medium text-gray-900">
+          <div className="font-mono font-medium text-gray-900 dark:text-white">
             {info.getValue()}
           </div>
         ),
@@ -189,7 +189,7 @@ const AirportPage = () => {
       columnHelper.accessor("airportName", {
         header: "Tên sân bay",
         cell: (info) => (
-          <div className="font-medium text-gray-900">{info.getValue()}</div>
+          <div className="font-medium text-gray-900 dark:text-white">{info.getValue()}</div>
         ),
       }),
       columnHelper.accessor("cityNames", {
@@ -579,7 +579,7 @@ const AirportPage = () => {
                 placeholder="Tìm kiếm theo tên, mã hoặc thành phố..."
                 value={globalFilter}
                 onChange={(e) => setGlobalFilter(e.target.value)}
-                className="pl-10"
+                className="pl-10 dark:text-black"
               />
             </div>
           </div>
@@ -747,7 +747,7 @@ const AirportPage = () => {
                   <TableRow
                     key={row.id}
                     data-state={row.getIsSelected() && "selected"}
-                    className="hover:bg-gray-50"
+                    className="hover:bg-gray-50 dark:hover:bg-gray-500"
                   >
                     {row.getVisibleCells().map((cell) => (
                       <TableCell key={cell.id}>

@@ -232,7 +232,7 @@ const SeatSelectionWrapper = ({
               return (
                 <div
                   key={index}
-                  className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
+                  className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-600 rounded-lg"
                 >
                   <div className="flex items-center gap-3">
                     {getPassengerIcon(passenger.type)}
@@ -241,7 +241,7 @@ const SeatSelectionWrapper = ({
                         Hành khách {index + 1}: {passenger.firstName}{" "}
                         {passenger.lastName}
                       </p>
-                      <p className="text-sm text-gray-600">
+                      <p className="text-sm text-gray-600 dark:text-gray-50">
                         {passenger.type === "ADULT"
                           ? "Người lớn"
                           : passenger.type === "CHILD"

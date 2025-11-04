@@ -113,6 +113,7 @@ const ImageUpload = ({
           <Label className="text-sm">Nhập url ảnh hoặc chọn file:</Label>
           <Input
             type="url"
+            className="dark:text-black"
             placeholder="https://example.com/image.jpg"
             value={value || ""}
             onChange={(e) => handleUrlInput(e.target.value)}

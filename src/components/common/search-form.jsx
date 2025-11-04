@@ -106,6 +106,8 @@ export function SearchForm({ onSearch, initialValues, onTripTypeChange }) {
   const [validationErrors, setValidationErrors] = useState([]);
 
   const [passengerPopup, setPassengerPopup] = useState(false);
+  const [fromAirportOpen, setFromAirportOpen] = useState(false);
+  const [toAirportOpen, setToAirportOpen] = useState(false);
   const [passengers, setPassengers] = useState({
     adults: 1,
     children: 0,
@@ -117,6 +119,42 @@ export function SearchForm({ onSearch, initialValues, onTripTypeChange }) {
 
   // Track if trip type was changed by user (not programmatically)
   const tripTypeChangedByUser = useRef(false);
+
+  // Modal management functions
+  const closeAllModals = () => {
+    setPassengerPopup(false);
+    setFromAirportOpen(false);
+    setToAirportOpen(false);
+  };
+
+  const handlePassengerPopupToggle = () => {
+    if (passengerPopup) {
+      // If currently open, just close it
+      setPassengerPopup(false);
+    } else {
+      // If closed, close all others first, then open passenger popup
+      closeAllModals();
+      setPassengerPopup(true);
+    }
+  };
+
+  const handleFromAirportOpenChange = (open) => {
+    setFromAirportOpen(open);
+    if (open) {
+      // Close other modals when opening from airport
+      setPassengerPopup(false);
+      setToAirportOpen(false);
+    }
+  };
+
+  const handleToAirportOpenChange = (open) => {
+    setToAirportOpen(open);
+    if (open) {
+      // Close other modals when opening to airport
+      setPassengerPopup(false);
+      setFromAirportOpen(false);
+    }
+  };
 
   // Handle initial values
   useEffect(() => {
@@ -311,6 +349,7 @@ export function SearchForm({ onSearch, initialValues, onTripTypeChange }) {
     setDepartDate();
     setReturnDate();
     setValidationErrors([]);
+    closeAllModals();
   }, []);
 
   return (
@@ -374,7 +413,7 @@ export function SearchForm({ onSearch, initialValues, onTripTypeChange }) {
           <div className="relative">
             <Button
               variant="outline"
-              onClick={() => setPassengerPopup(!passengerPopup)}
+              onClick={handlePassengerPopupToggle}
               className="min-w-[220px] w-full sm:w-auto justify-between dark:bg-gray-800"
             >
               {passengerSummary}
@@ -394,7 +433,7 @@ export function SearchForm({ onSearch, initialValues, onTripTypeChange }) {
             </Button>
 
             {passengerPopup && (
-              <div className="absolute top-full mt-2 bg-white border border-gray-200 rounded-lg shadow-lg p-4 w-full sm:w-72 min-w-[280px] z-50 left-0 sm:left-auto right-0 sm:right-auto">
+              <div className="absolute top-full mt-2 bg-white dark:bg-gray-800 dark:text-gray-200 border border-gray-200 rounded-lg shadow-lg p-4 w-full sm:w-72 min-w-[280px] z-[99999999] left-0 sm:left-auto right-0 sm:right-auto">
                 {PASSENGER_TYPES.map((item) => (
                   <div
                     key={item.key}
@@ -500,6 +539,8 @@ export function SearchForm({ onSearch, initialValues, onTripTypeChange }) {
                 value={fromLocations}
                 onChange={setFromLocations}
                 multiple={true}
+                open={fromAirportOpen}
+                onOpenChange={handleFromAirportOpenChange}
               />
               {fromLocations.length > 1 && (
                 <div className="text-xs text-blue-600 mt-1">
@@ -516,6 +557,8 @@ export function SearchForm({ onSearch, initialValues, onTripTypeChange }) {
                 value={toLocations}
                 onChange={setToLocations}
                 multiple={true}
+                open={toAirportOpen}
+                onOpenChange={handleToAirportOpenChange}
               />
               {toLocations.length > 1 && (
                 <div className="text-xs text-blue-600 mt-1">
@@ -571,6 +614,8 @@ export function SearchForm({ onSearch, initialValues, onTripTypeChange }) {
                 value={fromLocations}
                 onChange={setFromLocations}
                 multiple={true}
+                open={fromAirportOpen}
+                onOpenChange={handleFromAirportOpenChange}
               />
               {fromLocations.length > 1 && (
                 <div className="text-xs text-blue-600 mt-1">
@@ -587,6 +632,8 @@ export function SearchForm({ onSearch, initialValues, onTripTypeChange }) {
                 value={toLocations}
                 onChange={setToLocations}
                 multiple={true}
+                open={toAirportOpen}
+                onOpenChange={handleToAirportOpenChange}
               />
               {toLocations.length > 1 && (
                 <div className="text-xs text-blue-600 mt-1">

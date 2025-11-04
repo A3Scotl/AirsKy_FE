@@ -144,12 +144,16 @@ const PaymentDetailsModal = ({ open, onClose, paymentData }) => {
       status: "info",
       description: "Thanh toán được xử lý",
     },
-    ...(paymentData.status === "SUCCESS" ? [{
-      event: TEXT.paymentCompleted,
-      timestamp: paymentData.updatedAt,
-      status: "success",
-      description: "Thanh toán hoàn thành thành công",
-    }] : []),
+    ...(paymentData.status === "SUCCESS"
+      ? [
+          {
+            event: TEXT.paymentCompleted,
+            timestamp: paymentData.updatedAt,
+            status: "success",
+            description: "Thanh toán hoàn thành thành công",
+          },
+        ]
+      : []),
   ];
 
   return (
@@ -161,29 +165,36 @@ const PaymentDetailsModal = ({ open, onClose, paymentData }) => {
       />
 
       {/* Modal */}
-      <div className="relative bg-white rounded-lg shadow-xl w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto">
+      <div className="relative bg-white dark:bg-gray-900 rounded-lg shadow-xl w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto dark:text-white">
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-200">
+        <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
           <div className="flex items-center space-x-4">
-            <div className="bg-blue-100 p-2 rounded-full">
+            <div className="bg-blue-100 dark:bg-blue-900 p-2 rounded-full">
               <CreditCard className="h-6 w-6 text-blue-600" />
             </div>
             <div>
-              <h2 className="text-xl font-bold text-gray-900">
+              <h2 className="text-xl font-bold text-gray-900 dark:text-white">
                 {TEXT.paymentDetails}
               </h2>
-              <p className="text-sm text-gray-500">
+              <p className="text-sm text-gray-500 dark:text-gray-400">
                 #{paymentData.paymentId}
               </p>
             </div>
-            <Badge className={getStatusColor(paymentData.status?.toLowerCase())}>
+            <Badge
+              className={getStatusColor(paymentData.status?.toLowerCase())}
+            >
               {getStatusIcon(paymentData.status?.toLowerCase())}
               <span className="ml-1">
                 {TEXT.statuses[paymentData.status] || paymentData.status}
               </span>
             </Badge>
           </div>
-          <Button variant="ghost" size="sm" onClick={onClose}>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onClose}
+            className="dark:text-gray-300 dark:hover:bg-gray-700"
+          >
             <X className="h-5 w-5" />
           </Button>
         </div>
@@ -191,9 +202,9 @@ const PaymentDetailsModal = ({ open, onClose, paymentData }) => {
         {/* Content */}
         <div className="p-6 space-y-6">
           {/* Payment Information */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center space-x-2">
+          <Card className="dark:bg-gray-800 dark:border-gray-700">
+            <CardHeader className="dark:bg-gray-800 dark:border-gray-700">
+              <CardTitle className="flex items-center space-x-2 dark:text-white">
                 <DollarSign className="h-4 w-4" />
                 <span>Thông Tin Thanh Toán</span>
               </CardTitle>
@@ -209,7 +220,9 @@ const PaymentDetailsModal = ({ open, onClose, paymentData }) => {
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="text-gray-600">{TEXT.bookingId}:</span>
-                    <span className="font-medium">#{paymentData.bookingId}</span>
+                    <span className="font-medium">
+                      #{paymentData.bookingId}
+                    </span>
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="text-gray-600">{TEXT.amount}:</span>
@@ -222,7 +235,8 @@ const PaymentDetailsModal = ({ open, onClose, paymentData }) => {
                   <div className="flex justify-between items-center">
                     <span className="text-gray-600">{TEXT.paymentMethod}:</span>
                     <span className="font-medium">
-                      {TEXT.methods[paymentData.paymentMethod] || paymentData.paymentMethod}
+                      {TEXT.methods[paymentData.paymentMethod] ||
+                        paymentData.paymentMethod}
                     </span>
                   </div>
                   <div className="flex justify-between items-center">
@@ -234,7 +248,9 @@ const PaymentDetailsModal = ({ open, onClose, paymentData }) => {
                   <div className="flex justify-between items-center">
                     <span className="text-gray-600">{TEXT.paymentDate}:</span>
                     <span className="font-medium">
-                      {paymentData.paymentDate ? formatDate(paymentData.paymentDate) : "N/A"}
+                      {paymentData.paymentDate
+                        ? formatDate(paymentData.paymentDate)
+                        : "N/A"}
                     </span>
                   </div>
                 </div>
@@ -245,11 +261,19 @@ const PaymentDetailsModal = ({ open, onClose, paymentData }) => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                 <div className="flex justify-between">
                   <span className="text-gray-600">{TEXT.createdAt}:</span>
-                  <span>{paymentData.createdAt ? formatDate(paymentData.createdAt) : "N/A"}</span>
+                  <span>
+                    {paymentData.createdAt
+                      ? formatDate(paymentData.createdAt)
+                      : "N/A"}
+                  </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600">{TEXT.updatedAt}:</span>
-                  <span>{paymentData.updatedAt ? formatDate(paymentData.updatedAt) : "N/A"}</span>
+                  <span>
+                    {paymentData.updatedAt
+                      ? formatDate(paymentData.updatedAt)
+                      : "N/A"}
+                  </span>
                 </div>
               </div>
             </CardContent>
@@ -263,7 +287,7 @@ const PaymentDetailsModal = ({ open, onClose, paymentData }) => {
                 <span>{TEXT.transactionTimeline}</span>
               </CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="dark:bg-gray-800">
               <div className="space-y-4">
                 {timeline.map((event, index) => (
                   <div key={index} className="flex items-start space-x-4">
@@ -280,10 +304,14 @@ const PaymentDetailsModal = ({ open, onClose, paymentData }) => {
                       <div className="flex items-center justify-between">
                         <p className="font-medium">{event.event}</p>
                         <span className="text-sm text-gray-500">
-                          {event.timestamp ? formatDate(event.timestamp) : "N/A"}
+                          {event.timestamp
+                            ? formatDate(event.timestamp)
+                            : "N/A"}
                         </span>
                       </div>
-                      <p className="text-sm text-gray-600">{event.description}</p>
+                      <p className="text-sm text-gray-600">
+                        {event.description}
+                      </p>
                     </div>
                   </div>
                 ))}

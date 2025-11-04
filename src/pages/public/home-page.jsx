@@ -16,7 +16,7 @@ import "swiper/css/navigation";
 import "@/styles/swiper-parallax.css";
 import { useNavigate } from "react-router-dom";
 import { useSearch } from "@/contexts/search-context";
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 
 // Define hero slide data for better maintainability
 const heroSlides = [
@@ -127,9 +127,9 @@ function HomePage() {
         description="AirSky - Nền tảng đặt vé máy bay trực tuyến hàng đầu. Tìm kiếm và so sánh giá vé từ hàng trăm hãng hàng không với giá tốt nhất."
         keywords="đặt vé máy bay, vé máy bay giá rẻ, so sánh giá vé máy bay, du lịch, AirSky"
       />
-      <div className="overflow-hidden pt-0">
+      <div className="pt-0">
         {/* Hero Section with Search Form - Fixed Parallax Swiper */}
-        <section className="relative text-white min-h-[100vh] overflow-hidden">
+        <section className="relative text-white min-h-[90vh] sm:min-h-[95vh] lg:min-h-[100vh]">
           <Swiper
             speed={600}
             parallax={true}
@@ -154,17 +154,16 @@ function HomePage() {
                     transform: "translate3d(0, 0, 0)", // Force hardware acceleration
                   }}
                 />
-                {/* Parallax content overlay */}
-                <div className="absolute inset-0 flex top-40 justify-center z-20">
-                  <div className="text-center text-white px-4">
+                <div className="absolute inset-0 flex top-32 sm:top-40 justify-center z-20">
+                  <div className="text-center text-white px-4 max-w-4xl mx-auto">
                     <h2
-                      className="text-3xl md:text-5xl lg:text-6xl font-bold mb-4 opacity-90 drop-shadow-lg"
+                      className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl font-bold mb-2 sm:mb-4 opacity-90 drop-shadow-lg"
                       data-swiper-parallax="-300"
                     >
                       {slide.title}
                     </h2>
                     <p
-                      className="text-lg md:text-xl lg:text-2xl opacity-75 drop-shadow-md"
+                      className="text-sm sm:text-base md:text-lg lg:text-xl opacity-75 drop-shadow-md max-w-2xl mx-auto"
                       data-swiper-parallax="-200"
                     >
                       {slide.subtitle}
@@ -175,7 +174,7 @@ function HomePage() {
             ))}
           </Swiper>
 
-          <div className="absolute inset-0 mx-auto px-4 sm:px-6 lg:px-8 top-[45%] w-full z-[99999]">
+          <div className="absolute inset-0 mx-auto px-4 sm:px-6 lg:px-8 top-[35%] sm:top-[40%] lg:top-[45%] w-full z-[99999]">
             <div
               data-swiper-parallax="0"
               className="relative z-[100000] max-w-6xl mx-auto"

@@ -202,7 +202,7 @@ const UserTable = ({
               const loyaltyStyle = getStyle(loyaltyConfig, user.loyaltyTier);
 
               return (
-                <TableRow key={user.id} className="hover:bg-gray-50">
+                <TableRow key={user.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
                   <TableCell>
                     <div className="flex items-center space-x-3">
                       <Avatar className="h-10 w-10">
@@ -218,7 +218,7 @@ const UserTable = ({
                         </AvatarFallback>
                       </Avatar>
                       <div>
-                        <div className="font-semibold text-gray-900 flex items-center space-x-2">
+                        <div className="font-semibold text-gray-900 dark:text-white flex items-center space-x-2">
                           <span>{user.name || "N/A"}</span>
                           {user.email === currentUser?.email && (
                             <Badge

@@ -75,7 +75,8 @@ const CheckInSearchForm = ({ onSearch, onShowTerms, isLoading, error }) => {
               value={formData.bookingCode}
               onChange={(e) => handleChange("bookingCode", e.target.value)}
               required
-              className="text-sm"
+              className="text-sm dark:text-black"
+              disabled={isLoading}
             />
             <p className="text-xs text-gray-500">
               Mã đặt chỗ gồm 8 ký tự hoặc mã vé điện tử
@@ -93,7 +94,8 @@ const CheckInSearchForm = ({ onSearch, onShowTerms, isLoading, error }) => {
               value={formData.passengerName}
               onChange={(e) => handleChange("passengerName", e.target.value)}
               required
-              className="text-sm"
+              className="text-sm dark:text-black"
+              disabled={isLoading}
             />
           </div>
 
@@ -139,9 +141,11 @@ const CheckInSearchForm = ({ onSearch, onShowTerms, isLoading, error }) => {
         </form>
 
         {/* Help Information */}
-        <div className="bg-gray-50 p-4 rounded-lg">
-          <h3 className="font-medium text-gray-800 mb-2">Cần hỗ trợ?</h3>
-          <ul className="text-sm text-gray-600 space-y-1">
+        <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg">
+          <h3 className="font-medium text-gray-800 dark:text-gray-200 mb-2">
+            Cần hỗ trợ?
+          </h3>
+          <ul className="text-sm text-gray-600 dark:text-gray-300 space-y-1">
             <li>• Mã đặt chỗ thường được gửi qua email hoặc SMS</li>
             <li>• Có thể tìm thấy trên vé điện tử hoặc xác nhận đặt chỗ</li>
             <li>• Nếu không tìm thấy, liên hệ hotline: 1900 XXX XXX</li>

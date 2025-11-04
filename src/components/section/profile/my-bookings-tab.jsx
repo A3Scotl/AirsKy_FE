@@ -29,6 +29,7 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { DateRangePicker } from "@/components/ui/date-range-picker";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Dialog,
   DialogContent,
@@ -643,11 +644,34 @@ const MyBookingsTab = () => {
 
           {/* Loading State */}
           {loading && (
-            <div className="flex items-center justify-center py-8">
-              <div className="text-center">
-                <RefreshCw className="h-8 w-8 animate-spin mx-auto mb-2" />
-                <p>Đang tải danh sách đặt chỗ...</p>
+            <div className="space-y-4">
+              {/* Skeleton for table header */}
+              <div className="flex space-x-4 mb-4">
+                <Skeleton className="h-4 w-24" />
+                <Skeleton className="h-4 w-20" />
+                <Skeleton className="h-4 w-16" />
+                <Skeleton className="h-4 w-16" />
+                <Skeleton className="h-4 w-20" />
+                <Skeleton className="h-4 w-16" />
+                <Skeleton className="h-4 w-20" />
+                <Skeleton className="h-4 w-16" />
               </div>
+              {/* Skeleton for table rows */}
+              {Array.from({ length: 5 }).map((_, index) => (
+                <div
+                  key={index}
+                  className="flex space-x-4 py-4 border-b border-gray-100 dark:border-gray-700"
+                >
+                  <Skeleton className="h-4 w-20" />
+                  <Skeleton className="h-4 w-24" />
+                  <Skeleton className="h-4 w-16" />
+                  <Skeleton className="h-4 w-16" />
+                  <Skeleton className="h-4 w-20" />
+                  <Skeleton className="h-6 w-16 rounded-full" />
+                  <Skeleton className="h-4 w-20" />
+                  <Skeleton className="h-8 w-8 rounded" />
+                </div>
+              ))}
             </div>
           )}
 
@@ -798,13 +822,13 @@ const MyBookingsTab = () => {
 
       {/* Booking Details Modal */}
       <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-        <DialogContent className="!fixed !right-0 !left-0 !top-0 !h-[100vh] !w-[60%] !translate-x-0 !translate-y-0 !border-l !border-gray-200 !bg-white !p-0 !shadow-2xl !dark:bg-gray-900 !overflow-y-scroll !scrollbar-hide !z-99999">
+        <DialogContent className="!fixed !right-0 !left-0 !top-0 !h-[100vh] !w-[60%] !translate-x-0 !translate-y-0 !border-l !border-gray-200 !bg-white !p-0 !shadow-2xl !dark:bg-gray-900 !overflow-y-scroll !scrollbar-hide !z-99999 ">
           <div className="flex h-full flex-col w-full">
             {/* Modal Header */}
-            <DialogHeader className="flex-shrink-0 border-b border-gray-200 px-6 py-4 dark:border-gray-700">
+            <DialogHeader className="flex-shrink-0 border-b border-gray-200 px-6 py-4 dark:border-gray-700 dark:bg-gray-700">
               <div className="flex items-center justify-between">
                 <div>
-                  <DialogTitle className="text-xl font-semibold">
+                  <DialogTitle className="text-xl font-semibold dar">
                     Chi tiết đặt chỗ{" "}
                     {selectedBooking?.bookingCode || selectedBooking?.id}
                   </DialogTitle>
@@ -816,7 +840,7 @@ const MyBookingsTab = () => {
             </DialogHeader>
 
             {/* Modal Content */}
-            <div className="flex-1 overflow-y-auto p-6">
+            <div className="flex-1 overflow-y-auto p-6 dark:bg-gray-700">
               {selectedBooking && (
                 <div className="space-y-6">
                   {/* Booking Status */}
@@ -846,28 +870,28 @@ const MyBookingsTab = () => {
                     <CardContent className="space-y-4">
                       <div className="grid grid-cols-2 gap-4">
                         <div>
-                          <Label className="text-sm font-medium text-gray-500">
+                          <Label className="text-sm font-medium text-gray-500 dark:text-gray-400">
                             Số chuyến bay
                           </Label>
-                          <p className="text-lg font-semibold">
+                          <p className="text-lg font-semibold dark:text-white">
                             {selectedBooking.flight}
                           </p>
                         </div>
                         <div>
-                          <Label className="text-sm font-medium text-gray-500">
+                          <Label className="text-sm font-medium text-gray-500 dark:text-gray-400">
                             Loại chuyến
                           </Label>
-                          <p className="text-lg font-semibold">
+                          <p className="text-lg font-semibold dark:text-white">
                             {selectedBooking.isRoundTrip
                               ? "Khứ hồi"
                               : "Một chiều"}
                           </p>
                         </div>
                         <div>
-                          <Label className="text-sm font-medium text-gray-500">
+                          <Label className="text-sm font-medium text-gray-500 dark:text-gray-400">
                             Hạng ghế
                           </Label>
-                          <p className="text-lg font-semibold">
+                          <p className="text-lg font-semibold dark:text-white">
                             {selectedBooking.travelClass}
                           </p>
                         </div>
@@ -877,7 +901,7 @@ const MyBookingsTab = () => {
                       {selectedBooking.flightSegments &&
                         selectedBooking.flightSegments.length > 0 && (
                           <div>
-                            <Label className="text-sm font-medium text-gray-500 mb-2 block">
+                            <Label className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2 block">
                               Chi tiết hành trình
                             </Label>
                             <div className="space-y-3">
@@ -885,16 +909,16 @@ const MyBookingsTab = () => {
                                 (segment, index) => (
                                   <div
                                     key={segment.segmentId}
-                                    className="border rounded-lg p-3 bg-gray-50"
+                                    className="border rounded-lg p-3 bg-gray-50 dark:bg-gray-800 dark:border-gray-600"
                                   >
                                     <div className="flex items-center justify-between mb-2">
-                                      <span className="font-medium text-sm">
+                                      <span className="font-medium text-sm dark:text-white">
                                         Chặng {segment.segmentOrder}:{" "}
                                         {segment.flightNumber}
                                       </span>
                                       <Badge
                                         variant="outline"
-                                        className="text-xs"
+                                        className="text-xs dark:text-gray-300 dark:border-gray-600"
                                       >
                                         {segment.className}
                                       </Badge>
@@ -956,7 +980,7 @@ const MyBookingsTab = () => {
                       {selectedBooking.passengers &&
                         selectedBooking.passengers.length > 0 && (
                           <div>
-                            <Label className="text-sm font-medium text-gray-500 mb-2 block">
+                            <Label className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2 block">
                               Thông tin hành khách
                             </Label>
                             <div className="space-y-2">
@@ -964,42 +988,52 @@ const MyBookingsTab = () => {
                                 (passenger, index) => (
                                   <div
                                     key={passenger.passengerId || index}
-                                    className="bg-gray-50 p-3 rounded-lg"
+                                    className="bg-gray-50 dark:bg-gray-800 p-3 rounded-lg border dark:border-gray-600"
                                   >
                                     <div className="grid grid-cols-2 gap-4 text-sm">
                                       <div>
-                                        <span className="font-medium">
+                                        <span className="font-medium dark:text-gray-300">
                                           Tên:
                                         </span>{" "}
-                                        {passenger.firstName}{" "}
-                                        {passenger.lastName}
+                                        <span className="dark:text-white">
+                                          {passenger.firstName}{" "}
+                                          {passenger.lastName}
+                                        </span>
                                       </div>
                                       <div>
-                                        <span className="font-medium">
+                                        <span className="font-medium dark:text-gray-300">
                                           Loại:
                                         </span>{" "}
-                                        {passenger.type}
+                                        <span className="dark:text-white">
+                                          {passenger.type}
+                                        </span>
                                       </div>
                                       <div>
-                                        <span className="font-medium">
+                                        <span className="font-medium dark:text-gray-300">
                                           Ngày sinh:
                                         </span>{" "}
-                                        {new Date(
-                                          passenger.dateOfBirth
-                                        ).toLocaleDateString("vi-VN")}
+                                        <span className="dark:text-white">
+                                          {new Date(
+                                            passenger.dateOfBirth
+                                          ).toLocaleDateString("vi-VN")}
+                                        </span>
                                       </div>
                                       <div>
-                                        <span className="font-medium">
+                                        <span className="font-medium dark:text-gray-300">
                                           Số hộ chiếu:
                                         </span>{" "}
-                                        {passenger.passportNumber || "N/A"}
+                                        <span className="dark:text-white">
+                                          {passenger.passportNumber || "N/A"}
+                                        </span>
                                       </div>
                                       {passenger.seatNumber && (
                                         <div>
-                                          <span className="font-medium">
+                                          <span className="font-medium dark:text-gray-300">
                                             Số ghế:
                                           </span>{" "}
-                                          {passenger.seatNumber}
+                                          <span className="dark:text-white">
+                                            {passenger.seatNumber}
+                                          </span>
                                         </div>
                                       )}
                                     </div>
@@ -1029,9 +1063,9 @@ const MyBookingsTab = () => {
 
                       {/* Payment Status */}
                       {selectedBooking.payment && (
-                        <div className="mb-4 p-3 bg-gray-50 rounded-lg">
+                        <div className="mb-4 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg border dark:border-gray-600">
                           <div className="flex items-center justify-between">
-                            <span className="text-sm font-medium">
+                            <span className="text-sm font-medium dark:text-gray-300">
                               Trạng thái thanh toán:
                             </span>
                             <Badge
@@ -1052,7 +1086,7 @@ const MyBookingsTab = () => {
                           </div>
                           {selectedBooking.payment.status === "COMPLETED" &&
                             selectedBooking.payment.transactionId && (
-                              <p className="text-xs text-gray-600 mt-1">
+                              <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
                                 Mã giao dịch:{" "}
                                 {selectedBooking.payment.transactionId}
                               </p>
@@ -1065,12 +1099,12 @@ const MyBookingsTab = () => {
                         (!selectedBooking.payment ||
                           selectedBooking.payment.status !== "COMPLETED") && (
                           <div className="border-t pt-4">
-                            <h4 className="font-medium mb-3">
+                            <h4 className="font-medium mb-3 dark:text-gray-300">
                               Chọn phương thức thanh toán:
                             </h4>
                             {paymentError && (
-                              <div className="mb-3 p-3 bg-red-50 border border-red-200 rounded-lg">
-                                <p className="text-sm text-red-700">
+                              <div className="mb-3 p-3 bg-red-50 border border-red-200 rounded-lg dark:bg-red-900/20 dark:border-red-800">
+                                <p className="text-sm text-red-700 dark:text-red-300">
                                   {paymentError}
                                 </p>
                               </div>
@@ -1098,7 +1132,7 @@ const MyBookingsTab = () => {
                                   : "Thanh toán bằng thẻ tín dụng"}
                               </Button>
                             </div>
-                            <p className="text-xs text-gray-500 mt-2">
+                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
                               * Bạn sẽ được chuyển hướng đến cổng thanh toán an
                               toàn
                             </p>
@@ -1114,28 +1148,36 @@ const MyBookingsTab = () => {
                     <CardContent className="space-y-2">
                       <div className="grid grid-cols-2 gap-4 text-sm">
                         <div>
-                          <span className="font-medium">ID đặt chỗ:</span>
-                          <p className="font-mono">
+                          <span className="font-medium dark:text-gray-300">
+                            ID đặt chỗ:
+                          </span>
+                          <p className="font-mono dark:text-white">
                             {selectedBooking.bookingId}
                           </p>
                         </div>
                         <div>
-                          <span className="font-medium">Email:</span>
-                          <p>{selectedBooking.userEmail}</p>
+                          <span className="font-medium dark:text-gray-300">
+                            Email:
+                          </span>
+                          <p className="dark:text-white">
+                            {selectedBooking.userEmail}
+                          </p>
                         </div>
                         <div>
-                          <span className="font-medium">Ngày tạo:</span>
-                          <p>
+                          <span className="font-medium dark:text-gray-300">
+                            Ngày tạo:
+                          </span>
+                          <p className="dark:text-white">
                             {new Date(
                               selectedBooking.createdAt
                             ).toLocaleDateString("vi-VN")}
                           </p>
                         </div>
                         <div>
-                          <span className="font-medium">
+                          <span className="font-medium dark:text-gray-300">
                             Cập nhật lần cuối:
                           </span>
-                          <p>
+                          <p className="dark:text-white">
                             {new Date(
                               selectedBooking.updatedAt
                             ).toLocaleDateString("vi-VN")}
@@ -1180,9 +1222,9 @@ const MyBookingsTab = () => {
                         {myReview &&
                           myReview.status === "COMPLETED" &&
                           (myReview.rating || myReview.comment?.trim()) && (
-                            <div className="border rounded-lg p-4 bg-blue-50">
+                            <div className="border rounded-lg p-4 bg-blue-50 dark:bg-blue-900/20 dark:border-blue-800">
                               <div className="flex items-center justify-between mb-2">
-                                <h4 className="font-medium text-blue-900">
+                                <h4 className="font-medium text-blue-900 dark:text-blue-100">
                                   Đánh giá của bạn
                                 </h4>
                                 <div className="flex items-center gap-1">
@@ -1192,18 +1234,18 @@ const MyBookingsTab = () => {
                                       className={`h-4 w-4 ${
                                         i < (myReview.rating || 0)
                                           ? "fill-yellow-400 text-yellow-400"
-                                          : "text-gray-300"
+                                          : "text-gray-300 dark:text-gray-600"
                                       }`}
                                     />
                                   ))}
                                 </div>
                               </div>
                               {myReview.comment && (
-                                <p className="text-sm text-blue-800">
+                                <p className="text-sm text-blue-800 dark:text-blue-200">
                                   {myReview.comment}
                                 </p>
                               )}
-                              <p className="text-xs text-blue-600 mt-1">
+                              <p className="text-xs text-blue-600 dark:text-blue-300 mt-1">
                                 {new Date(
                                   myReview.reviewDate
                                 ).toLocaleDateString("vi-VN")}
@@ -1214,7 +1256,7 @@ const MyBookingsTab = () => {
                         {/* Other Reviews */}
                         {bookingReviews.length > 0 && (
                           <div className="space-y-3">
-                            <h4 className="font-medium">
+                            <h4 className="font-medium dark:text-gray-300">
                               Đánh giá từ hành khách khác
                             </h4>
                             {bookingReviews
@@ -1222,7 +1264,7 @@ const MyBookingsTab = () => {
                               .map((review) => (
                                 <div
                                   key={review.reviewId}
-                                  className="border rounded-lg p-3"
+                                  className="border rounded-lg p-3 bg-gray-50 dark:bg-gray-800 dark:border-gray-600"
                                 >
                                   <div className="flex items-center justify-between mb-2">
                                     <div className="flex items-center gap-1">
@@ -1232,18 +1274,20 @@ const MyBookingsTab = () => {
                                           className={`h-4 w-4 ${
                                             i < review.rating
                                               ? "fill-yellow-400 text-yellow-400"
-                                              : "text-gray-300"
+                                              : "text-gray-300 dark:text-gray-600"
                                           }`}
                                         />
                                       ))}
                                     </div>
-                                    <span className="text-xs text-gray-500">
+                                    <span className="text-xs text-gray-500 dark:text-gray-400">
                                       {new Date(
                                         review.reviewDate
                                       ).toLocaleDateString("vi-VN")}
                                     </span>
                                   </div>
-                                  <p className="text-sm">{review.comment}</p>
+                                  <p className="text-sm dark:text-gray-300">
+                                    {review.comment}
+                                  </p>
                                 </div>
                               ))}
                           </div>
@@ -1251,8 +1295,8 @@ const MyBookingsTab = () => {
 
                         {/* No reviews message */}
                         {bookingReviews.length === 0 && !myReview && (
-                          <div className="text-center py-4 text-gray-500">
-                            <Star className="h-8 w-8 mx-auto mb-2 text-gray-300" />
+                          <div className="text-center py-4 text-gray-500 dark:text-gray-400">
+                            <Star className="h-8 w-8 mx-auto mb-2 text-gray-300 dark:text-gray-600" />
                             <p>Chưa có đánh giá nào cho chuyến bay này</p>
                             <p className="text-sm mt-1">
                               Hãy là người đầu tiên đánh giá!
@@ -1263,7 +1307,7 @@ const MyBookingsTab = () => {
                         {/* Eligibility message - only show if booking is cancelled */}
                         {selectedBooking.status === "CANCELLED" &&
                           !myReview && (
-                            <div className="text-center py-4 text-gray-500">
+                            <div className="text-center py-4 text-gray-500 dark:text-gray-400">
                               <p className="text-sm">
                                 Booking đã bị hủy, không thể đánh giá
                               </p>
@@ -1274,7 +1318,7 @@ const MyBookingsTab = () => {
                         {selectedBooking.ancillaryServices &&
                           selectedBooking.ancillaryServices.length > 0 && (
                             <div>
-                              <Label className="text-sm font-medium text-gray-500 mb-2 block">
+                              <Label className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2 block">
                                 Dịch vụ bổ sung
                               </Label>
                               <div className="space-y-2">
@@ -1282,46 +1326,60 @@ const MyBookingsTab = () => {
                                   (service) => (
                                     <div
                                       key={service.bookingServiceId}
-                                      className="bg-blue-50 p-3 rounded-lg"
+                                      className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg border dark:border-blue-800"
                                     >
                                       <div className="grid grid-cols-2 gap-4 text-sm">
                                         <div>
-                                          <span className="font-medium">
+                                          <span className="font-medium dark:text-gray-300">
                                             Dịch vụ:
                                           </span>{" "}
-                                          {service.serviceName}
+                                          <span className="dark:text-white">
+                                            {service.serviceName}
+                                          </span>
                                         </div>
                                         <div>
-                                          <span className="font-medium">
+                                          <span className="font-medium dark:text-gray-300">
                                             Loại:
                                           </span>{" "}
-                                          {service.serviceTypeDisplayName}
+                                          <span className="dark:text-white">
+                                            {service.serviceTypeDisplayName}
+                                          </span>
                                         </div>
                                         <div>
-                                          <span className="font-medium">
+                                          <span className="font-medium dark:text-gray-300">
                                             Hành khách:
                                           </span>{" "}
-                                          {service.passengerName}
+                                          <span className="dark:text-white">
+                                            {service.passengerName}
+                                          </span>
                                         </div>
                                         <div>
-                                          <span className="font-medium">
+                                          <span className="font-medium dark:text-gray-300">
                                             Số lượng:
                                           </span>{" "}
-                                          {service.quantity}
+                                          <span className="dark:text-white">
+                                            {service.quantity}
+                                          </span>
                                         </div>
                                         <div>
-                                          <span className="font-medium">
+                                          <span className="font-medium dark:text-gray-300">
                                             Đơn giá:
                                           </span>{" "}
-                                          {formatCurrencyVND(service.unitPrice)}
+                                          <span className="dark:text-white">
+                                            {formatCurrencyVND(
+                                              service.unitPrice
+                                            )}
+                                          </span>
                                         </div>
                                         <div>
-                                          <span className="font-medium">
+                                          <span className="font-medium dark:text-gray-300">
                                             Thành tiền:
                                           </span>{" "}
-                                          {formatCurrencyVND(
-                                            service.totalPrice
-                                          )}
+                                          <span className="dark:text-white">
+                                            {formatCurrencyVND(
+                                              service.totalPrice
+                                            )}
+                                          </span>
                                         </div>
                                       </div>
                                     </div>
@@ -1335,58 +1393,70 @@ const MyBookingsTab = () => {
                         {selectedBooking.baggage &&
                           selectedBooking.baggage.length > 0 && (
                             <div>
-                              <Label className="text-sm font-medium text-gray-500 mb-2 block">
+                              <Label className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2 block">
                                 Thông tin hành lý
                               </Label>
                               <div className="space-y-2">
                                 {selectedBooking.baggage.map((bag) => (
                                   <div
                                     key={bag.baggageId}
-                                    className="bg-green-50 p-3 rounded-lg"
+                                    className="bg-green-50 dark:bg-green-900/20 p-3 rounded-lg border dark:border-green-800"
                                   >
                                     <div className="grid grid-cols-2 gap-4 text-sm">
                                       <div>
-                                        <span className="font-medium">
+                                        <span className="font-medium dark:text-gray-300">
                                           Loại:
                                         </span>{" "}
-                                        {bag.type === "CHECK_IN"
-                                          ? "Hành lý ký gửi"
-                                          : "Xách tay"}
+                                        <span className="dark:text-white">
+                                          {bag.type === "CHECK_IN"
+                                            ? "Hành lý ký gửi"
+                                            : "Xách tay"}
+                                        </span>
                                       </div>
                                       <div>
-                                        <span className="font-medium">
+                                        <span className="font-medium dark:text-gray-300">
                                           Gói mua:
                                         </span>{" "}
-                                        {bag.purchasedPackage}
+                                        <span className="dark:text-white">
+                                          {bag.purchasedPackage}
+                                        </span>
                                       </div>
                                       <div>
-                                        <span className="font-medium">
+                                        <span className="font-medium dark:text-gray-300">
                                           Giá:
                                         </span>{" "}
-                                        {formatCurrencyVND(bag.packagePrice)}
+                                        <span className="dark:text-white">
+                                          {formatCurrencyVND(bag.packagePrice)}
+                                        </span>
                                       </div>
                                       {bag.actualWeight && (
                                         <div>
-                                          <span className="font-medium">
+                                          <span className="font-medium dark:text-gray-300">
                                             Khối lượng thực tế:
                                           </span>{" "}
-                                          {bag.actualWeight}kg
+                                          <span className="dark:text-white">
+                                            {bag.actualWeight}kg
+                                          </span>
                                         </div>
                                       )}
                                       {bag.excessWeight && (
                                         <div>
-                                          <span className="font-medium">
+                                          <span className="font-medium dark:text-gray-300">
                                             Khối lượng vượt:
                                           </span>{" "}
-                                          {bag.excessWeight}kg
+                                          <span className="dark:text-white">
+                                            {bag.excessWeight}kg
+                                          </span>
                                         </div>
                                       )}
                                       {bag.excessFee && (
                                         <div>
-                                          <span className="font-medium">
+                                          <span className="font-medium dark:text-gray-300">
                                             Phí vượt:
                                           </span>{" "}
-                                          {formatCurrencyVND(bag.excessFee)}
+                                          <span className="dark:text-white">
+                                            {formatCurrencyVND(bag.excessFee)}
+                                          </span>
                                         </div>
                                       )}
                                     </div>
@@ -1434,7 +1504,9 @@ const MyBookingsTab = () => {
           <div className="space-y-4">
             {/* Rating */}
             <div>
-              <Label className="text-sm font-medium">Đánh giá</Label>
+              <Label className="text-sm font-medium dark:text-gray-300">
+                Đánh giá
+              </Label>
               <div className="flex items-center gap-1 mt-2">
                 {[1, 2, 3, 4, 5].map((star) => (
                   <button
@@ -1449,12 +1521,12 @@ const MyBookingsTab = () => {
                       className={`h-6 w-6 ${
                         star <= reviewFormData.rating
                           ? "fill-yellow-400 text-yellow-400"
-                          : "text-gray-300 hover:text-yellow-400"
+                          : "text-gray-300 hover:text-yellow-400 dark:text-gray-600 dark:hover:text-yellow-400"
                       }`}
                     />
                   </button>
                 ))}
-                <span className="ml-2 text-sm text-gray-600">
+                <span className="ml-2 text-sm text-gray-600 dark:text-gray-400">
                   {reviewFormData.rating}/5
                 </span>
               </div>
@@ -1462,7 +1534,10 @@ const MyBookingsTab = () => {
 
             {/* Comment */}
             <div>
-              <Label htmlFor="review-comment" className="text-sm font-medium">
+              <Label
+                htmlFor="review-comment"
+                className="text-sm font-medium dark:text-gray-300"
+              >
                 Nhận xét
               </Label>
               <Textarea

@@ -244,19 +244,25 @@ const FlightChart = ({ flights, isLoading, detailed = false, dateRange }) => {
 
   if (!data || data.length === 0) {
     return (
-      <Card className={detailed ? "col-span-full" : ""}>
+      <Card
+        className={
+          detailed ? "col-span-full" : "dark:bg-gray-900 dark:border-gray-700"
+        }
+      >
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
+          <CardTitle className="flex items-center gap-2 dark:text-white">
             <Plane className="h-5 w-5" />
             Thống Kê Chuyến Bay
           </CardTitle>
-          <CardDescription>
+          <CardDescription className="dark:text-gray-400">
             Hoạt động chuyến bay và các chỉ số hiệu suất
           </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="text-center py-8">
-            <p className="text-gray-500">Không có dữ liệu chuyến bay</p>
+            <p className="text-gray-500 dark:text-gray-400">
+              Không có dữ liệu chuyến bay
+            </p>
           </div>
         </CardContent>
       </Card>
@@ -481,61 +487,77 @@ const FlightChart = ({ flights, isLoading, detailed = false, dateRange }) => {
   };
 
   return (
-    <Card className={detailed ? "col-span-full" : ""}>
+    <Card
+      className={`${
+        detailed ? "col-span-full" : ""
+      } dark:bg-gray-900 dark:border-gray-700`}
+    >
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
+        <CardTitle className="flex items-center gap-2 dark:text-white">
           <Plane className="h-5 w-5" />
           Thống Kê Chuyến Bay
         </CardTitle>
-        <CardDescription>
+        <CardDescription className="dark:text-gray-400">
           Hoạt động chuyến bay và phân tích hiệu suất
         </CardDescription>
       </CardHeader>
       <CardContent>
         {/* Key Flight Metrics */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-          <div className="text-center p-4 bg-blue-50 rounded-lg border">
-            <div className="text-2xl font-bold text-blue-600">
+          <div className="text-center p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border dark:border-blue-800">
+            <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
               {formatNumber(totalFlights)}
             </div>
-            <div className="text-sm text-gray-600">Tổng Chuyến Bay</div>
+            <div className="text-sm text-gray-600 dark:text-gray-400">
+              Tổng Chuyến Bay
+            </div>
           </div>
-          <div className="text-center p-4 bg-green-50 rounded-lg border">
-            <div className="text-2xl font-bold text-green-600">
+          <div className="text-center p-4 bg-green-50 dark:bg-green-900/20 rounded-lg border dark:border-green-800">
+            <div className="text-2xl font-bold text-green-600 dark:text-green-400">
               {totalFlights > 0
                 ? Math.round((statusCounts.onTime / totalFlights) * 100)
                 : 0}
               %
             </div>
-            <div className="text-sm text-gray-600">Tỷ Lệ Đúng Giờ</div>
+            <div className="text-sm text-gray-600 dark:text-gray-400">
+              Tỷ Lệ Đúng Giờ
+            </div>
           </div>
-          <div className="text-center p-4 bg-purple-50 rounded-lg border">
-            <div className="text-2xl font-bold text-purple-600">
+          <div className="text-center p-4 bg-purple-50 dark:bg-purple-900/20 rounded-lg border dark:border-purple-800">
+            <div className="text-2xl font-bold text-purple-600 dark:text-purple-400">
               {avgOccupancyRate}%
             </div>
-            <div className="text-sm text-gray-600">Tỷ Lệ Lấp Đầy</div>
+            <div className="text-sm text-gray-600 dark:text-gray-400">
+              Tỷ Lệ Lấp Đầy
+            </div>
           </div>
-          <div className="text-center p-4 bg-orange-50 rounded-lg border">
-            <div className="text-2xl font-bold text-orange-600">
+          <div className="text-center p-4 bg-orange-50 dark:bg-orange-900/20 rounded-lg border dark:border-orange-800">
+            <div className="text-2xl font-bold text-orange-600 dark:text-orange-400">
               {Math.round(avgFlights)}
             </div>
-            <div className="text-sm text-gray-600">Trung Bình Ngày</div>
+            <div className="text-sm text-gray-600 dark:text-gray-400">
+              Trung Bình Ngày
+            </div>
           </div>
 
           {detailed && (
             <>
-              <div className="text-center p-4 bg-indigo-50 rounded-lg border">
-                <div className="text-2xl font-bold text-indigo-600">
+              <div className="text-center p-4 bg-indigo-50 dark:bg-indigo-900/20 rounded-lg border dark:border-indigo-800">
+                <div className="text-2xl font-bold text-indigo-600 dark:text-indigo-400">
                   {formatNumber(flightTypeStats.DOMESTIC)}
                 </div>
-                <div className="text-sm text-gray-600">Chuyến Nội Địa</div>
+                <div className="text-sm text-gray-600 dark:text-gray-400">
+                  Chuyến Nội Địa
+                </div>
               </div>
 
-              <div className="text-center p-4 bg-teal-50 rounded-lg border">
-                <div className="text-2xl font-bold text-teal-600">
+              <div className="text-center p-4 bg-teal-50 dark:bg-teal-900/20 rounded-lg border dark:border-teal-800">
+                <div className="text-2xl font-bold text-teal-600 dark:text-teal-400">
                   {formatNumber(flightTypeStats.INTERNATIONAL)}
                 </div>
-                <div className="text-sm text-gray-600">Chuyến Quốc Tế</div>
+                <div className="text-sm text-gray-600 dark:text-gray-400">
+                  Chuyến Quốc Tế
+                </div>
               </div>
             </>
           )}
@@ -545,7 +567,7 @@ const FlightChart = ({ flights, isLoading, detailed = false, dateRange }) => {
         <div className="space-y-6">
           {/* Flight Activity Bar Chart */}
           <div>
-            <h4 className="font-medium mb-3 flex items-center gap-2">
+            <h4 className="font-medium mb-3 flex items-center gap-2 dark:text-white">
               <Clock className="h-4 w-4" />
               Hoạt Động Chuyến Bay
             </h4>
@@ -560,7 +582,7 @@ const FlightChart = ({ flights, isLoading, detailed = false, dateRange }) => {
 
           {/* Flight Trend Line Chart */}
           <div>
-            <h4 className="font-medium mb-3 flex items-center gap-2">
+            <h4 className="font-medium mb-3 flex items-center gap-2 dark:text-white">
               <TrendingUp className="h-4 w-4" />
               Xu Hướng Chuyến Bay
             </h4>
@@ -575,7 +597,7 @@ const FlightChart = ({ flights, isLoading, detailed = false, dateRange }) => {
 
           {/* Flight Status Doughnut Chart */}
           <div>
-            <h4 className="font-medium mb-3 flex items-center gap-2">
+            <h4 className="font-medium mb-3 flex items-center gap-2 dark:text-white">
               <Plane className="h-4 w-4" />
               Trạng Thái Chuyến Bay
             </h4>

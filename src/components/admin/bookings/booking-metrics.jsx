@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "../../ui/card";
 import {
   Users,
@@ -8,38 +8,116 @@ import {
   Plane,
   Clock,
 } from "lucide-react";
+import { bookingApi } from "../../../apis/booking-api";
 
-const BookingMetrics = ({ bookings = [] }) => {
-  // Calculate metrics
-  const totalBookings = bookings.length;
+const BookingMetrics = ({ isLoading = false }) => {
+  const [bookings, setBookings] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  const confirmedBookings = bookings.filter(
-    (b) => b.status === "Confirmed"
-  ).length;
-  const pendingBookings = bookings.filter((b) => b.status === "Pending").length;
-  const cancelledBookings = bookings.filter(
-    (b) => b.status === "Cancelled"
-  ).length;
+  useEffect(() => {
+    const fetchAllBookings = async () => {
+      try {
+        setLoading(true);
+        // Fetch all bookings with a large page size to get complete data
+        const response = await bookingApi.getAllBookings({ size: 10000 });
+        if (response.success) {
+          setBookings(response.data.content || response.data || []);
+        } else {
+          setError("Không thể tải dữ liệu đặt vé");
+        }
+      } catch (err) {
+        setError("Lỗi khi tải dữ liệu đặt vé");
+        console.error("Error fetching bookings:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
 
-  const totalRevenue = bookings
-    .filter((b) => b.status === "Confirmed")
-    .reduce((sum, booking) => {
-      const amount = parseFloat(booking.amount.replace(/[^0-9]/g, "")) || 0;
-      return sum + amount;
-    }, 0);
+    fetchAllBookings();
+  }, []);
 
-  const totalPassengers = bookings
-    .filter((b) => b.status === "Confirmed")
-    .reduce((sum, booking) => sum + booking.passengers, 0);
+  // Calculate metrics with memoization for better performance
+  const metricsData = useMemo(() => {
+    const totalBookings = bookings.length;
 
-  // const averageBookingValue =
-  //   confirmedBookings > 0 ? totalRevenue / confirmedBookings : 0;
+    const confirmedBookings = bookings.filter(
+      (b) => b.status === "Confirmed" || b.status === "COMPLETED"
+    ).length;
+    const pendingBookings = bookings.filter(
+      (b) => b.status === "Pending"
+    ).length;
+    const cancelledBookings = bookings.filter(
+      (b) => b.status === "Cancelled"
+    ).length;
 
-  // Calculate booking trends (comparing with mock previous period)
-  const confirmedRate =
-    totalBookings > 0 ? (confirmedBookings / totalBookings) * 100 : 0;
-  const cancellationRate =
-    totalBookings > 0 ? (cancelledBookings / totalBookings) * 100 : 0;
+    const totalRevenue = bookings
+      .filter((b) => b.status === "Confirmed" || b.status === "COMPLETED")
+      .reduce((sum, booking) => {
+        const amount = booking.totalAmount || 0;
+        return sum + amount;
+      }, 0);
+
+    const totalPassengers = bookings
+      .filter((b) => b.status === "Confirmed" || b.status === "COMPLETED")
+      .reduce((sum, booking) => sum + (booking.passengers || 0), 0);
+
+    // Calculate booking trends
+    const confirmedRate =
+      totalBookings > 0 ? (confirmedBookings / totalBookings) * 100 : 0;
+    const cancellationRate =
+      totalBookings > 0 ? (cancelledBookings / totalBookings) * 100 : 0;
+
+    return {
+      totalBookings,
+      confirmedBookings,
+      pendingBookings,
+      cancelledBookings,
+      totalRevenue,
+      totalPassengers,
+      confirmedRate,
+      cancellationRate,
+    };
+  }, [bookings]);
+
+  const {
+    totalBookings,
+    confirmedBookings,
+    pendingBookings,
+    totalRevenue,
+    confirmedRate,
+  } = metricsData;
+
+  if (loading || isLoading) {
+    return (
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 mb-6">
+        {[...Array(4)].map((_, index) => (
+          <Card key={index} className="animate-pulse">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div className="flex-1">
+                  <div className="h-4 bg-gray-200 rounded mb-2"></div>
+                  <div className="w-10 h-6 bg-gray-200 rounded mb-1"></div>
+                  <div className="h-3 bg-gray-200 rounded"></div>
+                </div>
+                <div className="p-3 rounded-full bg-gray-200">
+                  <div className="h-5 w-5 bg-gray-300 rounded"></div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+        <p className="text-red-600">{error}</p>
+      </div>
+    );
+  }
 
   const metrics = [
     {
@@ -66,14 +144,6 @@ const BookingMetrics = ({ bookings = [] }) => {
       bgColor: "bg-emerald-50",
       description: "Từ các đặt vé đã xác nhận",
     },
-    // {
-    //   title: "Giá Trị Đặt Vé Trung Bình",
-    //   value: `${Math.round(averageBookingValue).toLocaleString("vi-VN")} VNĐ`,
-    //   icon: TrendingUp,
-    //   color: "text-orange-600",
-    //   bgColor: "bg-orange-50",
-    //   description: "Trên mỗi đặt vé đã xác nhận",
-    // },
     {
       title: "Đặt Vé Đang Chờ",
       value: pendingBookings.toLocaleString(),
@@ -93,15 +163,15 @@ const BookingMetrics = ({ bookings = [] }) => {
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div className="flex-1">
-                  <p className="text-sm font-medium text-gray-600 mb-1">
+                  <p className="text-sm font-medium text-gray-600 dark:text-white mb-1">
                     {metric.title}
                   </p>
                   <div className="flex items-center gap-2">
-                    <span className="text-2xl font-bold text-gray-900">
+                    <span className="text-2xl font-bold text-gray-900 dark:text-white">
                       {metric.value}
                     </span>
                   </div>
-                  <p className="text-xs text-gray-500 mt-1">
+                  <p className="text-xs text-gray-500 dark:text-gray-200 mt-1">
                     {metric.description}
                   </p>
                 </div>

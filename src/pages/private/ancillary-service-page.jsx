@@ -29,6 +29,7 @@ import {
   CheckCircle,
   XCircle,
   Filter,
+  RefreshCw,
 } from "lucide-react";
 
 import AncillaryServiceTable from "../../components/admin/ancillary-services/ancillary-service-table";
@@ -263,13 +264,23 @@ const AncillaryServicesPage = () => {
               Quản lý các dịch vụ bổ sung cho chuyến bay
             </p>
           </div>
-          <Button
-            onClick={handleCreateNew}
-            className="bg-blue-600 hover:bg-blue-700"
-          >
-            <Plus className="h-4 w-4 mr-2" />
-            Thêm dịch vụ
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              onClick={loadServices}
+              variant="outline"
+              className="h-10  p-0"
+            >
+              <RefreshCw className="h-4 w-4" />
+              Làm mới
+            </Button>
+            <Button
+              onClick={handleCreateNew}
+              className="bg-blue-600 hover:bg-blue-700 dark:text-white"
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Thêm dịch vụ
+            </Button>
+          </div>
         </div>
 
         {/* Main Content */}
@@ -284,6 +295,7 @@ const AncillaryServicesPage = () => {
               onDelete={handleDeleteService}
               onToggleStatus={handleToggleStatus}
               onCreate={handleCreateNew}
+              serviceTypes={serviceTypes}
             />
           </CardContent>
         </Card>
@@ -306,6 +318,7 @@ const AncillaryServicesPage = () => {
           service={editingService}
           onSubmit={handleFormSubmit}
           loading={loading}
+          serviceTypes={serviceTypes}
         />
 
         {/* Service Details Modal */}

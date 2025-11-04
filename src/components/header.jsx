@@ -378,6 +378,9 @@ export function Header() {
                         <Calendar className="w-5 h-5" />
                         <span>Đơn đặt chỗ của tôi</span>
                       </Button>
+                      <div className="py-2 border-t border-gray-200 dark:border-gray-700 flex space-x-4">
+                        <NotificationDropdown /> <span>Thông Báo</span>
+                      </div>
                       <Button
                         variant="ghost"
                         className="flex items-center justify-start space-x-3 w-full text-red-600 hover:text-red-700 hover:bg-red-50"

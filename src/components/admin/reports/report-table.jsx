@@ -1561,11 +1561,11 @@ const ReportTable = ({
   };
 
   return (
-    <Card>
+    <Card className="dark:bg-gray-900 dark:border-gray-700">
       <CardHeader>
         <div className="flex items-center justify-between">
           <div>
-            <CardTitle className="capitalize flex items-center gap-2">
+            <CardTitle className="capitalize flex items-center gap-2 dark:text-white">
               {type === "bookings" && <Calendar className="h-5 w-5" />}
               {type === "customers" && <Users className="h-5 w-5" />}
               {type === "flights" && <Plane className="h-5 w-5" />}
@@ -1581,7 +1581,7 @@ const ReportTable = ({
                 : type}{" "}
               Chi tiết báo cáo
             </CardTitle>
-            <p className="text-sm text-muted-foreground mt-1"></p>
+            <p className="text-sm text-muted-foreground mt-1 dark:text-gray-400"></p>
           </div>
           <div className="flex items-center gap-2">
             {/* Chỉ hiển thị nút export cho 4 tab: revenue, bookings, customers, flights */}
@@ -1626,26 +1626,41 @@ const ReportTable = ({
             value={itemsPerPage.toString()}
             onValueChange={(value) => setItemsPerPage(Number(value))}
           >
-            <SelectTrigger className="w-[120px]">
+            <SelectTrigger className="w-[120px] dark:bg-gray-800 dark:border-gray-600 dark:text-white">
               <SelectValue />
             </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="10">10 hàng</SelectItem>
-              <SelectItem value="25">25 hàng</SelectItem>
-              <SelectItem value="50">50 hàng</SelectItem>
+            <SelectContent className="dark:bg-gray-800 dark:border-gray-600">
+              <SelectItem
+                value="10"
+                className="dark:text-white dark:focus:bg-gray-700"
+              >
+                10 hàng
+              </SelectItem>
+              <SelectItem
+                value="25"
+                className="dark:text-white dark:focus:bg-gray-700"
+              >
+                25 hàng
+              </SelectItem>
+              <SelectItem
+                value="50"
+                className="dark:text-white dark:focus:bg-gray-700"
+              >
+                50 hàng
+              </SelectItem>
             </SelectContent>
           </Select>
         </div>
 
         {/* Table */}
-        <div className="rounded-md border">
+        <div className="rounded-md border dark:border-gray-700">
           <Table>
             <TableHeader>
               <TableRow>
                 {getHeaders().map((header) => (
                   <TableHead
                     key={header}
-                    className="cursor-pointer hover:bg-muted/50"
+                    className="cursor-pointer hover:bg-muted/50 dark:hover:bg-gray-800 dark:text-white"
                     onClick={() => handleSort(header.toLowerCase())}
                   >
                     <div className="flex items-center gap-2">
@@ -1654,38 +1669,46 @@ const ReportTable = ({
                     </div>
                   </TableHead>
                 ))}
-                <TableHead className="w-[80px]">Chi Tiết</TableHead>
+                <TableHead className="w-[80px] dark:text-white">
+                  Chi Tiết
+                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {actualIsLoading ? (
                 // Loading skeleton
                 Array.from({ length: itemsPerPage }).map((_, index) => (
-                  <TableRow key={`loading-${index}`}>
+                  <TableRow
+                    key={`loading-${index}`}
+                    className="dark:border-gray-700"
+                  >
                     {getHeaders().map((header, colIndex) => (
-                      <TableCell key={`loading-${index}-${colIndex}`}>
-                        <div className="h-4 bg-muted animate-pulse rounded"></div>
+                      <TableCell
+                        key={`loading-${index}-${colIndex}`}
+                        className="dark:border-gray-700"
+                      >
+                        <div className="h-4 bg-muted dark:bg-gray-700 animate-pulse rounded"></div>
                       </TableCell>
                     ))}
-                    <TableCell>
-                      <div className="h-8 w-8 bg-muted animate-pulse rounded"></div>
+                    <TableCell className="dark:border-gray-700">
+                      <div className="h-8 w-8 bg-muted dark:bg-gray-700 animate-pulse rounded"></div>
                     </TableCell>
                   </TableRow>
                 ))
               ) : error ? (
-                <TableRow>
+                <TableRow className="dark:border-gray-700">
                   <TableCell
                     colSpan={getHeaders().length + 1}
-                    className="text-center py-8 text-red-500"
+                    className="text-center py-8 text-red-500 dark:text-red-400"
                   >
                     {error}
                   </TableCell>
                 </TableRow>
               ) : paginatedData.length === 0 ? (
-                <TableRow>
+                <TableRow className="dark:border-gray-700">
                   <TableCell
                     colSpan={getHeaders().length + 1}
-                    className="text-center py-8 text-muted-foreground"
+                    className="text-center py-8 text-muted-foreground dark:text-gray-400"
                   >
                     Không có dữ liệu để hiển thị
                   </TableCell>

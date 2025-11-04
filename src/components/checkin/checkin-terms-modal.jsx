@@ -15,23 +15,23 @@ const CheckInTermsModal = ({ open, onClose }) => {
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="max-w-2xl max-h-[80vh]">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-xl">
-            <FileText className="w-5 h-5 text-blue-600" />
+          <DialogTitle className="flex items-center gap-2 text-xl dark:text-white">
+            <FileText className="w-5 h-5 text-blue-600 dark:text-blue-400" />
             Điều Khoản và Quy Tắc Check-in Online
           </DialogTitle>
-          <DialogDescription>
+          <DialogDescription className="dark:text-gray-300">
             Vui lòng đọc kỹ các điều khoản trước khi thực hiện check-in
           </DialogDescription>
         </DialogHeader>
 
         <ScrollArea className="max-h-[60vh] pr-4">
           <div className="space-y-6 text-sm">
-            <div className="bg-blue-50 p-4 rounded-lg border-l-4 border-blue-500">
-              <h3 className="font-semibold text-blue-800 mb-2 flex items-center gap-2">
-                <AlertTriangle className="w-4 h-4" />
+            <div className="bg-blue-50 dark:bg-blue-950 p-4 rounded-lg border-l-4 border-blue-500 dark:border-blue-400">
+              <h3 className="font-semibold text-blue-800 dark:text-blue-200 mb-2 flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4 text-blue-600 dark:text-blue-400" />
                 Lưu ý quan trọng
               </h3>
-              <ul className="text-blue-700 space-y-1">
+              <ul className="text-blue-700 dark:text-blue-300 space-y-1">
                 <li>
                   • Check-in online chỉ áp dụng cho hành khách có vé điện tử hợp
                   lệ
@@ -50,10 +50,10 @@ const CheckInTermsModal = ({ open, onClose }) => {
             </div>
 
             <div>
-              <h3 className="font-semibold text-gray-800 mb-3">
+              <h3 className="font-semibold text-gray-800 dark:text-gray-200 mb-3">
                 1. Điều kiện check-in
               </h3>
-              <ul className="space-y-2 text-gray-600 ml-4">
+              <ul className="space-y-2 text-gray-600 dark:text-gray-400 ml-4">
                 <li className="flex items-start gap-2">
                   <CheckCircle className="w-4 h-4 text-green-500 mt-0.5 flex-shrink-0" />
                   <span>Vé phải được thanh toán đầy đủ và xác nhận</span>
@@ -74,10 +74,10 @@ const CheckInTermsModal = ({ open, onClose }) => {
             </div>
 
             <div>
-              <h3 className="font-semibold text-gray-800 mb-3">
+              <h3 className="font-semibold text-gray-800 dark:text-gray-200 mb-3">
                 2. Quy trình check-in
               </h3>
-              <ol className="space-y-2 text-gray-600 ml-4">
+              <ol className="space-y-2 text-gray-600 dark:text-gray-400 ml-4">
                 <li>1. Nhập mã đặt chỗ hoặc thông tin vé điện tử</li>
                 <li>2. Xác nhận thông tin hành khách</li>
                 <li>3. Chọn chỗ ngồi (nếu có)</li>
@@ -87,10 +87,10 @@ const CheckInTermsModal = ({ open, onClose }) => {
             </div>
 
             <div>
-              <h3 className="font-semibold text-gray-800 mb-3">
+              <h3 className="font-semibold text-gray-800 dark:text-gray-200 mb-3">
                 3. Chính sách hủy/thay đổi
               </h3>
-              <ul className="space-y-2 text-gray-600 ml-4">
+              <ul className="space-y-2 text-gray-600 dark:text-gray-400 ml-4">
                 <li>
                   • Sau khi check-in online, không thể thay đổi thông tin chuyến
                   bay
@@ -101,10 +101,10 @@ const CheckInTermsModal = ({ open, onClose }) => {
             </div>
 
             <div>
-              <h3 className="font-semibold text-gray-800 mb-3">
+              <h3 className="font-semibold text-gray-800 dark:text-gray-200 mb-3">
                 4. Hành lý và quy định
               </h3>
-              <ul className="space-y-2 text-gray-600 ml-4">
+              <ul className="space-y-2 text-gray-600 dark:text-gray-400 ml-4">
                 <li>
                   • Hành lý xách tay: không quá 7kg, kích thước không quá 115cm
                 </li>
@@ -116,10 +116,10 @@ const CheckInTermsModal = ({ open, onClose }) => {
             </div>
 
             <div>
-              <h3 className="font-semibold text-gray-800 mb-3">
+              <h3 className="font-semibold text-gray-800 dark:text-gray-200 mb-3">
                 5. Quyền và nghĩa vụ
               </h3>
-              <ul className="space-y-2 text-gray-600 ml-4">
+              <ul className="space-y-2 text-gray-600 dark:text-gray-400 ml-4">
                 <li>
                   • Hành khách có trách nhiệm cung cấp thông tin chính xác
                 </li>
@@ -129,11 +129,11 @@ const CheckInTermsModal = ({ open, onClose }) => {
               </ul>
             </div>
 
-            <div className="bg-yellow-50 p-4 rounded-lg border-l-4 border-yellow-500">
-              <h3 className="font-semibold text-yellow-800 mb-2">
+            <div className="bg-yellow-50 dark:bg-yellow-950 p-4 rounded-lg border-l-4 border-yellow-500 dark:border-yellow-400">
+              <h3 className="font-semibold text-yellow-800 dark:text-yellow-200 mb-2">
                 Lưu ý sức khỏe
               </h3>
-              <p className="text-yellow-700 text-sm">
+              <p className="text-yellow-700 dark:text-yellow-300 text-sm">
                 Trong thời gian dịch bệnh, hành khách cần tuân thủ các quy định
                 phòng chống dịch, khai báo y tế và có thể được kiểm tra thân
                 nhiệt tại sân bay.

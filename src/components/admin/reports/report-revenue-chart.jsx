@@ -353,30 +353,34 @@ const RevenueChart = ({
   };
 
   return (
-    <Card className={detailed ? "col-span-full" : ""}>
+    <Card
+      className={`${
+        detailed ? "col-span-full" : ""
+      } dark:bg-gray-900 dark:border-gray-700`}
+    >
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
+        <CardTitle className="flex items-center gap-2 dark:text-white">
           <DollarSign className="h-5 w-5" />
           Phân tích doanh thu
         </CardTitle>
-        <CardDescription>
+        <CardDescription className="dark:text-gray-400">
           Các chỉ số hiệu suất doanh thu và thông tin tài chính
         </CardDescription>
       </CardHeader>
       <CardContent>
         {/* Key Revenue Metrics - STREAMLINED (only 3 main metrics) */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-          <div className="p-4 rounded-lg bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200">
+          <div className="p-4 rounded-lg bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 border border-green-200 dark:border-green-800">
             <div className="flex items-center gap-2 mb-1">
-              <DollarSign className="h-4 w-4 text-green-600" />
-              <span className="text-sm font-medium text-green-900">
+              <DollarSign className="h-4 w-4 text-green-600 dark:text-green-400" />
+              <span className="text-sm font-medium text-green-900 dark:text-green-100">
                 Tổng Doanh Thu
               </span>
             </div>
-            <div className="text-xl font-bold text-green-800">
+            <div className="text-xl font-bold text-green-800 dark:text-green-300">
               {formatCurrency(totalRevenue)}
             </div>
-            <div className="text-xs text-green-600 mt-1">
+            <div className="text-xs text-green-600 dark:text-green-400 mt-1">
               {revenueGrowth > 0 ? (
                 <span className="flex items-center gap-1">
                   <TrendingUp className="h-3 w-3" />+{revenueGrowth.toFixed(1)}%
@@ -392,32 +396,32 @@ const RevenueChart = ({
             </div>
           </div>
 
-          <div className="p-4 rounded-lg bg-gradient-to-r from-blue-50 to-cyan-50 border border-blue-200">
+          <div className="p-4 rounded-lg bg-gradient-to-r from-blue-50 to-cyan-50 dark:from-blue-900/20 dark:to-cyan-900/20 border border-blue-200 dark:border-blue-800">
             <div className="flex items-center gap-2 mb-1">
-              <CreditCard className="h-4 w-4 text-blue-600" />
-              <span className="text-sm font-medium text-blue-900">
+              <CreditCard className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+              <span className="text-sm font-medium text-blue-900 dark:text-blue-100">
                 Giá Trị Trung Bình/Vé
               </span>
             </div>
-            <div className="text-xl font-bold text-blue-800">
+            <div className="text-xl font-bold text-blue-800 dark:text-blue-300">
               {formatCurrency(avgBookingValue)}
             </div>
-            <div className="text-xs text-blue-600 mt-1">
+            <div className="text-xs text-blue-600 dark:text-blue-400 mt-1">
               {totalBookings} vé đã bán
             </div>
           </div>
 
-          <div className="p-4 rounded-lg bg-gradient-to-r from-purple-50 to-violet-50 border border-purple-200">
+          <div className="p-4 rounded-lg bg-gradient-to-r from-purple-50 to-violet-50 dark:from-purple-900/20 dark:to-violet-900/20 border border-purple-200 dark:border-purple-800">
             <div className="flex items-center gap-2 mb-1">
-              <Target className="h-4 w-4 text-purple-600" />
-              <span className="text-sm font-medium text-purple-900">
+              <Target className="h-4 w-4 text-purple-600 dark:text-purple-400" />
+              <span className="text-sm font-medium text-purple-900 dark:text-purple-100">
                 Hiệu Suất Bán Hàng
               </span>
             </div>
-            <div className="text-xl font-bold text-purple-800">
+            <div className="text-xl font-bold text-purple-800 dark:text-purple-300">
               {formatNumber(totalBookings)}
             </div>
-            <div className="text-xs text-purple-600 mt-1">
+            <div className="text-xs text-purple-600 dark:text-purple-400 mt-1">
               {uniqueCustomers} khách hàng • {totalFlights} chuyến bay
             </div>
           </div>
@@ -427,7 +431,7 @@ const RevenueChart = ({
         <div className="space-y-6">
           {/* Bar Chart */}
           <div>
-            <h4 className="font-medium mb-3 flex items-center gap-2">
+            <h4 className="font-medium mb-3 flex items-center gap-2 dark:text-white">
               <CreditCard className="h-4 w-4" />
               Hiệu suất doanh thu
             </h4>
@@ -444,7 +448,7 @@ const RevenueChart = ({
             <>
               {/* Trend Line Chart */}
               <div>
-                <h4 className="font-medium mb-3 flex items-center gap-2">
+                <h4 className="font-medium mb-3 flex items-center gap-2 dark:text-white">
                   <Calendar className="h-4 w-4" />
                   Phân tích xu hướng
                 </h4>
@@ -458,7 +462,7 @@ const RevenueChart = ({
               </div>
 
               <div className="space-y-4">
-                <h5 className="font-medium text-sm">
+                <h5 className="font-medium text-sm dark:text-white">
                   Top doanh thu trong các ngày
                 </h5>
                 <div className="space-y-3">
@@ -468,14 +472,16 @@ const RevenueChart = ({
                     .map((item, index) => (
                       <div
                         key={index}
-                        className="flex justify-between items-center p-3 bg-gray-50 rounded-lg"
+                        className="flex justify-between items-center p-3 bg-gray-50 dark:bg-gray-800 rounded-lg"
                       >
-                        <span className="text-sm font-medium">{item.date}</span>
+                        <span className="text-sm font-medium dark:text-white">
+                          {item.date}
+                        </span>
                         <div className="text-right">
-                          <div className="font-medium text-green-600">
+                          <div className="font-medium text-green-600 dark:text-green-400">
                             {formatCurrency(item.revenue)}
                           </div>
-                          <div className="text-xs text-gray-500">
+                          <div className="text-xs text-gray-500 dark:text-gray-400">
                             {item.bookings || 0} bookings
                           </div>
                         </div>
@@ -490,12 +496,16 @@ const RevenueChart = ({
             /* Quick Performance Overview */
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <h5 className="font-medium text-sm">Hiệu Suất Tốt Nhất</h5>
+                <h5 className="font-medium text-sm dark:text-white">
+                  Hiệu Suất Tốt Nhất
+                </h5>
                 <div className="text-sm">
-                  <div className="font-medium">
+                  <div className="font-medium dark:text-white">
                     {formatCurrency(maxRevenue)}
                   </div>
-                  <div className="text-gray-500">Doanh thu ngày cao nhất</div>
+                  <div className="text-gray-500 dark:text-gray-400">
+                    Doanh thu ngày cao nhất
+                  </div>
                 </div>
               </div>
             </div>

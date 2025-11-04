@@ -50,14 +50,14 @@ const MyFlightsSuccess = ({ booking, onNewSearch }) => {
   return (
     <div className="space-y-6">
       {/* Success Header */}
-      <Card className="border-green-200 bg-green-50">
+      <Card className="border-green-200 bg-green-50 dark:bg-green-950 dark:border-green-800">
         <CardContent className="pt-6">
           <div className="text-center">
             <CheckCircle className="w-16 h-16 text-green-600 mx-auto mb-4" />
-            <h2 className="text-2xl font-bold text-green-800 mb-2">
+            <h2 className="text-2xl font-bold text-green-800 mb-2 dark:text-green-200">
               Thanh toán thành công!
             </h2>
-            <p className="text-green-700">
+            <p className="text-green-700 dark:text-green-300">
               Cảm ơn bạn đã thanh toán. Đặt chỗ của bạn đã được xác nhận.
             </p>
           </div>
@@ -67,7 +67,7 @@ const MyFlightsSuccess = ({ booking, onNewSearch }) => {
       {/* Payment Confirmation */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
+          <CardTitle className="flex items-center gap-2 dark:text-white">
             <CreditCard className="w-5 h-5 text-green-500" />
             Xác nhận thanh toán
           </CardTitle>
@@ -75,28 +75,42 @@ const MyFlightsSuccess = ({ booking, onNewSearch }) => {
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <p className="text-sm text-gray-600">Mã đặt chỗ</p>
-              <p className="font-semibold text-lg">{booking.bookingCode}</p>
+              <p className="text-sm text-gray-600 dark:text-gray-300">
+                Mã đặt chỗ
+              </p>
+              <p className="font-semibold text-lg dark:text-white">
+                {booking.bookingCode}
+              </p>
             </div>
             <div>
-              <p className="text-sm text-gray-600">Trạng thái</p>
-              <Badge className="bg-green-100 text-green-800 border-green-200">
+              <p className="text-sm text-gray-600 dark:text-gray-300">
+                Trạng thái
+              </p>
+              <Badge className="bg-green-100 text-green-800 border-green-200 dark:bg-green-950 dark:text-green-200 dark:border-green-800">
                 Đã thanh toán
               </Badge>
             </div>
             <div>
-              <p className="text-sm text-gray-600">Số tiền</p>
-              <p className="font-semibold text-lg text-green-600">
+              <p className="text-sm text-gray-600 dark:text-gray-300">
+                Số tiền
+              </p>
+              <p className="font-semibold text-lg text-green-600 dark:text-green-400">
                 {formatCurrencyVND(booking.totalAmount)}
               </p>
             </div>
             <div>
-              <p className="text-sm text-gray-600">Mã giao dịch</p>
-              <p className="font-semibold">{booking.payment?.transactionId}</p>
+              <p className="text-sm text-gray-600 dark:text-gray-300">
+                Mã giao dịch
+              </p>
+              <p className="font-semibold dark:text-white">
+                {booking.payment?.transactionId}
+              </p>
             </div>
             <div>
-              <p className="text-sm text-gray-600">Phương thức</p>
-              <p className="font-semibold">
+              <p className="text-sm text-gray-600 dark:text-gray-300">
+                Phương thức
+              </p>
+              <p className="font-semibold dark:text-white">
                 {booking.payment?.paymentMethod === "BANK_TRANSFER" &&
                   "Chuyển khoản"}
                 {booking.payment?.paymentMethod === "CREDIT_CARD" &&
@@ -105,8 +119,10 @@ const MyFlightsSuccess = ({ booking, onNewSearch }) => {
               </p>
             </div>
             <div>
-              <p className="text-sm text-gray-600">Thời gian thanh toán</p>
-              <p className="font-semibold">
+              <p className="text-sm text-gray-600 dark:text-gray-300">
+                Thời gian thanh toán
+              </p>
+              <p className="font-semibold dark:text-white">
                 {booking.payment?.paymentDate
                   ? formatDateTime(booking.payment.paymentDate).date
                   : "N/A"}
@@ -119,7 +135,7 @@ const MyFlightsSuccess = ({ booking, onNewSearch }) => {
       {/* Flight Information */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
+          <CardTitle className="flex items-center gap-2 dark:text-white">
             <Plane className="w-5 h-5 text-blue-500" />
             Thông tin chuyến bay
           </CardTitle>
@@ -135,24 +151,28 @@ const MyFlightsSuccess = ({ booking, onNewSearch }) => {
                   <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center gap-4">
                       <div className="text-center">
-                        <p className="text-2xl font-bold text-blue-600">
+                        <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
                           {segment.departureAirport.airportCode}
                         </p>
-                        <p className="text-sm text-gray-600">Khởi hành</p>
+                        <p className="text-sm text-gray-600 dark:text-gray-300">
+                          Khởi hành
+                        </p>
                       </div>
                       <ArrowRight className="w-6 h-6 text-gray-400" />
                       <div className="text-center">
-                        <p className="text-2xl font-bold text-blue-600">
+                        <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
                           {segment.arrivalAirport.airportCode}
                         </p>
-                        <p className="text-sm text-gray-600">Đến</p>
+                        <p className="text-sm text-gray-600 dark:text-gray-300">
+                          Đến
+                        </p>
                       </div>
                     </div>
                     <div className="text-right">
-                      <p className="text-lg font-semibold">
+                      <p className="text-lg font-semibold dark:text-white">
                         {segment.flightNumber}
                       </p>
-                      <p className="text-sm text-gray-600">
+                      <p className="text-sm text-gray-600 dark:text-gray-300">
                         {segment.aircraft}
                       </p>
                     </div>
@@ -162,15 +182,23 @@ const MyFlightsSuccess = ({ booking, onNewSearch }) => {
                     <div className="flex items-center gap-2">
                       <Calendar className="w-4 h-4 text-gray-500" />
                       <div>
-                        <p className="text-gray-600">Ngày bay</p>
-                        <p className="font-medium">{departureDateTime.date}</p>
+                        <p className="text-gray-600 dark:text-gray-300">
+                          Ngày bay
+                        </p>
+                        <p className="font-medium dark:text-white">
+                          {departureDateTime.date}
+                        </p>
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
                       <Clock className="w-4 h-4 text-gray-500" />
                       <div>
-                        <p className="text-gray-600">Giờ khởi hành</p>
-                        <p className="font-medium">{departureDateTime.time}</p>
+                        <p className="text-gray-600 dark:text-gray-300">
+                          Giờ khởi hành
+                        </p>
+                        <p className="font-medium dark:text-white">
+                          {departureDateTime.time}
+                        </p>
                       </div>
                     </div>
                   </div>
@@ -182,9 +210,11 @@ const MyFlightsSuccess = ({ booking, onNewSearch }) => {
       </Card>
 
       {/* Next Steps */}
-      <Card className="border-blue-200 bg-blue-50">
+      <Card className="border-blue-200 bg-blue-50 dark:bg-blue-950 dark:border-blue-800">
         <CardHeader>
-          <CardTitle className="text-blue-800">Các bước tiếp theo</CardTitle>
+          <CardTitle className="text-blue-800 dark:text-blue-200">
+            Các bước tiếp theo
+          </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
@@ -193,8 +223,8 @@ const MyFlightsSuccess = ({ booking, onNewSearch }) => {
                 1
               </div>
               <div>
-                <p className="font-medium">Check-in online</p>
-                <p className="text-sm text-gray-600">
+                <p className="font-medium dark:text-white">Check-in online</p>
+                <p className="text-sm text-gray-600 dark:text-gray-300">
                   Thực hiện check-in online từ 24-48 giờ trước giờ khởi hành
                 </p>
               </div>
@@ -204,8 +234,8 @@ const MyFlightsSuccess = ({ booking, onNewSearch }) => {
                 2
               </div>
               <div>
-                <p className="font-medium">Đến sân bay</p>
-                <p className="text-sm text-gray-600">
+                <p className="font-medium dark:text-white">Đến sân bay</p>
+                <p className="text-sm text-gray-600 dark:text-gray-300">
                   Có mặt tại sân bay đúng giờ với giấy tờ tùy thân
                 </p>
               </div>
@@ -215,8 +245,8 @@ const MyFlightsSuccess = ({ booking, onNewSearch }) => {
                 3
               </div>
               <div>
-                <p className="font-medium">Lên máy bay</p>
-                <p className="text-sm text-gray-600">
+                <p className="font-medium dark:text-white">Lên máy bay</p>
+                <p className="text-sm text-gray-600 dark:text-gray-300">
                   Sử dụng thẻ lên máy bay điện tử hoặc in tại sân bay
                 </p>
               </div>
@@ -262,7 +292,7 @@ const MyFlightsSuccess = ({ booking, onNewSearch }) => {
       </div>
 
       {/* Footer Note */}
-      <div className="text-center text-sm text-gray-600 bg-gray-50 p-4 rounded-lg">
+      <div className="text-center text-sm text-gray-600 bg-gray-50 p-4 rounded-lg dark:bg-gray-800 dark:text-gray-300">
         <p>
           Cảm ơn bạn đã chọn AirSky. Chúc bạn có một chuyến bay an toàn và thoải
           mái!

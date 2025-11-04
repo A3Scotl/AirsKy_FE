@@ -262,7 +262,7 @@ const ClassesPage = () => {
                 placeholder="Tìm kiếm theo tên , quyền lợi..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
+                className="pl-10 dark:text-black"
               />
             </div>
           </div>

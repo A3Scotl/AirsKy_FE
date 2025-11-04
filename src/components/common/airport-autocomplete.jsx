@@ -11,13 +11,25 @@ const AirportAutocomplete = ({
   country = null,
   className = "",
   showNearby = true,
+  open: externalOpen,
+  onOpenChange,
 }) => {
-  const [isOpen, setIsOpen] = useState(false);
+  const [internalIsOpen, setInternalIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedLocations, setSelectedLocations] = useState(value || []);
   const [showingNearby, setShowingNearby] = useState(false);
   const inputRef = useRef(null);
   const dropdownRef = useRef(null);
+
+  // Use external open state if provided, otherwise use internal
+  const isOpen = externalOpen !== undefined ? externalOpen : internalIsOpen;
+  const setIsOpen = (value) => {
+    if (onOpenChange) {
+      onOpenChange(value);
+    } else {
+      setInternalIsOpen(value);
+    }
+  };
 
   const {
     searchResults,
@@ -399,12 +411,12 @@ const AirportAutocomplete = ({
 
       {/* Dropdown */}
       {isOpen && !disabled && (
-        <div className="absolute w-96 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-xl max-h-80 overflow-y-auto z-[999999] ring-1 ring-black/5">
+        <div className="absolute w-96 top-full mt-1 bg-white border border-gray-200 dark:bg-black rounded-lg shadow-xl max-h-80 overflow-y-auto z-[999999] ring-1 ring-black/5">
           {/* Header */}
           {searchTerm === "" && (
-            <div className="p-3 border-b bg-gray-50">
+            <div className="p-3 border-b bg-gray-50 dark:bg-black dark:text-white">
               <div className="flex items-center justify-between">
-                <h4 className="font-medium text-sm text-gray-700 flex items-center">
+                <h4 className="font-medium text-sm text-gray-700 dark:text-white flex items-center">
                   <Plane className="w-4 h-4 mr-2" />
                   {/* Kiểm tra xem có phải kết quả nearby không */}
                   {destinationsToShow().some(
@@ -465,15 +477,15 @@ const AirportAutocomplete = ({
                 <div
                   key={`search-result-${destination.airportCode}-${destination.city}`}
                   onClick={() => handleLocationSelect(destination)}
-                  className={`p-3 hover:bg-gray-50 cursor-pointer border-b last:border-b-0 transition-colors ${
-                    isSelected ? "bg-blue-50" : ""
+                  className={`p-3 hover:bg-gray-50 dark:hover:bg-gray-600 cursor-pointer border-b last:border-b-0 transition-colors ${
+                    isSelected ? "bg-blue-50 dark:bg-gray-800" : ""
                   }`}
                 >
                   <div className="flex items-start">
                     <MapPin className="w-4 h-4 mr-3 mt-0.5 text-gray-400 flex-shrink-0" />
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between">
-                        <div className="font-medium text-sm text-gray-900 truncate">
+                        <div className="font-medium text-sm dark:text-white text-gray-900 truncate">
                           {Array.isArray(destination.cityNames) &&
                           destination.cityNames.length > 0
                             ? destination.cityNames[0]

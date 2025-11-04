@@ -404,41 +404,7 @@ const SessionInfo = () => {
         </CardContent>
       </Card>
 
-      {/* Session Analytics */}
-      <Card className="bg-gradient-to-r from-blue-50 to-indigo-50">
-        <CardContent className="p-6">
-          <h3 className="font-medium text-blue-800 mb-3 flex items-center gap-2">
-            <Activity className="h-4 w-4" />
-            Phân tích phiên
-          </h3>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
-            <div>
-              <p className="text-2xl font-bold text-blue-600">
-                {Math.round(sessionInfo.progressPercent)}%
-              </p>
-              <p className="text-xs text-blue-600">Đã sử dụng</p>
-            </div>
-            <div>
-              <p className="text-2xl font-bold text-green-600">
-                {Math.floor(timeLeft / 60)}m
-              </p>
-              <p className="text-xs text-green-600">Còn lại</p>
-            </div>
-            <div>
-              <p className="text-2xl font-bold text-purple-600">
-                {deviceInfo?.type === "Mobile" ? "📱" : "💻"}
-              </p>
-              <p className="text-xs text-purple-600">Thiết bị</p>
-            </div>
-            <div>
-              <p className="text-2xl font-bold text-orange-600">
-                {sessionInfo.status === "ACTIVE" ? "✅" : "❌"}
-              </p>
-              <p className="text-xs text-orange-600">Trạng thái</p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      
     </div>
   );
 };

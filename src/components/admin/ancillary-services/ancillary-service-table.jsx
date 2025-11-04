@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useEffect } from "react";
+import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import {
   useReactTable,
   getCoreRowModel,
@@ -21,6 +21,7 @@ import {
   CheckCircle,
   XCircle,
   Star,
+  X,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -28,7 +29,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import AncillaryServiceTableSkeleton from "./ancillary-service-table-skeleton";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -65,6 +66,7 @@ const AncillaryServiceTable = ({
   onDelete,
   onToggleStatus,
   onCreate,
+  serviceTypes: propServiceTypes = {},
 }) => {
   // Modal states
   const [selectedService, setSelectedService] = useState(null);
@@ -79,35 +81,49 @@ const AncillaryServiceTable = ({
     pageSize: 10,
   });
   const [serviceTypeFilter, setServiceTypeFilter] = useState("all");
-  const [serviceTypes, setServiceTypes] = useState({});
-  const [loadingServiceTypes, setLoadingServiceTypes] = useState(false);
+  const [serviceTypes, setServiceTypes] = useState(propServiceTypes);
+  const [priceRange, setPriceRange] = useState({ min: "", max: "" });
 
-  // Fetch service types on component mount
+  // Ref to track if component is mounted
+  const isMountedRef = useRef(true);
+
+  // Update serviceTypes when prop changes
   useEffect(() => {
-    const fetchServiceTypes = async () => {
-      try {
-        setLoadingServiceTypes(true);
-        const response = await ancillaryServiceApi.getServiceTypes();
-        if (response.success && response.data) {
-          // Convert array of strings to object for easier access
-          const typesObject = {};
-          response.data.forEach((typeKey) => {
-            // Use getServiceTypeInfo to get display info for each type
-            typesObject[typeKey] = getServiceTypeInfo(typeKey);
-          });
-          setServiceTypes(typesObject);
-        } else {
-          toast.error("Không thể tải danh sách loại dịch vụ từ server");
-        }
-      } catch (error) {
-        toast.error("Lỗi khi tải danh sách loại dịch vụ từ server");
-      } finally {
-        setLoadingServiceTypes(false);
-      }
-    };
+    setServiceTypes(propServiceTypes);
+  }, [propServiceTypes]);
 
-    fetchServiceTypes();
-  }, []);
+  // Fetch service types on component mount (fallback if not provided via props)
+  useEffect(() => {
+    if (Object.keys(propServiceTypes).length === 0) {
+      const fetchServiceTypes = async () => {
+        try {
+          const response = await ancillaryServiceApi.getServiceTypes();
+          if (response.success && response.data && isMountedRef.current) {
+            // Convert array of strings to object for easier access
+            const typesObject = {};
+            response.data.forEach((typeKey) => {
+              // Use getServiceTypeInfo to get display info for each type
+              typesObject[typeKey] = getServiceTypeInfo(typeKey);
+            });
+            setServiceTypes(typesObject);
+          } else if (isMountedRef.current) {
+            toast.error("Không thể tải danh sách loại dịch vụ từ server");
+          }
+        } catch (error) {
+          if (isMountedRef.current) {
+            toast.error("Lỗi khi tải danh sách loại dịch vụ từ server");
+          }
+        }
+      };
+
+      fetchServiceTypes();
+    }
+
+    // Cleanup function to set mounted ref to false
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, [propServiceTypes]);
 
   // Create column helper
   const columnHelper = createColumnHelper();
@@ -158,7 +174,7 @@ const AncillaryServiceTable = ({
         serviceTypes[serviceType] || getServiceTypeInfo(serviceType);
       return (
         <Badge variant="outline" className="flex items-center gap-1">
-          <span>{typeInfo.icon}</span>
+          {/* <span>{typeInfo.icon}</span> */}
           {typeInfo.vietnameseName}
         </Badge>
       );
@@ -283,6 +299,14 @@ const AncillaryServiceTable = ({
             {formatCurrencyVND(info.getValue())}
           </div>
         ),
+        filterFn: (row, columnId, filterValue) => {
+          const price = row.getValue(columnId);
+          const { min, max } = filterValue;
+
+          if (min !== null && price < min) return false;
+          if (max !== null && price > max) return false;
+          return true;
+        },
       }),
 
       // Status column
@@ -368,9 +392,21 @@ const AncillaryServiceTable = ({
     ]
   );
 
+  // Table state
+  const tableState = useMemo(
+    () => ({
+      globalFilter,
+      columnFilters,
+      sorting,
+      rowSelection,
+      pagination,
+    }),
+    [globalFilter, columnFilters, sorting, rowSelection, pagination]
+  );
+
   // Create table instance
   const table = useReactTable({
-    data: services,
+    data: services || [],
     columns,
     getCoreRowModel: getCoreRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
@@ -381,22 +417,20 @@ const AncillaryServiceTable = ({
     onSortingChange: setSorting,
     onRowSelectionChange: setRowSelection,
     onPaginationChange: setPagination,
-    state: {
-      globalFilter,
-      columnFilters,
-      sorting,
-      rowSelection,
-      pagination,
-    },
+    state: tableState,
     enableRowSelection: true,
   });
 
   // Bulk actions
   const selectedRows = table.getSelectedRowModel().rows;
-  const selectedServices = useMemo(
-    () => selectedRows.map((row) => row.original),
-    [selectedRows]
-  );
+  const selectedServices = useMemo(() => {
+    try {
+      return selectedRows.map((row) => row.original);
+    } catch (error) {
+      console.warn("Error getting selected services:", error);
+      return [];
+    }
+  }, [selectedRows]);
 
   const handleBulkActivate = useCallback(async () => {
     if (selectedServices.length === 0) return;
@@ -487,6 +521,28 @@ const AncillaryServiceTable = ({
     }
   }, [serviceTypeFilter]);
 
+  // Update column filters when priceRange changes
+  useEffect(() => {
+    setColumnFilters((prev) => {
+      let newFilters = prev.filter((filter) => filter.id !== "price");
+
+      const minPrice = parseFloat(priceRange.min);
+      const maxPrice = parseFloat(priceRange.max);
+
+      if (!isNaN(minPrice) || !isNaN(maxPrice)) {
+        newFilters.push({
+          id: "price",
+          value: {
+            min: isNaN(minPrice) ? null : minPrice,
+            max: isNaN(maxPrice) ? null : maxPrice,
+          },
+        });
+      }
+
+      return newFilters;
+    });
+  }, [priceRange]);
+
   return (
     <div className="space-y-4">
       {/* Header with search and actions */}
@@ -498,7 +554,7 @@ const AncillaryServiceTable = ({
               placeholder="Tìm kiếm dịch vụ..."
               value={globalFilter ?? ""}
               onChange={(event) => setGlobalFilter(event.target.value)}
-              className="pl-10 w-64"
+              className="pl-10 w-64 dark:text-black"
             />
           </div>
 
@@ -507,12 +563,12 @@ const AncillaryServiceTable = ({
             <Select
               value={serviceTypeFilter}
               onValueChange={setServiceTypeFilter}
-              disabled={loadingServiceTypes}
+              disabled={Object.keys(serviceTypes).length === 0}
             >
               <SelectTrigger className="w-48">
                 <SelectValue
                   placeholder={
-                    loadingServiceTypes
+                    Object.keys(serviceTypes).length === 0
                       ? "Đang tải..."
                       : "Lọc theo loại dịch vụ"
                   }
@@ -522,11 +578,50 @@ const AncillaryServiceTable = ({
                 <SelectItem value="all">Tất cả loại dịch vụ</SelectItem>
                 {Object.entries(serviceTypes).map(([key, type]) => (
                   <SelectItem key={key} value={key}>
-                    {type.icon} {type.vietnameseName}
+                    {type.vietnameseName}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
+          </div>
+
+          {/* Price Range Filter */}
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-gray-600 dark:text-gray-400">
+              Giá:
+            </span>
+            <div className="flex items-center gap-2">
+              <Input
+                type="number"
+                placeholder="Từ"
+                value={priceRange.min}
+                onChange={(e) =>
+                  setPriceRange((prev) => ({ ...prev, min: e.target.value }))
+                }
+                className="w-24 h-8 text-sm dark:text-black"
+              />
+              <span className="text-sm text-gray-400">-</span>
+              <Input
+                type="number"
+                placeholder="Đến"
+                value={priceRange.max}
+                onChange={(e) =>
+                  setPriceRange((prev) => ({ ...prev, max: e.target.value }))
+                }
+                className="w-24 h-8 text-sm dark:text-black"
+              />
+              <span className="text-sm text-gray-400">VND</span>
+              {(priceRange.min || priceRange.max) && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setPriceRange({ min: "", max: "" })}
+                  className="h-8 px-2 text-xs"
+                >
+                  <X className="h-3 w-3" />
+                </Button>
+              )}
+            </div>
           </div>
         </div>
 
@@ -571,13 +666,13 @@ const AncillaryServiceTable = ({
         <Table>
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
-              <TableRow key={headerGroup.id} className="bg-gray-50">
+              <TableRow key={headerGroup.id} className="">
                 {headerGroup.headers.map((header) => (
                   <TableHead
                     key={header.id}
                     className={
                       header.column.getCanSort()
-                        ? "cursor-pointer hover:bg-gray-50 select-none"
+                        ? "cursor-pointer  select-none"
                         : ""
                     }
                     onClick={header.column.getToggleSortingHandler()}
@@ -601,7 +696,34 @@ const AncillaryServiceTable = ({
           </TableHeader>
           <TableBody>
             {loading ? (
-              <AncillaryServiceTableSkeleton />
+              Array.from({ length: 5 }).map((_, index) => (
+                <TableRow key={`skeleton-${index}`}>
+                  <TableCell>
+                    <Checkbox disabled />
+                  </TableCell>
+                  <TableCell>
+                    <Skeleton className="h-4 w-32" />
+                  </TableCell>
+                  <TableCell>
+                    <Skeleton className="h-4 w-24" />
+                  </TableCell>
+                  <TableCell>
+                    <Skeleton className="h-4 w-20" />
+                  </TableCell>
+                  <TableCell>
+                    <Skeleton className="h-6 w-20 rounded-full" />
+                  </TableCell>
+                  <TableCell>
+                    <Skeleton className="h-4 w-24" />
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex gap-2">
+                      <Skeleton className="h-8 w-8" />
+                      <Skeleton className="h-8 w-8" />
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))
             ) : services && services.length > 0 ? (
               table.getRowModel().rows.map((row) => (
                 <TableRow

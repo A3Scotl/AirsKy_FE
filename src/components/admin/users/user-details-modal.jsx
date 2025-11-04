@@ -280,12 +280,12 @@ const UserDetailsModal = ({
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-6xl max-h-[95vh] overflow-hidden p-0">
+      <DialogContent className="max-w-6xl max-h-[95vh] overflow-hidden p-0 dark:bg-gray-900 dark:border-gray-700">
         <DialogHeader className="sr-only">
           <DialogTitle>Thông tin chi tiết người dùng</DialogTitle>
         </DialogHeader>
         {/* Header với gradient background */}
-        <div className="bg-gradient-to-r from-gray-500 via-gray-500 to-gray-600 text-white p-6">
+        <div className="bg-gradient-to-r from-gray-500 via-gray-500 to-gray-600 text-white p-6 dark:from-gray-700 dark:via-gray-700 dark:to-gray-800">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
               {/* Avatar lớn và đẹp */}
@@ -400,11 +400,11 @@ const UserDetailsModal = ({
         <div className="p-6 overflow-y-auto max-h-[calc(95vh-200px)]">
           {/* Stats Cards */}
           <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
-            <Card className="border-l-4 border-l-green-500">
+            <Card className="border-l-4 border-l-green-500 dark:bg-gray-800 dark:border-gray-700">
               <CardContent className="pt-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-gray-600">
+                    <p className="text-sm font-medium text-gray-600 dark:text-gray-300">
                       Trạng thái
                     </p>
                     <Badge
@@ -414,69 +414,71 @@ const UserDetailsModal = ({
                       {user.status}
                     </Badge>
                   </div>
-                  <StatusIcon className="h-8 w-8 text-gray-400" />
+                  <StatusIcon className="h-8 w-8 text-gray-400 dark:text-gray-500" />
                 </div>
               </CardContent>
             </Card>
 
-            <Card className="border-l-4 border-l-blue-500">
+            <Card className="border-l-4 border-l-blue-500 dark:bg-gray-800 dark:border-gray-700">
               <CardContent className="pt-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-gray-600">
+                    <p className="text-sm font-medium text-gray-600 dark:text-gray-300">
                       Tổng chi tiêu
                     </p>
                     <p className="text-2xl font-bold text-green-600">
                       {bookingStats.totalSpent?.toLocaleString("vi-VN") || 0}đ
                     </p>
                   </div>
-                  <DollarSign className="h-8 w-8 text-gray-400" />
+                  <DollarSign className="h-8 w-8 text-gray-400 dark:text-gray-500" />
                 </div>
               </CardContent>
             </Card>
 
-            <Card className="border-l-4 border-l-purple-500">
+            <Card className="border-l-4 border-l-purple-500 dark:bg-gray-800 dark:border-gray-700">
               <CardContent className="pt-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-gray-600">
+                    <p className="text-sm font-medium text-gray-600 dark:text-gray-300">
                       Tổng đặt chỗ
                     </p>
                     <p className="text-2xl font-bold text-purple-600">
                       {bookingStats.totalBookings || 0}
                     </p>
                   </div>
-                  <Plane className="h-8 w-8 text-gray-400" />
+                  <Plane className="h-8 w-8 text-gray-400 dark:text-gray-500" />
                 </div>
               </CardContent>
             </Card>
 
-            <Card className="border-l-4 border-l-red-500">
+            <Card className="border-l-4 border-l-red-500 dark:bg-gray-800 dark:border-gray-700">
               <CardContent className="pt-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-gray-600">Đã hủy</p>
+                    <p className="text-sm font-medium text-gray-600 dark:text-gray-300">
+                      Đã hủy
+                    </p>
                     <p className="text-2xl font-bold text-red-600">
                       {bookingStats.cancelledBookings || 0}
                     </p>
                   </div>
-                  <XCircle className="h-8 w-8 text-gray-400" />
+                  <XCircle className="h-8 w-8 text-gray-400 dark:text-gray-500" />
                 </div>
               </CardContent>
             </Card>
 
-            <Card className="border-l-4 border-l-green-500">
+            <Card className="border-l-4 border-l-green-500 dark:bg-gray-800 dark:border-gray-700">
               <CardContent className="pt-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-gray-600">
+                    <p className="text-sm font-medium text-gray-600 dark:text-gray-300">
                       Đã hoàn thành
                     </p>
                     <p className="text-2xl font-bold text-green-600">
                       {bookingStats.completedBookings || 0}
                     </p>
                   </div>
-                  <CheckCircle className="h-8 w-8 text-gray-400" />
+                  <CheckCircle className="h-8 w-8 text-gray-400 dark:text-gray-500" />
                 </div>
               </CardContent>
             </Card>
@@ -484,22 +486,31 @@ const UserDetailsModal = ({
 
           {/* Main Content Tabs */}
           <Tabs defaultValue="overview" className="w-full">
-            <TabsList className="grid w-full grid-cols-4 mb-6">
-              <TabsTrigger value="overview" className="flex items-center gap-2">
+            <TabsList className="grid w-full grid-cols-4 mb-6 dark:bg-gray-800 dark:border-gray-700">
+              <TabsTrigger
+                value="overview"
+                className="flex items-center gap-2 dark:data-[state=active]:bg-gray-700 dark:data-[state=active]:text-white"
+              >
                 <User className="h-4 w-4" />
                 Tổng quan
               </TabsTrigger>
-              <TabsTrigger value="bookings" className="flex items-center gap-2">
+              <TabsTrigger
+                value="bookings"
+                className="flex items-center gap-2 dark:data-[state=active]:bg-gray-700 dark:data-[state=active]:text-white"
+              >
                 <Plane className="h-4 w-4" />
                 Đặt chỗ
               </TabsTrigger>
-              <TabsTrigger value="activity" className="flex items-center gap-2">
+              <TabsTrigger
+                value="activity"
+                className="flex items-center gap-2 dark:data-[state=active]:bg-gray-700 dark:data-[state=active]:text-white"
+              >
                 <Activity className="h-4 w-4" />
                 Hoạt động
               </TabsTrigger>
               <TabsTrigger
                 value="documents"
-                className="flex items-center gap-2"
+                className="flex items-center gap-2 dark:data-[state=active]:bg-gray-700 dark:data-[state=active]:text-white"
               >
                 <FileText className="h-4 w-4" />
                 Tài liệu
@@ -510,9 +521,9 @@ const UserDetailsModal = ({
             <TabsContent value="overview" className="space-y-6">
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* Personal Information */}
-                <Card>
+                <Card className="dark:bg-gray-800 dark:border-gray-700">
                   <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
+                    <CardTitle className="flex items-center gap-2 dark:text-white">
                       <User className="h-5 w-5 text-blue-500" />
                       Thông tin cá nhân
                     </CardTitle>
@@ -520,25 +531,39 @@ const UserDetailsModal = ({
                   <CardContent className="space-y-4">
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-1">
-                        <p className="text-sm text-gray-500">Họ và tên</p>
-                        <p className="font-medium">{user.name}</p>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">
+                          Họ và tên
+                        </p>
+                        <p className="font-medium dark:text-white">
+                          {user.name}
+                        </p>
                       </div>
                       <div className="space-y-1">
-                        <p className="text-sm text-gray-500">Email</p>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">
+                          Email
+                        </p>
                         <div className="flex items-center gap-2">
-                          <p className="font-medium">{user.email}</p>
+                          <p className="font-medium dark:text-white">
+                            {user.email}
+                          </p>
                           {user.verifiedEmail && (
                             <CheckCircle className="h-4 w-4 text-green-500" />
                           )}
                         </div>
                       </div>
                       <div className="space-y-1">
-                        <p className="text-sm text-gray-500">Số điện thoại</p>
-                        <p className="font-medium">{user.phone}</p>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">
+                          Số điện thoại
+                        </p>
+                        <p className="font-medium dark:text-white">
+                          {user.phone}
+                        </p>
                       </div>
                       <div className="space-y-1">
-                        <p className="text-sm text-gray-500">Ngày sinh</p>
-                        <p className="font-medium">
+                        <p className="text-sm text-gray-500 dark:text-gray-400">
+                          Ngày sinh
+                        </p>
+                        <p className="font-medium dark:text-white">
                           {user.dateOfBirth
                             ? formatDate(user.dateOfBirth).split(" ")[0]
                             : "Chưa cập nhật"}
@@ -548,17 +573,21 @@ const UserDetailsModal = ({
 
                     {user.address && (
                       <div className="space-y-1">
-                        <p className="text-sm text-gray-500">Địa chỉ</p>
-                        <p className="font-medium">{user.address}</p>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">
+                          Địa chỉ
+                        </p>
+                        <p className="font-medium dark:text-white">
+                          {user.address}
+                        </p>
                       </div>
                     )}
                   </CardContent>
                 </Card>
 
                 {/* Account Information */}
-                <Card>
+                <Card className="dark:bg-gray-800 dark:border-gray-700">
                   <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
+                    <CardTitle className="flex items-center gap-2 dark:text-white">
                       <Shield className="h-5 w-5 text-green-500" />
                       Thông tin tài khoản
                     </CardTitle>
@@ -566,33 +595,41 @@ const UserDetailsModal = ({
                   <CardContent className="space-y-4">
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-1">
-                        <p className="text-sm text-gray-500">Ngày tham gia</p>
-                        <p className="font-medium">{user.joinDate}</p>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">
+                          Ngày tham gia
+                        </p>
+                        <p className="font-medium dark:text-white">
+                          {user.joinDate}
+                        </p>
                       </div>
                       <div className="space-y-1">
-                        <p className="text-sm text-gray-500">
+                        <p className="text-sm text-gray-500 dark:text-gray-400">
                           Lần đăng nhập cuối
                         </p>
-                        <p className="font-medium">
+                        <p className="font-medium dark:text-white">
                           {formatLastLogin(user.lastLogin)}
                         </p>
                       </div>
                       <div className="space-y-1">
-                        <p className="text-sm text-gray-500">Hạng thành viên</p>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">
+                          Hạng thành viên
+                        </p>
                         <div className="flex items-center gap-2">
                           <Crown className="h-4 w-4 text-purple-500" />
-                          <p className="font-medium">
+                          <p className="font-medium dark:text-white">
                             {user.loyaltyTier || "N/A"}
                           </p>
                         </div>
                       </div>
                       <div className="space-y-1">
-                        <p className="text-sm text-gray-500">Xác thực email</p>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">
+                          Xác thực email
+                        </p>
                         <div className="flex items-center gap-2">
                           {user.verifiedEmail ? (
                             <>
                               <CheckCircle className="h-4 w-4 text-green-500" />
-                              <span className="text-green-600 font-medium">
+                              <span className="text-green-600 font-medium dark:text-green-400">
                                 Đã xác thực
                               </span>
                             </>
@@ -633,13 +670,13 @@ const UserDetailsModal = ({
 
             {/* Bookings Tab */}
             <TabsContent value="bookings">
-              <Card>
+              <Card className="dark:bg-gray-800 dark:border-gray-700">
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
+                  <CardTitle className="flex items-center gap-2 dark:text-white">
                     <Plane className="h-5 w-5 text-blue-500" />
                     Lịch sử đặt chỗ
                   </CardTitle>
-                  <CardDescription>
+                  <CardDescription className="dark:text-gray-400">
                     Các chuyến bay đã đặt của khách hàng
                   </CardDescription>
                 </CardHeader>
@@ -647,13 +684,13 @@ const UserDetailsModal = ({
                   {loadingBookings ? (
                     <div className="flex items-center justify-center py-8">
                       <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
-                      <span className="ml-2 text-gray-500">
+                      <span className="ml-2 text-gray-500 dark:text-gray-400">
                         Đang tải dữ liệu...
                       </span>
                     </div>
                   ) : recentBookings.length === 0 ? (
-                    <div className="text-center py-8 text-gray-500">
-                      <Plane className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+                    <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+                      <Plane className="h-12 w-12 mx-auto mb-4 text-gray-300 dark:text-gray-600" />
                       <p>Không có lịch sử đặt chỗ</p>
                     </div>
                   ) : (
@@ -694,17 +731,17 @@ const UserDetailsModal = ({
                           return (
                             <div
                               key={booking.id}
-                              className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 transition-colors"
+                              className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 dark:border-gray-600 transition-colors"
                             >
                               <div className="flex items-center space-x-4">
-                                <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                                  <Plane className="h-5 w-5 text-blue-600" />
+                                <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900/20 rounded-full flex items-center justify-center">
+                                  <Plane className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                                 </div>
                                 <div>
-                                  <p className="font-semibold">
+                                  <p className="font-semibold dark:text-white">
                                     {booking.route}
                                   </p>
-                                  <p className="text-sm text-gray-500">
+                                  <p className="text-sm text-gray-500 dark:text-gray-400">
                                     {booking.flightNumber} • {booking.date}
                                   </p>
                                 </div>
@@ -716,7 +753,7 @@ const UserDetailsModal = ({
                                 >
                                   {statusDisplay.label}
                                 </Badge>
-                                <p className="text-lg font-bold text-green-600">
+                                <p className="text-lg font-bold text-green-600 dark:text-green-400">
                                   {booking.amount.toLocaleString("vi-VN")}đ
                                 </p>
                               </div>
@@ -749,13 +786,13 @@ const UserDetailsModal = ({
 
             {/* Activity Tab */}
             <TabsContent value="activity">
-              <Card>
+              <Card className="dark:bg-gray-800 dark:border-gray-700">
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
+                  <CardTitle className="flex items-center gap-2 dark:text-white">
                     <Activity className="h-5 w-5 text-purple-500" />
                     Nhật ký hoạt động
                   </CardTitle>
-                  <CardDescription>
+                  <CardDescription className="dark:text-gray-400">
                     Lịch sử hoạt động và thay đổi tài khoản
                   </CardDescription>
                 </CardHeader>
@@ -766,7 +803,7 @@ const UserDetailsModal = ({
                       return (
                         <div
                           key={index}
-                          className="flex items-start space-x-4 p-3 rounded-lg hover:bg-gray-50 transition-colors"
+                          className="flex items-start space-x-4 p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
                         >
                           <div
                             className={`w-10 h-10 rounded-full flex items-center justify-center ${activity.color
@@ -778,11 +815,13 @@ const UserDetailsModal = ({
                             />
                           </div>
                           <div className="flex-1">
-                            <p className="font-semibold">{activity.action}</p>
-                            <p className="text-sm text-gray-600">
+                            <p className="font-semibold dark:text-white">
+                              {activity.action}
+                            </p>
+                            <p className="text-sm text-gray-600 dark:text-gray-300">
                               {activity.description}
                             </p>
-                            <p className="text-xs text-gray-400 mt-1">
+                            <p className="text-xs text-gray-400 mt-1 dark:text-gray-500">
                               {activity.date}
                             </p>
                           </div>
@@ -797,20 +836,22 @@ const UserDetailsModal = ({
             {/* Documents Tab */}
             <TabsContent value="documents">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <Card>
+                <Card className="dark:bg-gray-800 dark:border-gray-700">
                   <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
+                    <CardTitle className="flex items-center gap-2 dark:text-white">
                       <FileText className="h-5 w-5 text-blue-500" />
                       Tài liệu cá nhân
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
-                    <div className="flex items-center justify-between p-3 border rounded-lg">
+                    <div className="flex items-center justify-between p-3 border rounded-lg dark:border-gray-600 dark:bg-gray-700">
                       <div className="flex items-center space-x-3">
                         <FileText className="h-8 w-8 text-green-500" />
                         <div>
-                          <p className="font-medium">Hộ chiếu</p>
-                          <p className="text-sm text-gray-500">
+                          <p className="font-medium dark:text-white">
+                            Hộ chiếu
+                          </p>
+                          <p className="text-sm text-gray-500 dark:text-gray-400">
                             {user.passportNumber
                               ? "Đã cập nhật"
                               : "Chưa cập nhật"}
@@ -821,6 +862,7 @@ const UserDetailsModal = ({
                         variant="outline"
                         size="sm"
                         disabled={!user.passportNumber}
+                        className="dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-600"
                       >
                         <Eye className="h-4 w-4 mr-1" />
                         Xem
@@ -829,40 +871,48 @@ const UserDetailsModal = ({
                   </CardContent>
                 </Card>
 
-                <Card>
+                <Card className="dark:bg-gray-800 dark:border-gray-700">
                   <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
+                    <CardTitle className="flex items-center gap-2 dark:text-white">
                       <TrendingUp className="h-5 w-5 text-green-500" />
                       Thống kê sử dụng
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <div className="grid grid-cols-2 gap-4">
-                      <div className="text-center p-4 bg-blue-50 rounded-lg">
-                        <p className="text-2xl font-bold text-blue-600">
+                      <div className="text-center p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                        <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
                           {bookingStats.totalBookings || 0}
                         </p>
-                        <p className="text-sm text-gray-600">Tổng đặt chỗ</p>
+                        <p className="text-sm text-gray-600 dark:text-gray-300">
+                          Tổng đặt chỗ
+                        </p>
                       </div>
-                      <div className="text-center p-4 bg-green-50 rounded-lg">
-                        <p className="text-2xl font-bold text-green-600">
+                      <div className="text-center p-4 bg-green-50 dark:bg-green-900/20 rounded-lg">
+                        <p className="text-2xl font-bold text-green-600 dark:text-green-400">
                           {bookingStats.totalSpent?.toLocaleString("vi-VN") ||
                             0}
                           đ
                         </p>
-                        <p className="text-sm text-gray-600">Tổng chi tiêu</p>
+                        <p className="text-sm text-gray-600 dark:text-gray-300">
+                          Tổng chi tiêu
+                        </p>
                       </div>
-                      <div className="text-center p-4 bg-red-50 rounded-lg">
-                        <p className="text-2xl font-bold text-red-600">
+                      <div className="text-center p-4 bg-red-50 dark:bg-red-900/20 rounded-lg">
+                        <p className="text-2xl font-bold text-red-600 dark:text-red-400">
                           {bookingStats.cancelledBookings || 0}
                         </p>
-                        <p className="text-sm text-gray-600">Đã hủy</p>
+                        <p className="text-sm text-gray-600 dark:text-gray-300">
+                          Đã hủy
+                        </p>
                       </div>
-                      <div className="text-center p-4 bg-emerald-50 rounded-lg">
-                        <p className="text-2xl font-bold text-emerald-600">
+                      <div className="text-center p-4 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg">
+                        <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">
                           {bookingStats.completedBookings || 0}
                         </p>
-                        <p className="text-sm text-gray-600">Đã hoàn thành</p>
+                        <p className="text-sm text-gray-600 dark:text-gray-300">
+                          Đã hoàn thành
+                        </p>
                       </div>
                     </div>
                   </CardContent>

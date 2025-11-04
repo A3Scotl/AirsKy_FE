@@ -228,7 +228,7 @@ export function DestinationSection() {
   }
 
   return (
-    <section className="py-16 bg-[#f9fafb] dark:bg-gray-800">
+    <section className="py-12 sm:py-16 bg-[#f9fafb] dark:bg-gray-800">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-12">
           <h2 className="text-3xl font-bold text-[#111827] dark:text-white mb-4">
@@ -251,7 +251,9 @@ export function DestinationSection() {
           }}
           autoplay={{ delay: 3000, disableOnInteraction: false }}
           breakpoints={{
+            480: { slidesPerView: 1.2 },
             640: { slidesPerView: 2 },
+            768: { slidesPerView: 3 },
             1024: { slidesPerView: 4 },
           }}
         >

@@ -88,14 +88,14 @@ const CheckInSuccess = ({ booking, onNewCheckIn, onDownload, onEmail }) => {
   return (
     <div className="space-y-6">
       {/* Success Header */}
-      <Card className="border-green-200 bg-green-50">
+      <Card className="border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950">
         <CardContent className="pt-6">
           <div className="text-center">
-            <CheckCircle className="w-16 h-16 text-green-600 mx-auto mb-4" />
-            <h2 className="text-2xl font-bold text-green-800 mb-2">
+            <CheckCircle className="w-16 h-16 text-green-600 dark:text-green-400 mx-auto mb-4" />
+            <h2 className="text-2xl font-bold text-green-800 dark:text-green-200 mb-2">
               Check-in thành công!
             </h2>
-            <p className="text-green-700">
+            <p className="text-green-700 dark:text-green-300">
               Chúc mừng! Bạn đã hoàn tất thủ tục check-in online. Vui lòng đến
               sân bay đúng giờ và mang theo thẻ lên máy bay.
             </p>
@@ -106,7 +106,7 @@ const CheckInSuccess = ({ booking, onNewCheckIn, onDownload, onEmail }) => {
       {/* Boarding Pass */}
       <Card className="shadow-lg">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
+          <CardTitle className="flex items-center gap-2 dark:text-white">
             <Plane className="w-5 h-5 text-blue-500" />
             Thẻ lên máy bay điện tử
           </CardTitle>
@@ -132,37 +132,47 @@ const CheckInSuccess = ({ booking, onNewCheckIn, onDownload, onEmail }) => {
                 {/* Flight Info */}
                 <div className="space-y-4">
                   <div>
-                    <p className="text-blue-100 text-sm">Mã đặt chỗ</p>
-                    <p className="text-xl font-bold">
+                    <p className="text-blue-100 dark:text-blue-200 text-sm">
+                      Mã đặt chỗ
+                    </p>
+                    <p className="text-xl font-bold dark:text-white">
                       {booking.bookingCode || booking.code}
                     </p>
                   </div>
 
                   <div>
-                    <p className="text-blue-100 text-sm">Hành khách</p>
-                    <p className="font-semibold">
+                    <p className="text-blue-100 dark:text-blue-200 text-sm">
+                      Hành khách
+                    </p>
+                    <p className="font-semibold dark:text-white">
                       {booking.passenger || "N/A"}
                     </p>
                   </div>
 
                   <div>
-                    <p className="text-blue-100 text-sm">Chuyến bay</p>
-                    <p className="font-semibold">
+                    <p className="text-blue-100 dark:text-blue-200 text-sm">
+                      Chuyến bay
+                    </p>
+                    <p className="font-semibold dark:text-white">
                       {booking.flight || booking.flightNumber || "N/A"}
                     </p>
                   </div>
 
                   <div>
-                    <p className="text-blue-100 text-sm">Chỗ ngồi</p>
-                    <p className="font-semibold text-yellow-300">
+                    <p className="text-blue-100 dark:text-blue-200 text-sm">
+                      Chỗ ngồi
+                    </p>
+                    <p className="font-semibold text-yellow-300 dark:text-yellow-200">
                       {booking.seat || booking.seatNumber || "N/A"}
                     </p>
                   </div>
 
                   {booking.ticketPrice && (
                     <div>
-                      <p className="text-blue-100 text-sm">Giá vé</p>
-                      <p className="font-semibold">
+                      <p className="text-blue-100 dark:text-blue-200 text-sm">
+                        Giá vé
+                      </p>
+                      <p className="font-semibold dark:text-white">
                         {new Intl.NumberFormat("vi-VN", {
                           style: "currency",
                           currency: "VND",
@@ -173,8 +183,10 @@ const CheckInSuccess = ({ booking, onNewCheckIn, onDownload, onEmail }) => {
 
                   {booking.checkinId && (
                     <div>
-                      <p className="text-blue-100 text-sm">Mã check-in</p>
-                      <p className="font-semibold text-yellow-300">
+                      <p className="text-blue-100 dark:text-blue-200 text-sm">
+                        Mã check-in
+                      </p>
+                      <p className="font-semibold text-yellow-300 dark:text-yellow-200">
                         {booking.checkinId}
                       </p>
                     </div>
@@ -186,51 +198,75 @@ const CheckInSuccess = ({ booking, onNewCheckIn, onDownload, onEmail }) => {
                   <div className="bg-white p-4 rounded-lg mb-4">
                     <QrCode className="w-24 h-24 text-gray-800" />
                   </div>
-                  <p className="text-sm text-blue-100 text-center">
+                  <p className="text-sm text-blue-100 dark:text-blue-200 text-center">
                     Quét mã QR tại sân bay
                   </p>
                 </div>
               </div>
 
               {/* Flight Route */}
-              <div className="mt-6 pt-4 border-t border-blue-400">
+              <div className="mt-6 pt-4 border-t border-blue-400 dark:border-blue-500">
                 <div className="flex items-center justify-center gap-4 mb-4">
                   <div className="text-center">
-                    <p className="text-blue-100 text-xs">Từ</p>
-                    <p className="text-2xl font-bold">
+                    <p className="text-blue-100 dark:text-blue-200 text-xs">
+                      Từ
+                    </p>
+                    <p className="text-2xl font-bold dark:text-white">
                       {booking.from || "N/A"}
                     </p>
                   </div>
-                  <Plane className="w-6 h-6 text-blue-200" />
+                  <Plane className="w-6 h-6 text-blue-200 dark:text-blue-300" />
                   <div className="text-center">
-                    <p className="text-blue-100 text-xs">Đến</p>
-                    <p className="text-2xl font-bold">{booking.to || "N/A"}</p>
+                    <p className="text-blue-100 dark:text-blue-200 text-xs">
+                      Đến
+                    </p>
+                    <p className="text-2xl font-bold dark:text-white">
+                      {booking.to || "N/A"}
+                    </p>
                   </div>
                 </div>
 
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                   <div>
-                    <p className="text-blue-100">Ngày bay</p>
-                    <p className="font-medium">{flightDateTime.date}</p>
+                    <p className="text-blue-100 dark:text-blue-200">Ngày bay</p>
+                    <p className="font-medium dark:text-white">
+                      {flightDateTime.date}
+                    </p>
                   </div>
                   <div>
-                    <p className="text-blue-100">Giờ khởi hành</p>
-                    <p className="font-medium">{flightDateTime.time}</p>
+                    <p className="text-blue-100 dark:text-blue-200">
+                      Giờ khởi hành
+                    </p>
+                    <p className="font-medium dark:text-white">
+                      {flightDateTime.time}
+                    </p>
                   </div>
                   <div>
-                    <p className="text-blue-100">Cửa ra máy bay</p>
-                    <p className="font-medium">{booking.gate || "TBD"}</p>
+                    <p className="text-blue-100 dark:text-blue-200">
+                      Cửa ra máy bay
+                    </p>
+                    <p className="font-medium dark:text-white">
+                      {booking.gate || "TBD"}
+                    </p>
                   </div>
                   <div>
-                    <p className="text-blue-100">Trạng thái</p>
-                    <p className="font-medium text-green-300">Đã check-in</p>
+                    <p className="text-blue-100 dark:text-blue-200">
+                      Trạng thái
+                    </p>
+                    <p className="font-medium text-green-300 dark:text-green-200">
+                      Đã check-in
+                    </p>
                   </div>
                 </div>
 
                 {booking.checkinId && (
                   <div className="mt-4 text-center">
-                    <p className="text-blue-100 text-xs">Mã check-in</p>
-                    <p className="text-sm font-medium">{booking.checkinId}</p>
+                    <p className="text-blue-100 dark:text-blue-200 text-xs">
+                      Mã check-in
+                    </p>
+                    <p className="text-sm font-medium dark:text-white">
+                      {booking.checkinId}
+                    </p>
                   </div>
                 )}
               </div>
@@ -242,7 +278,7 @@ const CheckInSuccess = ({ booking, onNewCheckIn, onDownload, onEmail }) => {
       {/* Important Information */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-orange-700">
+          <CardTitle className="text-orange-700 dark:text-orange-400">
             Thông tin quan trọng
           </CardTitle>
         </CardHeader>
@@ -306,9 +342,9 @@ const CheckInSuccess = ({ booking, onNewCheckIn, onDownload, onEmail }) => {
       </div>
 
       {emailSent && (
-        <Alert className="border-green-200 bg-green-50">
-          <CheckCircle className="h-4 w-4 text-green-600" />
-          <AlertDescription className="text-green-800">
+        <Alert className="border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950">
+          <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400" />
+          <AlertDescription className="text-green-800 dark:text-green-200">
             Thẻ lên máy bay đã được gửi đến email của bạn!
           </AlertDescription>
         </Alert>
@@ -326,7 +362,7 @@ const CheckInSuccess = ({ booking, onNewCheckIn, onDownload, onEmail }) => {
       </div>
 
       {/* Footer Note */}
-      <div className="text-center text-sm text-gray-600 bg-gray-50 p-4 rounded-lg">
+      <div className="text-center text-sm text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-800 p-4 rounded-lg">
         <p>
           Cảm ơn bạn đã chọn AirSky. Chúc bạn có một chuyến bay an toàn và thoải
           mái!

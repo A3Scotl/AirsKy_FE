@@ -298,7 +298,7 @@ const ReviewPage = () => {
       columnHelper.accessor("userName", {
         header: "Người dùng",
         cell: (info) => (
-          <div className="font-medium text-gray-900">
+          <div className="font-medium text-gray-900 dark:text-white">
             {info.getValue() || "N/A"}
           </div>
         ),
@@ -635,7 +635,7 @@ const ReviewPage = () => {
                 placeholder="Tìm kiếm theo tên người dùng, mã chuyến bay..."
                 value={globalFilter ?? ""}
                 onChange={(event) => setGlobalFilter(event.target.value)}
-                className="pl-10"
+                className="pl-10 dark:text-black"
               />
             </div>
           </div>

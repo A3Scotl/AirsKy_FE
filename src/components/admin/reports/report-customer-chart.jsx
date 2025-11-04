@@ -60,9 +60,13 @@ const CustomerChart = ({
   const users = Array.isArray(initialUsers) ? initialUsers : [];
   if (isLoading) {
     return (
-      <Card className={detailed ? "col-span-full" : ""}>
+      <Card
+        className={
+          detailed ? "col-span-full" : "dark:bg-gray-900 dark:border-gray-700"
+        }
+      >
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
+          <CardTitle className="flex items-center gap-2 dark:text-white">
             <Users className="h-5 w-5" />
             Thống Kê Khách Hàng
           </CardTitle>
@@ -71,8 +75,8 @@ const CustomerChart = ({
           <div className="space-y-4">
             {[...Array(3)].map((_, i) => (
               <div key={i} className="animate-pulse">
-                <div className="h-4 bg-gray-200 rounded mb-2"></div>
-                <div className="h-8 bg-gray-200 rounded"></div>
+                <div className="h-4 bg-gray-200 rounded mb-2 dark:bg-gray-700"></div>
+                <div className="h-8 bg-gray-200 rounded dark:bg-gray-700"></div>
               </div>
             ))}
           </div>
@@ -83,19 +87,25 @@ const CustomerChart = ({
 
   if (!users || users.length === 0) {
     return (
-      <Card className={detailed ? "col-span-full" : ""}>
+      <Card
+        className={
+          detailed ? "col-span-full" : "dark:bg-gray-900 dark:border-gray-700"
+        }
+      >
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
+          <CardTitle className="flex items-center gap-2 dark:text-white">
             <Users className="h-5 w-5" />
             Thống Kê Khách Hàng
           </CardTitle>
-          <CardDescription>
+          <CardDescription className="dark:text-gray-400">
             Phân tích khách hàng và nhân khẩu học
           </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="text-center py-8">
-            <p className="text-gray-500">Không có dữ liệu khách hàng</p>
+            <p className="text-gray-500 dark:text-gray-400">
+              Không có dữ liệu khách hàng
+            </p>
           </div>
         </CardContent>
       </Card>
@@ -436,30 +446,36 @@ const CustomerChart = ({
   };
 
   return (
-    <Card className={detailed ? "col-span-full" : ""}>
+    <Card
+      className={
+        detailed ? "col-span-full" : "dark:bg-gray-900 dark:border-gray-700"
+      }
+    >
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
+        <CardTitle className="flex items-center gap-2 dark:text-white">
           <Users className="h-5 w-5" />
           Phân tích khách hàng
         </CardTitle>
-        <CardDescription>
+        <CardDescription className="dark:text-gray-400">
           Thông tin nhân khẩu học và hành vi của khách hàng
         </CardDescription>
       </CardHeader>
       <CardContent>
         {/* Key Customer Metrics */}
         <div className="grid grid-cols-2 md:grid-cols-2 gap-4 mb-6">
-          <div className="text-center p-4 bg-blue-50 rounded-lg border">
-            <div className="text-2xl font-bold text-blue-600">
+          <div className="text-center p-4 bg-blue-50 rounded-lg border dark:bg-blue-900/20 dark:border-blue-800">
+            <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
               {formatNumber(totalCustomers)}
             </div>
-            <div className="text-sm text-gray-600">Tổng Khách Hàng</div>
+            <div className="text-sm text-gray-600 dark:text-gray-400">
+              Tổng Khách Hàng
+            </div>
           </div>
-          <div className="text-center p-4 bg-green-50 rounded-lg border">
-            <div className="text-2xl font-bold text-green-600">
+          <div className="text-center p-4 bg-green-50 rounded-lg border dark:bg-green-900/20 dark:border-green-800">
+            <div className="text-2xl font-bold text-green-600 dark:text-green-400">
               {newCustomersRate.toFixed(1)}%
             </div>
-            <div className="text-sm text-gray-600">
+            <div className="text-sm text-gray-600 dark:text-gray-400">
               Khách Hàng Mới (30 ngày)
             </div>
           </div>
@@ -469,7 +485,7 @@ const CustomerChart = ({
         <div className="space-y-6">
           {/* Customer Activity Line Chart */}
           <div>
-            <h4 className="font-medium mb-3 flex items-center gap-2">
+            <h4 className="font-medium mb-3 flex items-center gap-2 dark:text-white">
               <UserCheck className="h-4 w-4" />
               Xu Hướng Hoạt Động Khách Hàng
             </h4>
@@ -490,11 +506,13 @@ const CustomerChart = ({
               <div className="space-y-2">
                 {Object.entries(loyaltyTiers).map(([tier, count]) => (
                   <div key={tier} className="flex justify-between items-center">
-                    <span className="text-sm capitalize">{tier}</span>
+                    <span className="text-sm capitalize dark:text-white">
+                      {tier}
+                    </span>
                     <div className="flex items-center gap-2">
-                      <div className="w-20 bg-gray-200 rounded-full h-2">
+                      <div className="w-20 bg-gray-200 rounded-full h-2 dark:bg-gray-700">
                         <div
-                          className="bg-purple-600 h-2 rounded-full"
+                          className="bg-purple-600 h-2 rounded-full dark:bg-purple-500"
                           style={{
                             width: `${
                               totalCustomers > 0
@@ -504,7 +522,7 @@ const CustomerChart = ({
                           }}
                         ></div>
                       </div>
-                      <span className="text-sm font-medium w-8 text-right">
+                      <span className="text-sm font-medium w-8 text-right dark:text-white">
                         {count}
                       </span>
                     </div>
@@ -515,7 +533,9 @@ const CustomerChart = ({
 
             {/* Auth Providers */}
             <div className="space-y-3">
-              <h5 className="font-medium text-sm">Các Hình thức đăng nhập</h5>
+              <h5 className="font-medium text-sm dark:text-white">
+                Các Hình thức đăng nhập
+              </h5>
               <div className="space-y-2">
                 {Object.entries(authProviders).map(([provider, count]) => (
                   <div
@@ -575,7 +595,7 @@ const CustomerChart = ({
                       )
                       .toUpperCase()}
                   </div>
-                  <div className="text-xs text-gray-600">
+                  <div className="text-xs text-gray-600 dark:text-gray-400">
                     Đăng Nhập Phổ Biến
                   </div>
                 </div>

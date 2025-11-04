@@ -7,6 +7,7 @@ import {
   Instagram,
   Linkedin,
 } from "lucide-react";
+import { Link } from "react-router-dom";
 
 const footerData = {
   quickTags: [
@@ -134,15 +135,11 @@ export function Footer() {
               Đăng ký nhận bản tin để nhận ưu đãi độc quyền, mẹo du lịch và cảm
               hứng điểm đến mỗi tuần.
             </p>
-            <div className="flex flex-col sm:flex-row gap-4 max-w-md mx-auto">
-              <input
-                type="email"
-                placeholder="Nhập địa chỉ email của bạn"
-                className="flex-1 px-6 py-4 bg-white/10 backdrop-blur-sm text-white placeholder-gray-400 rounded-full border border-white/20 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
-              <button className="bg-gradient-to-r from-blue-600 to-cyan-600 px-8 py-4 rounded-full hover:from-blue-700 hover:to-cyan-700 transition-all duration-200 font-semibold text-white shadow-lg hover:shadow-xl transform hover:scale-105">
-                Đăng ký
-              </button>
+            <div className="flex items-center justify-center max-w-md mx-auto">
+             
+              <Link to="/auth" className="bg-gradient-to-r from-blue-600 to-cyan-600 px-8 py-4 rounded-full hover:from-blue-700 hover:to-cyan-700 transition-all duration-200 font-semibold text-white shadow-lg hover:shadow-xl transform hover:scale-105">
+                Đăng ký ngay
+              </Link>
             </div>
           </div>
         </div>

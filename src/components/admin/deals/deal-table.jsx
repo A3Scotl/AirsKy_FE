@@ -291,12 +291,12 @@ const DealTable = ({
                         />
                       </TableCell>
                       <TableCell>
-                        <div className="font-mono font-medium text-gray-900">
+                        <div className="font-mono font-medium text-gray-900 dark:text-white">
                           {deal.dealCode}
                         </div>
                       </TableCell>
                       <TableCell>
-                        <div className="font-medium text-gray-900">
+                        <div className="font-medium text-gray-900 dark:text-white">
                           {deal.title}
                         </div>
                       </TableCell>

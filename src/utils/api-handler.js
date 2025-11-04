@@ -22,7 +22,7 @@ export const apiHandler = async (method, url, data = null, config = {}) => {
           // Don't set Content-Type for FormData - let browser set it automatically
         },
       };
-      
+
       for (let [key, value] of data.entries()) {
         if (value instanceof File) {
           console.log(
@@ -51,7 +51,10 @@ export const apiHandler = async (method, url, data = null, config = {}) => {
       error: null,
     };
   } catch (error) {
-    console.error(`[apiHandler] API call failed: ${method.toUpperCase()} ${url}`, error);
+    console.error(
+      `[apiHandler] API call failed: ${method.toUpperCase()} ${url}`,
+      error
+    );
     console.log("Error response:", error?.response);
     console.log("Error response data:", error?.response?.data);
 
@@ -101,7 +104,12 @@ export const apiHandler = async (method, url, data = null, config = {}) => {
       toast.error(
         "Tài khoản của bạn đã bị khóa. Vui lòng liên hệ admin để mở khóa."
       );
-    } else {
+    } else if (
+      errorDetail !== "Booking not found" &&
+      !message?.toLowerCase().includes("booking not found") &&
+      message !== "Đã xảy ra lỗi không mong muốn"
+    ) {
+      // Only show toast for non-booking-not-found errors
       toast.error(message);
     }
 

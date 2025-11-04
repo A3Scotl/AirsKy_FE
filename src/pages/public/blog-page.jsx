@@ -313,7 +313,7 @@ const BlogPage = () => {
 
         {/* Featured Blogs Carousel (only show when no search term) */}
         {!searchTerm && featuredBlogs.length > 0 && (
-          <div className="py-16 bg-white">
+          <div className="py-16 bg-white dark:bg-gray-500">
             <div className="container mx-auto px-4">
               <h2 className="text-3xl font-bold text-center mb-12 text-gray-800">
                 Bài Viết Nổi Bật
@@ -377,7 +377,7 @@ const BlogPage = () => {
         )}
 
         {/* Main Content */}
-        <div className="container mx-auto px-4 py-16">
+        <div className="container mx-auto px-4 py-16 dark:bg-gray-700">
           <div className="flex flex-col lg:flex-row gap-12">
             {/* Sidebar */}
             <div className="lg:w-1/4">
@@ -414,7 +414,7 @@ const BlogPage = () => {
             <div className="lg:w-3/4">
               {/* Results Info */}
               <div className="flex flex-col md:flex-row md:justify-between md:items-center mb-8 gap-4">
-                <h2 className="text-2xl font-bold text-gray-800">
+                <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-200">
                   {searchTerm
                     ? `Kết quả tìm kiếm: "${searchTerm}"`
                     : selectedCategory

@@ -46,7 +46,7 @@ const BlogCard = ({ blog, showLikeButton = true }) => {
   };
 
   return (
-    <article className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow duration-300">
+    <article className="bg-white dark:bg-black rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow duration-300">
       {/* Featured Image */}
       {blog.featuredImage && (
         <div className="relative h-48 overflow-hidden">
@@ -66,7 +66,7 @@ const BlogCard = ({ blog, showLikeButton = true }) => {
       <div className="p-6">
         {/* Categories */}
         {blog.categories && blog.categories.length > 0 && (
-          <div className="flex flex-wrap gap-2 mb-3">
+          <div className="flex flex-wrap gap-2 mb-3 ">
             {blog.categories.map((category) => (
               <Badge
                 key={category.category_id || category.id}
@@ -80,7 +80,7 @@ const BlogCard = ({ blog, showLikeButton = true }) => {
         )}
 
         {/* Title */}
-        <h3 className="text-xl font-semibold text-gray-900 mb-2 line-clamp-2">
+        <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2 line-clamp-2">
           <Link
             to={`/blog/${blog.slug}`}
             className="hover:text-blue-600 transition-colors"

@@ -2056,7 +2056,7 @@ export function FlightSearchResults() {
           </div>
         </div>
 
-        <div className="">
+        <div className="relative">
           <SearchForm
             onSearch={handleSearch}
             initialValues={searchFormInitialValues}
@@ -2123,7 +2123,7 @@ export function FlightSearchResults() {
             <div className="mb-4 sm:mb-6">
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-3 sm:mb-4 gap-2">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <h2 className="text-lg sm:text-xl font-bold text-gray-900">
+                  <h2 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white">
                     {getResultsTitle().title}
                   </h2>
                   {getResultsTitle().showExpandButton && (
@@ -2157,7 +2157,7 @@ export function FlightSearchResults() {
                       <X className="w-4 h-4" />
                     </Button>
                   )}
-                  <p className="text-xs sm:text-sm text-gray-600">
+                  <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-200">
                     {totalItineraries > 0 && (
                       <>
                         {totalItineraries} chuyến bay tìm thấy

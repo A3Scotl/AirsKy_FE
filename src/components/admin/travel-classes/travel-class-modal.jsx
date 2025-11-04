@@ -128,7 +128,7 @@ const TravelClassModal = ({ open, onClose, onSubmit, initialData }) => {
 
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Basic Information */}
-          <Card>
+          <Card className="dark:bg-slate-800 dark:border-slate-700">
             <CardHeader className="pb-3">
               <CardTitle className="text-lg flex items-center gap-2">
                 <Info className="w-4 h-4" />
@@ -149,7 +149,11 @@ const TravelClassModal = ({ open, onClose, onSubmit, initialData }) => {
                     }
                     placeholder="Ví dụ: Economy, Business, First Class"
                     maxLength={50}
-                    className={errors.className ? "border-red-500" : ""}
+                    className={
+                      errors.className
+                        ? "border-red-500 dark:text-black"
+                        : "dark:bg-slate-900 dark:border-slate-700 dark:text-slate-50"
+                    }
                   />
                   {errors.className && (
                     <p className="text-sm text-red-500">{errors.className}</p>
@@ -169,6 +173,7 @@ const TravelClassModal = ({ open, onClose, onSubmit, initialData }) => {
                     }
                     placeholder="Mô tả các quyền lợi của hạng vé này..."
                     rows={3}
+                    className="dark:bg-slate-900 dark:border-slate-700 dark:text-slate-50"
                   />
                 </div>
               </div>
@@ -176,7 +181,7 @@ const TravelClassModal = ({ open, onClose, onSubmit, initialData }) => {
           </Card>
 
           {/* Pricing Information */}
-          <Card>
+          <Card className="dark:bg-slate-800 dark:border-slate-700">
             <CardHeader className="pb-3">
               <CardTitle className="text-lg flex items-center gap-2">
                 <DollarSign className="w-4 h-4" />
@@ -205,7 +210,11 @@ const TravelClassModal = ({ open, onClose, onSubmit, initialData }) => {
                       )
                     }
                     placeholder="0"
-                    className={errors.cancellationFee ? "border-red-500" : ""}
+                    className={
+                      errors.cancellationFee
+                        ? "border-red-500"
+                        : "dark:bg-slate-900 dark:border-slate-700 dark:text-slate-50"
+                    }
                   />
                   {errors.cancellationFee && (
                     <p className="text-sm text-red-500">
@@ -221,7 +230,7 @@ const TravelClassModal = ({ open, onClose, onSubmit, initialData }) => {
           </Card>
 
           {/* Policy Settings */}
-          <Card>
+          <Card className="dark:bg-slate-800 dark:border-slate-700">
             <CardHeader className="pb-3">
               <CardTitle className="text-lg">Chính sách</CardTitle>
             </CardHeader>
@@ -277,7 +286,7 @@ const TravelClassModal = ({ open, onClose, onSubmit, initialData }) => {
           </Card>
 
           {/* Preview */}
-          <Card className="bg-gray-50">
+          <Card className="bg-gray-50 dark:bg-slate-800 dark:border-slate-700">
             <CardHeader className="pb-3">
               <CardTitle className="text-lg">Xem trước</CardTitle>
             </CardHeader>

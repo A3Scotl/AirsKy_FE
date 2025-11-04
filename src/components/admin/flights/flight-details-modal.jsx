@@ -532,12 +532,12 @@ const FlightDetailsModal = ({ flight, open, onClose, onEdit, onDelete }) => {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div className="absolute inset-0 bg-black/50" onClick={onClose} />
-      <div className="relative bg-white rounded-lg shadow-xl w-full max-w-7xl mx-4 max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between p-6 border-b border-gray-200">
+      <div className="relative bg-white dark:bg-gray-900 rounded-lg shadow-xl w-full max-w-7xl mx-4 max-h-[90vh] overflow-y-auto dark:text-white">
+        <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
           <div className="flex items-center space-x-3">
             <Plane className="h-6 w-6 text-blue-600" />
             <div>
-              <h2 className="text-xl font-bold text-gray-900 gap-3 flex">
+              <h2 className="text-xl font-bold text-gray-900 dark:text-white gap-3 flex">
                 {flight.flightNumber}
                 {(() => {
                   const badgeConfig = getTripTypeBadge(flight.tripType);
@@ -553,7 +553,7 @@ const FlightDetailsModal = ({ flight, open, onClose, onEdit, onDelete }) => {
               </h2>
               {/* show tripType */}
 
-              <p className="text-xl text-gray-600">
+              <p className="text-xl text-gray-600 dark:text-gray-300">
                 {flight.departureAirport.airportName} (
                 {flight.departureAirport.airportCode})
                 {flight.tripType === "round_trip" ? (
@@ -574,7 +574,12 @@ const FlightDetailsModal = ({ flight, open, onClose, onEdit, onDelete }) => {
               <StatusIcon className="h-4 w-4" />
               <span>{currentStatus.label}</span>
             </Badge>
-            <Button variant="ghost" size="sm" onClick={onClose}>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={onClose}
+              className="dark:text-gray-300 dark:hover:bg-gray-700"
+            >
               <X className="h-5 w-5" />
             </Button>
           </div>
@@ -582,14 +587,14 @@ const FlightDetailsModal = ({ flight, open, onClose, onEdit, onDelete }) => {
 
         <div className="p-6 space-y-6">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center space-x-2">
+            <Card className="dark:bg-gray-800 dark:border-gray-700">
+              <CardHeader className="dark:bg-gray-800 dark:border-gray-700">
+                <CardTitle className="flex items-center space-x-2 dark:text-white">
                   <Clock className="h-4 w-4" />
                   <span>{TEXT.flightSchedule}</span>
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
+              <CardContent className="space-y-4 dark:bg-gray-800">
                 <div className="flex justify-between items-center">
                   <div>
                     <p className="text-sm font-medium text-gray-600">
@@ -993,7 +998,11 @@ const FlightDetailsModal = ({ flight, open, onClose, onEdit, onDelete }) => {
             {formatDateTime(flight.updatedAt).time}
           </div>
           <div className="flex items-center space-x-3">
-            <Button variant="outline" onClick={() => onEdit(flight)}>
+            <Button
+              variant="outline"
+              onClick={() => onEdit(flight)}
+              className="dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
+            >
               <Edit className="h-4 w-4 mr-2" />
               {TEXT.editFlight}
             </Button>

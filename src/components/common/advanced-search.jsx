@@ -193,7 +193,7 @@ const AdvancedSearch = ({
         {showFilters && (
           <Popover open={showAdvanced} onOpenChange={setShowAdvanced}>
             <PopoverTrigger asChild>
-              <Button variant="outline" className="relative">
+              <Button variant="outline" className="relative dark:text-white">
                 <Filter className="h-4 w-4 mr-2" />
                 Bộ lọc
                 {getActiveFilterCount() > 0 && (

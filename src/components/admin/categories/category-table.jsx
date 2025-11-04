@@ -136,7 +136,7 @@ const CategoryTable = () => {
           </Button>
         ),
         cell: (info) => (
-          <div className="font-medium text-gray-900">{info.getValue()}</div>
+          <div className="font-medium text-gray-900 dark:text-white">{info.getValue()}</div>
         ),
       }),
 
@@ -154,7 +154,7 @@ const CategoryTable = () => {
       columnHelper.accessor("description", {
         header: "Mô tả",
         cell: (info) => (
-          <div className="text-sm text-gray-900 max-w-xs truncate">
+          <div className="text-sm text-gray-900 dark:text-white max-w-xs truncate">
             {info.getValue() || "Chưa có mô tả"}
           </div>
         ),
@@ -611,7 +611,7 @@ const CategoryTable = () => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h2 className="text-xl font-semibold text-gray-900">
+          <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
             Quản lý Category
           </h2>
           <p className="text-sm text-gray-600">
@@ -635,7 +635,7 @@ const CategoryTable = () => {
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             onKeyPress={handleSearchKeyPress}
-            className="w-full"
+            className="w-full dark:text-white"
           />
         </div>
         {/* Filters */}
@@ -745,7 +745,7 @@ const CategoryTable = () => {
       )}
 
       {/* Table */}
-      <div className="bg-white rounded-lg shadow overflow-hidden">
+      <div className="bg-white dark:bg-black rounded-lg shadow overflow-hidden">
         <Table>
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (

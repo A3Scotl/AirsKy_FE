@@ -852,7 +852,7 @@ const FareOption = ({
           className={`w-full font-semibold transition-all duration-200 ${
             isSelected
               ? "bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 shadow-lg"
-              : "bg-white border-2 border-gray-300 hover:border-blue-400 hover:bg-blue-50 text-gray-700"
+              : "bg-white border-2 border-gray-300 hover:border-blue-400 hover:bg-blue-50 text-gray-700 dark:text-white"
           }`}
           variant={isSelected ? "default" : "outline"}
         >
@@ -868,9 +868,11 @@ const FareSummary = ({ fare, onProceedToBooking }) => {
   if (!fare) return null;
 
   return (
-    <Card className="bg-blue-50 border-blue-200">
+    <Card className="bg-blue-50 dark:bg-gray-600 border-blue-200">
       <CardHeader>
-        <CardTitle className="text-blue-800">Tóm tắt đặt vé</CardTitle>
+        <CardTitle className="text-blue-800 dark:text-white">
+          Tóm tắt đặt vé
+        </CardTitle>
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
@@ -880,12 +882,12 @@ const FareSummary = ({ fare, onProceedToBooking }) => {
           </div>
           <div className="flex justify-between items-center">
             <span className="font-medium">Giá vé:</span>
-            <span className="text-xl font-bold text-blue-600">
+            <span className="text-xl font-bold text-blue-600 dark:text-white">
               {formatCurrencyVND(fare.price)}
             </span>
           </div>
           <Button
-            className="w-full bg-blue-600 hover:bg-blue-700"
+            className="w-full bg-blue-600 dark:text-white hover:bg-blue-700"
             onClick={onProceedToBooking}
           >
             Xác nhận và đặt vé
@@ -2234,7 +2236,7 @@ const FlightDetail = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8 pt-24">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-700 py-8 pt-24">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Back Button */}
         <Button
@@ -2259,10 +2261,10 @@ const FlightDetail = () => {
                   }}
                 />
                 <div>
-                  <CardTitle className="text-2xl font-bold">
+                  <CardTitle className="text-2xl font-bold dark:text-white">
                     {flightData.airline}
                   </CardTitle>
-                  <p className="text-gray-600">
+                  <p className="text-gray-600 dark:text-gray-300">
                     Chuyến bay {flightData.flightNumber}
                   </p>
                 </div>
@@ -2271,7 +2273,9 @@ const FlightDetail = () => {
                 <div className="text-3xl font-bold text-blue-600">
                   {formatCurrencyVND(flightData.totalPrice || flightData.price)}
                 </div>
-                <p className="text-sm text-gray-500">Giá từ / người</p>
+                <p className="text-sm text-gray-500 dark:text-gray-400">
+                  Giá từ / người
+                </p>
               </div>
             </div>
           </CardHeader>
@@ -2541,7 +2545,7 @@ const FlightDetail = () => {
                       <div className="w-full border-t-2 border-blue-300"></div>
                     </div>
                     <div className="relative flex justify-center">
-                      <span className="bg-gray-50 px-4 py-2">
+                      <span className="bg-gray-50 dark:bg-gray-900 px-4 py-2">
                         <Plane className="w-6 h-6 text-blue-600" />
                       </span>
                     </div>
@@ -3662,7 +3666,7 @@ const FlightDetail = () => {
                 >
                   {routeReviews.slice(0, 8).map((review) => (
                     <SwiperSlide key={review.reviewId}>
-                      <div className="bg-gray-50 rounded-lg p-4 h-full">
+                      <div className="bg-gray-50 dark:bg-gray-500 rounded-lg p-4 h-full">
                         <div className="flex items-center gap-3 mb-3">
                           <img
                             src={review.userAvatar || "/placeholder-avatar.png"}
@@ -3718,7 +3722,7 @@ const FlightDetail = () => {
 
             {/* Modal */}
             <div
-              className="fixed top-0 right-0 h-full w-1/3 bg-white border-l border-gray-200 shadow-2xl z-50 flex flex-col"
+              className="fixed top-0 right-0 h-full w-1/3 bg-white dark:bg-gray-800 border-l border-gray-200 shadow-2xl z-50 flex flex-col"
               style={{
                 width: "33.333333%",
                 height: "100vh",
@@ -3744,10 +3748,10 @@ const FlightDetail = () => {
 
               <div className="flex-1 overflow-hidden flex flex-col">
                 {/* Filters and Search */}
-                <div className="p-4 border-b bg-gray-50 space-y-3 flex-shrink-0">
+                <div className="p-4 border-b bg-gray-50 dark:bg-gray-800 space-y-3 flex-shrink-0">
                   <div className="flex gap-2">
                     <div className="flex-1">
-                      <Label className="text-xs text-gray-600 flex items-center gap-1">
+                      <Label className="text-xs text-gray-600 dark:text-white flex items-center gap-1 mb-2">
                         <Filter className="h-3 w-3" />
                         Lọc theo sao
                       </Label>
@@ -3770,7 +3774,7 @@ const FlightDetail = () => {
                     </div>
 
                     <div className="flex-1">
-                      <Label className="text-xs text-gray-600 flex items-center gap-1">
+                      <Label className="text-xs text-gray-600 dark:text-white flex items-center gap-1 mb-2">
                         <SortAsc className="h-3 w-3" />
                         Sắp xếp
                       </Label>
@@ -3800,7 +3804,7 @@ const FlightDetail = () => {
                     getPaginatedReviews().map((review) => (
                       <div
                         key={review.reviewId}
-                        className="bg-white border rounded-lg p-4 shadow-sm"
+                        className="bg-white dark:bg-gray-400 border rounded-lg p-4 shadow-sm"
                       >
                         <div className="flex items-center gap-3 mb-3">
                           <img

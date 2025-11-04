@@ -3,7 +3,7 @@ import { Plane } from "lucide-react";
 
 const LoadingPage = () => {
   return (
-    <div className="fixed inset-0 bg-white bg-opacity-80 backdrop-blur-sm flex flex-col items-center justify-center z-[9999]">
+    <div className="fixed inset-0 bg-white dark:bg-black bg-opacity-80 backdrop-blur-sm flex flex-col items-center justify-center z-[9999]">
       <div className="flex flex-col items-center text-center">
         {/* Hiệu ứng máy bay cất cánh */}
         <motion.div

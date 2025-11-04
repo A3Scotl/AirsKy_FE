@@ -34,7 +34,6 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { bookingFilters } from "@/utils/filter-configs";
 import { toast } from "sonner";
 
-
 // Import modal components
 import BookingDetailsModal from "@/components/admin/bookings/booking-details-modal";
 import BookingMetrics from "@/components/admin/bookings/booking-metrics";
@@ -95,7 +94,9 @@ const BookingTableSkeleton = ({ rows = 10 }) => (
       {Array.from({ length: rows }).map((_, i) => (
         <TableRow key={i}>
           {Array.from({ length: 9 }).map((_, j) => (
-            <TableCell key={j}><Skeleton className="h-5 w-full" /></TableCell>
+            <TableCell key={j}>
+              <Skeleton className="h-5 w-full" />
+            </TableCell>
           ))}
         </TableRow>
       ))}
@@ -105,16 +106,22 @@ const BookingTableSkeleton = ({ rows = 10 }) => (
 
 const AdminBookings = () => {
   // Consolidated state
-  const [state, setState] = useState({
-    bookings: [],
-    loading: true,
-    searchQuery: "",
-    advancedFilters: {},
-    currentPage: 1,
-    itemsPerPage: 10,
-    showDetailsModal: false,
-    selectedBooking: null,
-  }, []);
+  const [state, setState] = useState(
+    {
+      bookings: [],
+      allBookings: [], // Store all bookings for filtering
+      loading: true,
+      searchQuery: "",
+      advancedFilters: {},
+      currentPage: 1,
+      itemsPerPage: 10, // 10 phần tử/trang cho pagination
+      totalElements: 0, // Thêm totalElements từ API
+      showAll: false, // Thêm state để hiển thị tất cả
+      showDetailsModal: false,
+      selectedBooking: null,
+    },
+    []
+  );
 
   // Status and class mapping
   const statusMap = {
@@ -129,66 +136,212 @@ const AdminBookings = () => {
     First: TEXT.classFirst,
   };
 
-  // Fetch bookings on component mount
+  // Create a stable filter key for dependency tracking
+  const filterKey = useMemo(() => {
+    const key = Object.keys(state.advancedFilters)
+      .sort()
+      .map((key) => `${key}:${state.advancedFilters[key]}`)
+      .join("|");
+
+    return key;
+  }, [state.advancedFilters]);
+
+  // Fetch bookings on component mount and when filters/state changes
   useEffect(() => {
     const fetchBookings = async () => {
-      setState(prev => ({ ...prev, loading: true }));
+      setState((prev) => ({ ...prev, loading: true }));
       try {
-        const response = await bookingApi.getAllBookings({
-          page: state.currentPage - 1,
-          size: state.itemsPerPage,
-        });
-        
-        if (response.success) {
-          const mappedBookings = response.data.content.map((booking) => ({
-            id: booking.bookingId,
-            bookingRef: `BK${booking.bookingId.toString().padStart(4, "0")}`,
-            // customer: booking.contactName || "Unknow",
-            contactName: booking.contactName || "N/A",
-            contactEmail: booking.contactEmail || "N/A",
-            // email: booking.contactEmail || "N/A",
-            route: booking.flightNumber,
-            departure: booking.bookingDate,
-            passengers: booking.passengers.length,
-            class: booking.travelClass,
-            status:
-              booking.status === "CONFIRMED"
-                ? "Confirmed"
-                : booking.status === "PENDING"
-                ? "Pending"
-                : "Cancelled",
-            amount: `${booking.totalAmount.toLocaleString()} VNĐ`,
-            bookingDate: booking.createdAt,
-            passengersDetails: booking.passengers,
-            payment: booking.payment,
-            updatedAt: booking.updatedAt,
-            cancellationReason: booking.cancellationReason,
-            isRefundable: booking.travelClassDetails?.refundable || false,
-            isChangeable: booking.travelClassDetails?.changeable || false,
-          }));
+        // Check if there are active advanced filters
+        const hasActiveFilters = Object.keys(state.advancedFilters).some(
+          (key) =>
+            state.advancedFilters[key] &&
+            state.advancedFilters[key] !== "all" &&
+            state.advancedFilters[key] !== ""
+        );
+
+        let bookingsData;
+        if (hasActiveFilters) {
+          // Fetch all bookings by fetching multiple pages
+          let allBookingsData = [];
+          let page = 0;
+          const pageSize = 50; // Smaller page size to avoid API limits
+          let hasMore = true;
+          let totalFetched = 0;
+
+          try {
+            while (hasMore && page < 10) {
+              // Safety limit of 10 pages
+
+              try {
+                const response = await bookingApi.getAllBookings({
+                  page: page,
+                  size: pageSize,
+                });
+
+                if (response && response.success) {
+                  const pageData = response.data.content || response.data || [];
+
+                  allBookingsData = allBookingsData.concat(pageData);
+                  totalFetched += pageData.length;
+                  hasMore = pageData.length === pageSize;
+
+                  page++;
+                } else {
+                  console.log(
+                    "API call failed for page",
+                    page,
+                    ":",
+                    response?.message || "Unknown error"
+                  );
+                  hasMore = false;
+                }
+              } catch (pageError) {
+                console.error(`Error fetching page ${page}:`, pageError);
+                hasMore = false;
+              }
+            }
+
+            bookingsData = allBookingsData;
+          } catch (error) {
+            const pageSize = state.showAll ? 10000 : state.itemsPerPage;
+            const pageNum = state.showAll ? 0 : state.currentPage - 1;
+
+            const response = await bookingApi.getAllBookings({
+              page: pageNum,
+              size: pageSize,
+            });
+
+            if (response.success) {
+              bookingsData = response.data.content;
+            }
+          }
+        } else {
+          // Normal pagination
+          const pageSize = state.showAll ? 10000 : state.itemsPerPage;
+          const page = state.showAll ? 0 : state.currentPage - 1;
+
+          const response = await bookingApi.getAllBookings({
+            page: page,
+            size: pageSize,
+          });
+
+          if (response.success) {
+            bookingsData = response.data.content;
+
+            // Store totalElements temporarily - will be set properly after mapping
+            bookingsData._totalElements =
+              response.data.totalElements ||
+              response.data.total ||
+              bookingsData.length;
+          }
+        }
+
+        if (bookingsData) {
+          const mappedBookings = bookingsData.map((booking) => {
+            // Debug log to check passenger data
+            if (
+              booking.passengers &&
+              typeof booking.passengers !== "number" &&
+              !Array.isArray(booking.passengers)
+            ) {
+              console.log(
+                "Invalid passengers data:",
+                booking.passengers,
+                "type:",
+                typeof booking.passengers
+              );
+            }
+
+            return {
+              id: booking.bookingId,
+              bookingRef: `${booking.bookingId.toString().padStart(3, "")}`,
+              // customer: booking.contactName || "Unknow",
+              contactName: booking.contactName || "N/A",
+              contactEmail: booking.contactEmail || "N/A",
+              // email: booking.contactEmail || "N/A",
+              route: booking.flightNumber,
+              departure: booking.flightSegments?.[0]?.departureTime,
+              passengers: Array.isArray(booking.passengers)
+                ? booking.passengers.length
+                : booking.passengers || 0,
+              class: booking.travelClass,
+              status:
+                booking.status === "CONFIRMED" || booking.status === "COMPLETED"
+                  ? "Confirmed"
+                  : booking.status === "PENDING"
+                  ? "Pending"
+                  : booking.status === "CANCELLED"
+                  ? "Cancelled"
+                  : "Pending", // Default to Pending for unknown status
+              amount: `${booking.totalAmount.toLocaleString()} VNĐ`,
+              bookingDate: booking.createdAt || booking.bookingDate,
+              passengersDetails: booking.passengers,
+              payment: booking.payment,
+              updatedAt: booking.updatedAt,
+              cancellationReason: booking.cancellationReason,
+              isRefundable: booking.travelClassDetails?.refundable || false,
+              isChangeable: booking.travelClassDetails?.changeable || false,
+            };
+          });
           // Không cần sort ở client vì BE đã sắp xếp sẵn
-          setState(prev => ({ ...prev, bookings: mappedBookings, loading: false }));
+          // Check if this is for filtering (has active filters)
+          const hasActiveFilters = Object.keys(state.advancedFilters).some(
+            (key) =>
+              state.advancedFilters[key] &&
+              state.advancedFilters[key] !== "all" &&
+              state.advancedFilters[key] !== ""
+          );
+
+          if (hasActiveFilters) {
+            // When filtering, set both allBookings and bookings
+            setState((prev) => ({
+              ...prev,
+              allBookings: mappedBookings,
+              bookings: [], // Clear regular bookings when filtering
+              loading: false,
+            }));
+          } else {
+            // Normal pagination - get totalElements from bookingsData if available
+            const totalElements =
+              bookingsData._totalElements || bookingsData.length;
+
+            setState((prev) => ({
+              ...prev,
+              bookings: mappedBookings,
+              allBookings: [], // Clear allBookings when not filtering
+              loading: false,
+              totalElements: totalElements,
+            }));
+          }
         } else {
           toast.error("Không thể tải danh sách đặt vé");
-          setState(prev => ({ ...prev, loading: false }));
+          setState((prev) => ({ ...prev, loading: false }));
         }
       } catch (error) {
-        console.error("Error fetching bookings:", error);
         toast.error("Lỗi khi tải danh sách đặt vé");
-        setState(prev => ({ ...prev, loading: false }));
+        setState((prev) => ({ ...prev, loading: false }));
       }
     };
 
     fetchBookings();
-  }, [state.currentPage, state.itemsPerPage]);
+  }, [state.currentPage, state.itemsPerPage, state.showAll, filterKey]);
+
+  // Toggle show all function
+  const handleToggleShowAll = () => {
+    setState((prev) => ({
+      ...prev,
+      showAll: !prev.showAll,
+      currentPage: 1, // Reset về trang đầu khi toggle
+    }));
+  };
 
   const getStatusBadge = (status) => {
     const variants = {
-      Confirmed: "bg-green-100 text-green-800 border-green-200",
-      Pending: "bg-yellow-100 text-yellow-800 border-yellow-200",
-      Cancelled: "bg-red-100 text-red-800 border-red-200",
+      Confirmed: "bg-green-100 text-green-800",
+      Pending: "bg-yellow-100 text-yellow-800",
+      Cancelled: "bg-red-100 text-red-800",
     };
-    return variants[status] || "bg-gray-100 text-gray-800 border-gray-200";
+    return variants[status] || "bg-gray-100 text-gray-800";
   };
 
   const getClassBadge = (flightClass) => {
@@ -208,8 +361,6 @@ const AdminBookings = () => {
       showDetailsModal: true,
     }));
   };
-
-
 
   const handlePageChange = (page) => {
     setState((prev) => ({ ...prev, currentPage: page }));
@@ -239,9 +390,20 @@ const AdminBookings = () => {
     }));
   }, []);
 
-  // Filter and pagination logic
+  // Filter logic - use all bookings when filters are active, otherwise use current page
   const filteredBookings = useMemo(() => {
-    return state.bookings.filter((booking) => {
+    const hasActiveFilters = Object.keys(state.advancedFilters).some(
+      (key) =>
+        state.advancedFilters[key] &&
+        state.advancedFilters[key] !== "all" &&
+        state.advancedFilters[key] !== ""
+    );
+
+    const bookingsToFilter = hasActiveFilters
+      ? state.allBookings
+      : state.bookings;
+
+    return bookingsToFilter.filter((booking) => {
       const searchFields = [
         booking.contactName,
         booking.bookingRef,
@@ -277,32 +439,76 @@ const AdminBookings = () => {
         (state.advancedFilters.passengers !== "4+" &&
           booking.passengers === parseInt(state.advancedFilters.passengers));
 
+      const matchesBookingDate = (() => {
+        if (!state.advancedFilters.bookingDate) return true;
+
+        // Convert booking date to local date string in yyyy-MM-dd format
+        const bookingDate = new Date(booking.bookingDate);
+        const bookingDateString =
+          bookingDate.getFullYear() +
+          "-" +
+          String(bookingDate.getMonth() + 1).padStart(2, "0") +
+          "-" +
+          String(bookingDate.getDate()).padStart(2, "0");
+
+        return bookingDateString === state.advancedFilters.bookingDate;
+      })();
+
       return (
         matchesSearch &&
         matchesAdvancedStatus &&
         matchesClass &&
-        matchesPassengers
+        matchesPassengers &&
+        matchesBookingDate
       );
     });
-  }, [state.bookings, state.searchQuery, state.advancedFilters]);
+  }, [
+    state.bookings,
+    state.allBookings,
+    state.searchQuery,
+    state.advancedFilters,
+  ]);
 
-  const totalPages = Math.ceil(filteredBookings.length / state.itemsPerPage);
-  const paginatedBookings = filteredBookings.slice(
-    (state.currentPage - 1) * state.itemsPerPage,
-    state.currentPage * state.itemsPerPage
+  // Check if filters are active
+  const hasActiveFilters = Object.keys(state.advancedFilters).some(
+    (key) =>
+      state.advancedFilters[key] &&
+      state.advancedFilters[key] !== "all" &&
+      state.advancedFilters[key] !== ""
   );
+
+  // Use server-side pagination info when no filters, otherwise show all filtered results
+  const totalPages = hasActiveFilters
+    ? 1
+    : state.showAll
+    ? 1
+    : Math.ceil(state.totalElements / state.itemsPerPage);
+  const paginatedBookings = filteredBookings; // Current page data is already filtered from API
   return (
     <div className="space-y-6">
       {/* Page Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">{TEXT.pageTitle}</h1>
-          <p className="text-gray-600">{TEXT.pageDescription}</p>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+            {TEXT.pageTitle}
+          </h1>
+          <p className="text-gray-600 dark:text-gray-400">
+            {TEXT.pageDescription}
+          </p>
         </div>
+        {/* <div className="flex gap-2">
+          <Button
+            variant={state.showAll ? "default" : "outline"}
+            onClick={handleToggleShowAll}
+            className="dark:border-gray-600 dark:hover:bg-gray-700"
+          >
+            {state.showAll ? "Hiển thị phân trang" : "Hiển thị tất cả"}
+          </Button>
+        </div> */}
       </div>
 
       {/* Metrics Cards */}
-      <BookingMetrics bookings={state.bookings} />
+      <BookingMetrics isLoading={state.loading} />
 
       {/* Filters and Search */}
       <Card>
@@ -320,17 +526,16 @@ const AdminBookings = () => {
                 placeholder={TEXT.searchPlaceholder}
                 filterConfigs={bookingFilters}
                 showFilters={true}
-                className="w-full"
+                className="w-full dark:text-black"
               />
             </div>
-
-     
-     
           </div>
 
           {/* Bookings Table */}
           <div className="border rounded-lg overflow-hidden">
-            {state.loading ? <BookingTableSkeleton itemsPerPage={state.itemsPerPage} /> : (
+            {state.loading ? (
+              <BookingTableSkeleton itemsPerPage={state.itemsPerPage} />
+            ) : (
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -338,6 +543,7 @@ const AdminBookings = () => {
                     <TableHead>{TEXT.customer}</TableHead>
                     <TableHead>{TEXT.route}</TableHead>
                     <TableHead>{TEXT.departure}</TableHead>
+                    <TableHead>Ngày Đặt Vé</TableHead>
                     <TableHead>{TEXT.passengers}</TableHead>
                     <TableHead>{TEXT.class}</TableHead>
                     <TableHead>{TEXT.status}</TableHead>
@@ -346,14 +552,16 @@ const AdminBookings = () => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {paginatedBookings.map((booking) => (
-                    <TableRow key={booking.id}>
+                  {paginatedBookings.map((booking, index) => (
+                    <TableRow key={`${booking.id}-${index}`}>
                       <TableCell className="font-medium">
                         {booking.bookingRef}
                       </TableCell>
                       <TableCell>
                         <div>
-                          <div className="font-medium">{booking.contactName}</div>
+                          <div className="font-medium">
+                            {booking.contactName}
+                          </div>
                           <div className="text-sm text-gray-500">
                             {booking.contactEmail}
                           </div>
@@ -374,6 +582,24 @@ const AdminBookings = () => {
                           </div>
                           <div className="text-gray-500">
                             {new Date(booking.departure).toLocaleTimeString(
+                              "vi-VN",
+                              {
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              }
+                            )}
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="text-sm">
+                          <div>
+                            {new Date(booking.bookingDate).toLocaleDateString(
+                              "vi-VN"
+                            )}
+                          </div>
+                          <div className="text-gray-500">
+                            {new Date(booking.bookingDate).toLocaleTimeString(
                               "vi-VN",
                               {
                                 hour: "2-digit",
@@ -418,8 +644,6 @@ const AdminBookings = () => {
                           >
                             <Eye className="h-4 w-4" />
                           </Button>
-
-                         
                         </div>
                       </TableCell>
                     </TableRow>
@@ -429,22 +653,25 @@ const AdminBookings = () => {
             )}
           </div>
 
-          {/* Enhanced Pagination - only show if not loading and there are bookings */}
-          {!state.loading && filteredBookings.length > 0 && (
-            <Pagination
-              currentPage={state.currentPage}
-              totalPages={totalPages}
-              itemsPerPage={state.itemsPerPage}
-              totalItems={filteredBookings.length}
-              onPageChange={handlePageChange}
-              onPageSizeChange={handlePageSizeChange}
-              showPageSizeSelector={true}
-              showFirstLast={true}
-              showInfo={true}
-              maxVisiblePages={5}
-              className="mt-6"
-            />
-          )}
+          {/* Enhanced Pagination - only show if not loading, not showing all, no active filters, and there are bookings */}
+          {!state.loading &&
+            !state.showAll &&
+            !hasActiveFilters &&
+            state.totalElements > 0 && (
+              <Pagination
+                currentPage={state.currentPage}
+                totalPages={totalPages}
+                itemsPerPage={state.itemsPerPage}
+                totalItems={state.totalElements}
+                onPageChange={handlePageChange}
+                onPageSizeChange={handlePageSizeChange}
+                showPageSizeSelector={true}
+                showFirstLast={true}
+                showInfo={true}
+                maxVisiblePages={5}
+                className="mt-6"
+              />
+            )}
         </CardContent>
       </Card>
 
