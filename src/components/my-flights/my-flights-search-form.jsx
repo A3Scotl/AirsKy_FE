@@ -75,7 +75,7 @@ const MyFlightsSearchForm = ({
               value={formData.bookingCode}
               onChange={(e) => handleChange("bookingCode", e.target.value)}
               required
-              className="text-sm dark:text-white"
+              className="text-sm dark:text-black"
               autoFocus={initialBookingCode ? false : true}
               disabled={isLoading}
             />

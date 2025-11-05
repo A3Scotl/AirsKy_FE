@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import axios from "axios";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
-import { Loader2, CheckCircle, XCircle } from "lucide-react";
+import { Loader2, CheckCircle, XCircle, ArrowLeft } from "lucide-react";
 
 const PaymentSuccess = () => {
   const [status, setStatus] = useState("loading");
@@ -291,13 +291,21 @@ const PaymentSuccess = () => {
   // ↑ Không thêm navigate, không thêm toast — để React không trigger lại
 
   return (
-    <div className="flex flex-col items-center justify-center h-screen bg-gray-50 text-center p-6">
+    <div className="flex flex-col items-center justify-center h-screen bg-gray-50 dark:bg-gray-900 text-center p-6">
       {status === "loading" && (
         <>
           <Loader2 className="w-12 h-12 animate-spin text-blue-500 mb-4" />
-          <p className="text-lg font-medium text-gray-700">
+          <p className="text-lg font-medium text-gray-700 dark:text-white">
             Đang xử lý thanh toán, vui lòng chờ...
           </p>
+          {/* Back Button */}
+          <button
+            onClick={() => navigate(-1)}
+            className="mt-4 bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 flex items-center gap-2"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Quay lại
+          </button>
         </>
       )}
 
@@ -308,6 +316,16 @@ const PaymentSuccess = () => {
             Thanh toán thành công!
           </h1>
           <p className="text-gray-600 mt-2">{message}</p>
+
+          {/* Back Button */}
+          <button
+            onClick={() => navigate(-1)}
+            className="mt-4 bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 mr-4 flex items-center gap-2"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Quay lại
+          </button>
+
           <button
             onClick={() => {
               // Check localStorage for checkin payment info

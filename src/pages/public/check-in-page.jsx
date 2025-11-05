@@ -572,10 +572,15 @@ export default function CheckInPage() {
     const searchedPassenger = getSearchedPassenger();
     if (!searchedPassenger) return booking;
 
-    // Filter checkinEligiblePassengers to show only the searched passenger
+    // Filter checkinEligiblePassengers to show all segments for the searched passenger
+    const passengerSegments =
+      booking.checkinEligiblePassengers?.filter(
+        (passenger) => passenger.passengerId === searchedPassenger.passengerId
+      ) || [];
+
     const filteredBooking = {
       ...booking,
-      checkinEligiblePassengers: [searchedPassenger],
+      checkinEligiblePassengers: passengerSegments,
       // Filter seatTypeDetails to show only seats for the searched passenger
       seatTypeDetails:
         booking.seatTypeDetails?.filter((seatDetail) => {
@@ -609,6 +614,11 @@ export default function CheckInPage() {
   };
 
   const resolveSeatId = (bookingData, seatData, passenger) => {
+    // For INFANT passengers, no seat is required
+    if (passenger?.type === "INFANT") {
+      return null; // INFANT doesn't need a seat
+    }
+
     if (seatData?.seatId) {
       return seatData.seatId;
     }
@@ -622,9 +632,51 @@ export default function CheckInPage() {
       throw new Error("Không tìm thấy thông tin ghế");
     }
 
-    const seatDetails = bookingData.seatTypeDetails?.find(
-      (detail) => detail.seatNumber === currentSeatNumber
-    );
+    console.log("🔍 [RESOLVE_SEAT_ID] Searching for seatId:", {
+      currentSeatNumber,
+      passengerSegmentId: passenger?.segmentId,
+      passengerName:
+        passenger?.fullName || `${passenger?.firstName} ${passenger?.lastName}`,
+      availableSeatDetails: bookingData.seatTypeDetails?.map((d) => ({
+        seatNumber: d.seatNumber,
+        segmentId: d.segmentId,
+        passengerName: d.passengerName,
+        seatId: d.seatId,
+      })),
+    });
+
+    const seatDetails = bookingData.seatTypeDetails?.find((detail) => {
+      const seatMatch = detail.seatNumber === currentSeatNumber;
+
+      console.log(`🔍 [SEAT_MATCH] Checking detail:`, {
+        detailSeat: detail.seatNumber,
+        detailSegmentId: detail.segmentId,
+        detailPassengerName: detail.passengerName,
+        detailSeatId: detail.seatId,
+        seatMatch,
+        passengerSegmentId: passenger?.segmentId,
+      });
+
+      // For one-way flights, passenger.segmentId might be null
+      if (passenger?.segmentId === null) {
+        // One-way flight: just match by seat number and passenger name
+        const passengerFullName =
+          passenger.fullName ||
+          `${passenger.firstName} ${passenger.lastName}`.trim();
+        const match = seatMatch && detail.passengerName === passengerFullName;
+        console.log(`   One-way match result: ${match}`);
+        return match;
+      } else {
+        // Multi-segment flight: match by both seat number and segmentId
+        const match = seatMatch && detail.segmentId === passenger.segmentId;
+        console.log(
+          `   Multi-segment match result: ${match} (segmentId: ${detail.segmentId} === ${passenger.segmentId})`
+        );
+        return match;
+      }
+    });
+
+    console.log(`✅ [SEAT_FOUND] Final seat details:`, seatDetails);
 
     if (!seatDetails?.seatId) {
       throw new Error(`Không tìm thấy ID ghế cho ghế ${currentSeatNumber}`);
@@ -656,24 +708,95 @@ export default function CheckInPage() {
         );
       }
 
-      const filteredBooking = getFilteredBookingData();
-      const selectedPassenger =
-        filteredBooking?.checkinEligiblePassengers?.[0] || passengers[0];
-      const newSeatId = resolveSeatId(
-        filteredBooking || booking,
-        selectedSeat,
-        selectedPassenger
+      console.log("🔍 [PASSENGER_SELECTION] Debug info:", {
+        selectedSegment: selectedSegment
+          ? {
+              passengerId: selectedSegment.passengerId,
+              segmentId: selectedSegment.segmentId,
+              flightNumber: selectedSegment.flightNumber,
+            }
+          : null,
+        availablePassengers: booking.checkinEligiblePassengers?.map((p) => ({
+          passengerId: p.passengerId,
+          segmentId: p.segmentId,
+          flightNumber: p.flightNumber,
+        })),
+      });
+
+      // Get the correct passenger for the selected segment
+      let selectedPassenger;
+      if (selectedSegment) {
+        // Find passenger that matches the selectedSegment
+        selectedPassenger =
+          booking.checkinEligiblePassengers?.find(
+            (p) =>
+              p.passengerId === selectedSegment.passengerId &&
+              p.segmentId === selectedSegment.segmentId
+          ) || selectedSegment;
+      } else {
+        // Fallback to filtered booking
+        const filteredBooking = getFilteredBookingData();
+        selectedPassenger =
+          filteredBooking?.checkinEligiblePassengers?.[0] || passengers[0];
+      }
+
+      console.log("✅ [PASSENGER_SELECTED] Final selected passenger:", {
+        passengerId: selectedPassenger?.passengerId,
+        segmentId: selectedPassenger?.segmentId,
+        flightNumber: selectedPassenger?.flightNumber,
+        seatNumber: selectedPassenger?.seatNumber,
+      });
+
+      const newSeatId = resolveSeatId(booking, selectedSeat, selectedPassenger);
+
+      // For INFANT passengers, seatId can be null
+      if (
+        selectedPassenger?.type !== "INFANT" &&
+        (typeof newSeatId === "string" || !newSeatId)
+      ) {
+        throw new Error(`Seat ID không hợp lệ: ${newSeatId}`);
+      }
+
+      const finalSegmentId =
+        selectedPassenger?.segmentId || selectedSegment?.segmentId;
+
+      // Validate that seat ID belongs to the correct segment
+      const seatValidation = booking.seatTypeDetails?.find(
+        (d) =>
+          d.seatId === newSeatId ||
+          d.seatNumber === selectedPassenger?.seatNumber
       );
 
-      if (typeof newSeatId === "string" || !newSeatId) {
-        throw new Error(`Seat ID không hợp lệ: ${newSeatId}`);
+      console.log("🔍 [SEAT_VALIDATION] Seat ID validation:", {
+        newSeatId,
+        finalSegmentId,
+        selectedSeat: selectedPassenger?.seatNumber,
+        seatValidation,
+        expectedSegmentId: finalSegmentId,
+        actualSegmentFromSeat: seatValidation?.segmentId,
+        seatIdBelongsToCorrectSegment:
+          seatValidation?.segmentId === finalSegmentId,
+      });
+
+      // CRITICAL: Validate seat belongs to correct segment
+      if (seatValidation && seatValidation.segmentId !== finalSegmentId) {
+        console.error(
+          "❌ SEAT ID MISMATCH! Seat belongs to different segment:",
+          {
+            seatId: newSeatId,
+            seatSegment: seatValidation.segmentId,
+            expectedSegment: finalSegmentId,
+          }
+        );
       }
 
       const checkinData = {
         bookingCode: booking.bookingCode,
+        passengerFullName:
+          selectedPassenger.fullName ||
+          `${selectedPassenger.firstName} ${selectedPassenger.lastName}`.trim(),
         passengerId: selectedPassenger.passengerId,
-        segmentId: selectedSegment?.segmentId, // ✅ Thêm segmentId cho roundtrip check-in
-        newSeatId: newSeatId,
+        seatId: newSeatId?.toString(), // Convert to string as per API spec
       };
 
       console.log("📤 [CHECK-IN] Form data gửi về backend:", {
@@ -695,6 +818,8 @@ export default function CheckInPage() {
           passengerId: selectedPassenger.passengerId,
           fullName: selectedPassenger.fullName,
           seatNumber: selectedPassenger.seatNumber,
+          segmentId: selectedPassenger.segmentId,
+          flightNumber: selectedPassenger.flightNumber,
         },
       });
 
@@ -709,6 +834,8 @@ export default function CheckInPage() {
 
       if (response.success && response.data) {
         const checkinResponse = response.data;
+
+        // Update the booking with check-in response
         const updatedBooking = {
           ...booking,
           ...checkinResponse,
@@ -719,10 +846,14 @@ export default function CheckInPage() {
 
         setBooking(updatedBooking);
 
-        if (
-          checkinResponse.paymentRequired &&
-          checkinResponse.totalCharge > 0
-        ) {
+        // Update the selected passenger's check-in status
+        if (checkinResponse.boardingpassurl && selectedPassenger) {
+          selectedPassenger.boardingpassurl = checkinResponse.boardingpassurl;
+          selectedPassenger.checkinStatus = "ALREADY_CHECKED_IN";
+          selectedPassenger.checkedIn = true;
+        }
+
+        if (checkinResponse.totalCharge > 0) {
           setAdditionalCost(checkinResponse.totalCharge);
           toast.info("Cần thanh toán phí phát sinh để hoàn tất check-in");
         } else {
@@ -1138,14 +1269,14 @@ export default function CheckInPage() {
 
   // ... rest of the functions remain the same (handleDownloadBoardingPass, handleEmailBoardingPass, etc.)
 
-  const handleSegmentSelect = (passenger) => {
+  const handlePassengerSelect = (passenger) => {
     setSelectedSegment(passenger);
-    // Reset seat and services when changing segments
+    // Reset seat and services when changing passengers
     setSelectedSeat(null);
     setSelectedServices([]);
     setAdditionalCost(0);
     toast.success(
-      `Đã chọn check-in chuyến ${passenger.segmentOrder}: ${passenger.flightNumber}`
+      `Đã chọn check-in cho hành khách: ${passenger.firstName} ${passenger.lastName}`
     );
   };
 
@@ -1181,17 +1312,17 @@ export default function CheckInPage() {
         return (
           <CheckInBookingDetails
             booking={getFilteredBookingData()}
-            selectedSegment={selectedSegment}
+            selectedPassenger={selectedSegment}
             onProceed={handleProceedToSeatSelection}
             onBack={handleBack}
-            onSegmentSelect={handleSegmentSelect}
+            onPassengerSelect={handlePassengerSelect}
           />
         );
       case "seat-selection":
         return (
           <CheckInSeatSelection
             booking={getFilteredBookingData()}
-            selectedSegment={selectedSegment}
+            selectedPassenger={selectedSegment}
             onSelectSeat={handleSelectSeat}
             onConfirm={handleConfirmCheckIn}
             onBack={handleBack}

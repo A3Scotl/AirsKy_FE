@@ -8,7 +8,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/auth-context";
 import { jwtDecode } from "jwt-decode";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { authApi } from "@/apis/auth-api";
 // Import GoogleLoginButton lazily to avoid initialization issues
 const GoogleLoginButton = lazy(() => import("./google-login-button"));
@@ -241,12 +241,17 @@ export default function LoginForm({ setCurrentView }) {
           <div className="flex justify-between items-center h-16">
             <button
               onClick={() => window.history.back()}
-              className="flex items-center text-gray-600 hover:text-gray-900 transition-colors dark:text-gray-300 dark:hover:text-white"
+              disabled={loading}
+              className={`flex items-center text-gray-600 hover:text-gray-900 transition-colors dark:text-gray-300 dark:hover:text-white ${
+                loading ? "opacity-50 cursor-not-allowed" : ""
+              }`}
             >
               <ArrowLeft className="w-5 h-5 mr-2" />
               Quay lại
             </button>
-            <h1 className="text-xl font-bold text-blue-600">AirSky</h1>
+            <Link to="/" className="text-xl font-bold text-blue-600">
+              AirSky
+            </Link>
             <div className="w-16" />
           </div>
         </div>
@@ -434,7 +439,10 @@ export default function LoginForm({ setCurrentView }) {
                   <button
                     type="button"
                     onClick={() => setCurrentView("register")}
-                    className="text-blue-600 hover:underline font-medium"
+                    disabled={loading}
+                    className={`text-blue-600 hover:underline font-medium ${
+                      loading ? "opacity-50 cursor-not-allowed" : ""
+                    }`}
                   >
                     Đăng ký
                   </button>

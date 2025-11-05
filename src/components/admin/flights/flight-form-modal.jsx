@@ -30,6 +30,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
+import { formatCurrencyVND } from "@/utils/currency-utils";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import ConflictModal from "./conflict-modal";
@@ -156,8 +157,10 @@ const FlightFormModal = ({
   const [airlines, setAirlines] = useState([]);
   const [aircrafts, setAircrafts] = useState([]);
   const [gates, setGates] = useState([]);
+  const [loading, setLoading] = useState(false);
 
   const [showConflictModal, setShowConflictModal] = useState(false);
+  const [isWithin24Hours, setIsWithin24Hours] = useState(false);
 
   // Calculate minimum date and time constraints
   const today = new Date();
@@ -225,6 +228,23 @@ const FlightFormModal = ({
       setGates([]);
     }
   }, [formData.departureAirportId, open]);
+
+  // Check if departure time is within 24 hours
+  useEffect(() => {
+    if (formData.departureDate && formData.departureTime) {
+      const departureDateTime = new Date(formData.departureDate);
+      const [hours, minutes] = formData.departureTime.split(":").map(Number);
+      departureDateTime.setHours(hours, minutes, 0, 0);
+
+      const now = new Date();
+      const timeDiff = departureDateTime.getTime() - now.getTime();
+      const hoursDiff = timeDiff / (1000 * 60 * 60);
+
+      setIsWithin24Hours(hoursDiff <= 24 && hoursDiff > 0);
+    } else {
+      setIsWithin24Hours(false);
+    }
+  }, [formData.departureDate, formData.departureTime]);
 
   // Initialize form data for edit mode
   useEffect(() => {
@@ -513,25 +533,44 @@ const FlightFormModal = ({
       return toast.error("Vui lòng kiểm tra lỗi");
     }
 
+    setLoading(true);
     const loadingToast = toast.loading(isEditMode ? "Cập nhật..." : "Tạo...");
     try {
+      let finalBasePrice = parseFloat(formData.basePrice) || 0;
+
+      // Kiểm tra thời gian khởi hành trong vòng 24h
+      const departureDateTime = new Date(
+        `${formData.departureDate}T${formData.departureTime}:00`
+      );
+      const now = new Date();
+      const timeDiff = departureDateTime.getTime() - now.getTime();
+      const hoursDiff = timeDiff / (1000 * 60 * 60);
+
+      let isWithin24Hours = false;
+      if (hoursDiff <= 24 && hoursDiff > 0) {
+        isWithin24Hours = true;
+        finalBasePrice *= 1.2; // Tăng 20%
+        toast.warning(
+          "⚠️ Thời gian khởi hành trong vòng 24 giờ - giá vé đã được tăng 20%",
+          {
+            duration: 5000,
+          }
+        );
+      }
+
       const processedData = {
         airlineId: parseInt(formData.airlineId),
         aircraftId: parseInt(formData.aircraftId),
         departureAirportId: parseInt(formData.departureAirportId),
         arrivalAirportId: parseInt(formData.arrivalAirportId),
-        departureTime: new Date(
-          `${formData.departureDate}T${formData.departureTime}:00`
-        ).toISOString(),
-        arrivalTime: new Date(
-          `${formData.arrivalDate}T${formData.arrivalTime}:00`
-        ).toISOString(),
+        departureTime: `${formData.departureDate}T${formData.departureTime}:00`,
+        arrivalTime: `${formData.arrivalDate}T${formData.arrivalTime}:00`,
         gateId: parseInt(formData.gateId) || null,
         type: formData.type,
         status: formData.status,
         businessId: formData.businessId ? parseInt(formData.businessId) : null,
         tripType: formData.tripType,
-        basePrice: parseFloat(formData.basePrice) || 0,
+        basePrice: finalBasePrice,
         terminal: formData.terminal || null,
         checkInCounter: formData.checkInCounter || null,
         baggage: formData.baggage || null,
@@ -566,6 +605,8 @@ const FlightFormModal = ({
       } else {
         throw error;
       }
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -652,25 +693,29 @@ const FlightFormModal = ({
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 overflow-y-auto">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-6xl max-h-[90vh] overflow-hidden flex flex-col">
-        <div className="flex items-center justify-between p-4 border appraisal-b">
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 overflow-y-auto dark:bg-black/70">
+      <div className="bg-white rounded-lg shadow-xl w-full max-w-6xl max-h-[90vh] overflow-hidden flex flex-col dark:bg-gray-900 dark:border-gray-700">
+        <div className="flex items-center justify-between p-4 border-b dark:border-gray-700">
           <div className="flex items-center space-x-2">
             {isEditMode ? (
-              <Edit className="h-5 w-5 text-blue-600" />
+              <Edit className="h-5 w-5 text-blue-600 dark:text-blue-400" />
             ) : (
-              <Plane className="h-5 w-5 text-blue-600" />
+              <Plane className="h-5 w-5 text-blue-600 dark:text-blue-400" />
             )}
             <div>
-              <h2 className="text-lg font-semibold">
+              <h2 className="text-lg font-semibold dark:text-white">
                 {isEditMode ? TEXT.editFlight : TEXT.addFlight}
               </h2>
-              <p className="text-xs text-gray-500">
+              <p className="text-xs text-gray-500 dark:text-gray-400">
                 {isEditMode ? TEXT.updateFlightInfo : TEXT.enterFlightDetails}
               </p>
             </div>
           </div>
-          <Button variant="ghost" onClick={onClose}>
+          <Button
+            variant="ghost"
+            onClick={onClose}
+            className="dark:text-gray-300 dark:hover:bg-gray-800"
+          >
             <X className="h-4 w-4" />
           </Button>
         </div>
@@ -682,21 +727,23 @@ const FlightFormModal = ({
           <input type="hidden" name="tripType" value="ONE_WAY" />
           <Card>
             <CardHeader>
-              <CardTitle className="text-base flex items-center">
+              <CardTitle className="text-base flex items-center dark:text-white">
                 <Plane className="h-4 w-4 mr-2" />
                 {TEXT.basicFlightInfo}
               </CardTitle>
-              <CardDescription className="text-xs">
+              <CardDescription className="text-xs dark:text-gray-400">
                 {TEXT.essentialFlightDetails}
               </CardDescription>
             </CardHeader>
             <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
-                <Label>{TEXT.selectAirline} *</Label>
+                <Label className="dark:text-gray-300">
+                  {TEXT.selectAirline} *
+                </Label>
                 <Select
                   value={formData.airlineId}
                   onValueChange={(v) => handleInputChange("airlineId", v)}
-                  disabled={isEditMode}
+                  disabled={isEditMode || loading}
                 >
                   <SelectTrigger
                     className={errors.airlineId ? "border-red-500" : ""}
@@ -721,10 +768,13 @@ const FlightFormModal = ({
                 )}
               </div>
               <div>
-                <Label>{TEXT.selectAircraft} *</Label>
+                <Label className="dark:text-gray-300">
+                  {TEXT.selectAircraft} *
+                </Label>
                 <Select
                   value={formData.aircraftId}
                   onValueChange={(v) => handleInputChange("aircraftId", v)}
+                  disabled={loading}
                 >
                   <SelectTrigger
                     className={errors.aircraftId ? "border-red-500" : ""}
@@ -747,10 +797,13 @@ const FlightFormModal = ({
                 )}
               </div>
               <div>
-                <Label>{TEXT.flightType} *</Label>
+                <Label className="dark:text-gray-300">
+                  {TEXT.flightType} *
+                </Label>
                 <Select
                   value={formData.type}
                   onValueChange={(v) => handleInputChange("type", v)}
+                  disabled={loading}
                 >
                   <SelectTrigger
                     className={errors.type ? "border-red-500" : ""}
@@ -770,14 +823,21 @@ const FlightFormModal = ({
                 )}
               </div>
               <div>
-                <Label>{TEXT.businessName}</Label>
+                <Label className="dark:text-gray-300">
+                  {TEXT.businessName}
+                </Label>
                 <Input
                   type="number"
                   value={formData.businessId}
                   onChange={(e) =>
                     handleInputChange("businessId", e.target.value)
                   }
-                  className={errors.businessId ? "border-red-500" : ""}
+                  disabled={loading}
+                  className={
+                    errors.businessId
+                      ? "border-red-500 dark:text-black font-bold "
+                      : "dark:text-black font-bold "
+                  }
                 />
                 {errors.businessId && (
                   <p className="text-red-500 text-xs">{errors.businessId}</p>
@@ -785,10 +845,13 @@ const FlightFormModal = ({
               </div>
               {isEditMode && (
                 <div>
-                  <Label>{TEXT.flightStatus}</Label>
+                  <Label className="dark:text-gray-300">
+                    {TEXT.flightStatus}
+                  </Label>
                   <Select
                     value={formData.status}
                     onValueChange={(v) => handleInputChange("status", v)}
+                    disabled={loading}
                   >
                     <SelectTrigger>
                       <SelectValue />
@@ -808,22 +871,25 @@ const FlightFormModal = ({
 
           <Card>
             <CardHeader>
-              <CardTitle className="text-base flex items-center">
+              <CardTitle className="text-base flex items-center dark:text-white">
                 <MapPin className="h-4 w-4 mr-2" />
                 {TEXT.routeInfo}
               </CardTitle>
-              <CardDescription className="text-xs">
+              <CardDescription className="text-xs dark:text-gray-400">
                 {TEXT.departureArrivalDetails}
               </CardDescription>
             </CardHeader>
             <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <Label>{TEXT.selectDepartureAirport} *</Label>
+                <Label className="dark:text-gray-300">
+                  {TEXT.selectDepartureAirport} *
+                </Label>
                 <Select
                   value={formData.departureAirportId}
                   onValueChange={(v) =>
                     handleInputChange("departureAirportId", v)
                   }
+                  disabled={loading}
                 >
                   <SelectTrigger
                     className={
@@ -847,12 +913,15 @@ const FlightFormModal = ({
                 )}
               </div>
               <div>
-                <Label>{TEXT.selectArrivalAirport} *</Label>
+                <Label className="dark:text-gray-300">
+                  {TEXT.selectArrivalAirport} *
+                </Label>
                 <Select
                   value={formData.arrivalAirportId}
                   onValueChange={(v) =>
                     handleInputChange("arrivalAirportId", v)
                   }
+                  disabled={loading}
                 >
                   <SelectTrigger
                     className={errors.arrivalAirportId ? "border-red-500" : ""}
@@ -878,17 +947,19 @@ const FlightFormModal = ({
 
           <Card>
             <CardHeader>
-              <CardTitle className="text-base flex items-center">
+              <CardTitle className="text-base flex items-center dark:text-white">
                 <Calendar className="h-4 w-4 mr-2" />
                 {TEXT.scheduleInfo}
               </CardTitle>
-              <CardDescription className="text-xs">
+              <CardDescription className="text-xs dark:text-gray-400">
                 {TEXT.flightTiming}
               </CardDescription>
             </CardHeader>
             <CardContent className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <div>
-                <Label>{TEXT.departureDate} *</Label>
+                <Label className="dark:text-gray-300">
+                  {TEXT.departureDate} *
+                </Label>
                 <DateTimePicker
                   date={
                     formData.departureDate
@@ -904,13 +975,16 @@ const FlightFormModal = ({
                   placeholder="Chọn ngày khởi hành"
                   className={errors.departureDate ? "border-red-500" : ""}
                   minDate={today}
+                  disabled={loading}
                 />
                 {errors.departureDate && (
                   <p className="text-red-500 text-xs">{errors.departureDate}</p>
                 )}
               </div>
               <div>
-                <Label>{TEXT.departureTime} *</Label>
+                <Label className="dark:text-gray-300">
+                  {TEXT.departureTime} *
+                </Label>
                 <TimePicker
                   value={formData.departureTime}
                   onChange={(value) =>
@@ -918,13 +992,16 @@ const FlightFormModal = ({
                   }
                   placeholder="Chọn giờ khởi hành"
                   className={errors.departureTime ? "border-red-500" : ""}
+                  disabled={loading}
                 />
                 {errors.departureTime && (
                   <p className="text-red-500 text-xs">{errors.departureTime}</p>
                 )}
               </div>
               <div>
-                <Label>{TEXT.arrivalDate} *</Label>
+                <Label className="dark:text-gray-300">
+                  {TEXT.arrivalDate} *
+                </Label>
                 <DateTimePicker
                   date={
                     formData.arrivalDate
@@ -944,6 +1021,7 @@ const FlightFormModal = ({
                       ? new Date(formData.departureDate)
                       : today
                   }
+                  disabled={loading}
                 />
                 {errors.arrivalDate && (
                   <p className="text-red-500 text-xs">{errors.arrivalDate}</p>
@@ -956,6 +1034,7 @@ const FlightFormModal = ({
                   onChange={(value) => handleInputChange("arrivalTime", value)}
                   placeholder="Chọn giờ đến"
                   className={errors.arrivalTime ? "border-red-500" : ""}
+                  disabled={loading}
                 />
                 {errors.arrivalTime && (
                   <p className="text-red-500 text-xs">{errors.arrivalTime}</p>
@@ -984,11 +1063,11 @@ const FlightFormModal = ({
 
           <Card>
             <CardHeader>
-              <CardTitle className="text-base flex items-center">
+              <CardTitle className="text-base flex items-center dark:text-white">
                 <Users className="h-4 w-4 mr-2" />
                 {TEXT.operationalInfo}
               </CardTitle>
-              <CardDescription className="text-xs">
+              <CardDescription className="text-xs dark:text-gray-400">
                 {TEXT.gateTerminalCrew}
               </CardDescription>
             </CardHeader>
@@ -1034,6 +1113,7 @@ const FlightFormModal = ({
                       onChange={(e) =>
                         handleInputChange("terminal", e.target.value)
                       }
+                      disabled={loading}
                     />
                   </div>
 
@@ -1045,6 +1125,7 @@ const FlightFormModal = ({
                         onChange={(e) =>
                           handleInputChange("delayReason", e.target.value)
                         }
+                        disabled={loading}
                       />
                     </div>
                   )}
@@ -1055,6 +1136,7 @@ const FlightFormModal = ({
                       onChange={(e) =>
                         handleInputChange("remarks", e.target.value)
                       }
+                      disabled={loading}
                     />
                   </div>
                 </>
@@ -1064,11 +1146,11 @@ const FlightFormModal = ({
 
           <Card>
             <CardHeader>
-              <CardTitle className="text-base flex items-center">
+              <CardTitle className="text-base flex items-center dark:text-white">
                 <DollarSign className="h-4 w-4 mr-2" />
                 {TEXT.pricingInfo}
               </CardTitle>
-              <CardDescription className="text-xs">
+              <CardDescription className="text-xs dark:text-gray-400">
                 Giá cơ bản cho chuyến bay
               </CardDescription>
             </CardHeader>
@@ -1082,18 +1164,106 @@ const FlightFormModal = ({
                     handleInputChange("basePrice", e.target.value)
                   }
                   placeholder="Nhập giá cơ bản"
-                  className={errors.basePrice ? "border-red-500" : ""}
+                  className={
+                    errors.basePrice
+                      ? "border-red-500 font-bold text-black "
+                      : "font-bold text-black"
+                  }
                   min="0"
                   step="1000"
                 />
                 {errors.basePrice && (
                   <p className="text-red-500 text-xs">{errors.basePrice}</p>
                 )}
+                {isWithin24Hours && (
+                  <div className="mt-2 p-2 bg-yellow-50 border border-yellow-200 rounded-md dark:bg-yellow-900/20 dark:border-yellow-700">
+                    <div className="flex items-center space-x-2">
+                      <AlertTriangle className="h-4 w-4 text-yellow-600 dark:text-yellow-400" />
+                      <p className="text-sm text-yellow-800 dark:text-yellow-200">
+                        <strong>Cảnh báo:</strong> Chuyến bay khởi hành trong
+                        vòng 24 giờ. Giá vé sẽ được tăng 20%.
+                      </p>
+                    </div>
+                  </div>
+                )}
                 <p className="text-xs text-gray-500 mt-1">
                   Đây là giá cơ bản cho chuyến bay. Các hạng vé sẽ được tính
                   toán dựa trên giá này.
                 </p>
               </div>
+
+              {/* Hiển thị 3 hạng vé khi có basePrice */}
+              {formData.basePrice && parseFloat(formData.basePrice) > 0 && (
+                <div className="mt-6">
+                  <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
+                    Giá các hạng vé (dựa trên giá cơ bản
+                    {isWithin24Hours && " + 20% phụ phí khởi hành gấp"}):
+                  </h4>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {(() => {
+                      const basePrice = parseFloat(formData.basePrice);
+                      const adjustedBasePrice = isWithin24Hours
+                        ? basePrice * 1.2
+                        : basePrice;
+
+                      return (
+                        <>
+                          {/* Hạng Phổ Thông */}
+                          <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
+                            <div className="flex justify-between items-center mb-2">
+                              <span className="text-sm font-medium text-blue-800 dark:text-blue-300">
+                                Phổ Thông
+                              </span>
+                              <span className="text-lg font-bold text-blue-600 dark:text-blue-400">
+                                {formatCurrencyVND(adjustedBasePrice * 1)}
+                              </span>
+                            </div>
+                            <p className="text-xs text-blue-600 dark:text-blue-400">
+                              {isWithin24Hours
+                                ? "1.2x giá cơ bản"
+                                : "Giá cơ bản"}
+                            </p>
+                          </div>
+
+                          {/* Hạng Thương Gia */}
+                          <div className="bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-lg p-3">
+                            <div className="flex justify-between items-center mb-2">
+                              <span className="text-sm font-medium text-purple-800 dark:text-purple-300">
+                                Thương Gia
+                              </span>
+                              <span className="text-lg font-bold text-purple-600 dark:text-purple-400">
+                                {formatCurrencyVND(adjustedBasePrice * 2)}
+                              </span>
+                            </div>
+                            <p className="text-xs text-purple-600 dark:text-purple-400">
+                              {isWithin24Hours
+                                ? "2.4x giá cơ bản"
+                                : "2x giá cơ bản"}
+                            </p>
+                          </div>
+
+                          {/* Hạng Nhất */}
+                          <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-3">
+                            <div className="flex justify-between items-center mb-2">
+                              <span className="text-sm font-medium text-yellow-800 dark:text-yellow-300">
+                                Hạng Nhất
+                              </span>
+                              <span className="text-lg font-bold text-yellow-600 dark:text-yellow-400">
+                                {formatCurrencyVND(adjustedBasePrice * 3)}
+                              </span>
+                            </div>
+                            <p className="text-xs text-yellow-600 dark:text-yellow-400">
+                              {isWithin24Hours
+                                ? "3.6x giá cơ bản"
+                                : "3x giá cơ bản"}
+                            </p>
+                          </div>
+                        </>
+                      );
+                    })()}
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
 
@@ -1149,14 +1319,27 @@ const FlightFormModal = ({
             </Card>
           )}
 
-          <div className="flex justify-end space-x-2 pt-4 border-t">
-            <Button type="button" variant="outline" onClick={handleReset}>
+          <div className="flex justify-end space-x-2 pt-4 border-t dark:border-gray-700">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleReset}
+              className="dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-800"
+            >
               {TEXT.reset}
             </Button>
-            <Button type="button" variant="outline" onClick={onClose}>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={onClose}
+              className="dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-800"
+            >
               {TEXT.cancel}
             </Button>
-            <Button type="submit">
+            <Button
+              type="submit"
+              className="dark:bg-blue-600 dark:hover:bg-blue-700"
+            >
               <Save className="h-4 w-4 mr-2" /> {TEXT.save}
             </Button>
           </div>

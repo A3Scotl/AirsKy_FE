@@ -567,7 +567,7 @@ const PassengerForm = memo(
               Giới tính <span className="text-red-500">*</span>
             </Label>
             <Select
-              value={passenger.gender}
+              value={passenger.gender || ""}
               onValueChange={(value) => updatePassenger(index, "gender", value)}
             >
               <SelectTrigger
@@ -920,6 +920,9 @@ const PassengerDetails = ({
   const localStorageKey = `passengerFormData_${flightId}`;
   const isInternationalFlight = flightType === "INTERNATIONAL";
   const newPassengerIndex = useRef(null);
+  const passengers = Array.isArray(formData.passengers)
+    ? formData.passengers
+    : [];
 
   // Lưu form data vào localStorage mỗi khi nó thay đổi
   useEffect(() => {
@@ -927,7 +930,7 @@ const PassengerDetails = ({
       // Chuyển đổi Date objects thành ISO strings trước khi lưu
       const serializableFormData = {
         ...formData,
-        passengers: formData.passengers.map((p) => ({
+        passengers: passengers.map((p) => ({
           ...p,
           dob: p.dob ? p.dob.toISOString() : null,
         })),
@@ -939,29 +942,30 @@ const PassengerDetails = ({
     } catch (error) {
       console.error("Failed to save form data to localStorage:", error);
     }
-  }, [formData, localStorageKey]);
+  }, [formData, localStorageKey, passengers]);
 
   useEffect(() => {
     // Update passenger type whenever DOB changes
-    const newPassengers = formData.passengers.map((p) => ({
+    const newPassengers = passengers.map((p) => ({
       ...p,
       type: getPassengerType(p.dob, departureDate),
     }));
-    if (JSON.stringify(newPassengers) !== JSON.stringify(formData.passengers)) {
+    if (JSON.stringify(newPassengers) !== JSON.stringify(passengers)) {
       updateFormData("passengers", newPassengers);
     }
-  }, [formData.passengers, departureDate, updateFormData]);
+  }, [passengers, departureDate, updateFormData]);
 
   const hasAtLeastOneAdult = useMemo(
-    () => formData.passengers.some((p) => p.type === "ADULT"),
-    [formData.passengers]
+    () => passengers.some((p) => p.type === "ADULT"),
+    [passengers]
   );
 
   const addPassenger = useCallback(() => {
-    if (formData.passengers.length >= 10) {
-      alert("Số lượng hành khách tối đa là 10.");
+    if (passengers.length >= 10) {
+      toast.warning("Số lượng hành khách tối đa trong một booking là 10.");
       return;
     }
+
     const newPassenger = {
       type: "ADULT",
       lastName: "",
@@ -969,24 +973,22 @@ const PassengerDetails = ({
       dob: null,
       gender: "",
       passportNumber: "",
-      country: "Vietnam", // Set default country
-      phone: "", // Initialize phone field
+      country: "Vietnam",
+      phone: "",
     };
-    const newPassengers = [...formData.passengers, newPassenger];
-    newPassengerIndex.current = newPassengers.length - 1;
-    updateFormData("passengers", newPassengers);
-  }, [formData.passengers, updateFormData]);
+
+    newPassengerIndex.current = passengers.length;
+    updateFormData("passengers", [...passengers, newPassenger]);
+  }, [updateFormData, passengers]);
 
   const removePassenger = useCallback(
     (index) => {
-      if (formData.passengers.length > 1) {
-        updateFormData(
-          "passengers",
-          formData.passengers.filter((_, i) => i !== index)
-        );
+      if (passengers.length > 1) {
+        const updatedPassengers = passengers.filter((_, i) => i !== index);
+        updateFormData("passengers", updatedPassengers);
       }
     },
-    [formData.passengers, updateFormData]
+    [updateFormData, passengers]
   );
 
   useEffect(() => {
@@ -999,7 +1001,7 @@ const PassengerDetails = ({
       }
       newPassengerIndex.current = null;
     }
-  }, [formData.passengers.length]);
+  }, [passengers.length]);
 
   return (
     <div className="w-full space-y-6">
@@ -1033,29 +1035,25 @@ const PassengerDetails = ({
         </div>
       )}
 
-      {Array.isArray(formData.passengers) ? (
-        formData.passengers.map((passenger, index) => (
-          <PassengerForm
-            key={`passenger-${index}`}
-            passenger={passenger}
-            index={index}
-            updatePassenger={updatePassenger}
-            removePassenger={removePassenger}
-            isInternationalFlight={isInternationalFlight}
-            canBeRemoved={formData.passengers.length > 1}
-            validationErrors={
-              validationErrors?.passengers?.[`passenger_${index}`] || {}
-            }
-            departureDate={departureDate}
-            isNew={
-              index === formData.passengers.length - 1 &&
-              newPassengerIndex.current === index
-            }
-          />
-        ))
-      ) : (
-        <p className="text-red-600">Lỗi: Dữ liệu hành khách không hợp lệ.</p>
-      )}
+      {passengers.map((passenger, index) => (
+        <PassengerForm
+          key={`passenger-${index}`}
+          passenger={passenger}
+          index={index}
+          updatePassenger={updatePassenger}
+          removePassenger={removePassenger}
+          isInternationalFlight={isInternationalFlight}
+          canBeRemoved={passengers.length > 1}
+          validationErrors={
+            validationErrors?.passengers?.[`passenger_${index}`] || {}
+          }
+          departureDate={departureDate}
+          isNew={
+            index === passengers.length - 1 &&
+            newPassengerIndex.current === index
+          }
+        />
+      ))}
 
       {/* Add Passenger Button */}
       <Button

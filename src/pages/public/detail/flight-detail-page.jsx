@@ -2786,7 +2786,7 @@ const FlightDetail = () => {
                           <h3 className="text-lg font-semibold mb-4 text-blue-600">
                             Chuyến đi
                           </h3>
-                          <div className="bg-blue-50 rounded-lg p-4 space-y-4">
+                          <div className="bg-blue-50 dark:bg-gray-900  rounded-lg p-4 space-y-4">
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                               <div>
                                 <span className="text-sm text-gray-600">
@@ -2833,7 +2833,7 @@ const FlightDetail = () => {
                           <h3 className="text-lg font-semibold mb-4 text-green-600">
                             Chuyến về
                           </h3>
-                          <div className="bg-green-50 rounded-lg p-4 space-y-4">
+                          <div className="bg-green-50 dark:bg-gray-900 rounded-lg p-4 space-y-4">
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                               <div>
                                 <span className="text-sm text-gray-600">
@@ -3382,7 +3382,7 @@ const FlightDetail = () => {
                           Xác nhận lựa chọn
                         </h3>
                         <div className="space-y-4">
-                          <div className="bg-blue-50 rounded-lg p-4">
+                          <div className="bg-blue-50 dark:bg-gray-900 rounded-lg p-4">
                             <h4 className="font-medium text-blue-800 mb-2">
                               Chuyến đi
                             </h4>
@@ -3407,7 +3407,7 @@ const FlightDetail = () => {
                               </div>
                             </div>
                           </div>
-                          <div className="bg-green-50 rounded-lg p-4">
+                          <div className="bg-green-50 dark:bg-gray-900 rounded-lg p-4">
                             <h4 className="font-medium text-green-800 mb-2">
                               Chuyến về
                             </h4>

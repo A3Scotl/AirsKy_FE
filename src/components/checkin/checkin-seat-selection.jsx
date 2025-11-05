@@ -36,7 +36,7 @@ import { formatCurrencyVND } from "@/utils/currency-utils";
 
 const CheckInSeatSelection = ({
   booking,
-  selectedSegment, // Thêm prop selectedSegment
+  selectedPassenger, // Changed from selectedSegment to selectedPassenger
   onSelectSeat,
   onConfirm,
   onBack,
@@ -249,23 +249,57 @@ const CheckInSeatSelection = ({
   // Track if seat change has been confirmed through popup
   const [seatChangeConfirmed, setSeatChangeConfirmed] = useState(false);
 
+  // Loading state for check-in process
+  const [isCheckingIn, setIsCheckingIn] = useState(false);
+
   // State for current seat ID (calculated after getSeatData is available)
   const [currentSeatId, setCurrentSeatId] = useState(null);
 
-  // Get current passenger info for selected segment
-  const currentPassenger = selectedSegment
-    ? booking.checkinEligiblePassengers?.find(
-        (p) => p.segmentId === selectedSegment.segmentId
-      ) ||
-      booking.checkinEligiblePassengers?.find(
-        (p) => p.segmentId === null && booking.flightSegments?.length === 1
-      ) ||
-      booking.checkinEligiblePassengers?.[0]
-    : booking.checkinEligiblePassengers?.[0] || booking.passengers?.[0];
+  // Get current passenger info for selected passenger
+  const currentPassenger =
+    selectedPassenger ||
+    booking.checkinEligiblePassengers?.[0] ||
+    booking.passengers?.[0];
+
+  // Helper function to get the correct segment for the selected passenger
+  const getCurrentSegment = () => {
+    if (!selectedPassenger || !booking.flightSegments)
+      return booking.flightSegments?.[0];
+
+    // Find segment that matches selectedPassenger's segmentId
+    const matchingSegment = booking.flightSegments.find(
+      (segment) => segment.segmentId === selectedPassenger.segmentId
+    );
+
+    return matchingSegment || booking.flightSegments[0];
+  };
+
+  const currentSegment = getCurrentSegment();
+
+  // Skip seat selection for INFANT passengers
+  if (currentPassenger?.passengerType === "INFANT") {
+    return (
+      <div className="flex flex-col items-center justify-center h-64 text-center">
+        <Info className="w-12 h-12 text-blue-500 mb-4" />
+        <h3 className="text-lg font-semibold text-gray-700 mb-2">
+          Trẻ em dưới 2 tuổi không cần chọn ghế
+        </h3>
+        <p className="text-gray-500 mb-4">
+          Trẻ em dưới 2 tuổi sẽ ngồi cùng với người lớn đi kèm
+        </p>
+        <Button onClick={onBack} variant="outline">
+          Quay lại
+        </Button>
+      </div>
+    );
+  }
+
   const currentSeat = currentPassenger?.seatNumber;
-  const flightId = booking.flightSegments?.[0]?.flightId || booking.flightId;
+  const flightId = currentSegment?.flightId || booking.flightId;
   const travelClassId =
-    currentPassenger?.travelClassId || booking.travelClassId;
+    currentSegment?.classId ||
+    currentPassenger?.travelClassId ||
+    booking.travelClassId;
 
   // Helper function to get seat type pricing from booking data
   const getSeatTypePricing = () => {
@@ -306,26 +340,20 @@ const CheckInSeatSelection = ({
   // Load seat data from API
   useEffect(() => {
     const loadSeatsData = async () => {
-      // Determine the target segment based on selectedSegment
+      // Determine the target segment based on selectedPassenger
       let targetSegment = null;
 
-      if (selectedSegment) {
-        // Check if selectedSegment is a segment object (has segmentId)
-        if (selectedSegment.segmentId) {
-          targetSegment = booking.flightSegments?.find(
-            (fs) => fs.segmentId === selectedSegment.segmentId
-          );
-        }
-        // Check if selectedSegment is a passenger object (has passengerId)
-        else if (selectedSegment.passengerId) {
+      if (selectedPassenger) {
+        // selectedPassenger is always a passenger object (has passengerId)
+        if (selectedPassenger.passengerId) {
           // For one-way bookings, passenger might have segmentId: null, so use first segment
           if (booking.flightSegments?.length === 1) {
             targetSegment = booking.flightSegments[0];
           }
           // For round-trip, find segment that matches passenger's segmentId if available
-          else if (selectedSegment.segmentId !== null) {
+          else if (selectedPassenger.segmentId !== null) {
             targetSegment = booking.flightSegments?.find(
-              (fs) => fs.segmentId === selectedSegment.segmentId
+              (fs) => fs.segmentId === selectedPassenger.segmentId
             );
           }
           // Fallback to first segment
@@ -334,7 +362,7 @@ const CheckInSeatSelection = ({
           }
         }
       } else {
-        // No selectedSegment, use first segment
+        // No selectedPassenger, use first segment
         targetSegment = booking.flightSegments?.[0];
       }
 
@@ -348,7 +376,7 @@ const CheckInSeatSelection = ({
 
       // Try to get flight and travel class info from different sources
       console.log("🔍 Debug flight data:", {
-        selectedSegment,
+        selectedPassenger,
         targetSegment,
         bookingFlightSegments: booking.flightSegments,
         bookingFlightId: booking.flightId,
@@ -365,7 +393,7 @@ const CheckInSeatSelection = ({
       console.log("🛩️ Attempting to load seats with:", {
         finalFlightId,
         finalTravelClassId,
-        selectedSegment,
+        selectedPassenger,
         targetSegment,
         segmentAvailableSeats,
         booking,
@@ -415,7 +443,8 @@ const CheckInSeatSelection = ({
               const currentSeatData = {
                 seatId: `current-${currentSeat}`, // Generate a temporary ID for current seat
                 seatNumber: currentSeat,
-                className: booking.travelClass || "Economy",
+                className:
+                  currentSegment?.className || booking.travelClass || "Economy",
                 status: "AVAILABLE", // Always show current seat as available for reselection
                 seatType: getSeatTypeFromPosition(currentSeat),
                 travelClassId: finalTravelClassId,
@@ -468,7 +497,8 @@ const CheckInSeatSelection = ({
           (seatNumber, index) => ({
             seatId: null, // No real seatId for fallback data
             seatNumber: seatNumber,
-            className: booking.travelClass || "Economy",
+            className:
+              currentSegment?.className || booking.travelClass || "Economy",
             status: "AVAILABLE",
             seatType: getSeatTypeFromPosition(seatNumber),
             travelClassId: finalTravelClassId,
@@ -487,7 +517,8 @@ const CheckInSeatSelection = ({
           const currentSeatData = {
             seatId: `current-${currentSeat}`, // Generate a temporary ID for current seat
             seatNumber: currentSeat,
-            className: booking.travelClass || "Economy",
+            className:
+              currentSegment?.className || booking.travelClass || "Economy",
             status: "AVAILABLE", // Always show current seat as available for reselection
             seatType: getSeatTypeFromPosition(currentSeat),
             travelClassId: finalTravelClassId,
@@ -791,11 +822,11 @@ const CheckInSeatSelection = ({
 
     setIsCalculating(true);
     try {
-      const currentPassenger = selectedSegment
-        ? booking.checkinEligiblePassengers?.find(
-            (p) => p.segmentId === selectedSegment.segmentId
-          ) || booking.checkinEligiblePassengers?.[0]
-        : booking.checkinEligiblePassengers?.[0] || booking.passengers?.[0];
+      // For INFANT passengers, skip seat calculation entirely
+      if (currentPassenger?.type === "INFANT") {
+        console.log("👶 INFANT passenger - skipping seat calculation");
+        return;
+      }
 
       // Prepare services to add (newly selected services)
       const servicesToAdd = ancillaryServices
@@ -917,38 +948,58 @@ const CheckInSeatSelection = ({
 
   // Handle confirm check-in with seat change validation
   const handleConfirmCheckin = async () => {
-    // If seat change has already been confirmed, proceed directly to check-in
-    if (seatChangeConfirmed) {
-      console.log("✅ Seat change already confirmed, proceeding with check-in");
-      onConfirm();
-      return;
-    }
+    setIsCheckingIn(true);
 
-    // If user has selected a different seat from current seat, need to calculate seat change
-    if (
-      selectedSeat &&
-      currentSeat &&
-      selectedSeat.seatNumber !== currentSeat
-    ) {
-      console.log("🔄 Need to process seat change before check-in");
-      await calculateSeatChangeWithAPI(
-        selectedSeat.seatNumber,
-        selectedSeat.seatType,
-        selectedSeat.seatId
-      );
-    } else if (currentSeat && !selectedSeat) {
-      // User wants to keep current seat - just proceed with check-in
-      console.log("✅ Keeping current seat, proceeding with check-in");
-      onConfirm();
-    } else if (selectedSeat) {
-      // User has selected a seat but no current seat (new selection)
-      console.log("✅ New seat selection, proceeding with check-in");
-      onConfirm();
-    } else {
-      console.log("⚠️ No seat selected");
-      toast.error("Vui lòng chọn ghế trước khi check-in");
+    try {
+      // For INFANT passengers, proceed directly to check-in without seat selection
+      if (isInfant) {
+        console.log(
+          "👶 INFANT passenger - proceeding directly to check-in without seat selection"
+        );
+        await onConfirm();
+        return;
+      }
+
+      // If seat change has already been confirmed, proceed directly to check-in
+      if (seatChangeConfirmed) {
+        console.log(
+          "✅ Seat change already confirmed, proceeding with check-in"
+        );
+        await onConfirm();
+        return;
+      }
+
+      // If user has selected a different seat from current seat, need to calculate seat change
+      if (
+        selectedSeat &&
+        currentSeat &&
+        selectedSeat.seatNumber !== currentSeat
+      ) {
+        console.log("🔄 Need to process seat change before check-in");
+        await calculateSeatChangeWithAPI(
+          selectedSeat.seatNumber,
+          selectedSeat.seatType,
+          selectedSeat.seatId
+        );
+      } else if (currentSeat && !selectedSeat) {
+        // User wants to keep current seat - just proceed with check-in
+        console.log("✅ Keeping current seat, proceeding with check-in");
+        await onConfirm();
+      } else if (selectedSeat) {
+        // User has selected a seat but no current seat (new selection)
+        console.log("✅ New seat selection, proceeding with check-in");
+        await onConfirm();
+      } else {
+        console.log("⚠️ No seat selected");
+        toast.error("Vui lòng chọn ghế trước khi check-in");
+      }
+    } finally {
+      setIsCheckingIn(false);
     }
   };
+
+  // Skip seat selection for INFANT passengers - they can proceed directly to check-in
+  const isInfant = currentPassenger?.type === "INFANT";
 
   return (
     <div className="space-y-6">
@@ -957,13 +1008,11 @@ const CheckInSeatSelection = ({
         <CardHeader>
           <CardTitle className="flex items-center gap-2 dark:text-white">
             <Plane className="w-5 h-5 text-blue-500" />
-            Chọn chỗ ngồi -{" "}
-            {selectedSegment?.flightNumber ||
-              booking.flightSegments?.[0]?.flightNumber ||
-              booking.flight}
-            {selectedSegment?.segmentOrder && (
+            {isInfant ? "Check-in trẻ em dưới 2 tuổi" : "Chọn chỗ ngồi"} -{" "}
+            {currentSegment?.flightNumber || booking.flightNumber}
+            {currentSegment?.segmentOrder && (
               <Badge variant="outline" className="ml-2">
-                Chuyến {selectedSegment.segmentOrder === 1 ? "Đi" : "Về"}
+                Chuyến {currentSegment.segmentOrder === 1 ? "Đi" : "Về"}
               </Badge>
             )}
           </CardTitle>
@@ -982,37 +1031,19 @@ const CheckInSeatSelection = ({
             <div>
               <p className="text-gray-600 dark:text-gray-300">Chuyến bay</p>
               <p className="font-medium dark:text-gray-100">
-                {selectedSegment?.flightNumber ||
-                  booking.flightSegments?.[0]?.flightNumber ||
-                  booking.flightNumber}{" "}
-                -{" "}
-                {selectedSegment?.departureAirport?.airportCode ||
-                  booking.flightSegments?.[0]?.departureAirport?.airportCode ||
-                  booking.from}{" "}
-                →{" "}
-                {selectedSegment?.arrivalAirport?.airportCode ||
-                  booking.flightSegments?.[0]?.arrivalAirport?.airportCode ||
-                  booking.to}
+                {currentSegment?.flightNumber || booking.flightNumber} -{" "}
+                {currentSegment?.departureAirport?.airportCode || booking.from}{" "}
+                → {currentSegment?.arrivalAirport?.airportCode || booking.to}
               </p>
               <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                {selectedSegment?.departureTime
-                  ? new Date(selectedSegment.departureTime).toLocaleString(
+                {currentSegment?.departureTime
+                  ? new Date(currentSegment.departureTime).toLocaleString(
                       "vi-VN"
                     )
-                  : booking.flightSegments?.[0]?.departureTime
-                  ? new Date(
-                      booking.flightSegments[0].departureTime
-                    ).toLocaleString("vi-VN")
                   : "N/A"}{" "}
                 -{" "}
-                {selectedSegment?.arrivalTime
-                  ? new Date(selectedSegment.arrivalTime).toLocaleString(
-                      "vi-VN"
-                    )
-                  : booking.flightSegments?.[0]?.arrivalTime
-                  ? new Date(
-                      booking.flightSegments[0].arrivalTime
-                    ).toLocaleString("vi-VN")
+                {currentSegment?.arrivalTime
+                  ? new Date(currentSegment.arrivalTime).toLocaleString("vi-VN")
                   : "N/A"}
               </p>
             </div>
@@ -1025,12 +1056,25 @@ const CheckInSeatSelection = ({
             <div>
               <p className="text-gray-600">Hạng ghế</p>
               <p className="font-medium">
-                {booking.travelClass || currentPassenger?.className}
+                {currentSegment?.className ||
+                  booking.travelClass ||
+                  currentPassenger?.className}
               </p>
             </div>
           </div>
         </CardContent>
       </Card>
+      {/* Infant Information */}
+      {isInfant && (
+        <Alert>
+          <Info className="h-4 w-4" />
+          <AlertDescription>
+            <strong>Trẻ em dưới 2 tuổi:</strong> Không cần chọn ghế ngồi. Trẻ em
+            sẽ ngồi cùng với người lớn đi kèm. Bạn có thể chọn thêm dịch vụ bổ
+            sung nếu cần trước khi check-in.
+          </AlertDescription>
+        </Alert>
+      )}
       {/* Current Seat and Services Information */}
       {(booking.seatTypeDetails?.length > 0 ||
         booking.ancillaryServices?.length > 0) && (
@@ -1050,7 +1094,7 @@ const CheckInSeatSelection = ({
                 ? booking.seatTypeDetails
                 : booking.seatTypeDetails?.filter(
                     (seatDetail) =>
-                      seatDetail.segmentId === selectedSegment?.segmentId
+                      seatDetail.segmentId === selectedPassenger?.segmentId
                   );
 
               return (
@@ -1269,229 +1313,239 @@ const CheckInSeatSelection = ({
             </div>
           )}
 
-          {/* Available Seats Display */}
-          <div className="bg-gradient-to-b from-blue-50 to-gray-100 rounded-2xl p-6 shadow-lg">
-            {loadingSeats ? (
-              <div className="text-center py-8">
-                <div className="animate-spin w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full mx-auto mb-4"></div>
-                <p className="text-gray-600">Đang tải thông tin ghế...</p>
-              </div>
-            ) : (
-              <>
-                <div className="text-center mb-6">
-                  <h4 className="text-lg font-semibold text-gray-800 mb-2">
-                    Sơ đồ chỗ ngồi máy bay
-                  </h4>
-                  <p className="text-sm text-gray-600">
-                    Sơ đồ chỗ ngồi ({availableSeats.length} ghế)
-                    {currentSeat && (
-                      <span className="ml-2 text-green-600 font-medium">
-                        • Ghế hiện tại: {currentSeat}
-                      </span>
-                    )}
-                  </p>
+          {/* Available Seats Display - Only show for non-infants */}
+          {!isInfant && (
+            <div className="bg-gradient-to-b from-blue-50 to-gray-100 rounded-2xl p-6 shadow-lg">
+              {loadingSeats ? (
+                <div className="text-center py-8">
+                  <div className="animate-spin w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full mx-auto mb-4"></div>
+                  <p className="text-gray-600">Đang tải thông tin ghế...</p>
                 </div>
+              ) : (
+                <>
+                  <div className="text-center mb-6">
+                    <h4 className="text-lg font-semibold text-gray-800 mb-2">
+                      Sơ đồ chỗ ngồi máy bay
+                    </h4>
+                    <p className="text-sm text-gray-600">
+                      Sơ đồ chỗ ngồi ({availableSeats.length} ghế)
+                      {currentSeat && (
+                        <span className="ml-2 text-green-600 font-medium">
+                          • Ghế hiện tại: {currentSeat}
+                        </span>
+                      )}
+                    </p>
+                  </div>
 
-                {/* Aircraft Layout */}
-                <div className="max-w-4xl mx-auto">
-                  {/* Cockpit */}
-                  <div className="flex justify-center mb-6">
-                    <div className="relative">
-                      <div className="w-20 h-12 bg-gradient-to-b from-gray-200 to-gray-400 rounded-t-full flex items-center justify-center shadow-lg border-2 border-gray-300">
-                        <span className="text-lg">✈️</span>
+                  {/* Aircraft Layout */}
+                  <div className="max-w-4xl mx-auto">
+                    {/* Cockpit */}
+                    <div className="flex justify-center mb-6">
+                      <div className="relative">
+                        <div className="w-20 h-12 bg-gradient-to-b from-gray-200 to-gray-400 rounded-t-full flex items-center justify-center shadow-lg border-2 border-gray-300">
+                          <span className="text-lg">✈️</span>
+                        </div>
+                        <div className="absolute top-2 left-1/2 transform -translate-x-1/2 flex gap-1">
+                          <div className="w-3 h-2 bg-blue-400 rounded-sm shadow-inner border border-blue-500"></div>
+                          <div className="w-3 h-2 bg-blue-400 rounded-sm shadow-inner border border-blue-500"></div>
+                        </div>
+                        <div className="absolute inset-0 rounded-t-full bg-gradient-to-r from-white/30 via-transparent to-white/30"></div>
                       </div>
-                      <div className="absolute top-2 left-1/2 transform -translate-x-1/2 flex gap-1">
-                        <div className="w-3 h-2 bg-blue-400 rounded-sm shadow-inner border border-blue-500"></div>
-                        <div className="w-3 h-2 bg-blue-400 rounded-sm shadow-inner border border-blue-500"></div>
-                      </div>
-                      <div className="absolute inset-0 rounded-t-full bg-gradient-to-r from-white/30 via-transparent to-white/30"></div>
                     </div>
-                  </div>
 
-                  {/* Aisle */}
-                  <div className="flex justify-center mb-4">
-                    <div className="w-2 h-8 bg-gradient-to-b from-gray-300 to-gray-400 shadow-sm"></div>
-                  </div>
+                    {/* Aisle */}
+                    <div className="flex justify-center mb-4">
+                      <div className="w-2 h-8 bg-gradient-to-b from-gray-300 to-gray-400 shadow-sm"></div>
+                    </div>
 
-                  {/* Seats by Row */}
-                  {(() => {
-                    // Group seats by row number
-                    const seatsByRow = {};
-                    availableSeats.forEach((seat) => {
-                      const rowNum = seat.seatNumber.match(/\d+/)?.[0] || "1";
-                      if (!seatsByRow[rowNum]) seatsByRow[rowNum] = [];
-                      seatsByRow[rowNum].push(seat);
-                    });
-
-                    // Sort row numbers
-                    const sortedRowNumbers = Object.keys(seatsByRow).sort(
-                      (a, b) => parseInt(a) - parseInt(b)
-                    );
-
-                    return sortedRowNumbers.map((rowNum) => {
-                      const rowSeats = seatsByRow[rowNum];
-                      // Sort seats by column: A, B, C, D, E, F
-                      const sortedSeats = rowSeats.sort((a, b) => {
-                        const colA = a.seatNumber.match(/[A-Z]/)?.[0] || "A";
-                        const colB = b.seatNumber.match(/[A-Z]/)?.[0] || "A";
-                        return colA.localeCompare(colB);
+                    {/* Seats by Row */}
+                    {(() => {
+                      // Group seats by row number
+                      const seatsByRow = {};
+                      availableSeats.forEach((seat) => {
+                        const rowNum = seat.seatNumber.match(/\d+/)?.[0] || "1";
+                        if (!seatsByRow[rowNum]) seatsByRow[rowNum] = [];
+                        seatsByRow[rowNum].push(seat);
                       });
 
-                      return (
-                        <div key={rowNum} className="mb-4">
-                          {/* Row Number */}
-                          <div className="flex items-center justify-center mb-2">
-                            <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center text-xs font-bold text-gray-700">
-                              {rowNum}
-                            </div>
-                          </div>
-
-                          {/* Seat Row */}
-                          <div className="flex items-center justify-center gap-2">
-                            {/* Left Side: A B C */}
-                            <div className="flex gap-2">
-                              {["A", "B", "C"].map((col) => {
-                                const seat = sortedSeats.find(
-                                  (s) => s.seatNumber === `${rowNum}${col}`
-                                );
-                                return seat ? (
-                                  <SeatButton
-                                    key={seat.seatId}
-                                    seat={seat}
-                                    isSelected={
-                                      selectedSeat?.seatNumber ===
-                                      seat.seatNumber
-                                    }
-                                    isCurrent={currentSeat === seat.seatNumber}
-                                    isHovered={hoveredSeat === seat.seatNumber}
-                                    onClick={() => {
-                                      console.log("🎯 Seat clicked:", {
-                                        seatNumber: seat.seatNumber,
-                                        seatType: seat.seatType,
-                                        seatId: seat.seatId,
-                                      });
-                                      if (
-                                        !seat.seatId &&
-                                        currentSeat !== seat.seatNumber
-                                      ) {
-                                        console.error(
-                                          "❌ Missing seatId for seat:",
-                                          seat.seatNumber
-                                        );
-                                        toast.error(
-                                          `Không thể chọn ghế ${seat.seatNumber} - thiếu thông tin ID ghế`
-                                        );
-                                        return;
-                                      }
-                                      handleSeatSelection(
-                                        seat.seatNumber,
-                                        seat.seatType,
-                                        seat.seatId
-                                      );
-                                    }}
-                                    onMouseEnter={() =>
-                                      setHoveredSeat(seat.seatNumber)
-                                    }
-                                    onMouseLeave={() => setHoveredSeat(null)}
-                                    getSeatPrice={getSeatPrice}
-                                    getSeatDescription={getSeatDescription}
-                                    getSeatClassName={getSeatClassName}
-                                  />
-                                ) : (
-                                  <div
-                                    key={`empty-${rowNum}-${col}`}
-                                    className="w-14 h-14 rounded-xl border-2 border-gray-200 bg-gray-100 flex items-center justify-center text-gray-400 text-xs"
-                                  >
-                                    {rowNum}
-                                    {col}
-                                  </div>
-                                );
-                              })}
-                            </div>
-
-                            {/* Aisle */}
-                            <div className="w-8 h-14 bg-gradient-to-b from-gray-200 to-gray-300 rounded-lg flex items-center justify-center shadow-inner border-2 border-gray-300">
-                              <span className="text-xs text-gray-600 font-medium transform -rotate-90 whitespace-nowrap">
-                                AISLE
-                              </span>
-                            </div>
-
-                            {/* Right Side: D E F */}
-                            <div className="flex gap-2">
-                              {["D", "E", "F"].map((col) => {
-                                const seat = sortedSeats.find(
-                                  (s) => s.seatNumber === `${rowNum}${col}`
-                                );
-                                return seat ? (
-                                  <SeatButton
-                                    key={seat.seatId}
-                                    seat={seat}
-                                    isSelected={
-                                      selectedSeat?.seatNumber ===
-                                      seat.seatNumber
-                                    }
-                                    isCurrent={currentSeat === seat.seatNumber}
-                                    isHovered={hoveredSeat === seat.seatNumber}
-                                    onClick={() => {
-                                      console.log("🎯 Seat clicked:", {
-                                        seatNumber: seat.seatNumber,
-                                        seatType: seat.seatType,
-                                        seatId: seat.seatId,
-                                      });
-                                      if (
-                                        !seat.seatId &&
-                                        currentSeat !== seat.seatNumber
-                                      ) {
-                                        console.error(
-                                          "❌ Missing seatId for seat:",
-                                          seat.seatNumber
-                                        );
-                                        toast.error(
-                                          `Không thể chọn ghế ${seat.seatNumber} - thiếu thông tin ID ghế`
-                                        );
-                                        return;
-                                      }
-                                      handleSeatSelection(
-                                        seat.seatNumber,
-                                        seat.seatType,
-                                        seat.seatId
-                                      );
-                                    }}
-                                    onMouseEnter={() =>
-                                      setHoveredSeat(seat.seatNumber)
-                                    }
-                                    onMouseLeave={() => setHoveredSeat(null)}
-                                    getSeatPrice={getSeatPrice}
-                                    getSeatDescription={getSeatDescription}
-                                    getSeatClassName={getSeatClassName}
-                                  />
-                                ) : (
-                                  <div
-                                    key={`empty-${rowNum}-${col}`}
-                                    className="w-14 h-14 rounded-xl border-2 border-gray-200 bg-gray-100 flex items-center justify-center text-gray-400 text-xs"
-                                  >
-                                    {rowNum}
-                                    {col}
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          </div>
-                        </div>
+                      // Sort row numbers
+                      const sortedRowNumbers = Object.keys(seatsByRow).sort(
+                        (a, b) => parseInt(a) - parseInt(b)
                       );
-                    });
-                  })()}
 
-                  {/* Rear Section */}
-                  <div className="flex justify-center mt-6">
-                    <div className="w-16 h-6 bg-gradient-to-b from-gray-300 to-gray-500 rounded-b-lg shadow-lg border-2 border-gray-400">
-                      <div className="w-full h-full bg-gradient-to-r from-white/20 via-transparent to-white/20 rounded-b-lg"></div>
+                      return sortedRowNumbers.map((rowNum) => {
+                        const rowSeats = seatsByRow[rowNum];
+                        // Sort seats by column: A, B, C, D, E, F
+                        const sortedSeats = rowSeats.sort((a, b) => {
+                          const colA = a.seatNumber.match(/[A-Z]/)?.[0] || "A";
+                          const colB = b.seatNumber.match(/[A-Z]/)?.[0] || "A";
+                          return colA.localeCompare(colB);
+                        });
+
+                        return (
+                          <div key={rowNum} className="mb-4">
+                            {/* Row Number */}
+                            <div className="flex items-center justify-center mb-2">
+                              <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center text-xs font-bold text-gray-700">
+                                {rowNum}
+                              </div>
+                            </div>
+
+                            {/* Seat Row */}
+                            <div className="flex items-center justify-center gap-2">
+                              {/* Left Side: A B C */}
+                              <div className="flex gap-2">
+                                {["A", "B", "C"].map((col) => {
+                                  const seat = sortedSeats.find(
+                                    (s) => s.seatNumber === `${rowNum}${col}`
+                                  );
+                                  return seat ? (
+                                    <SeatButton
+                                      key={seat.seatId}
+                                      seat={seat}
+                                      isSelected={
+                                        selectedSeat?.seatNumber ===
+                                        seat.seatNumber
+                                      }
+                                      isCurrent={
+                                        currentSeat === seat.seatNumber
+                                      }
+                                      isHovered={
+                                        hoveredSeat === seat.seatNumber
+                                      }
+                                      onClick={() => {
+                                        console.log("🎯 Seat clicked:", {
+                                          seatNumber: seat.seatNumber,
+                                          seatType: seat.seatType,
+                                          seatId: seat.seatId,
+                                        });
+                                        if (
+                                          !seat.seatId &&
+                                          currentSeat !== seat.seatNumber
+                                        ) {
+                                          console.error(
+                                            "❌ Missing seatId for seat:",
+                                            seat.seatNumber
+                                          );
+                                          toast.error(
+                                            `Không thể chọn ghế ${seat.seatNumber} - thiếu thông tin ID ghế`
+                                          );
+                                          return;
+                                        }
+                                        handleSeatSelection(
+                                          seat.seatNumber,
+                                          seat.seatType,
+                                          seat.seatId
+                                        );
+                                      }}
+                                      onMouseEnter={() =>
+                                        setHoveredSeat(seat.seatNumber)
+                                      }
+                                      onMouseLeave={() => setHoveredSeat(null)}
+                                      getSeatPrice={getSeatPrice}
+                                      getSeatDescription={getSeatDescription}
+                                      getSeatClassName={getSeatClassName}
+                                    />
+                                  ) : (
+                                    <div
+                                      key={`empty-${rowNum}-${col}`}
+                                      className="w-14 h-14 rounded-xl border-2 border-gray-200 bg-gray-100 flex items-center justify-center text-gray-400 text-xs"
+                                    >
+                                      {rowNum}
+                                      {col}
+                                    </div>
+                                  );
+                                })}
+                              </div>
+
+                              {/* Aisle */}
+                              <div className="w-8 h-14 bg-gradient-to-b from-gray-200 to-gray-300 rounded-lg flex items-center justify-center shadow-inner border-2 border-gray-300">
+                                <span className="text-xs text-gray-600 font-medium transform -rotate-90 whitespace-nowrap">
+                                  AISLE
+                                </span>
+                              </div>
+
+                              {/* Right Side: D E F */}
+                              <div className="flex gap-2">
+                                {["D", "E", "F"].map((col) => {
+                                  const seat = sortedSeats.find(
+                                    (s) => s.seatNumber === `${rowNum}${col}`
+                                  );
+                                  return seat ? (
+                                    <SeatButton
+                                      key={seat.seatId}
+                                      seat={seat}
+                                      isSelected={
+                                        selectedSeat?.seatNumber ===
+                                        seat.seatNumber
+                                      }
+                                      isCurrent={
+                                        currentSeat === seat.seatNumber
+                                      }
+                                      isHovered={
+                                        hoveredSeat === seat.seatNumber
+                                      }
+                                      onClick={() => {
+                                        console.log("🎯 Seat clicked:", {
+                                          seatNumber: seat.seatNumber,
+                                          seatType: seat.seatType,
+                                          seatId: seat.seatId,
+                                        });
+                                        if (
+                                          !seat.seatId &&
+                                          currentSeat !== seat.seatNumber
+                                        ) {
+                                          console.error(
+                                            "❌ Missing seatId for seat:",
+                                            seat.seatNumber
+                                          );
+                                          toast.error(
+                                            `Không thể chọn ghế ${seat.seatNumber} - thiếu thông tin ID ghế`
+                                          );
+                                          return;
+                                        }
+                                        handleSeatSelection(
+                                          seat.seatNumber,
+                                          seat.seatType,
+                                          seat.seatId
+                                        );
+                                      }}
+                                      onMouseEnter={() =>
+                                        setHoveredSeat(seat.seatNumber)
+                                      }
+                                      onMouseLeave={() => setHoveredSeat(null)}
+                                      getSeatPrice={getSeatPrice}
+                                      getSeatDescription={getSeatDescription}
+                                      getSeatClassName={getSeatClassName}
+                                    />
+                                  ) : (
+                                    <div
+                                      key={`empty-${rowNum}-${col}`}
+                                      className="w-14 h-14 rounded-xl border-2 border-gray-200 bg-gray-100 flex items-center justify-center text-gray-400 text-xs"
+                                    >
+                                      {rowNum}
+                                      {col}
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      });
+                    })()}
+
+                    {/* Rear Section */}
+                    <div className="flex justify-center mt-6">
+                      <div className="w-16 h-6 bg-gradient-to-b from-gray-300 to-gray-500 rounded-b-lg shadow-lg border-2 border-gray-400">
+                        <div className="w-full h-full bg-gradient-to-r from-white/20 via-transparent to-white/20 rounded-b-lg"></div>
+                      </div>
                     </div>
                   </div>
-                </div>
-              </>
-            )}
-          </div>
+                </>
+              )}
+            </div>
+          )}
         </CardContent>
       </Card>
       {/* Selected Seat Info */}
@@ -1619,7 +1673,7 @@ const CheckInSeatSelection = ({
               {ancillaryServices.map((service) => (
                 <div
                   key={service.serviceId || service.id}
-                  className="flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50"
+                  className="flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50 dark:hover:bg-gray-900"
                 >
                   <div className="flex items-center gap-3">
                     <Checkbox
@@ -1789,10 +1843,13 @@ const CheckInSeatSelection = ({
         <Info className="h-4 w-4" />
         <AlertDescription>
           <strong>Lưu ý:</strong>{" "}
-          {currentSeat
+          {isInfant
+            ? "Trẻ em dưới 2 tuổi không cần chọn ghế. Bạn có thể chọn thêm dịch vụ bổ sung trước khi check-in."
+            : currentSeat
             ? `Bạn hiện đang có ghế ${currentSeat}. Việc chọn ghế mới có thể áp dụng phụ phí.`
             : "Việc chọn chỗ ngồi có thể áp dụng phụ phí."}{" "}
-          Chỗ ngồi đã chọn sẽ được xác nhận sau khi hoàn tất check-in.
+          {!isInfant &&
+            "Chỗ ngồi đã chọn sẽ được xác nhận sau khi hoàn tất check-in."}
         </AlertDescription>
       </Alert>
       {/* Action Buttons */}
@@ -1804,7 +1861,7 @@ const CheckInSeatSelection = ({
           <Button
             onClick={handleProceedToPayment}
             className="flex-1 bg-orange-600 hover:bg-orange-700"
-            disabled={!selectedSeat && !currentSeat}
+            disabled={!selectedSeat && !currentSeat && !isInfant}
           >
             <CreditCard className="w-4 h-4 mr-2" />
             Tiếp tục thanh toán
@@ -1812,10 +1869,19 @@ const CheckInSeatSelection = ({
         ) : (
           <Button
             onClick={handleConfirmCheckin}
-            disabled={!selectedSeat}
+            disabled={(!selectedSeat && !isInfant) || isCheckingIn}
             className="flex-1"
           >
-            {selectedSeat ? "Xác nhận check-in" : "Vui lòng chọn ghế"}
+            {isCheckingIn ? (
+              <div className="flex items-center gap-2">
+                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                Đang tiến hành check-in...
+              </div>
+            ) : selectedSeat || isInfant ? (
+              "Xác nhận check-in"
+            ) : (
+              "Vui lòng chọn ghế"
+            )}
           </Button>
         )}
       </div>

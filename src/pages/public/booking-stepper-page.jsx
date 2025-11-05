@@ -366,6 +366,19 @@ const validateForm = (formData, flightType, departureDate) => {
     return { isValid: false, errors };
   }
 
+  // Kiểm tra có ít nhất một người lớn (từ 12 tuổi trở lên)
+  const hasAtLeastOneAdult = formData.passengers.some((p) => {
+    const age = getAge(p.dob, departureDate);
+    return age >= 12;
+  });
+
+  if (!hasAtLeastOneAdult) {
+    errors.passengers.general =
+      "Phải có ít nhất một hành khách từ 12 tuổi trở lên (người lớn) để thực hiện đặt vé.";
+    isValid = false;
+    return { isValid: false, errors };
+  }
+
   // 2. Xác thực thông tin từng hành khách
   formData.passengers.forEach((p, index) => {
     const passengerErrors = {};
@@ -480,6 +493,7 @@ function FlightBookingStepper() {
   const [flight, setFlight] = useState({});
   const [fare, setFare] = useState({});
   const [currentStep, setCurrentStep] = useState(2);
+  const [searchData, setSearchData] = useState(null);
   const [formData, setFormData] = useState({
     contactName: "",
     contactEmail: "",
@@ -609,24 +623,126 @@ function FlightBookingStepper() {
 
     // Initialize passengers if formData is empty
     if (!storedFormData) {
-      const storedSearchCriteria = localStorage.getItem("searchCriteria");
+      const storedSearchData = localStorage.getItem("searchData");
       const passengers = [];
-      if (storedSearchCriteria) {
+      if (storedSearchData) {
         try {
-          const searchCriteria = JSON.parse(storedSearchCriteria);
-          for (let i = 0; i < (searchCriteria.passengers?.adults || 1); i++)
-            passengers.push({ type: "ADULT", phone: "", country: "Vietnam" });
-          for (let i = 0; i < (searchCriteria.passengers?.children || 0); i++)
-            passengers.push({ type: "CHILD", phone: "", country: "Vietnam" });
-          for (let i = 0; i < (searchCriteria.passengers?.infants || 0); i++)
-            passengers.push({ type: "INFANT", phone: "", country: "Vietnam" });
+          const searchData = JSON.parse(storedSearchData);
+          for (let i = 0; i < (searchData.passengers?.adults || 1); i++)
+            passengers.push({
+              type: "ADULT",
+              lastName: "",
+              firstName: "",
+              dob: null,
+              gender: "",
+              passportNumber: "",
+              country: "Vietnam",
+              phone: "",
+            });
+          for (let i = 0; i < (searchData.passengers?.children || 0); i++)
+            passengers.push({
+              type: "CHILD",
+              lastName: "",
+              firstName: "",
+              dob: null,
+              gender: "",
+              passportNumber: "",
+              country: "Vietnam",
+              phone: "",
+            });
+          for (let i = 0; i < (searchData.passengers?.infants || 0); i++)
+            passengers.push({
+              type: "INFANT",
+              lastName: "",
+              firstName: "",
+              dob: null,
+              gender: "",
+              passportNumber: "",
+              country: "Vietnam",
+              phone: "",
+            });
         } catch (e) {
-          passengers.push({ type: "ADULT", phone: "", country: "Vietnam" });
+          passengers.push({
+            type: "ADULT",
+            lastName: "",
+            firstName: "",
+            dob: null,
+            gender: "",
+            passportNumber: "",
+            country: "Vietnam",
+            phone: "",
+          });
         }
       } else {
-        passengers.push({ type: "ADULT", phone: "", country: "Vietnam" });
+        passengers.push({
+          type: "ADULT",
+          lastName: "",
+          firstName: "",
+          dob: null,
+          gender: "",
+          passportNumber: "",
+          country: "Vietnam",
+          phone: "",
+        });
       }
       setFormData((prev) => ({ ...prev, passengers }));
+    }
+  }, []);
+
+  // Sync passengers with searchData changes
+  useEffect(() => {
+    const storedSearchData = localStorage.getItem("searchData");
+    if (storedSearchData) {
+      try {
+        const searchData = JSON.parse(storedSearchData);
+        const expectedAdults = searchData.passengers?.adults || 1;
+        const expectedChildren = searchData.passengers?.children || 0;
+        const expectedInfants = searchData.passengers?.infants || 0;
+        const expectedTotal =
+          expectedAdults + expectedChildren + expectedInfants;
+
+        // Only update if passenger count doesn't match search data
+        if (formData.passengers.length !== expectedTotal) {
+          const passengers = [];
+          for (let i = 0; i < expectedAdults; i++)
+            passengers.push({
+              type: "ADULT",
+              lastName: "",
+              firstName: "",
+              dob: null,
+              gender: "",
+              passportNumber: "",
+              country: "Vietnam",
+              phone: "",
+            });
+          for (let i = 0; i < expectedChildren; i++)
+            passengers.push({
+              type: "CHILD",
+              lastName: "",
+              firstName: "",
+              dob: null,
+              gender: "",
+              passportNumber: "",
+              country: "Vietnam",
+              phone: "",
+            });
+          for (let i = 0; i < expectedInfants; i++)
+            passengers.push({
+              type: "INFANT",
+              lastName: "",
+              firstName: "",
+              dob: null,
+              gender: "",
+              passportNumber: "",
+              country: "Vietnam",
+              phone: "",
+            });
+
+          setFormData((prev) => ({ ...prev, passengers }));
+        }
+      } catch (e) {
+        console.error("Error syncing passengers with search data:", e);
+      }
     }
   }, []);
 

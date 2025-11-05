@@ -17,14 +17,15 @@ import {
 
 const CheckInBookingDetails = ({
   booking,
-  selectedSegment,
+  selectedPassenger,
   onProceed,
   onBack,
-  onSegmentSelect,
+  onPassengerSelect,
 }) => {
   if (!booking) return null;
 
   const formatDateTime = (dateTimeString) => {
+    if (!dateTimeString) return { date: "N/A", time: "N/A" };
     const dateTime = new Date(dateTimeString);
     return {
       date: dateTime.toLocaleDateString("vi-VN", {
@@ -70,7 +71,7 @@ const CheckInBookingDetails = ({
       case "CHECKIN_NOT_OPEN":
         return "Chưa mở check-in";
       default:
-        return status;
+        return status || "Không xác định";
     }
   };
 
@@ -79,31 +80,84 @@ const CheckInBookingDetails = ({
   };
 
   // Get all segments with their passenger info
+  console.log(
+    "🔍 checkinEligiblePassengers:",
+    booking.checkinEligiblePassengers
+  );
+  console.log("🔍 flightSegments:", booking.flightSegments);
+
   const segmentsWithPassengers =
     booking.flightSegments?.map((segment) => {
-      const passenger = booking.checkinEligiblePassengers?.find(
-        (p) => p.segmentId === segment.segmentId
+      console.log(
+        `🔍 Looking for passenger with segmentId ${
+          segment.segmentId
+        } (${typeof segment.segmentId})`
+      );
+      console.log(
+        `🔍 Total passengers in array: ${booking.checkinEligiblePassengers?.length}`
+      );
+      console.log(
+        `🔍 All eligible passengers:`,
+        booking.checkinEligiblePassengers?.map((p) => ({
+          passengerId: p.passengerId,
+          segmentId: p.segmentId,
+          type: typeof p.segmentId,
+        }))
+      );
+
+      let passengerIndex = 0;
+      const passenger = booking.checkinEligiblePassengers?.find((p) => {
+        passengerIndex++;
+        console.log(
+          `  [${passengerIndex}] Checking passenger segmentId ${
+            p.segmentId
+          } (${typeof p.segmentId}) against segment ${segment.segmentId}`
+        );
+
+        // For one-way flights, passenger.segmentId might be null, so match by flightNumber instead
+        let match = false;
+        if (p.segmentId === null && segment.segmentId !== null) {
+          // One-way flight: match by flightNumber
+          match = p.flightNumber === segment.flightNumber;
+          console.log(
+            `    One-way flight matching by flightNumber: ${p.flightNumber} === ${segment.flightNumber} = ${match}`
+          );
+        } else {
+          // Multi-segment flight: match by segmentId
+          match = Number(p.segmentId) === Number(segment.segmentId);
+          console.log(`    Multi-segment matching by segmentId: ${match}`);
+        }
+
+        console.log(`    Final match result: ${match}`);
+        return match;
+      });
+      console.log(
+        `  Checked ${passengerIndex} passengers, Found passenger:`,
+        passenger
       );
       return {
-        ...segment,
+        segment,
         passenger,
       };
     }) || [];
 
   // Sort segments by order
   const sortedSegments = segmentsWithPassengers.sort(
-    (a, b) => a.segmentOrder - b.segmentOrder
+    (a, b) => a.segment.segmentOrder - b.segment.segmentOrder
   );
 
-  // Check if any segment can be checked in
-  const hasEligibleSegments = sortedSegments.some(
-    (segment) =>
-      segment.passenger?.checkinStatus === "ELIGIBLE" ||
-      (segment.passenger?.checkinStatus === "PREVIOUS_SEGMENT_NOT_CHECKED_IN" &&
-        segment.segmentOrder > 1 &&
-        sortedSegments.find((s) => s.segmentOrder === segment.segmentOrder - 1)
-          ?.passenger?.checkinStatus === "ALREADY_CHECKED_IN")
+  // Debug: Log the sorted segments
+  console.log("🔍 sortedSegments:", sortedSegments);
+
+  // Kiểm tra có hành khách nào đủ điều kiện check-in
+  const hasEligiblePassengers = sortedSegments.some(
+    ({ passenger }) =>
+      passenger?.checkinStatus === "ELIGIBLE" ||
+      passenger?.checkinStatus === "PREVIOUS_SEGMENT_NOT_CHECKED_IN"
   );
+
+  // Lấy thông tin hành khách đầu tiên để hiển thị ở phần "Thông tin đặt chỗ"
+  const firstEligiblePassenger = booking.checkinEligiblePassengers?.[0];
 
   return (
     <div className="space-y-6">
@@ -122,7 +176,7 @@ const CheckInBookingDetails = ({
                 Mã đặt chỗ
               </p>
               <p className="font-semibold text-lg dark:text-gray-100">
-                {booking.bookingCode}
+                {booking.bookingCode || "N/A"}
               </p>
             </div>
             <div>
@@ -134,13 +188,13 @@ const CheckInBookingDetails = ({
                   `${booking.checkinEligiblePassengers?.[0]?.firstName} ${booking.checkinEligiblePassengers?.[0]?.lastName}`}
               </p>
             </div>
-            {booking.checkinEligiblePassengers?.[0]?.passportNumber && (
+            {firstEligiblePassenger?.passportNumber && (
               <div>
                 <p className="text-sm text-gray-600 dark:text-gray-300">
                   Số hộ chiếu
                 </p>
                 <p className="font-semibold dark:text-gray-100">
-                  {booking.checkinEligiblePassengers[0].passportNumber}
+                  {firstEligiblePassenger.passportNumber}
                 </p>
               </div>
             )}
@@ -148,36 +202,54 @@ const CheckInBookingDetails = ({
         </CardContent>
       </Card>
 
-      {/* All Flight Segments */}
-      {sortedSegments.map((segmentData, index) => {
-        const { passenger, ...segment } = segmentData;
-        const departureDateTime = segment.departureTime
-          ? formatDateTime(segment.departureTime)
-          : { date: "N/A", time: "N/A" };
-        const arrivalDateTime = segment.arrivalTime
-          ? formatDateTime(segment.arrivalTime)
-          : { date: "N/A", time: "N/A" };
-
+      {/* Danh sách hành khách + chặng */}
+      {sortedSegments.map(({ segment, passenger }) => {
+        // Skip if no passenger found for this segment
+        if (!passenger) {
+          console.warn(
+            `⚠️  No passenger found for segment ${segment.segmentId}`
+          );
+          return null;
+        }
         const isCheckedIn = passenger?.checkinStatus === "ALREADY_CHECKED_IN";
         const canCheckInThisSegment =
           passenger?.checkinStatus === "ELIGIBLE" ||
           (passenger?.checkinStatus === "PREVIOUS_SEGMENT_NOT_CHECKED_IN" &&
             segment.segmentOrder > 1 &&
             sortedSegments.find(
-              (s) => s.segmentOrder === segment.segmentOrder - 1
+              (s) => s.segment.segmentOrder === segment.segmentOrder - 1
             )?.passenger?.checkinStatus === "ALREADY_CHECKED_IN");
+
+        // Kiểm tra đã chọn hành khách này cho chặng này chưa
+        const isSelected =
+          selectedPassenger?.passengerId === passenger?.passengerId &&
+          selectedPassenger?.segmentId === segment.segmentId;
+
+        const departureDateTime = segment?.departureTime
+          ? formatDateTime(segment.departureTime)
+          : { date: "N/A", time: "N/A" };
+        const arrivalDateTime = segment?.arrivalTime
+          ? formatDateTime(segment.arrivalTime)
+          : { date: "N/A", time: "N/A" };
 
         return (
           <Card
-            key={segment.segmentId || index}
-            className={isCheckedIn ? "border-green-200 bg-green-50/30" : ""}
+            key={`${passenger?.passengerId}-${segment.segmentId}`}
+            className={
+              isCheckedIn
+                ? "border-green-200 bg-green-50/30 dark:bg-gray-900"
+                : ""
+            }
           >
             <CardHeader>
               <CardTitle className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <Plane className="w-5 h-5 text-blue-500" />
+                  <User className="w-5 h-5 text-blue-500" />
                   <span>
-                    Chuyến bay {getSegmentTitle(segment.segmentOrder)}
+                    {passenger?.fullName ||
+                      `${passenger?.firstName || ""} ${
+                        passenger?.lastName || ""
+                      }`.trim()}
                   </span>
                   {isCheckedIn && (
                     <CheckCircle className="w-5 h-5 text-green-600" />
@@ -190,53 +262,70 @@ const CheckInBookingDetails = ({
                   {getStatusText(passenger?.checkinStatus)}
                 </Badge>
               </CardTitle>
+              {segment && (
+                <div className="text-sm text-gray-600 dark:text-gray-300">
+                  {getSegmentTitle(segment.segmentOrder)} •{" "}
+                  {segment.flightNumber}
+                </div>
+              )}
             </CardHeader>
+
             <CardContent className="space-y-4">
               {/* Flight Route */}
-              <div className="flex items-center justify-between p-4 bg-blue-50 rounded-lg">
-                <div className="text-center">
-                  <div className="flex items-center gap-2">
-                    <MapPin className="w-4 h-4 text-blue-600" />
-                    <p className="font-bold text-lg">
-                      {segment.departureAirport?.airportCode || "N/A"}
+              {segment && (
+                <div className="flex items-center justify-between p-4 bg-blue-50 dark:bg-gray-900 rounded-lg">
+                  <div className="text-center">
+                    <div className="flex items-center gap-2">
+                      <MapPin className="w-4 h-4 text-blue-600" />
+                      <p className="font-bold text-lg">
+                        {segment.departureAirport?.airportCode || "N/A"}
+                      </p>
+                    </div>
+                    <p className="text-sm text-gray-600">
+                      {segment.departureAirport?.airportName || "N/A"}
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      {departureDateTime.time}
                     </p>
                   </div>
-                  <p className="text-sm text-gray-600">
-                    {segment.departureAirport?.airportName || "Departure"}
-                  </p>
-                  <p className="text-xs text-gray-500">
-                    {departureDateTime.time}
-                  </p>
-                </div>
 
-                <div className="flex flex-col items-center px-4">
-                  <ArrowRight className="w-6 h-6 text-blue-600" />
-                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                    {segment.flightNumber}
-                  </p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">
-                    {segment.duration || "N/A"}
-                  </p>
-                </div>
-
-                <div className="text-center">
-                  <div className="flex items-center gap-2">
-                    <MapPin className="w-4 h-4 text-blue-600" />
-                    <p className="font-bold text-lg">
-                      {segment.arrivalAirport?.airportCode || "N/A"}
+                  <div className="flex flex-col items-center px-4">
+                    <ArrowRight className="w-6 h-6 text-blue-600" />
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                      {segment.flightNumber}
+                    </p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                      {segment.duration || "N/A"}
                     </p>
                   </div>
-                  <p className="text-sm text-gray-600 dark:text-gray-300">
-                    {segment.arrivalAirport?.airportName || "Arrival"}
-                  </p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">
-                    {arrivalDateTime.time}
-                  </p>
-                </div>
-              </div>
 
-              {/* Flight Details */}
+                  <div className="text-center">
+                    <div className="flex items-center gap-2">
+                      <MapPin className="w-4 h-4 text-blue-600" />
+                      <p className="font-bold text-lg">
+                        {segment.arrivalAirport?.airportCode || "N/A"}
+                      </p>
+                    </div>
+                    <p className="text-sm text-gray-600 dark:text-gray-300">
+                      {segment.arrivalAirport?.airportName || "N/A"}
+                    </p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                      {arrivalDateTime.time}
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* Passenger Details */}
               <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                <div>
+                  <p className="text-sm text-gray-600 dark:text-gray-300">
+                    Loại hành khách
+                  </p>
+                  <p className="font-medium dark:text-gray-100">
+                    {passenger?.type || "Người lớn"}
+                  </p>
+                </div>
                 <div>
                   <p className="text-sm text-gray-600 dark:text-gray-300">
                     Ngày bay
@@ -250,20 +339,12 @@ const CheckInBookingDetails = ({
                     Hạng ghế
                   </p>
                   <p className="font-medium dark:text-gray-100">
-                    {segment.className || booking.travelClass}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-600 dark:text-gray-300">
-                    Máy bay
-                  </p>
-                  <p className="font-medium dark:text-gray-100">
-                    {segment.aircraft || "N/A"}
+                    {segment?.className || booking.travelClass || "N/A"}
                   </p>
                 </div>
               </div>
 
-              {/* Seat Information */}
+              {/* Seat Number */}
               {passenger?.seatNumber && (
                 <div className="flex items-center gap-2 pt-2 border-t">
                   <User className="w-4 h-4 text-gray-500" />
@@ -276,7 +357,7 @@ const CheckInBookingDetails = ({
                 </div>
               )}
 
-              {/* Boarding Pass for checked-in segments */}
+              {/* Boarding Pass */}
               {isCheckedIn && (
                 <div className="flex items-center gap-2 pt-2 border-t">
                   <DoorOpen className="w-4 h-4 text-green-500" />
@@ -301,20 +382,26 @@ const CheckInBookingDetails = ({
                 </div>
               )}
 
-              {/* Check-in button for eligible segments */}
-              {canCheckInThisSegment && !selectedSegment && (
+              {/* Check-in Button */}
+              {canCheckInThisSegment && !isSelected && (
                 <div className="pt-4 border-t">
                   <Button
-                    onClick={() => onSegmentSelect(passenger)}
+                    onClick={() =>
+                      onPassengerSelect({
+                        passengerId: passenger?.passengerId,
+                        segmentId: segment.segmentId,
+                        ...passenger,
+                      })
+                    }
                     className="w-full"
                   >
-                    Check-in chuyến {getSegmentTitle(segment.segmentOrder)}
+                    Check-in chuyến {segment.segmentOrder === 1 ? "đi" : "về"}
                   </Button>
                 </div>
               )}
 
-              {/* Selected segment indicator */}
-              {selectedSegment?.segmentId === segment.segmentId && (
+              {/* Selected Indicator */}
+              {isSelected && (
                 <div className="pt-4 border-t">
                   <div className="flex items-center gap-2 text-blue-600 dark:text-blue-400">
                     <CheckCircle className="w-4 h-4" />
@@ -332,16 +419,16 @@ const CheckInBookingDetails = ({
         <Button variant="outline" onClick={onBack} className="flex-1">
           Quay lại
         </Button>
-        {selectedSegment && (
+
+        {selectedPassenger ? (
           <Button onClick={onProceed} className="flex-1">
             Tiếp tục check-in
           </Button>
-        )}
-        {!selectedSegment && !hasEligibleSegments && (
+        ) : !hasEligiblePassengers ? (
           <Button disabled className="flex-1" variant="secondary">
-            Không có chuyến nào có thể check-in
+            Không có hành khách nào có thể check-in
           </Button>
-        )}
+        ) : null}
       </div>
     </div>
   );

@@ -575,12 +575,11 @@ const BookingConfirmation = () => {
                           const groupedSeats =
                             bookingDetails.seatTypeDetails.reduce(
                               (acc, seatDetail) => {
-                                // For now, we'll assume all seats are outbound unless we have segment info
-                                // This can be enhanced when segment info is available in API
+                                // segmentOrder 0 = outbound (chuyến đi), 1 = return (chuyến về)
                                 const segmentKey =
-                                  seatDetail.segmentOrder === 1
-                                    ? "return"
-                                    : "outbound";
+                                  seatDetail.segmentOrder === 0
+                                    ? "outbound"
+                                    : "return";
                                 if (!acc[segmentKey]) acc[segmentKey] = [];
                                 acc[segmentKey].push(seatDetail);
                                 return acc;
@@ -772,6 +771,12 @@ const BookingConfirmation = () => {
                                   ) - 1;
                                 const passenger =
                                   bookingDetails.passengers[passengerIndex];
+
+                                // Skip INFANT passengers - they don't have seats
+                                if (passenger && passenger.type === "INFANT") {
+                                  return null;
+                                }
+
                                 const passengerName = passenger
                                   ? `${passenger.firstName} ${passenger.lastName}`
                                   : `Hành khách ${passengerIndex + 1}`;
@@ -855,6 +860,15 @@ const BookingConfirmation = () => {
                                     ) - 1;
                                   const passenger =
                                     bookingDetails.passengers[passengerIndex];
+
+                                  // Skip INFANT passengers - they don't have seats
+                                  if (
+                                    passenger &&
+                                    passenger.type === "INFANT"
+                                  ) {
+                                    return null;
+                                  }
+
                                   const passengerName = passenger
                                     ? `${passenger.firstName} ${passenger.lastName}`
                                     : `Hành khách ${passengerIndex + 1}`;
@@ -1482,6 +1496,19 @@ const BookingConfirmation = () => {
                           {formatCurrencyVND(
                             bookingDetails.pointsDiscountAmount
                           )}
+                        </span>
+                      </div>
+                    )}
+
+                    {bookingDetails.membershipDiscount > 0 && (
+                      <div className="flex justify-between text-purple-600">
+                        <span>
+                          Giảm giá hội viên (
+                          {bookingDetails.membershipTier || "STANDARD"})
+                        </span>
+                        <span>
+                          -
+                          {formatCurrencyVND(bookingDetails.membershipDiscount)}
                         </span>
                       </div>
                     )}

@@ -230,15 +230,25 @@ export default function QRPay() {
 
   if (status === "success") {
     return (
-      <div className="flex flex-col items-center justify-center h-screen bg-gray-50 text-center p-6">
+      <div className="flex flex-col items-center justify-center h-screen bg-gray-50 dark:bg-gray-900 text-center p-6">
         <CheckCircle className="w-16 h-16 text-green-500 mb-4" />
-        <h1 className="text-2xl font-semibold text-green-700">
+        <h1 className="text-2xl font-semibold text-green-700 dark:text-green-400">
           Thanh toán thành công!
         </h1>
-        <p className="text-gray-600 mt-2">
+        <p className="text-gray-600 mt-2 dark:text-white">
           Cảm ơn bạn đã sử dụng dịch vụ. Hệ thống sẽ gửi thông tin đến email của
           bạn.
         </p>
+
+        {/* Back Button */}
+        <button
+          onClick={() => navigate(-1)}
+          className="mt-4 bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 mr-4 flex items-center gap-2"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          Quay lại
+        </button>
+
         <button
           onClick={() => {
             // Check booking payment info first
@@ -403,6 +413,18 @@ export default function QRPay() {
         </CardHeader>
 
         <CardContent className="flex flex-col items-center p-6 space-y-4">
+          {/* Back Button */}
+          <div className="w-full flex justify-start">
+            <Button
+              onClick={() => navigate(-1)}
+              variant="outline"
+              className="flex items-center gap-2"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              Quay lại
+            </Button>
+          </div>
+
           {/* QR Code */}
           <img
             src={checkoutUrl}

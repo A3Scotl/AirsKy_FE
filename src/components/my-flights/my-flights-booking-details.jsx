@@ -844,7 +844,7 @@ const MyFlightsBookingDetails = ({ booking, onProceed, onBack }) => {
         )}
 
       {/* Price Summary */}
-      <Card className="border-blue-200 bg-blue-50">
+      <Card className="border-blue-200 bg-blue-50 bg-gray-900">
         <CardHeader>
           <CardTitle className="text-lg">📊 Chi tiết giá</CardTitle>
         </CardHeader>

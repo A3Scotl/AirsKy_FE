@@ -477,7 +477,7 @@ const CheckInCompletion = ({
       ) : (
         <Card
           className={`border-green-200 ${
-            isAlreadyCheckedIn ? "bg-green-50" : "bg-blue-50"
+            isAlreadyCheckedIn ? "bg-green-50 dark:bg-gray-900" : "bg-blue-50 dark:bg-gray-900"
           }`}
         >
           <CardContent className="pt-6">
@@ -520,7 +520,7 @@ const CheckInCompletion = ({
 
       {/* Payment Section - Show if there's additional cost */}
       {needsPayment && (
-        <Card className="border-orange-200 bg-orange-50">
+        <Card className="border-orange-200 dark:bg-gray-900 bg-orange-50">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-orange-800">
               <CreditCard className="w-5 h-5" />
@@ -529,7 +529,7 @@ const CheckInCompletion = ({
           </CardHeader>
           <CardContent className="space-y-4">
             {/* Payment Summary */}
-            <div className="bg-white p-4 rounded-lg border">
+            <div className="bg-white dark:bg-black p-4 rounded-lg border">
               <h4 className="font-semibold mb-3">Chi tiết thanh toán</h4>
               <div className="space-y-2">
                 {/* Seat change cost breakdown from calculation */}
@@ -632,7 +632,7 @@ const CheckInCompletion = ({
                 value={paymentMethod}
                 onValueChange={setPaymentMethod}
               >
-                <div className="flex items-center space-x-2 p-3 border rounded-lg hover:bg-gray-50">
+                <div className="flex items-center space-x-2 p-3 border rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800">
                   <RadioGroupItem value="PAYPAL" id="paypal" />
                   <Label htmlFor="paypal" className="flex-1 cursor-pointer">
                     <div className="flex items-center gap-2">
@@ -643,7 +643,7 @@ const CheckInCompletion = ({
                     </div>
                   </Label>
                 </div>
-                <div className="flex items-center space-x-2 p-3 border rounded-lg hover:bg-gray-50">
+                <div className="flex items-center space-x-2 p-3 border rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800">
                   <RadioGroupItem value="BANK_TRANSFER" id="bank" />
                   <Label htmlFor="bank" className="flex-1 cursor-pointer">
                     <div className="flex items-center gap-2">
@@ -821,255 +821,256 @@ const CheckInCompletion = ({
                 </div>
               </div>
             ) : (
-              <div
-                className={`bg-gradient-to-r ${
-                  isAlreadyCheckedIn
-                    ? "from-green-600 to-blue-600"
-                    : "from-blue-600 to-purple-600"
-                } text-white p-6 rounded-lg`}
-              >
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {/* Flight Info */}
-                  <div className="space-y-4">
-                    <div>
-                      <p
-                        className={`${
-                          isAlreadyCheckedIn
-                            ? "text-green-100"
-                            : "text-blue-100"
-                        } text-sm`}
-                      >
-                        Mã đặt chỗ
-                      </p>
-                      <p className="text-xl font-bold">
-                        {booking.bookingCode || booking.code}
-                      </p>
-                    </div>
+              null
+              // <div
+              //   className={`bg-gradient-to-r ${
+              //     isAlreadyCheckedIn
+              //       ? "from-green-600 to-blue-600"
+              //       : "from-blue-600 to-purple-600"
+              //   } text-white p-6 rounded-lg`}
+              // >
+              //   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              
+              //     <div className="space-y-4">
+              //       <div>
+              //         <p
+              //           className={`${
+              //             isAlreadyCheckedIn
+              //               ? "text-green-100"
+              //               : "text-blue-100"
+              //           } text-sm`}
+              //         >
+              //           Mã đặt chỗ
+              //         </p>
+              //         <p className="text-xl font-bold">
+              //           {booking.bookingCode || booking.code}
+              //         </p>
+              //       </div>
 
-                    <div>
-                      <p
-                        className={`${
-                          isAlreadyCheckedIn
-                            ? "text-green-100"
-                            : "text-blue-100"
-                        } text-sm`}
-                      >
-                        Hành khách
-                      </p>
-                      <p className="font-semibold">
-                        {currentPassenger?.fullName ||
-                          booking.passenger ||
-                          `${currentPassenger?.firstName} ${currentPassenger?.lastName}` ||
-                          "N/A"}
-                      </p>
-                    </div>
+              //       <div>
+              //         <p
+              //           className={`${
+              //             isAlreadyCheckedIn
+              //               ? "text-green-100"
+              //               : "text-blue-100"
+              //           } text-sm`}
+              //         >
+              //           Hành khách
+              //         </p>
+              //         <p className="font-semibold">
+              //           {currentPassenger?.fullName ||
+              //             booking.passenger ||
+              //             `${currentPassenger?.firstName} ${currentPassenger?.lastName}` ||
+              //             "N/A"}
+              //         </p>
+              //       </div>
 
-                    <div>
-                      <p
-                        className={`${
-                          isAlreadyCheckedIn
-                            ? "text-green-100"
-                            : "text-blue-100"
-                        } text-sm`}
-                      >
-                        Chuyến bay
-                      </p>
-                      <p className="font-semibold">
-                        {booking.flightSegments?.[0]?.flightNumber ||
-                          booking.flight ||
-                          booking.flightNumber ||
-                          "N/A"}
-                      </p>
-                    </div>
+              //       <div>
+              //         <p
+              //           className={`${
+              //             isAlreadyCheckedIn
+              //               ? "text-green-100"
+              //               : "text-blue-100"
+              //           } text-sm`}
+              //         >
+              //           Chuyến bay
+              //         </p>
+              //         <p className="font-semibold">
+              //           {booking.flightSegments?.[0]?.flightNumber ||
+              //             booking.flight ||
+              //             booking.flightNumber ||
+              //             "N/A"}
+              //         </p>
+              //       </div>
 
-                    <div>
-                      <p
-                        className={`${
-                          isAlreadyCheckedIn
-                            ? "text-green-100"
-                            : "text-blue-100"
-                        } text-sm`}
-                      >
-                        Chỗ ngồi
-                      </p>
-                      <p className="font-semibold text-yellow-300">
-                        {booking.checkinEligiblePassengers?.[0]?.seatNumber ||
-                          booking.seat ||
-                          booking.seatNumber ||
-                          "N/A"}
-                      </p>
-                    </div>
+              //       <div>
+              //         <p
+              //           className={`${
+              //             isAlreadyCheckedIn
+              //               ? "text-green-100"
+              //               : "text-blue-100"
+              //           } text-sm`}
+              //         >
+              //           Chỗ ngồi
+              //         </p>
+              //         <p className="font-semibold text-yellow-300">
+              //           {booking.checkinEligiblePassengers?.[0]?.seatNumber ||
+              //             booking.seat ||
+              //             booking.seatNumber ||
+              //             "N/A"}
+              //         </p>
+              //       </div>
 
-                    {booking.ticketPrice && (
-                      <div>
-                        <p
-                          className={`${
-                            isAlreadyCheckedIn
-                              ? "text-green-100"
-                              : "text-blue-100"
-                          } text-sm`}
-                        >
-                          Giá vé
-                        </p>
-                        <p className="font-semibold">
-                          {formatCurrencyVND(booking.ticketPrice)}
-                        </p>
-                      </div>
-                    )}
+              //       {booking.ticketPrice && (
+              //         <div>
+              //           <p
+              //             className={`${
+              //               isAlreadyCheckedIn
+              //                 ? "text-green-100"
+              //                 : "text-blue-100"
+              //             } text-sm`}
+              //           >
+              //             Giá vé
+              //           </p>
+              //           <p className="font-semibold">
+              //             {formatCurrencyVND(booking.ticketPrice)}
+              //           </p>
+              //         </div>
+              //       )}
 
-                    {booking.checkinId && (
-                      <div>
-                        <p
-                          className={`${
-                            isAlreadyCheckedIn
-                              ? "text-green-100"
-                              : "text-blue-100"
-                          } text-sm`}
-                        >
-                          Mã check-in
-                        </p>
-                        <p className="font-semibold text-yellow-300">
-                          {booking.checkinId}
-                        </p>
-                      </div>
-                    )}
-                  </div>
+              //       {booking.checkinId && (
+              //         <div>
+              //           <p
+              //             className={`${
+              //               isAlreadyCheckedIn
+              //                 ? "text-green-100"
+              //                 : "text-blue-100"
+              //             } text-sm`}
+              //           >
+              //             Mã check-in
+              //           </p>
+              //           <p className="font-semibold text-yellow-300">
+              //             {booking.checkinId}
+              //           </p>
+              //         </div>
+              //       )}
+              //     </div>
 
-                  {/* QR Code Placeholder */}
-                  <div className="flex flex-col items-center justify-center">
-                    <div className="bg-white p-4 rounded-lg mb-4">
-                      <QrCode className="w-24 h-24 text-gray-800" />
-                    </div>
-                    <p className="text-sm text-blue-100 text-center">
-                      Quét mã QR tại sân bay
-                    </p>
-                  </div>
-                </div>
+              //     {/* QR Code Placeholder */}
+              //     <div className="flex flex-col items-center justify-center">
+              //       <div className="bg-white p-4 rounded-lg mb-4">
+              //         <QrCode className="w-24 h-24 text-gray-800" />
+              //       </div>
+              //       <p className="text-sm text-blue-100 text-center">
+              //         Quét mã QR tại sân bay
+              //       </p>
+              //     </div>
+              //   </div>
 
-                {/* Flight Route */}
-                <div
-                  className={`mt-6 pt-4 border-t ${
-                    isAlreadyCheckedIn ? "border-green-400" : "border-blue-400"
-                  }`}
-                >
-                  <div className="flex items-center justify-center gap-4 mb-4">
-                    <div className="text-center">
-                      <p
-                        className={`${
-                          isAlreadyCheckedIn
-                            ? "text-green-100"
-                            : "text-blue-100"
-                        } text-xs`}
-                      >
-                        Từ
-                      </p>
-                      <p className="text-2xl font-bold">
-                        {booking.flightSegments?.[0]?.departureAirport
-                          ?.airportName ||
-                          booking.from ||
-                          "N/A"}
-                        (
-                        {booking.flightSegments?.[0]?.departureAirport
-                          ?.airportCode || "N/A"}
-                        )
-                      </p>
-                    </div>
-                    <Plane className="w-6 h-6 text-blue-200" />
-                    <div className="text-center">
-                      <p
-                        className={`${
-                          isAlreadyCheckedIn
-                            ? "text-green-100"
-                            : "text-blue-100"
-                        } text-xs`}
-                      >
-                        Đến
-                      </p>
-                      <p className="text-2xl font-bold">
-                        {booking.flightSegments?.[0]?.arrivalAirport
-                          ?.airportName ||
-                          booking.to ||
-                          "N/A"}
-                        ({" "}
-                        {booking.flightSegments?.[0]?.arrivalAirport
-                          ?.airportCode || "N/A"}
-                        )
-                      </p>
-                    </div>
-                  </div>
+            
+              //   <div
+              //     className={`mt-6 pt-4 border-t ${
+              //       isAlreadyCheckedIn ? "border-green-400" : "border-blue-400"
+              //     }`}
+              //   >
+              //     <div className="flex items-center justify-center gap-4 mb-4">
+              //       <div className="text-center">
+              //         <p
+              //           className={`${
+              //             isAlreadyCheckedIn
+              //               ? "text-green-100"
+              //               : "text-blue-100"
+              //           } text-xs`}
+              //         >
+              //           Từ
+              //         </p>
+              //         <p className="text-2xl font-bold">
+              //           {booking.flightSegments?.[0]?.departureAirport
+              //             ?.airportName ||
+              //             booking.from ||
+              //             "N/A"}
+              //           (
+              //           {booking.flightSegments?.[0]?.departureAirport
+              //             ?.airportCode || "N/A"}
+              //           )
+              //         </p>
+              //       </div>
+              //       <Plane className="w-6 h-6 text-blue-200" />
+              //       <div className="text-center">
+              //         <p
+              //           className={`${
+              //             isAlreadyCheckedIn
+              //               ? "text-green-100"
+              //               : "text-blue-100"
+              //           } text-xs`}
+              //         >
+              //           Đến
+              //         </p>
+              //         <p className="text-2xl font-bold">
+              //           {booking.flightSegments?.[0]?.arrivalAirport
+              //             ?.airportName ||
+              //             booking.to ||
+              //             "N/A"}
+              //           ({" "}
+              //           {booking.flightSegments?.[0]?.arrivalAirport
+              //             ?.airportCode || "N/A"}
+              //           )
+              //         </p>
+              //       </div>
+              //     </div>
 
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                    <div>
-                      <p
-                        className={`${
-                          isAlreadyCheckedIn
-                            ? "text-green-100"
-                            : "text-blue-100"
-                        }`}
-                      >
-                        Ngày bay
-                      </p>
-                      <p className="font-medium">{flightDateTime.date}</p>
-                    </div>
-                    <div>
-                      <p
-                        className={`${
-                          isAlreadyCheckedIn
-                            ? "text-green-100"
-                            : "text-blue-100"
-                        }`}
-                      >
-                        Giờ khởi hành
-                      </p>
-                      <p className="font-medium">{flightDateTime.time}</p>
-                    </div>
-                    <div>
-                      <p
-                        className={`${
-                          isAlreadyCheckedIn
-                            ? "text-green-100"
-                            : "text-blue-100"
-                        }`}
-                      >
-                        Cửa ra máy bay
-                      </p>
-                      <p className="font-medium">
-                        {booking.flightSegments?.[0]?.departureAirport
-                          ?.gates?.[0]?.gateName ||
-                          booking.gate ||
-                          "TBD"}
-                      </p>
-                    </div>
-                    <div>
-                      <p
-                        className={`${
-                          isAlreadyCheckedIn
-                            ? "text-green-100"
-                            : "text-blue-100"
-                        }`}
-                      >
-                        Trạng thái
-                      </p>
-                      <p className="font-medium text-green-300">Đã check-in</p>
-                    </div>
-                  </div>
+              //     <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+              //       <div>
+              //         <p
+              //           className={`${
+              //             isAlreadyCheckedIn
+              //               ? "text-green-100"
+              //               : "text-blue-100"
+              //           }`}
+              //         >
+              //           Ngày bay
+              //         </p>
+              //         <p className="font-medium">{flightDateTime.date}</p>
+              //       </div>
+              //       <div>
+              //         <p
+              //           className={`${
+              //             isAlreadyCheckedIn
+              //               ? "text-green-100"
+              //               : "text-blue-100"
+              //           }`}
+              //         >
+              //           Giờ khởi hành
+              //         </p>
+              //         <p className="font-medium">{flightDateTime.time}</p>
+              //       </div>
+              //       <div>
+              //         <p
+              //           className={`${
+              //             isAlreadyCheckedIn
+              //               ? "text-green-100"
+              //               : "text-blue-100"
+              //           }`}
+              //         >
+              //           Cửa ra máy bay
+              //         </p>
+              //         <p className="font-medium">
+              //           {booking.flightSegments?.[0]?.departureAirport
+              //             ?.gates?.[0]?.gateName ||
+              //             booking.gate ||
+              //             "TBD"}
+              //         </p>
+              //       </div>
+              //       <div>
+              //         <p
+              //           className={`${
+              //             isAlreadyCheckedIn
+              //               ? "text-green-100"
+              //               : "text-blue-100"
+              //           }`}
+              //         >
+              //           Trạng thái
+              //         </p>
+              //         <p className="font-medium text-green-300">Đã check-in</p>
+              //       </div>
+              //     </div>
 
-                  {booking.checkinId && (
-                    <div className="mt-4 text-center">
-                      <p
-                        className={`${
-                          isAlreadyCheckedIn
-                            ? "text-green-100"
-                            : "text-blue-100"
-                        } text-xs`}
-                      >
-                        Mã check-in
-                      </p>
-                      <p className="text-sm font-medium">{booking.checkinId}</p>
-                    </div>
-                  )}
-                </div>
-              </div>
+              //     {booking.checkinId && (
+              //       <div className="mt-4 text-center">
+              //         <p
+              //           className={`${
+              //             isAlreadyCheckedIn
+              //               ? "text-green-100"
+              //               : "text-blue-100"
+              //           } text-xs`}
+              //         >
+              //           Mã check-in
+              //         </p>
+              //         <p className="text-sm font-medium">{booking.checkinId}</p>
+              //       </div>
+              //     )}
+              //   </div>
+              // </div>
             )}
           </CardContent>
         </Card>

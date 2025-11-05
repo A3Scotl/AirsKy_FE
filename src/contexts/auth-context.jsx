@@ -34,6 +34,8 @@ export function AuthProvider({ children }) {
       avatar: userData.avatar,
       googleAvatar: userData.googleAvatar,
       authProvider: userData.authProvider,
+      membershipTier: userData.membershipTier,
+      tier: userData.tier,
     };
   };
 

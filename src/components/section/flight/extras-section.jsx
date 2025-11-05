@@ -1430,6 +1430,11 @@ const MultiCitySeatSelectionCard = ({
 }) => {
   const passengers = formData.passengers;
 
+  // Filter out INFANT passengers from seat selection
+  const passengersNeedingSeats = passengers.filter(
+    (passenger) => passenger.type !== "INFANT"
+  );
+
   const handleMultiCitySeatSelect = (
     segmentIndex,
     seatNumber,
@@ -1645,7 +1650,7 @@ const MultiCitySeatSelectionCard = ({
                           <AircraftLayout
                             seats={segmentSeatData}
                             selectedSeats={segmentSeats}
-                            passengers={passengers}
+                            passengers={passengersNeedingSeats}
                             handleSeatSelect={(seatNumber, passengerIndex) =>
                               handleMultiCitySeatSelect(
                                 segmentIndex,
@@ -1702,6 +1707,11 @@ const SeatSelectionCard = ({
   setIsUpdating,
 }) => {
   const passengers = formData.passengers;
+
+  // Filter out INFANT passengers from seat selection
+  const passengersNeedingSeats = passengers.filter(
+    (passenger) => passenger.type !== "INFANT"
+  );
 
   // Filter seats based on the user's selected travel class
   const filteredSeats = useMemo(() => {
@@ -1986,7 +1996,7 @@ const SeatSelectionCard = ({
                       <SeatSelectionWrapper
                         seats={seats}
                         selectedSeats={selectedSeats}
-                        passengers={passengers}
+                        passengers={passengersNeedingSeats}
                         onSeatSelect={(seatNumber, passengerIndex, isReturn) =>
                           handleSeatSelect(seatNumber, passengerIndex, false)
                         }
@@ -2077,7 +2087,7 @@ const SeatSelectionCard = ({
                         <SeatSelectionWrapper
                           seats={returnSeats}
                           selectedSeats={selectedReturnSeats}
-                          passengers={passengers}
+                          passengers={passengersNeedingSeats}
                           onSeatSelect={(
                             seatNumber,
                             passengerIndex,
@@ -2560,7 +2570,6 @@ const AncillaryServicesCard = ({
               return (
                 <div key={type} className="space-y-3">
                   <h4 className="font-semibold text-gray-800 dark:text-gray-200 flex items-center gap-2">
-                  
                     {typeInfo.vietnameseName}
                   </h4>
                   <div className="space-y-3 pl-4">
@@ -2652,13 +2661,17 @@ const AncillaryServiceOption = ({
       <div className="flex items-start justify-between">
         <div className="flex-1">
           <div className="flex items-center gap-3 mb-2">
-            <h5 className="font-medium text-gray-800 dark:text-white">{service.serviceName}</h5>
+            <h5 className="font-medium text-gray-800 dark:text-white">
+              {service.serviceName}
+            </h5>
             <Badge variant="outline" className="text-xs">
               {formatCurrencyVND(service.price)}
             </Badge>
           </div>
           {service.description && (
-            <p className="text-sm text-gray-600 dark:text-gray-100 mb-3">{service.description}</p>
+            <p className="text-sm text-gray-600 dark:text-gray-100 mb-3">
+              {service.description}
+            </p>
           )}
 
           {isPerPassenger ? (
@@ -3045,6 +3058,12 @@ const BookingSummary = ({
 // Main Extras Component
 const Extras = ({ flight, fare, formData, setExtrasData }) => {
   const [isUpdating, setIsUpdating] = useState(false);
+
+  // Filter out INFANT passengers from seat selection (they don't need seats)
+  const passengersNeedingSeats = formData.passengers.filter(
+    (passenger) => passenger.type !== "INFANT"
+  );
+
   // Debug flight object structure
 
   // Check flight type

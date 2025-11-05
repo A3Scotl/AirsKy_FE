@@ -16,6 +16,7 @@ import { bookingApi } from "@/apis/booking-api";
 import { flightApi } from "@/apis/flight-api";
 import { dealApi } from "@/apis/deal-api";
 import { pointsApi } from "@/apis/points-api";
+import { loyaltyApi } from "@/apis/loyalty-api";
 import { handleFetch } from "@/utils/fetch-helper";
 import { toast } from "sonner";
 import PropTypes from "prop-types";
@@ -198,6 +199,9 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
   const [canRedeem, setCanRedeem] = useState(false);
   const [membershipCodeForPoints, setMembershipCodeForPoints] = useState(0); // Number of points used from membership
 
+  // Membership tier state
+  const [userMembershipTier, setUserMembershipTier] = useState("STANDARD");
+
   // Load available seats on component mount
   useEffect(() => {
     const loadAvailableSeats = async () => {
@@ -285,6 +289,57 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
     loadPointsData();
   }, [user, formData.passengers]);
 
+  // Load membership tier from user object or loyalty API
+  useEffect(() => {
+    const loadMembershipTier = async () => {
+      if (!user?.id) {
+        setUserMembershipTier("STANDARD");
+        return;
+      }
+
+      // First try to get from user object (from auth API)
+      const userTier = user?.loyaltyTier || user?.membershipTier || user?.tier;
+      if (userTier) {
+        console.log("🔍 Using membership tier from user object:", userTier);
+        setUserMembershipTier(userTier);
+        return;
+      }
+
+      // Fallback to loyalty API
+      try {
+        console.log(
+          "🔍 Loading membership tier from loyalty API for user:",
+          user.id
+        );
+        const loyaltyStats = await loyaltyApi.getLoyaltyStats();
+        console.log("🔍 Loyalty stats response:", loyaltyStats);
+
+        // Assuming the API returns tier information
+        const tier =
+          loyaltyStats.tier ||
+          loyaltyStats.membershipTier ||
+          loyaltyStats.level ||
+          loyaltyStats.loyaltyTier ||
+          "STANDARD";
+        console.log("🔍 Extracted tier from loyalty stats:", {
+          tier,
+          loyaltyStatsTier: loyaltyStats.tier,
+          loyaltyStatsMembershipTier: loyaltyStats.membershipTier,
+          loyaltyStatsLevel: loyaltyStats.level,
+          loyaltyStatsLoyaltyTier: loyaltyStats.loyaltyTier,
+          fullResponse: loyaltyStats,
+        });
+        setUserMembershipTier(tier);
+        console.log("🔍 Set membership tier to:", tier);
+      } catch (error) {
+        console.error("❌ Error loading membership tier:", error);
+        setUserMembershipTier("STANDARD"); // Fallback to STANDARD
+      }
+    };
+
+    loadMembershipTier();
+  }, [user?.id, user?.loyaltyTier, user?.membershipTier, user?.tier]);
+
   // Calculate totals from real data - FIXED: Base price is adult price for the journey
   const calculatePassengerTotal = () => {
     // fare.price is the adult price for the entire journey (including all segments)
@@ -328,6 +383,56 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
 
   // Get the total amount (call as function since it's now a function)
   const currentTotalAmount = totalAmount();
+
+  // Calculate membership discount based on user tier
+  const calculateMembershipDiscount = () => {
+    if (!user?.id) {
+      console.log("🔍 Membership discount: User not logged in");
+      return 0; // Only for logged-in users
+    }
+
+    console.log("🔍 Full user object:", user);
+    console.log("🔍 User membership tier from state:", userMembershipTier);
+
+    const membershipTier =
+      user.loyaltyTier ||
+      user.membershipTier ||
+      user.tier ||
+      userMembershipTier ||
+      "STANDARD";
+    console.log("🔍 Membership discount calculation:", {
+      userId: user.id,
+      membershipTier,
+      userMembershipTier,
+      userMembershipTierFromState: userMembershipTier,
+      userMembershipTierFromUser: user?.membershipTier,
+      userTier: user?.tier,
+      userMembership: user?.membership,
+      userLoyaltyTier: user?.loyaltyTier,
+      currentTotalAmount,
+    });
+
+    const discountRates = {
+      STANDARD: 0,
+      SILVER: 0.02, // 2%
+      GOLD: 0.03, // 3%
+      PLATINUM: 0.05, // 5%
+    };
+
+    const rate = discountRates[membershipTier] || 0;
+    const discount = Math.round(currentTotalAmount * rate);
+
+    console.log("🔍 Membership discount result:", {
+      tier: membershipTier,
+      rate,
+      discount,
+      finalAmount: currentTotalAmount - discount,
+    });
+
+    return discount;
+  };
+
+  const membershipDiscount = calculateMembershipDiscount();
 
   const handleCardChange = (field, value) => {
     setCardDetails((prev) => ({
@@ -737,25 +842,49 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
     toast.info("Đã hủy đổi điểm");
   };
 
-  // Calculate final amount with deal discount and points discount - ensure no negative values
+  // Calculate final amount with deal discount, points discount, and membership discount - ensure no negative values
   const calculateFinalAmount = () => {
-    const totalDiscount = dealDiscount + pointsDiscount;
+    const totalDiscount = dealDiscount + pointsDiscount + membershipDiscount;
     const finalAmount = Math.max(0, currentTotalAmount - totalDiscount);
 
     // If total discount exceeds the current amount, adjust discounts
     if (totalDiscount > currentTotalAmount) {
       console.warn("Total discounts exceed current amount, adjusting...");
-      // Prioritize deal discount, then points
-      const adjustedPointsDiscount = Math.max(
-        0,
-        currentTotalAmount - dealDiscount
+      // Prioritize: membership discount, then deal discount, then points
+      const adjustedMembershipDiscount = Math.min(
+        membershipDiscount,
+        currentTotalAmount
       );
+      const remainingAfterMembership =
+        currentTotalAmount - adjustedMembershipDiscount;
+      const adjustedDealDiscount = Math.min(
+        dealDiscount,
+        remainingAfterMembership
+      );
+      const remainingAfterDeal =
+        remainingAfterMembership - adjustedDealDiscount;
+      const adjustedPointsDiscount = Math.min(
+        pointsDiscount,
+        remainingAfterDeal
+      );
+
+      // Update state if adjustments were made
+      if (adjustedMembershipDiscount !== membershipDiscount) {
+        // Note: membership discount is calculated, not state-based, so no update needed
+      }
+      if (adjustedDealDiscount !== dealDiscount) {
+        setDealDiscount(adjustedDealDiscount);
+      }
       if (adjustedPointsDiscount !== pointsDiscount) {
         setPointsDiscount(adjustedPointsDiscount);
       }
+
       return Math.max(
         0,
-        currentTotalAmount - dealDiscount - adjustedPointsDiscount
+        currentTotalAmount -
+          adjustedMembershipDiscount -
+          adjustedDealDiscount -
+          adjustedPointsDiscount
       );
     }
 
@@ -902,7 +1031,12 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
         seatMapping[seat.seatNumber] = seat.seatId;
       });
 
-      formData.passengers.forEach((_, index) => {
+      formData.passengers.forEach((passenger, index) => {
+        // Skip INFANT passengers - they don't need seats
+        if (passenger.type === "INFANT") {
+          return;
+        }
+
         if (
           !extrasData?.selectedSeats?.[`passenger${index + 1}`] &&
           usedSeats.length > 0
@@ -1148,8 +1282,13 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
       // Auto-assign seats for passengers (both segments)
       const assignedSeats = {};
 
-      formData.passengers.forEach((_, passengerIndex) => {
+      formData.passengers.forEach((passenger, passengerIndex) => {
         const passengerKey = `passenger${passengerIndex + 1}`;
+
+        // Skip INFANT passengers - they don't need seats
+        if (passenger.type === "INFANT") {
+          return;
+        }
 
         // Don't auto-assign if manual selection exists
         if (extrasData?.selectedSeats?.[passengerKey]) {
@@ -1793,6 +1932,14 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
           membershipCodeUsedForPoints && {
             membershipCodeForPoints: membershipCodeUsedForPoints,
           }),
+        ...(membershipDiscount > 0 && {
+          membershipDiscount: membershipDiscount,
+          membershipTier:
+            user?.loyaltyTier ||
+            user?.membershipTier ||
+            user?.tier ||
+            "STANDARD",
+        }),
         userId: user?.id || null,
         totalAmount: finalAmount,
         passengers: [], // Will be populated with seatAssignments
@@ -2298,6 +2445,18 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
           passengerIndex < formData.passengers.length;
           passengerIndex++
         ) {
+          const passenger = formData.passengers[passengerIndex];
+
+          // Skip INFANT passengers - they don't need seats
+          if (passenger.type === "INFANT") {
+            console.log(
+              `⏭️ Skipping seat assignment for INFANT passenger ${
+                passengerIndex + 1
+              }`
+            );
+            continue;
+          }
+
           const passengerKey = `passenger${passengerIndex + 1}`;
           let selectedSeat;
 
@@ -2834,6 +2993,12 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
               : null,
             pointsRedeemed: pointsApplied ? parseInt(pointsToRedeem) : 0,
             pointsDiscountAmount: pointsApplied ? pointsDiscount : 0,
+            membershipDiscount: membershipDiscount,
+            membershipTier:
+              user?.loyaltyTier ||
+              user?.membershipTier ||
+              user?.tier ||
+              "STANDARD",
           })
         );
 
@@ -3907,8 +4072,8 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
                         )}
                       </div>
                     )}
-                  {/* Auto-assigned seats */}
-                  {Object.keys(autoAssignedSeats).length > 0 && (
+                  {/* Auto-assigned seats - Hidden as requested */}
+                  {/* {Object.keys(autoAssignedSeats).length > 0 && (
                     <div className="ml-4 text-sm text-gray-600">
                       Ghế tự động:{" "}
                       {formatCurrencyVND(
@@ -3934,7 +4099,7 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
                         )
                       )}
                     </div>
-                  )}
+                  )} */}
                   <div className="flex justify-between text-sm ml-4 font-medium border-t pt-1 mt-1">
                     <span>Tổng phụ phí ghế:</span>
                     <span>
@@ -3978,7 +4143,6 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
               })() && (
                 <div className="space-y-3">
                   <div className="flex items-center gap-2 mb-2">
-                    <span className="text-lg">🎁</span>
                     <h3 className="font-semibold text-gray-700">
                       Đổi điểm giảm giá
                     </h3>
@@ -4179,10 +4343,25 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
 
               <Separator className="my-4" />
 
-              {(dealApplied || pointsApplied) && (
+              {(dealApplied || pointsApplied || membershipDiscount > 0) && (
                 <div className="flex justify-between text-sm mb-2">
                   <span>Tạm tính</span>
                   <span>{formatCurrencyVND(currentTotalAmount)}</span>
+                </div>
+              )}
+
+              {membershipDiscount > 0 && (
+                <div className="flex justify-between text-sm mb-2 text-purple-600">
+                  <span>
+                    Ưu đãi giảm giá hội viên (
+                    {user?.loyaltyTier ||
+                      user?.membershipTier ||
+                      user?.tier ||
+                      userMembershipTier ||
+                      "STANDARD"}
+                    )
+                  </span>
+                  <span>-{formatCurrencyVND(membershipDiscount)}</span>
                 </div>
               )}
 
@@ -4337,7 +4516,6 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
                   disabled={!agreeTerms || isProcessing}
                   onClick={(e) => handleSubmit(e, true)}
                 >
-                  <span className="mr-2">⏰</span>
                   Thanh toán sau (1 giờ)
                 </Button>
 

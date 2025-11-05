@@ -291,7 +291,7 @@ export default function ResetForm({ setCurrentView }) {
               <ArrowLeft className="w-5 h-5 mr-2" />
               Quay lại
             </button>
-            <h1 className="text-xl font-bold text-blue-600">AirSky</h1>
+            <Link to="/" className="text-xl font-bold text-blue-600">AirSky</Link>
             <div className="w-16" />
           </div>
         </div>

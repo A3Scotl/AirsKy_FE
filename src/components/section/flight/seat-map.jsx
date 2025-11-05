@@ -578,9 +578,18 @@ const SeatMap = ({
           {sectionRows.map((rowNum) => {
             const rowNumber = parseInt(rowNum);
 
-            // Define emergency exit rows (doors on both sides)
-            const emergencyExitRows = [5, 6, 10, 11, 15, 16, 20, 21, 25, 26];
-            const hasEmergencyExit = emergencyExitRows.includes(rowNumber);
+            // Check if this row has 6 consecutive EXIT_ROW seats
+            const rowSeats = ["A", "B", "C", "D", "E", "F"]
+              .map((column) => {
+                const positionKey = `${rowNum}-${column}`;
+                return seatsByPosition[positionKey] || [];
+              })
+              .flat();
+
+            const exitRowSeats = rowSeats.filter(
+              (seat) => seat.seatType === "EXIT_ROW"
+            );
+            const hasEmergencyExit = exitRowSeats.length === 6; // Only show EXIT if all 6 seats are EXIT_ROW type
 
             return (
               <div

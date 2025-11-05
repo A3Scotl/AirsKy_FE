@@ -230,9 +230,7 @@ export function SearchForm({ onSearch, initialValues, onTripTypeChange }) {
     () =>
       `${passengers.adults} Người lớn${
         passengers.children > 0 ? `, ${passengers.children} Trẻ em` : ""
-      }${
-        passengers.infants > 0 ? `, ${passengers.infants} Em bé` : ""
-      } - ${travelClass}`,
+      }${passengers.infants > 0 ? `, ${passengers.infants} Em bé` : ""} `,
     [passengers.adults, passengers.children, passengers.infants, travelClass]
   );
 
@@ -473,8 +471,8 @@ export function SearchForm({ onSearch, initialValues, onTripTypeChange }) {
                   </div>
                 ))}
 
-                {/* Class Selection */}
-                <div className="mt-3">
+                {/* Class Selection - Hidden but logic preserved */}
+                {/* <div className="mt-3">
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Hạng
                   </label>
@@ -498,7 +496,7 @@ export function SearchForm({ onSearch, initialValues, onTripTypeChange }) {
                       ))}
                     </SelectContent>
                   </Select>
-                </div>
+                </div> */}
 
                 <Button
                   className="w-full mt-4 bg-blue-500 text-white hover:bg-blue-600"

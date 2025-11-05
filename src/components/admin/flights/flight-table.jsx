@@ -213,7 +213,7 @@ const FlightTable = ({
               return (
                 <TableRow
                   key={`${flight.flightId}-${flight.flightNumber}-${flight.departureTime}`}
-                  className="hover:bg-gray-50"
+                  className="hover:bg-gray-50 dark:hover:bg-gray-900"
                 >
                   <TableCell>
                     <div className="font-semibold text-blue-600">
@@ -258,7 +258,7 @@ const FlightTable = ({
                   <TableCell>
                     <div className="text-sm">
                       <div className="font-medium">
-                        {formatTime(flight.arrivalTime)}
+                        {formatTime(flight.departureTime)} - {formatTime(flight.arrivalTime)}
                       </div>
                       <div className="text-gray-500">
                         {formatDate(flight.departureTime)}

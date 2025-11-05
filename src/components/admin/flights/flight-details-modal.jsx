@@ -42,7 +42,6 @@ const TEXT = {
   terminal: "Nhà Ga",
   pricingRevenue: "Giá Vé & Doanh Thu",
   economyClass: "Hạng Phổ Thông",
-  estimatedRevenue: "Doanh Thu Ước Tính",
   routeInfo: "Thông Tin Tuyến Bay",
   flightId: "ID Chuyến Bay",
   lastUpdated: "Cập nhật lần cuối",
@@ -148,8 +147,6 @@ const FlightDetailsModal = ({ flight, open, onClose, onEdit, onDelete }) => {
       flight?.aircraft?.totalSeats) *
     100
   ).toFixed(1);
-  const estimatedRevenue =
-    (flight?.aircraft?.totalSeats - flight.availableSeats) * flight.basePrice;
 
   const getLoadFactorStyle = (factor) => {
     if (factor >= 90) return "bg-red-100 text-red-800";
@@ -211,7 +208,7 @@ const FlightDetailsModal = ({ flight, open, onClose, onEdit, onDelete }) => {
             </div>
             <div className="flex-1 relative">
               <div className="h-px bg-gray-300" />
-              <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white px-2">
+              <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white dark:bg-gray-900 px-2">
                 <Badge variant="outline">
                   {formatDuration(flight.duration)}
                 </Badge>
@@ -586,6 +583,103 @@ const FlightDetailsModal = ({ flight, open, onClose, onEdit, onDelete }) => {
         </div>
 
         <div className="p-6 space-y-6">
+          {/* Flight Overview Statistics */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+            <Card className="dark:bg-gray-800 dark:border-gray-700">
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                      Tổng ghế
+                    </p>
+                    <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                      {flight.aircraft?.totalSeats || 0}
+                    </p>
+                  </div>
+                  <Users className="h-8 w-8 text-blue-500" />
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="dark:bg-gray-800 dark:border-gray-700">
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                      Đã đặt
+                    </p>
+                    <p className="text-2xl font-bold text-red-600">
+                      {flight.flightTravelClasses?.reduce(
+                        (total, tc) =>
+                          total + (tc.capacity - tc.availableSeats),
+                        0
+                      ) || 0}
+                    </p>
+                  </div>
+                  <Armchair className="h-8 w-8 text-red-500" />
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="dark:bg-gray-800 dark:border-gray-700">
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                      Còn trống
+                    </p>
+                    <p className="text-2xl font-bold text-green-600">
+                      {flight.availableSeats || 0}
+                    </p>
+                  </div>
+                  <CheckCircle className="h-8 w-8 text-green-500" />
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="dark:bg-gray-800 dark:border-gray-700">
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                      Tỷ lệ lấp đầy
+                    </p>
+                    <p
+                      className={`text-2xl font-bold ${
+                        loadFactor >= 90
+                          ? "text-red-600"
+                          : loadFactor >= 80
+                          ? "text-yellow-600"
+                          : "text-green-600"
+                      }`}
+                    >
+                      {loadFactor}%
+                    </p>
+                  </div>
+                  <div
+                    className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                      loadFactor >= 90
+                        ? "bg-red-100"
+                        : loadFactor >= 80
+                        ? "bg-yellow-100"
+                        : "bg-green-100"
+                    }`}
+                  >
+                    <div
+                      className={`w-4 h-4 rounded-full ${
+                        loadFactor >= 90
+                          ? "bg-red-500"
+                          : loadFactor >= 80
+                          ? "bg-yellow-500"
+                          : "bg-green-500"
+                      }`}
+                    ></div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <Card className="dark:bg-gray-800 dark:border-gray-700">
               <CardHeader className="dark:bg-gray-800 dark:border-gray-700">
@@ -597,26 +691,81 @@ const FlightDetailsModal = ({ flight, open, onClose, onEdit, onDelete }) => {
               <CardContent className="space-y-4 dark:bg-gray-800">
                 <div className="flex justify-between items-center">
                   <div>
-                    <p className="text-sm font-medium text-gray-600">
+                    <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
                       {TEXT.departure}
                     </p>
-                    <p className="text-lg font-semibold">{departure.time}</p>
-                    <p className="text-sm text-gray-500">{departure.date}</p>
+                    <p className="text-lg font-semibold dark:text-white">
+                      {departure.time}
+                    </p>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                      {departure.date}
+                    </p>
+                    <div className="mt-2 space-y-1">
+                      <p className="text-xs text-gray-600 dark:text-gray-400">
+                        <span className="font-medium">Gate:</span>{" "}
+                        {flight.gate || "Chưa xác định"}
+                      </p>
+                      <p className="text-xs text-gray-600 dark:text-gray-400">
+                        <span className="font-medium">Terminal:</span>{" "}
+                        {flight.terminal || "Chưa xác định"}
+                      </p>
+                    </div>
                   </div>
                   <div className="text-center">
-                    <div className="w-8 h-px bg-gray-300 relative">
+                    <div className="w-8 h-px bg-gray-300 dark:bg-gray-600 relative">
                       <Plane className="absolute -top-2 left-1/2 transform -translate-x-1/2 h-4 w-4 text-blue-600" />
                     </div>
-                    <p className="text-xs text-gray-500 mt-2">
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
                       {formatDuration(flight.duration)}
                     </p>
+                    <div className="mt-2">
+                      <Badge
+                        variant="outline"
+                        className={`${currentStatus.style} text-xs`}
+                      >
+                        {currentStatus.label}
+                      </Badge>
+                    </div>
                   </div>
                   <div className="text-right">
-                    <p className="text-sm font-medium text-gray-600">
+                    <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
                       {TEXT.arrival}
                     </p>
-                    <p className="text-lg font-semibold">{arrival.time}</p>
-                    <p className="text-sm text-gray-500">{arrival.date}</p>
+                    <p className="text-lg font-semibold dark:text-white">
+                      {arrival.time}
+                    </p>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                      {arrival.date}
+                    </p>
+                    <div className="mt-2 text-right space-y-1">
+                      <p className="text-xs text-gray-600 dark:text-gray-400">
+                        {flight.arrivalAirport.airportName}
+                      </p>
+                      <p className="text-xs text-gray-600 dark:text-gray-400">
+                        ({flight.arrivalAirport.airportCode})
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <Separator className="dark:bg-gray-600" />
+
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <p className="text-gray-600 dark:text-gray-400">
+                      <span className="font-medium">Loại chuyến bay:</span>
+                    </p>
+                    <p className="font-semibold dark:text-white">
+                      {flight.type === "DOMESTIC" ? "Nội địa" : "Quốc tế"}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-gray-600 dark:text-gray-400">
+                      <span className="font-medium">Cập nhật cuối:</span>
+                    </p>
+                    <p className="font-semibold dark:text-white">
+                      {new Date(flight.updatedAt).toLocaleString("vi-VN")}
+                    </p>
                   </div>
                 </div>
               </CardContent>
@@ -625,46 +774,112 @@ const FlightDetailsModal = ({ flight, open, onClose, onEdit, onDelete }) => {
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center space-x-2">
-                  <Users className="h-4 w-4" />
-                  <span>{TEXT.passengerInfo}</span>
+                  <DollarSign className="h-4 w-4" />
+                  <span>Doanh Thu & Thống Kê</span>
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="flex justify-between">
-                  <span className="text-sm text-gray-600">
-                    {TEXT.bookedSeats}
-                  </span>
-                  <span className="font-semibold">
-                    {flight.aircraft.totalSeats - flight.availableSeats}
-                  </span>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                      Giá cơ bản
+                    </p>
+                    <p className="text-lg font-bold text-blue-600 dark:text-blue-400">
+                      {formatCurrency(flight.basePrice)}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                      Doanh thu hiện tại
+                    </p>
+                    <p className="text-lg font-bold text-green-600 dark:text-green-400">
+                      {formatCurrency(
+                        flight.flightTravelClasses?.reduce(
+                          (total, tc) =>
+                            total +
+                            (tc.capacity - tc.availableSeats) * tc.price,
+                          0
+                        ) || 0
+                      )}
+                    </p>
+                  </div>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-sm text-gray-600">
-                    {TEXT.totalCapacity}
-                  </span>
-                  <span className="font-semibold">
-                    {flight.aircraft.totalSeats}
-                  </span>
+
+                <Separator className="dark:bg-gray-600" />
+
+                <div>
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
+                    Doanh thu theo hạng vé:
+                  </p>
+                  <div className="space-y-2">
+                    {flight.flightTravelClasses?.map((travelClass, index) => {
+                      const bookedSeats =
+                        travelClass.capacity - travelClass.availableSeats;
+                      const revenue = bookedSeats * travelClass.price;
+                      return (
+                        <div
+                          key={index}
+                          className="flex justify-between items-center text-sm"
+                        >
+                          <span className="text-gray-700 dark:text-gray-300">
+                            {travelClass.travelClass.className}
+                          </span>
+                          <div className="text-right">
+                            <span className="font-semibold text-green-600 dark:text-green-400">
+                              {formatCurrency(revenue)}
+                            </span>
+                            <span className="text-gray-500 dark:text-gray-500 ml-1">
+                              ({bookedSeats} vé)
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-sm text-gray-600">
-                    {TEXT.availableSeats}
-                  </span>
-                  <span className="font-semibold text-green-600">
-                    {flight.availableSeats}
-                  </span>
-                </div>
-                <Separator />
-                <div className="flex justify-between">
-                  <span className="text-sm text-gray-600">
-                    {TEXT.loadFactor}
-                  </span>
-                  <Badge
-                    variant="outline"
-                    className={getLoadFactorStyle(loadFactor)}
-                  >
-                    {loadFactor}%
-                  </Badge>
+
+                <Separator className="dark:bg-gray-600" />
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                      Doanh thu tiềm năng
+                    </p>
+                    <p className="text-lg font-bold text-purple-600 dark:text-purple-400">
+                      {formatCurrency(
+                        flight.flightTravelClasses?.reduce(
+                          (total, tc) => total + tc.capacity * tc.price,
+                          0
+                        ) || 0
+                      )}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                      Tỷ lệ hoàn thành
+                    </p>
+                    <p className="text-lg font-bold text-orange-600 dark:text-orange-400">
+                      {(() => {
+                        const currentRevenue =
+                          flight.flightTravelClasses?.reduce(
+                            (total, tc) =>
+                              total +
+                              (tc.capacity - tc.availableSeats) * tc.price,
+                            0
+                          ) || 0;
+                        const potentialRevenue =
+                          flight.flightTravelClasses?.reduce(
+                            (total, tc) => total + tc.capacity * tc.price,
+                            0
+                          ) || 1; // tránh chia cho 0
+                        return (
+                          (currentRevenue / potentialRevenue) *
+                          100
+                        ).toFixed(1);
+                      })()}
+                      %
+                    </p>
+                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -741,15 +956,34 @@ const FlightDetailsModal = ({ flight, open, onClose, onEdit, onDelete }) => {
                   return (
                     <div
                       key={index}
-                      className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow duration-200"
+                      className="bg-white dark:bg-gray-300 border border-gray-200 rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow duration-200"
                     >
                       {/* Header with class name and price */}
                       <div className="flex justify-between items-start mb-4">
-                        <h4 className="font-bold text-lg text-gray-900">
-                          {travelClass.travelClass.className}
-                        </h4>
+                        <div className="flex items-center space-x-2">
+                          <div
+                            className={`w-3 h-3 rounded-full ${
+                              travelClass.travelClass.className === "Economy"
+                                ? "bg-blue-500"
+                                : travelClass.travelClass.className ===
+                                  "Business"
+                                ? "bg-purple-500"
+                                : "bg-yellow-500"
+                            }`}
+                          ></div>
+                          <h4 className="font-bold text-lg text-gray-900 dark:text-gray-900">
+                            {travelClass.travelClass.className}
+                          </h4>
+                          {(travelClass.capacity - travelClass.availableSeats) /
+                            travelClass.capacity >=
+                            0.9 && (
+                            <Badge variant="destructive" className="text-xs">
+                              Sắp hết
+                            </Badge>
+                          )}
+                        </div>
                         <div className="text-right">
-                          <div className="text-xl font-bold text-green-600">
+                          <div className="text-xl font-bold text-green-600 dark:text-green-700">
                             {formatCurrency(travelClass.price)}
                           </div>
                           <div className="text-xs text-gray-500">/khách</div>
@@ -798,27 +1032,88 @@ const FlightDetailsModal = ({ flight, open, onClose, onEdit, onDelete }) => {
                           )}
                         </div>
 
-                        <div className="flex items-center justify-between text-sm">
-                          <span className="text-gray-600">
-                            {TEXT.availableSeats}:
-                          </span>
-                          <span className="font-semibold text-blue-600">
-                            {travelClass.capacity}
-                          </span>
-                        </div>
+                        {/* Seat information section */}
+                        <div className="space-y-2 border-t pt-3 mt-3">
+                          <h5 className="text-sm font-semibold text-gray-700 mb-2">
+                            Tình trạng chỗ ngồi:
+                          </h5>
 
-                        {travelClass.travelClass.cancellationFee && (
+                          {/* Capacity */}
                           <div className="flex items-center justify-between text-sm">
-                            <span className="text-gray-600">
-                              {TEXT.cancellationFee}:
+                            <span className="text-gray-600 dark:text-gray-400">
+                              Tổng số ghế:
                             </span>
-                            <span className="font-semibold text-red-600">
-                              {formatCurrency(
-                                travelClass.travelClass.cancellationFee
-                              )}
+                            <span className="font-semibold text-gray-900 dark:text-white">
+                              {travelClass.capacity}
                             </span>
                           </div>
-                        )}
+
+                          {/* Booked Seats */}
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="text-gray-600 dark:text-gray-400">
+                              Đã đặt:
+                            </span>
+                            <span className="font-semibold text-red-600 dark:text-red-400">
+                              {travelClass.capacity -
+                                travelClass.availableSeats}
+                            </span>
+                          </div>
+
+                          {/* Available Seats */}
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="text-gray-600 dark:text-gray-400">
+                              Còn trống:
+                            </span>
+                            <span className="font-semibold text-green-600 dark:text-green-400">
+                              {travelClass.availableSeats ||
+                                travelClass.capacity}
+                            </span>
+                          </div>
+
+                          {/* Occupancy Rate */}
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="text-gray-600 dark:text-gray-400">
+                              Tỷ lệ lấp đầy:
+                            </span>
+                            <div className="flex items-center space-x-2">
+                              <div className="w-16 bg-gray-200 dark:bg-gray-600 rounded-full h-2">
+                                <div
+                                  className={`h-2 rounded-full ${
+                                    (travelClass.capacity -
+                                      travelClass.availableSeats) /
+                                      travelClass.capacity >=
+                                    0.9
+                                      ? "bg-red-500"
+                                      : (travelClass.capacity -
+                                          travelClass.availableSeats) /
+                                          travelClass.capacity >=
+                                        0.7
+                                      ? "bg-yellow-500"
+                                      : "bg-green-500"
+                                  }`}
+                                  style={{
+                                    width: `${Math.min(
+                                      ((travelClass.capacity -
+                                        travelClass.availableSeats) /
+                                        travelClass.capacity) *
+                                        100,
+                                      100
+                                    )}%`,
+                                  }}
+                                ></div>
+                              </div>
+                              <span className="font-semibold text-gray-900 dark:text-white min-w-[3rem]">
+                                {Math.round(
+                                  ((travelClass.capacity -
+                                    travelClass.availableSeats) /
+                                    travelClass.capacity) *
+                                    100
+                                )}
+                                %
+                              </span>
+                            </div>
+                          </div>
+                        </div>
                       </div>
                     </div>
                   );
