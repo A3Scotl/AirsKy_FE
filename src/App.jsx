@@ -319,7 +319,6 @@ function useKeepAlive() {
 }
 
 function App() {
-  useKeepAlive();
   // Create QueryClient instance
   const queryClient = new QueryClient({
     defaultOptions: {
