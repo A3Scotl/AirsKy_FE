@@ -304,7 +304,6 @@ function AppRoutes() {
     </>
   );
 }
-import { useEffect } from "react";
 function useKeepAlive() {
   useEffect(() => {
     const BACKEND_URL = "https://airsky.onrender.com";
