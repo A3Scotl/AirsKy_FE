@@ -304,19 +304,7 @@ function AppRoutes() {
     </>
   );
 }
-function useKeepAlive() {
-  useEffect(() => {
-    const BACKEND_URL = "https://airsky.onrender.com";
 
-    const timer = setTimeout(() => {
-      fetch(`${BACKEND_URL}/health`)
-        .then(() => console.log("Keep-alive ping sent to backend"))
-        .catch(() => console.log("Keep-alive ping failed"));
-    }, 60 * 60 * 1000); // gọi sau 1h
-
-    return () => clearTimeout(timer);
-  }, []);
-}
 
 function App() {
   // Create QueryClient instance
