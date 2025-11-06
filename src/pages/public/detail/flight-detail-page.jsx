@@ -2969,15 +2969,7 @@ const FlightDetail = () => {
                   ? "Chọn hạng vé cho chuyến bay khứ hồi"
                   : "Chọn loại vé phù hợp"}
               </CardTitle>
-              {(outboundFare || returnFare || selectedFare) && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={resetFareSelection}
-                >
-                  Đặt lại lựa chọn
-                </Button>
-              )}
+             
             </CardHeader>
             <CardContent>
               {flightData?.isMultiCity ? (
@@ -3517,7 +3509,18 @@ const FlightDetail = () => {
                 </div>
               )}
             </CardContent>
+            
           </Card>
+           {(outboundFare || returnFare || selectedFare) && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={resetFareSelection}
+                  className="w-full"
+                >
+                  Đặt lại lựa chọn
+                </Button>
+              )}
 
           {/* Fare Summary for Multi-city */}
           {flightData?.isMultiCity &&
