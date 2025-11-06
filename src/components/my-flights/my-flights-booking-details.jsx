@@ -19,6 +19,11 @@ import {
   Tag,
 } from "lucide-react";
 import { formatCurrencyVND } from "@/utils/currency-utils";
+import {
+  getPassengerMultiplier,
+  calculateFlightPrice,
+  calculateExtraServicePrice,
+} from "@/utils/flight-booking-utils";
 import { paymentApi } from "@/apis/payment-api";
 import { toast } from "sonner";
 
@@ -27,7 +32,28 @@ const MyFlightsBookingDetails = ({ booking, onProceed, onBack }) => {
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
   const [paymentError, setPaymentError] = useState(null);
 
+  // Service type classifications based on backend logic
+  const PER_SEGMENT_SERVICE_TYPES = [
+    "MEAL",
+    "SEAT",
+    "PRIORITY_BOARDING",
+    "WIFI",
+    "EXTRA_LEGROOM",
+    "INFANT_MEAL",
+  ];
+
+  const PER_BOOKING_SERVICE_TYPES = [
+    "TRAVEL_INSURANCE",
+    "LOUNGE_ACCESS",
+    "ENTERTAINMENT",
+    "PET_TRANSPORT",
+    "SPECIAL_ASSISTANCE",
+  ];
+
   if (!booking) return null;
+
+  // Calculate segment count for pricing
+  const segmentCount = booking.flightSegments?.length || 1;
 
   const getStatusColor = (status) => {
     switch (status) {
@@ -257,6 +283,48 @@ const MyFlightsBookingDetails = ({ booking, onProceed, onBack }) => {
             </div>
             <div className="space-y-1">
               <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                Chi tiết giá vé
+              </p>
+              <div className="space-y-1">
+                {(() => {
+                  // Group passengers by type and calculate totals
+                  const passengerGroups = {};
+                  booking.checkinEligiblePassengers?.forEach((passenger) => {
+                    if (!passengerGroups[passenger.type]) {
+                      passengerGroups[passenger.type] = {
+                        count: 0,
+                        totalPrice: 0,
+                        label:
+                          passenger.type === "ADULT"
+                            ? "Người lớn"
+                            : passenger.type === "CHILD"
+                            ? "Trẻ em"
+                            : "Em bé",
+                      };
+                    }
+                    passengerGroups[passenger.type].count += 1;
+                    passengerGroups[passenger.type].totalPrice +=
+                      passenger.ticketPrice || 0;
+                  });
+
+                  return Object.values(passengerGroups).map((group) => (
+                    <div
+                      key={group.label}
+                      className="flex justify-between text-sm"
+                    >
+                      <span className="text-gray-600 dark:text-gray-400">
+                        {group.count} {group.label.toLowerCase()}
+                      </span>
+                      <span className="font-medium">
+                        {formatCurrencyVND(group.totalPrice)}
+                      </span>
+                    </div>
+                  ));
+                })()}
+              </div>
+            </div>
+            <div className="space-y-1">
+              <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
                 Tổng tiền
               </p>
               <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
@@ -308,7 +376,11 @@ const MyFlightsBookingDetails = ({ booking, onProceed, onBack }) => {
                       variant="outline"
                       className="dark:text-gray-300 dark:border-gray-600"
                     >
-                      {passenger.type === "ADULT" ? "Người lớn" : "Trẻ em"}
+                      {passenger.type === "ADULT"
+                        ? "Người lớn"
+                        : passenger.type === "CHILD"
+                        ? "Trẻ em"
+                        : "Em bé"}
                     </Badge>
                   </div>
                   <div className="grid grid-cols-2 gap-4 text-sm">
@@ -345,7 +417,37 @@ const MyFlightsBookingDetails = ({ booking, onProceed, onBack }) => {
                         Chỗ ngồi
                       </p>
                       <p className="font-medium text-blue-600 dark:text-blue-400">
-                        {passenger.seatNumber || "Chưa chọn"}
+                        {(() => {
+                          // Find seat assignments for this passenger
+                          const seatAssignments =
+                            passenger.seatAssignments || [];
+                          if (seatAssignments.length > 0) {
+                            return seatAssignments
+                              .map(
+                                (seat) =>
+                                  `${seat.seatNumber} (${seat.flightNumber})`
+                              )
+                              .join(", ");
+                          }
+
+                          // Fallback to seatTypeDetails
+                          const seatDetails =
+                            booking.seatTypeDetails?.filter(
+                              (seat) =>
+                                seat.passengerName ===
+                                `${passenger.firstName} ${passenger.lastName}`
+                            ) || [];
+                          if (seatDetails.length > 0) {
+                            return seatDetails
+                              .map(
+                                (seat) =>
+                                  `${seat.seatNumber} (${seat.flightNumber})`
+                              )
+                              .join(", ");
+                          }
+
+                          return "Chưa chọn";
+                        })()}
                       </p>
                     </div>
                     <div>
@@ -597,12 +699,22 @@ const MyFlightsBookingDetails = ({ booking, onProceed, onBack }) => {
                               : "Hành lý xách tay"}
                           </Badge>
                         </div>
-                        {passenger && (
-                          <p className="text-sm text-gray-600 dark:text-gray-400">
-                            Hành khách: {passenger.firstName}{" "}
-                            {passenger.lastName}
-                          </p>
-                        )}
+                        {(() => {
+                          // Find passenger by passengerId
+                          const passenger = booking.passengers?.find(
+                            (p) => p.passengerId === item.passengerId
+                          );
+                          return passenger ? (
+                            <p className="text-sm text-gray-600 dark:text-gray-400">
+                              Hành khách: {passenger.firstName}{" "}
+                              {passenger.lastName}
+                            </p>
+                          ) : (
+                            <p className="text-sm text-gray-600 dark:text-gray-400">
+                              Hành khách: {item.passengerName || "N/A"}
+                            </p>
+                          );
+                        })()}
                         {item.actualWeight && (
                           <p className="text-sm text-gray-600 dark:text-gray-400">
                             Trọng lượng thực: {item.actualWeight} kg
@@ -669,8 +781,23 @@ const MyFlightsBookingDetails = ({ booking, onProceed, onBack }) => {
                     </div>
                     <div className="text-right">
                       <p className="font-medium text-blue-600 dark:text-blue-400">
-                        {formatCurrencyVND(service.totalPrice)}
+                        {formatCurrencyVND(
+                          PER_SEGMENT_SERVICE_TYPES.includes(
+                            service.serviceType
+                          )
+                            ? service.totalPrice * segmentCount
+                            : service.totalPrice
+                        )}
                       </p>
+                      {PER_SEGMENT_SERVICE_TYPES.includes(
+                        service.serviceType
+                      ) &&
+                        segmentCount > 1 && (
+                          <p className="text-xs text-gray-500 dark:text-gray-500">
+                            ({formatCurrencyVND(service.totalPrice)} ×{" "}
+                            {segmentCount} chặng)
+                          </p>
+                        )}
                       {service.quantity > 1 && (
                         <p className="text-xs text-gray-500 dark:text-gray-500">
                           ({service.quantity} ×{" "}
@@ -691,10 +818,15 @@ const MyFlightsBookingDetails = ({ booking, onProceed, onBack }) => {
                   <span className="font-bold text-blue-600 dark:text-blue-400">
                     {formatCurrencyVND(
                       booking.ancillaryServicesAmount ||
-                        booking.ancillaryServices.reduce(
-                          (sum, service) => sum + service.totalPrice,
-                          0
-                        )
+                        booking.ancillaryServices.reduce((sum, service) => {
+                          const servicePrice =
+                            PER_SEGMENT_SERVICE_TYPES.includes(
+                              service.serviceType
+                            )
+                              ? service.totalPrice * segmentCount
+                              : service.totalPrice;
+                          return sum + servicePrice;
+                        }, 0)
                     )}
                   </span>
                 </div>
@@ -858,40 +990,79 @@ const MyFlightsBookingDetails = ({ booking, onProceed, onBack }) => {
                   {booking.passengers ? booking.passengers.length : 0} người):
                 </span>
                 <span>
-                  {formatCurrencyVND(
-                    booking.flightSegments && booking.flightSegments.length > 0
-                      ? booking.flightSegments.reduce(
-                          (sum, seg) => sum + (seg.price || 0),
-                          0
-                        )
-                      : 0
-                  )}
+                  {(() => {
+                    // Calculate total flight price for all passengers
+                    const baseAdultPrice =
+                      booking.flightSegments &&
+                      booking.flightSegments.length > 0
+                        ? booking.flightSegments.reduce(
+                            (sum, seg) => sum + (seg.price || 0),
+                            0
+                          )
+                        : 0;
+
+                    let totalFlightPrice = 0;
+                    booking.passengers?.forEach((passenger) => {
+                      const multiplier = getPassengerMultiplier(passenger.type);
+                      totalFlightPrice += baseAdultPrice * multiplier;
+                    });
+
+                    return formatCurrencyVND(totalFlightPrice);
+                  })()}
                 </span>
               </div>
 
-              {/* Chi tiết theo hành khách nếu có thông tin checkinEligiblePassengers */}
-              {booking.checkinEligiblePassengers &&
-                booking.checkinEligiblePassengers.length > 0 && (
-                  <div className="ml-4 space-y-1 text-sm text-gray-600">
-                    {booking.checkinEligiblePassengers.map(
-                      (passenger, index) => (
-                        <div
-                          key={passenger.passengerId}
-                          className="flex justify-between"
-                        >
-                          <span>
-                            •{" "}
-                            {passenger.fullName ||
-                              `${passenger.firstName} ${passenger.lastName}`}
-                          </span>
-                          <span>
-                            {formatCurrencyVND(passenger.ticketPrice || 0)}
-                          </span>
-                        </div>
+              {/* Chi tiết theo loại hành khách */}
+              {(() => {
+                // Base price is for ADULT (total flight price for all segments)
+                const baseAdultPrice =
+                  booking.flightSegments && booking.flightSegments.length > 0
+                    ? booking.flightSegments.reduce(
+                        (sum, seg) => sum + (seg.price || 0),
+                        0
                       )
-                    )}
-                  </div>
-                )}
+                    : 0;
+
+                // Group passengers by type
+                const passengerGroups = {};
+                booking.passengers?.forEach((passenger) => {
+                  if (!passengerGroups[passenger.type]) {
+                    passengerGroups[passenger.type] = {
+                      count: 0,
+                      label:
+                        passenger.type === "ADULT"
+                          ? "Người lớn"
+                          : passenger.type === "CHILD"
+                          ? "Trẻ em"
+                          : "Em bé",
+                    };
+                  }
+                  passengerGroups[passenger.type].count += 1;
+                });
+
+                return Object.values(passengerGroups).map((group) => {
+                  const multiplier = getPassengerMultiplier(
+                    group.label === "Người lớn"
+                      ? "ADULT"
+                      : group.label === "Trẻ em"
+                      ? "CHILD"
+                      : "INFANT"
+                  );
+                  const totalForType = baseAdultPrice * multiplier;
+
+                  return (
+                    <div
+                      key={group.label}
+                      className="ml-4 flex justify-between text-sm text-gray-600"
+                    >
+                      <span>
+                        • {group.count} {group.label.toLowerCase()}
+                      </span>
+                      <span>{formatCurrencyVND(totalForType)}</span>
+                    </div>
+                  );
+                });
+              })()}
             </div>
 
             {/* Phụ phí ghế ngồi */}
@@ -932,7 +1103,7 @@ const MyFlightsBookingDetails = ({ booking, onProceed, onBack }) => {
                       booking.baggage.reduce(
                         (sum, item) => sum + (item.packagePrice || 0),
                         0
-                      )
+                      ) * segmentCount
                     )}
                   </span>
                 </div>
@@ -959,7 +1130,15 @@ const MyFlightsBookingDetails = ({ booking, onProceed, onBack }) => {
                           {passenger &&
                             ` - ${passenger.firstName} ${passenger.lastName}`}
                         </span>
-                        <span>{formatCurrencyVND(item.packagePrice)}</span>
+                        <span>
+                          {formatCurrencyVND(item.packagePrice * segmentCount)}
+                          {segmentCount > 1 && (
+                            <span className="text-xs ml-1">
+                              ({formatCurrencyVND(item.packagePrice)} ×{" "}
+                              {segmentCount})
+                            </span>
+                          )}
+                        </span>
                       </div>
                     );
                   })}

@@ -623,6 +623,11 @@ export default function CheckInPage() {
       return seatData.seatId;
     }
 
+    // For new seats without seatId, use seatNumber as seatId
+    if (seatData?.seatNumber && seatData.seatNumber !== passenger?.seatNumber) {
+      return seatData.seatNumber;
+    }
+
     if (passenger?.seatId) {
       return passenger.seatId;
     }
@@ -778,8 +783,12 @@ export default function CheckInPage() {
           seatValidation?.segmentId === finalSegmentId,
       });
 
-      // CRITICAL: Validate seat belongs to correct segment
-      if (seatValidation && seatValidation.segmentId !== finalSegmentId) {
+      // CRITICAL: Validate seat belongs to correct segment (only for multi-segment flights)
+      if (
+        finalSegmentId !== null &&
+        seatValidation &&
+        seatValidation.segmentId !== finalSegmentId
+      ) {
         console.error(
           "❌ SEAT ID MISMATCH! Seat belongs to different segment:",
           {
@@ -787,6 +796,9 @@ export default function CheckInPage() {
             seatSegment: seatValidation.segmentId,
             expectedSegment: finalSegmentId,
           }
+        );
+        throw new Error(
+          `Ghế không thuộc phân khúc đúng. Ghế ${newSeatId} thuộc phân khúc ${seatValidation.segmentId}, nhưng cần phân khúc ${finalSegmentId}`
         );
       }
 
@@ -796,7 +808,12 @@ export default function CheckInPage() {
           selectedPassenger.fullName ||
           `${selectedPassenger.firstName} ${selectedPassenger.lastName}`.trim(),
         passengerId: selectedPassenger.passengerId,
-        seatId: newSeatId?.toString(), // Convert to string as per API spec
+        newSeatId: newSeatId, // Send as newSeatId for seat changes
+        segmentId:
+          finalSegmentId ||
+          seatValidation?.segmentId ||
+          selectedSeat?.segmentId, // Include segment ID
+        seatNumber: selectedSeat?.seatNumber, // Include seat number for new seat assignments
       };
 
       console.log("📤 [CHECK-IN] Form data gửi về backend:", {

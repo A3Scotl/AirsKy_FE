@@ -2253,16 +2253,19 @@ const BaggageOptionsCard = ({
             </p>
           </div>
           <div className="space-y-4">
-            {formData.passengers.map((passenger, index) => (
-              <BaggagePackageOption
-                key={`passenger_${index}`}
-                passengerIndex={index}
-                passengerType={passenger.type}
-                selectedPackage={baggage[`passenger_${index}`] || "NONE"}
-                onPackageChange={handlePackageChange}
-                segmentCount={isRoundTrip ? 2 : 1}
-              />
-            ))}
+            {formData.passengers.map(
+              (passenger, index) =>
+                passenger.type !== "INFANT" && (
+                  <BaggagePackageOption
+                    key={`passenger_${index}`}
+                    passengerIndex={index}
+                    passengerType={passenger.type}
+                    selectedPackage={baggage[`passenger_${index}`] || "NONE"}
+                    onPackageChange={handlePackageChange}
+                    segmentCount={isRoundTrip ? 2 : 1}
+                  />
+                )
+            )}
           </div>
         </CardContent>
       )}
@@ -2346,6 +2349,7 @@ const MultiCityBaggageOptionsCard = ({
 
                 <div className="space-y-4">
                   {formData.passengers.map((passenger, passengerIndex) => {
+                    if (passenger.type === "INFANT") return null;
                     const passengerKey = `passenger${passengerIndex + 1}`;
                     const passengerBaggage =
                       segmentBaggage[passengerKey] || "NONE";

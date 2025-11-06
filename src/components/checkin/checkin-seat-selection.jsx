@@ -329,6 +329,10 @@ const CheckInSeatSelection = ({
         return "🎬";
       case "BAGGAGE":
         return "🧳";
+      case "PRIORITY_BOARDING":
+        return "🛫";
+      case "TRAVEL_INSURANCE":
+        return "🛡️";
       default:
         return "🛎️";
     }
@@ -495,7 +499,7 @@ const CheckInSeatSelection = ({
         );
         const fallbackSeats = segmentAvailableSeats.availableSeats.map(
           (seatNumber, index) => ({
-            seatId: null, // No real seatId for fallback data
+            seatId: seatNumber, // Use seatNumber as seatId for available seats
             seatNumber: seatNumber,
             className:
               currentSegment?.className || booking.travelClass || "Economy",
@@ -690,6 +694,15 @@ const CheckInSeatSelection = ({
 
   const getSeatPrice = (seatNumber) => {
     if (!seatNumber) return 0;
+
+    // For Business and First class passengers, all seats are free
+    const travelClass =
+      booking?.travelClass || currentSegment?.className || "Economy";
+    const isPremiumClass =
+      travelClass === "Business" || travelClass === "First";
+    if (isPremiumClass) {
+      return 0; // Premium class seats are free
+    }
 
     const seatData = getSeatData(seatNumber);
     // First check if we have pricing from booking data
@@ -1183,14 +1196,15 @@ const CheckInSeatSelection = ({
                           <p className="font-medium text-gray-800">
                             {service.serviceName}
                           </p>
-                          <p className="text-sm text-gray-600">
-                            {service.serviceTypeDisplayName}
-                          </p>
-                          {service.passengerName && (
-                            <p className="text-xs text-gray-500">
-                              Cho: {service.passengerName}
+                          {service.serviceName !==
+                            service.serviceTypeDisplayName && (
+                            <p className="text-sm text-gray-600">
+                              {service.serviceTypeDisplayName}
                             </p>
                           )}
+                          <p className="text-xs text-gray-500">
+                            Cho: {service.passengerName || "Tất cả hành khách"}
+                          </p>
                           {service.notes && (
                             <p className="text-xs text-gray-500 italic">
                               "{service.notes}"
@@ -1212,7 +1226,7 @@ const CheckInSeatSelection = ({
                     </div>
                   ))}
                 </div>
-                <div className="mt-3 p-3 bg-green-100 rounded-lg">
+                {/* <div className="mt-3 p-3 bg-green-100 rounded-lg">
                   <div className="flex justify-between items-center">
                     <span className="font-medium text-green-800">
                       Tổng phí dịch vụ:
@@ -1221,7 +1235,7 @@ const CheckInSeatSelection = ({
                       {formatCurrencyVND(booking.ancillaryServicesAmount || 0)}
                     </span>
                   </div>
-                </div>
+                </div> */}
               </div>
             )}
           </CardContent>
@@ -1299,14 +1313,25 @@ const CheckInSeatSelection = ({
                   ></div>
                   <span>{info.description}</span>
                   <span className="font-medium text-gray-600">
-                    {currentSeatPricing[type]
-                      ? formatCurrencyVND(currentSeatPricing[type].price)
-                      : info.sampleSeat?.seatNumber &&
-                        getSeatPrice(info.sampleSeat.seatNumber) > 0
-                      ? formatCurrencyVND(
-                          getSeatPrice(info.sampleSeat.seatNumber)
-                        )
-                      : "Miễn phí"}
+                    {(() => {
+                      const travelClass =
+                        booking?.travelClass ||
+                        currentSegment?.className ||
+                        "Economy";
+                      const isPremiumClass =
+                        travelClass === "Business" || travelClass === "First";
+                      if (isPremiumClass) {
+                        return "Miễn phí";
+                      }
+                      return currentSeatPricing[type]
+                        ? formatCurrencyVND(currentSeatPricing[type].price)
+                        : info.sampleSeat?.seatNumber &&
+                          getSeatPrice(info.sampleSeat.seatNumber) > 0
+                        ? formatCurrencyVND(
+                            getSeatPrice(info.sampleSeat.seatNumber)
+                          )
+                        : "Miễn phí";
+                    })()}
                   </span>
                 </div>
               ))}
