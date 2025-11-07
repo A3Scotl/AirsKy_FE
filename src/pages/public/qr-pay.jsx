@@ -47,7 +47,7 @@ export default function QRPay() {
         console.log("🏦 Checking QR payment status for booking:", bookingCode);
 
         const response = await axios.get(
-          `http://localhost:8080/api/v1/payments/sepay/check/${bookingCode}`
+          `https://airsky.onrender.com/api/v1/payments/sepay/check/${bookingCode}`
         );
 
         console.log("🏦 QR payment check response:", response.data);

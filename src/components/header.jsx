@@ -189,7 +189,7 @@ export function Header() {
 
   return (
     <header
-      className={`fixed top-0 w-full z-[1000] bg-white border-b border-white/20 shadow-sm transition-transform duration-500 ease-in-out dark:bg-gray-900/20 dark:border-gray-800/20 ${
+      className={`fixed top-0 w-full z-20 bg-white border-b border-white/20 shadow-sm transition-transform duration-500 ease-in-out dark:bg-gray-900/20 dark:border-gray-800/20 ${
         showHeader ? "translate-y-0" : "-translate-y-full"
       }`}
       style={{ willChange: "transform" }}
