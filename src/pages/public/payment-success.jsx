@@ -166,7 +166,7 @@ const PaymentSuccess = () => {
         });
 
         const response = await axios.get(
-          `http://localhost:8080/api/v1/payments/success`,
+          `https://airsky.onrender.com/api/v1/payments/success`,
           { params: { paymentId, PayerID: payerId, bookingId } }
         );
 

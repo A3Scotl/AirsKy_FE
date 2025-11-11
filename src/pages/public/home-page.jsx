@@ -16,7 +16,33 @@ import "swiper/css/navigation";
 import "@/styles/swiper-parallax.css";
 import { useNavigate } from "react-router-dom";
 import { useSearch } from "@/contexts/search-context";
-import { useCallback, useState } from "react";
+import { useCallback, useState, useRef, useEffect } from "react";
+
+// Custom hook for intersection observer (lazy reveal on scroll)
+function useInView(options = {}) {
+  const ref = useRef(null);
+  const [inView, setInView] = useState(false);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setInView(true);
+          observer.disconnect(); // One-time trigger
+        }
+      },
+      { threshold: 0.1, ...options }
+    );
+
+    if (ref.current) {
+      observer.observe(ref.current);
+    }
+
+    return () => observer.disconnect();
+  }, []);
+
+  return [ref, inView];
+}
 
 // Define hero slide data for better maintainability
 const heroSlides = [
@@ -46,6 +72,12 @@ const heroSlides = [
 function HomePage() {
   const navigate = useNavigate();
   const { updateSearchCriteria } = useSearch();
+
+  // Refs and inView states for sections
+  const [suggestionRef, suggestionInView] = useInView({ threshold: 0.2 });
+  const [featuresRef, featuresInView] = useInView({ threshold: 0.2 });
+  const [blogRef, blogInView] = useInView({ threshold: 0.2 });
+  const [faqRef, faqInView] = useInView({ threshold: 0.2 });
 
   // Memoized function to format date as YYYY-MM-DD
   const formatDate = useCallback((date) => {
@@ -186,17 +218,23 @@ function HomePage() {
           </div>
         </section>
 
-        <DestinationSection />
+        {/* <DestinationSection /> */}
 
-        <div className="">
-          <SuggestionSection />
+        <div className="" ref={suggestionRef}>
+          <SuggestionSection className={suggestionInView ? "animate-fadeInUp" : "opacity-0"} />
         </div>
 
-        <FeaturesSection />
+        <div className="" ref={featuresRef}>
+          <FeaturesSection className={featuresInView ? "animate-fadeInUp" : "opacity-0"} />
+        </div>
 
-        <BlogSection />
+        <div className="" ref={blogRef}>
+          <BlogSection className={blogInView ? "animate-fadeInUp" : "opacity-0"} />
+        </div>
 
-        <FAQSection />
+        <div className="" ref={faqRef}>
+          <FAQSection className={faqInView ? "animate-fadeInUp" : "opacity-0"} />
+        </div>
       </div>
 
       <ChatbotWidget />

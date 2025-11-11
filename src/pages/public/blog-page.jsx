@@ -282,10 +282,10 @@ const BlogPage = () => {
         keywords="blog, bài viết, du lịch, máy bay, hàng không"
       />
 
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+      <div className="min-h-screen bg-white ">
         {/* Hero Section */}
-        <div className="bg-gradient-to-r from-blue-600 to-purple-700 text-white">
-          <div className="container mx-auto px-4 py-20">
+        <div className="bg-gradient-to-r from-blue-600 to-blue-700 text-white flex flex-col justify-center">
+          <div className=" mx-auto p-16 mt-30 max-w-6xl">
             <div className="text-center">
               <h1 className="text-4xl md:text-6xl font-bold mb-6">
                 Blog Du Lịch
@@ -295,7 +295,7 @@ const BlogPage = () => {
               </p>
 
               {/* Search Bar */}
-              <form onSubmit={handleSearch} className="max-w-2xl mx-auto">
+              <form onSubmit={handleSearch} className="max-w-xl mx-auto">
                 <div className="relative">
                   <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
                   <Input
@@ -377,7 +377,7 @@ const BlogPage = () => {
         )}
 
         {/* Main Content */}
-        <div className="container mx-auto px-4 py-16 dark:bg-gray-700">
+        <div className="max-w-7xl mx-auto px-4 py-16 bg-white">
           <div className="flex flex-col lg:flex-row gap-12">
             {/* Sidebar */}
             <div className="lg:w-1/4">
@@ -388,8 +388,12 @@ const BlogPage = () => {
                 </h3>
                 <div className="space-y-2">
                   <Button
-                    variant={selectedCategory === "" ? "default" : "ghost"}
-                    className="w-full justify-start"
+                    variant="ghost"
+                    className={`w-full justify-start transition-colors duration-200 ${
+                      selectedCategory === ""
+                        ? "bg-blue-600 text-white hover:bg-blue-700"
+                        : "bg-white text-blue-600 hover:bg-blue-600 hover:text-white"
+                    }`}
                     onClick={() => handleCategoryChange("")}
                   >
                     Tất cả
@@ -397,10 +401,12 @@ const BlogPage = () => {
                   {categories.map((category) => (
                     <Button
                       key={category.categoryId}
-                      variant={
-                        selectedCategory === category.slug ? "default" : "ghost"
-                      }
-                      className="w-full justify-start"
+                      variant="ghost"
+                      className={`w-full justify-start transition-colors duration-200 ${
+                        selectedCategory === category.slug
+                          ? "bg-blue-600 text-white hover:bg-blue-700"
+                          : "bg-white text-black hover:bg-blue-600 hover:text-white"
+                      }`}
                       onClick={() => handleCategoryChange(category.slug)}
                     >
                       {category.name}

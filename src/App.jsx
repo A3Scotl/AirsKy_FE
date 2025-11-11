@@ -306,6 +306,7 @@ function AppRoutes() {
   );
 }
 
+
 function App() {
   // Create QueryClient instance
   const queryClient = new QueryClient({
