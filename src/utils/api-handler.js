@@ -1,6 +1,7 @@
 import axiosInstance from "./axios-instance";
 import { toast } from "sonner";
 
+
 /**
  * Hàm dùng chung để gọi API
  * @param {'get' | 'post' | 'put' | 'delete' | 'patch'} method - HTTP method
@@ -44,6 +45,7 @@ export const apiHandler = async (method, url, data = null, config = {}) => {
               ? { ...config.headers } // Don't include Content-Type for FormData
               : config.headers,
         });
+
     return {
       success: true,
       data: response?.data || response,

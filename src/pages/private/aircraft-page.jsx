@@ -102,7 +102,9 @@ const AircraftPage = () => {
       // Prevent deleting if aircraft is currently on an active flight
       const isInFlight = aircraft.isInFlight ?? aircraft.is_in_flight ?? false;
       if (isInFlight) {
-        toast.error(`Không thể xóa máy bay ${aircraft.aircraftName}: đang trong chuyến bay`);
+        toast.error(
+          `Không thể xóa máy bay ${aircraft.aircraftName}: đang trong chuyến bay`
+        );
         return;
       }
 
@@ -172,7 +174,9 @@ const AircraftPage = () => {
       columnHelper.accessor("aircraftName", {
         header: "Tên máy bay",
         cell: (info) => (
-          <div className="font-medium text-gray-900 dark:text-white">{info.getValue()}</div>
+          <div className="font-medium text-gray-900 dark:text-white">
+            {info.getValue()}
+          </div>
         ),
       }),
 
@@ -211,13 +215,18 @@ const AircraftPage = () => {
         cell: ({ row }) => {
           const orig = row.original;
           // Use isActive field directly
-          const isActive = orig.isActive ?? orig.is_active ?? orig.isActive ?? false;
+          const isActive =
+            orig.isActive ?? orig.is_active ?? orig.isActive ?? false;
           return (
             <div className="text-center">
               {isActive ? (
-                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">Hoạt động</span>
+                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
+                  Hoạt động
+                </span>
               ) : (
-                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300">Không</span>
+                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300">
+                  Không
+                </span>
               )}
             </div>
           );
@@ -234,9 +243,13 @@ const AircraftPage = () => {
           return (
             <div className="text-center">
               {isInFlight ? (
-                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">Bận</span>
+                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">
+                  Bận
+                </span>
               ) : (
-                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300">Rảnh</span>
+                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300">
+                  Rảnh
+                </span>
               )}
             </div>
           );
@@ -308,8 +321,12 @@ const AircraftPage = () => {
   const handleBulkDelete = useCallback(async () => {
     if (selectedAircrafts.length === 0) return;
     // Split into deletable and blocked (in-flight)
-    const blocked = selectedAircrafts.filter((a) => a.isInFlight ?? a.is_in_flight ?? false);
-    const deletable = selectedAircrafts.filter((a) => !(a.isInFlight ?? a.is_in_flight ?? false));
+    const blocked = selectedAircrafts.filter(
+      (a) => a.isInFlight ?? a.is_in_flight ?? false
+    );
+    const deletable = selectedAircrafts.filter(
+      (a) => !(a.isInFlight ?? a.is_in_flight ?? false)
+    );
 
     if (blocked.length > 0) {
       // Inform user which aircrafts are blocked
@@ -368,6 +385,7 @@ const AircraftPage = () => {
         success: (response) => {
           if (response.success) {
             setModalOpen(false);
+            setEditData(null); // Reset edit data after successful submission
             fetchAircrafts();
             return isUpdate
               ? `Đã cập nhật máy bay ${aircraftName} thành công!`
@@ -443,7 +461,7 @@ const AircraftPage = () => {
             <RotateCcw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
             Làm mới
           </Button>
-          
+
           <Button onClick={handleAdd}>Thêm máy bay</Button>
         </div>
       </div>

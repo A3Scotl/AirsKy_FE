@@ -236,17 +236,23 @@ export function SearchForm({ onSearch, initialValues, onTripTypeChange }) {
 
   // Check if form has any data to reset
   const hasDataToReset = useMemo(() => {
-    return (
-      fromLocations.length > 0 ||
-      toLocations.length > 0 ||
-      departDate ||
-      returnDate ||
-      passengers.adults > 1 ||
-      passengers.children > 0 ||
-      passengers.infants > 0 ||
-      travelClass !== "Phổ thông" ||
-      tripType !== "ROUND_TRIP"
-    );
+    if (tripType === "ONE_WAY") {
+      // For one-way trips, only show reset when from, to, and depart date are filled
+      return fromLocations.length > 0 && toLocations.length > 0 && departDate;
+    } else {
+      // For round-trip and other types, show reset when any field has data
+      return (
+        fromLocations.length > 0 ||
+        toLocations.length > 0 ||
+        departDate ||
+        returnDate ||
+        passengers.adults > 1 ||
+        passengers.children > 0 ||
+        passengers.infants > 0 ||
+        travelClass !== "Phổ thông" ||
+        tripType !== "ROUND_TRIP"
+      );
+    }
   }, [
     fromLocations.length,
     toLocations.length,

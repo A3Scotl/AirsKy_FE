@@ -47,35 +47,42 @@ const AirportModal = ({ open, onClose, onSubmit, initialData, countries }) => {
   const isMounted = useRef(true);
 
   useEffect(() => {
-    if (initialData) {
-      setForm({
-        airport_code: initialData.airportCode || initialData.airport_code || "",
-        airport_name: initialData.airportName || initialData.airport_name || "",
-        countryId: initialData.countryId ? String(initialData.countryId) : "",
-        city_name: (() => {
-          const cityData =
-            initialData.cityNames || initialData.cityName || initialData.city;
-          if (Array.isArray(cityData)) {
-            return cityData.join(", ");
-          }
-          return cityData || "";
-        })(),
-        is_active: initialData.active ?? initialData.is_active ?? true,
-        thumbnail: initialData.thumbnail || "",
-        thumbnailFile: null,
-        gates: initialData.gates || [], // Load existing gates
-      });
-    } else {
-      setForm({
-        airport_code: "",
-        airport_name: "",
-        countryId: "1", // Mặc định chọn Việt Nam (id = 1)
-        city_name: "",
-        is_active: true,
-        thumbnail: "",
-        thumbnailFile: null,
-        gates: [],
-      });
+    if (open) {
+      if (initialData) {
+        setForm({
+          airport_code:
+            initialData.airportCode || initialData.airport_code || "",
+          airport_name:
+            initialData.airportName || initialData.airport_name || "",
+          countryId: initialData.countryId ? String(initialData.countryId) : "",
+          city_name: (() => {
+            const cityData =
+              initialData.cityNames || initialData.cityName || initialData.city;
+            if (Array.isArray(cityData)) {
+              return cityData.join(", ");
+            }
+            return cityData || "";
+          })(),
+          is_active: initialData.active ?? initialData.is_active ?? true,
+          thumbnail: initialData.thumbnail || "",
+          thumbnailFile: null,
+          gates: initialData.gates || [], // Load existing gates
+        });
+      } else {
+        setForm({
+          airport_code: "",
+          airport_name: "",
+          countryId: "1", // Mặc định chọn Việt Nam (id = 1)
+          city_name: "",
+          is_active: true,
+          thumbnail: "",
+          thumbnailFile: null,
+          gates: [],
+        });
+      }
+      // Reset errors and submitting state when modal opens
+      setErrors({});
+      setIsSubmitting(false);
     }
   }, [initialData, open]);
 

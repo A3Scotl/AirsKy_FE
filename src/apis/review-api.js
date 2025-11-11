@@ -196,11 +196,23 @@ export const reviewApi = {
   },
 
   /**
-   * Lấy reviews theo tuyến bay (route: departureCode & arrivalCode)
-   * @param {string} departureCode - Mã sân bay khởi hành
-   * @param {string} arrivalCode - Mã sân bay đến
+   * Duyệt đánh giá
+   * @param {number} id - ID của đánh giá
    * @returns {Promise<{ success: boolean, data?: any, message: string }>}
    */
+  approveReview: async (id) => {
+    return apiHandler("put", `/reviews/${id}/approve`);
+  },
+
+  /**
+   * Từ chối đánh giá
+   * @param {number} id - ID của đánh giá
+   * @returns {Promise<{ success: boolean, data?: any, message: string }>}
+   */
+  rejectReview: async (id) => {
+    return apiHandler("put", `/reviews/${id}/reject`);
+  },
+
   getReviewsByRoute: async (departureCode, arrivalCode) => {
     return apiHandler(
       "get",

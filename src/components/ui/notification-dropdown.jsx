@@ -257,7 +257,8 @@ const NotificationDropdown = () => {
               </h3>
               <div className="flex items-center gap-1 text-xs text-gray-500">
                 <span>
-                  ({unreadCount}/{notifications.length})
+                  ({unreadCount}/
+                  {Array.isArray(notifications) ? notifications.length : 0})
                 </span>
                 {unreadCount > 0 && (
                   <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
@@ -299,89 +300,95 @@ const NotificationDropdown = () => {
               </div>
             )}
 
-            {!loading && !error && notifications.length === 0 && (
-              <div className="flex flex-col items-center justify-center p-8 text-center">
-                <Bell className="h-12 w-12 text-gray-400 mb-2" />
-                <p className="text-gray-600 dark:text-gray-400 text-sm">
-                  Chưa có thông báo nào
-                </p>
-              </div>
-            )}
+            {!loading &&
+              !error &&
+              Array.isArray(notifications) &&
+              notifications.length === 0 && (
+                <div className="flex flex-col items-center justify-center p-8 text-center">
+                  <Bell className="h-12 w-12 text-gray-400 mb-2" />
+                  <p className="text-gray-600 dark:text-gray-400 text-sm">
+                    Chưa có thông báo nào
+                  </p>
+                </div>
+              )}
 
-            {!loading && !error && notifications.length > 0 && (
-              <div className="divide-y divide-gray-100 dark:divide-gray-700">
-                {notifications.map((notification, index) => (
-                  <div
-                    key={notification.notificationId}
-                    onClick={() => handleNotificationClick(notification)}
-                    className={`p-4 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors relative group ${
-                      !notification.read
-                        ? "bg-blue-50 dark:bg-blue-900/20 border-l-4 border-blue-500"
-                        : "opacity-75"
-                    }`}
-                  >
-                    <div className="flex items-start gap-3">
-                      {/* Unread indicator dot */}
-                      {!notification.read && (
-                        <div className="w-2 h-2 bg-blue-500 rounded-full flex-shrink-0 mt-2"></div>
-                      )}
+            {!loading &&
+              !error &&
+              Array.isArray(notifications) &&
+              notifications.length > 0 && (
+                <div className="divide-y divide-gray-100 dark:divide-gray-700">
+                  {notifications.map((notification, index) => (
+                    <div
+                      key={notification.notificationId}
+                      onClick={() => handleNotificationClick(notification)}
+                      className={`p-4 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors relative group ${
+                        !notification.read
+                          ? "bg-blue-50 dark:bg-blue-900/20 border-l-4 border-blue-500"
+                          : "opacity-75"
+                      }`}
+                    >
+                      <div className="flex items-start gap-3">
+                        {/* Unread indicator dot */}
+                        {!notification.read && (
+                          <div className="w-2 h-2 bg-blue-500 rounded-full flex-shrink-0 mt-2"></div>
+                        )}
 
-                      {/* Notification type indicator */}
-                      <div
-                        className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${getNotificationStyle(
-                          notification.type
-                        )}`}
-                      >
-                        <Bell className="h-4 w-4" />
-                      </div>
+                        {/* Notification type indicator */}
+                        <div
+                          className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${getNotificationStyle(
+                            notification.type
+                          )}`}
+                        >
+                          <Bell className="h-4 w-4" />
+                        </div>
 
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-start justify-between">
-                          <div className="flex-1 min-w-0 pr-2">
-                            <h4
-                              className={`text-sm truncate ${
-                                !notification.read
-                                  ? "font-semibold text-gray-900 dark:text-white"
-                                  : "font-medium text-gray-700 dark:text-gray-300"
-                              }`}
-                            >
-                              {NOTIFICATION_TYPE_LABELS[notification.type] ||
-                                notification.title}
-                            </h4>
-                            <p
-                              className={`text-sm mt-1 line-clamp-2 ${
-                                !notification.read
-                                  ? "text-gray-800 dark:text-gray-200"
-                                  : "text-gray-600 dark:text-gray-400"
-                              }`}
-                            >
-                              {notification.message}
-                            </p>
-                            <p className="text-xs text-gray-500 dark:text-gray-500 mt-2">
-                              {formatNotificationTime(notification.createdAt)}
-                            </p>
-                          </div>
-
-                          {/* Action buttons */}
-                          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                            {!notification.read && (
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={(e) =>
-                                  handleMarkAsRead(
-                                    e,
-                                    notification.notificationId
-                                  )
-                                }
-                                className="h-6 w-6 p-0 text-blue-600 hover:text-blue-700 hover:bg-blue-100"
-                                title="Đánh dấu đã đọc"
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1 min-w-0 pr-2">
+                              <h4
+                                className={`text-sm truncate ${
+                                  !notification.read
+                                    ? "font-semibold text-gray-900 dark:text-white"
+                                    : "font-medium text-gray-700 dark:text-gray-300"
+                                }`}
                               >
-                                <Check className="h-3 w-3" />
-                              </Button>
-                            )}
+                                {NOTIFICATION_TYPE_LABELS[notification.type] ||
+                                  notification.title}
+                              </h4>
+                              <p
+                                className={`text-sm mt-1 line-clamp-2 ${
+                                  !notification.read
+                                    ? "text-gray-800 dark:text-gray-200"
+                                    : "text-gray-600 dark:text-gray-400"
+                                }`}
+                              >
+                                {notification.message}
+                              </p>
+                              <p className="text-xs text-gray-500 dark:text-gray-500 mt-2">
+                                {formatNotificationTime(notification.createdAt)}
+                              </p>
+                            </div>
 
-                            {/* <Button
+                            {/* Action buttons */}
+                            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                              {!notification.read && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={(e) =>
+                                    handleMarkAsRead(
+                                      e,
+                                      notification.notificationId
+                                    )
+                                  }
+                                  className="h-6 w-6 p-0 text-blue-600 hover:text-blue-700 hover:bg-blue-100"
+                                  title="Đánh dấu đã đọc"
+                                >
+                                  <Check className="h-3 w-3" />
+                                </Button>
+                              )}
+
+                              {/* <Button
                               variant="ghost"
                               size="sm"
                               onClick={(e) =>
@@ -395,14 +402,14 @@ const NotificationDropdown = () => {
                             >
                               <Trash2 className="h-3 w-3" />
                             </Button> */}
+                            </div>
                           </div>
                         </div>
                       </div>
                     </div>
-                  </div>
-                ))}
-              </div>
-            )}
+                  ))}
+                </div>
+              )}
           </ScrollArea>
 
           {/* Footer */}

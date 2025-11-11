@@ -100,15 +100,49 @@ const getTravelClassName = (travelClassId) => {
   return result;
 };
 
-// Helper function to get seat type pricing from fixed values (not from API)
-const getSeatTypePricingFromApi = (seatData) => {
-  // Fixed pricing based on seat types (matching backend enum)
+// Helper function to get seat type pricing from fixed values based on travel class
+const getSeatTypePricingFromApi = (
+  seatData,
+  travelClass = null,
+  travelClassId = null
+) => {
+  // Determine travel class from parameters
+  let classType = null;
+  if (travelClassId) {
+    classType = TRAVEL_CLASS_MAPPING[travelClassId]?.type;
+  } else if (travelClass?.type) {
+    classType = travelClass.type;
+  } else if (travelClass?.englishName) {
+    // Map from englishName
+    if (travelClass.englishName.toLowerCase().includes("first"))
+      classType = "FIRST";
+    else if (travelClass.englishName.toLowerCase().includes("business"))
+      classType = "BUSINESS";
+    else classType = "ECONOMY";
+  }
+
+  // Fixed pricing based on seat types and travel class (matching backend logic)
   const FIXED_SEAT_PRICING = {
     STANDARD: { price: "Miễn phí", priceValue: 0 },
-    EXTRA_LEGROOM: { price: formatCurrencyVND(50000), priceValue: 50000 },
+    EXTRA_LEGROOM: {
+      price:
+        classType === "BUSINESS" || classType === "FIRST"
+          ? "Miễn phí"
+          : formatCurrencyVND(50000),
+      priceValue: classType === "BUSINESS" || classType === "FIRST" ? 0 : 50000,
+    },
     EXIT_ROW: { price: formatCurrencyVND(100000), priceValue: 100000 },
-    FRONT_ROW: { price: formatCurrencyVND(75000), priceValue: 75000 },
-    ACCESSIBLE: { price: formatCurrencyVND(25000), priceValue: 25000 },
+    FRONT_ROW: {
+      price:
+        classType === "BUSINESS" || classType === "FIRST"
+          ? "Miễn phí"
+          : formatCurrencyVND(75000),
+      priceValue: classType === "BUSINESS" || classType === "FIRST" ? 0 : 75000,
+    },
+    ACCESSIBLE: {
+      price: classType === "FIRST" ? "Miễn phí" : formatCurrencyVND(25000),
+      priceValue: classType === "FIRST" ? 0 : 25000,
+    },
   };
 
   const pricing = {};
@@ -443,7 +477,11 @@ const autoAssignStandardSeats = (
     .slice(0, shuffledSeats.length)
     .forEach((passengerData, index) => {
       const assignedSeat = shuffledSeats[index];
-      const seatTypePricing = getSeatTypePricingFromApi(seats);
+      const seatTypePricing = getSeatTypePricingFromApi(
+        seats,
+        selectedTravelClass?.travelClass,
+        selectedTravelClass?.travelClass?.id
+      );
 
       autoAssigned[passengerData.passengerKey] = {
         seatId: assignedSeat.seatId || assignedSeat.id, // Include seatId for unique identification
@@ -1042,13 +1080,18 @@ const renderSeatButton = (
     userTravelClassId && seat.travelClassId === userTravelClassId;
   const isDisabledByClass = userTravelClassId && !isInUserTravelClass;
 
-  // Get seat price for tooltip
+  // Get seat price for tooltip (include travel class context)
   const getSeatPrice = () => {
     if (seat.priceVND) return formatCurrencyVND(seat.priceVND);
     if (seat.seatType && SEAT_TYPE_LABELS[seat.seatType]) {
+      // Get travel class information from seat or selected travel class
+      const travelClass = selectedTravelClass?.travelClass || seat.travelClass;
+      const travelClassId = travelClass?.id || seat.travelClassId;
+
       return (
-        getSeatTypePricingFromApi([seat])[seat.seatType]?.price ||
-        formatCurrencyVND(0)
+        getSeatTypePricingFromApi([seat], travelClass, travelClassId)[
+          seat.seatType
+        ]?.price || formatCurrencyVND(0)
       );
     }
     return formatCurrencyVND(0);
@@ -1478,8 +1521,16 @@ const MultiCitySeatSelectionCard = ({
         if (currentSeatNumber === seatNumber) {
           delete segmentSeats[passengerKey];
         } else {
+          // Get travel class info for this segment
+          const segmentTravelClass =
+            flight?.legs?.[segmentIndex]?.selectedClass;
+
           // Get seat pricing info
-          const seatTypePricing = getSeatTypePricingFromApi(segmentSeatData);
+          const seatTypePricing = getSeatTypePricingFromApi(
+            segmentSeatData,
+            segmentTravelClass?.travelClass,
+            segmentTravelClass?.travelClass?.id
+          );
           let seatType = seat?.seatType;
 
           // Fallback logic for seat type if not provided by API
@@ -1527,8 +1578,15 @@ const MultiCitySeatSelectionCard = ({
     const segmentSeats = multiCitySeats[segmentKey] || {};
     const segmentSeatData = multiCitySeatData[segmentKey] || [];
 
+    // Get travel class info for this segment
+    const segmentTravelClass = flight?.legs?.[segmentIndex]?.selectedClass;
+
     // Get seat type pricing for this segment
-    const segmentSeatTypePricing = getSeatTypePricingFromApi(segmentSeatData);
+    const segmentSeatTypePricing = getSeatTypePricingFromApi(
+      segmentSeatData,
+      segmentTravelClass?.travelClass,
+      segmentTravelClass?.travelClass?.id
+    );
 
     return Object.values(segmentSeats).reduce((total, seatNumber) => {
       const seat = segmentSeatData.find((s) => s.seatNumber === seatNumber);
@@ -1789,8 +1847,22 @@ const SeatSelectionCard = ({
         // If clicking the same seat, deselect it
         delete newSeats[passengerKey];
       } else {
+        // Get travel class info
+        const selectedTravelClass =
+          flight?.isRoundTrip || flight?.type === "ROUND_TRIP"
+            ? isReturn
+              ? flight.returnFlight?.selectedClass ||
+                flight.return?.selectedClass
+              : flight.outboundFlight?.selectedClass ||
+                flight.outbound?.selectedClass
+            : flight?.flight?.selectedClass || flight?.selectedClass;
+
         // Get seat pricing info
-        const seatTypePricing = getSeatTypePricingFromApi(seatList);
+        const seatTypePricing = getSeatTypePricingFromApi(
+          seatList,
+          selectedTravelClass?.travelClass,
+          selectedTravelClass?.travelClass?.id
+        );
         let seatType = seat?.seatType;
 
         // Fallback logic for seat type if not provided by API
@@ -1833,7 +1905,17 @@ const SeatSelectionCard = ({
   };
 
   const getSeatPrice = (seatData, selectedSeatData) => {
-    const seatTypePricing = getSeatTypePricingFromApi(seatData);
+    // Get travel class info
+    const selectedTravelClass =
+      flight?.isRoundTrip || flight?.type === "ROUND_TRIP"
+        ? flight.outboundFlight?.selectedClass || flight.outbound?.selectedClass
+        : flight?.flight?.selectedClass || flight?.selectedClass;
+
+    const seatTypePricing = getSeatTypePricingFromApi(
+      seatData,
+      selectedTravelClass?.travelClass,
+      selectedTravelClass?.travelClass?.id
+    );
     return Object.values(selectedSeatData || {}).reduce((total, seatInfo) => {
       // Handle both new format (object) and old format (string)
       let seatNumber, storedPrice;
@@ -1888,7 +1970,15 @@ const SeatSelectionCard = ({
   };
 
   const getReturnSeatPrice = (seatData, selectedSeatData) => {
-    const seatTypePricing = getSeatTypePricingFromApi(seatData);
+    // Get travel class info for return flight
+    const selectedTravelClass =
+      flight?.returnFlight?.selectedClass || flight?.return?.selectedClass;
+
+    const seatTypePricing = getSeatTypePricingFromApi(
+      seatData,
+      selectedTravelClass?.travelClass,
+      selectedTravelClass?.travelClass?.id
+    );
     return Object.values(selectedSeatData || {}).reduce((total, seatInfo) => {
       // Handle both new format (object) and old format (string)
       let seatNumber, storedPrice;
@@ -3584,8 +3674,18 @@ const Extras = ({ flight, fare, formData, setExtrasData }) => {
     },
   ];
 
+  // Get travel class info
+  const selectedTravelClass =
+    flight?.isRoundTrip || flight?.type === "ROUND_TRIP"
+      ? flight.outboundFlight?.selectedClass || flight.outbound?.selectedClass
+      : flight?.flight?.selectedClass || flight?.selectedClass;
+
   // Get seat type pricing from API data
-  const seatTypePricing = getSeatTypePricingFromApi(seats);
+  const seatTypePricing = getSeatTypePricingFromApi(
+    seats,
+    selectedTravelClass?.travelClass,
+    selectedTravelClass?.travelClass?.id
+  );
 
   const seatTypeLegend = Object.entries(SEAT_TYPE_LABELS).map(
     ([seatType, config]) => {
@@ -3611,8 +3711,15 @@ const Extras = ({ flight, fare, formData, setExtrasData }) => {
     let total = 0;
     Object.entries(multiCitySeats).forEach(([segmentKey, segmentSeats]) => {
       const segmentSeatData = multiCitySeatData[segmentKey] || [];
+      const segmentIndex = parseInt(segmentKey.replace("segment", ""));
+      const segmentTravelClass = flight?.legs?.[segmentIndex]?.selectedClass;
+
       // Get seat type pricing for this segment
-      const segmentSeatTypePricing = getSeatTypePricingFromApi(segmentSeatData);
+      const segmentSeatTypePricing = getSeatTypePricingFromApi(
+        segmentSeatData,
+        segmentTravelClass?.travelClass,
+        segmentTravelClass?.travelClass?.id
+      );
 
       Object.values(segmentSeats).forEach((seatInfo) => {
         // Handle both new format (object) and old format (string)
@@ -3733,7 +3840,11 @@ const Extras = ({ flight, fare, formData, setExtrasData }) => {
         }
 
         // Get seat type pricing from API data
-        const seatTypePricing = getSeatTypePricingFromApi(seats);
+        const seatTypePricing = getSeatTypePricingFromApi(
+          seats,
+          selectedTravelClass?.travelClass,
+          selectedTravelClass?.travelClass?.id
+        );
         const baseSeatPrice = seat?.priceVND || 0;
         const seatType = seat?.seatType;
 
@@ -3787,7 +3898,14 @@ const Extras = ({ flight, fare, formData, setExtrasData }) => {
           }
 
           // Get seat type pricing from return seats API data
-          const returnSeatTypePricing = getSeatTypePricingFromApi(returnSeats);
+          const returnTravelClass =
+            flight?.returnFlight?.selectedClass ||
+            flight?.return?.selectedClass;
+          const returnSeatTypePricing = getSeatTypePricingFromApi(
+            returnSeats,
+            returnTravelClass?.travelClass,
+            returnTravelClass?.travelClass?.id
+          );
           const baseSeatPrice = seat?.priceVND || 0;
           const seatType = seat?.seatType;
 

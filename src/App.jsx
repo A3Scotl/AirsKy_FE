@@ -19,6 +19,7 @@ import "react-toastify/dist/ReactToastify.css";
 import LoadingPage from "@/pages/loading/loading-page";
 import PageTransition from "@/components/common/page-transition";
 import AdminRoute from "@/routes/admin-route";
+import ChatbotWidget from "@/components/common/chatbot-widget";
 import webSocketService from "@/services/websocket-service";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
@@ -34,6 +35,7 @@ const ConfirmBookingPage = lazy(() =>
 const FlightDetail = lazy(() =>
   import("@/pages/public/detail/flight-detail-page")
 );
+
 const ProfilePage = lazy(() => import("@/pages/public/profile-page"));
 const DealsPage = lazy(() => import("@/pages/public/deals-page"));
 const DealDetailPage = lazy(() =>
@@ -78,7 +80,6 @@ const AdminAncillaryService = lazy(() =>
 const AdminNotificationPage = lazy(() =>
   import("@/pages/private/notification-page")
 );
-
 
 function AppRoutes() {
   const { user, loading } = useAuth();
@@ -166,6 +167,7 @@ function AppRoutes() {
                   </PageTransition>
                 }
               />
+          
               <Route
                 path="/profile"
                 element={
@@ -286,7 +288,6 @@ function AppRoutes() {
               />
               <Route path="notifications" element={<AdminNotificationPage />} />
               <Route path="profile" element={<AdminProfile />} />
-             
             </Route>
 
             {/* 404 - fallback */}

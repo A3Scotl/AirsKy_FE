@@ -75,8 +75,29 @@ export const useNotifications = (userId, token) => {
         });
 
         if (response.success) {
-          const { content, totalElements: total, last } = response.data;
-          const notificationData = content || [];
+          console.log("fetchNotifications - response.data:", response.data);
+
+          // Handle case where response.data is the API response object itself
+          let apiData = response.data;
+          if (
+            apiData &&
+            typeof apiData === "object" &&
+            apiData.success !== undefined
+          ) {
+            console.log(
+              "Response.data is a response object, using response.data.data"
+            );
+            apiData = apiData.data;
+          }
+
+          const { content, totalElements: total, last } = apiData;
+          let notificationData = content || [];
+
+          // Ensure notificationData is always an array
+          if (!Array.isArray(notificationData)) {
+            console.warn("notificationData is not an array:", notificationData);
+            notificationData = [];
+          }
 
           if (append) {
             setNotifications((prev) => [...prev, ...notificationData]);
@@ -109,7 +130,16 @@ export const useNotifications = (userId, token) => {
     try {
       const response = await notificationApi.getUnreadCount(userId);
       if (response.success) {
-        const count = response.data || 0;
+        // Handle case where response.data is the API response object itself
+        let apiData = response.data;
+        if (
+          apiData &&
+          typeof apiData === "object" &&
+          apiData.success !== undefined
+        ) {
+          apiData = apiData.data;
+        }
+        const count = apiData || 0;
         setUnreadCount(count);
       }
     } catch (error) {

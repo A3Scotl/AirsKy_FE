@@ -121,6 +121,7 @@ const CountryModal = ({ open, onClose, onSubmit, initialData }) => {
               maxLength={3}
               required
               placeholder="VD: VN"
+              className="dark:text-black"
             />
           </div>
 
@@ -134,6 +135,7 @@ const CountryModal = ({ open, onClose, onSubmit, initialData }) => {
               maxLength={100}
               required
               placeholder="VD: Việt Nam"
+             className="dark:text-black"
             />
           </div>
 

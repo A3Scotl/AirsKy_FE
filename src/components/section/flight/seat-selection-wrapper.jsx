@@ -101,7 +101,7 @@ const SeatSelectionWrapper = ({
       seatNumber: seat.seatNumber,
       status: getSeatStatus(seat),
       price: seat.priceVND || seat.price || 0,
-      seatType: seat.seatType || "ECONOMY",
+      seatType: seat.seatType || "STANDARD",
       // Preserve travel class information for SeatMap
       travelClassId: seat.travelClassId,
       classId: seat.classId,

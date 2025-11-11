@@ -23,7 +23,6 @@ import { classesApi } from "@/apis/classes-api";
 import { handleFetch } from "@/utils/fetch-helper.js";
 import { toast } from "sonner";
 
-
 import TravelClassModal from "@/components/admin/travel-classes/travel-class-modal";
 import ClassesTableSkeleton from "@/components/admin/travel-classes/classes-table-skeleton";
 
@@ -246,7 +245,6 @@ const ClassesPage = () => {
           </p>
         </div>
         <div className="flex gap-2">
-    
           {/* <Button onClick={handleAdd}>Thêm hạng vé</Button> */}
         </div>
       </div>
@@ -314,7 +312,7 @@ const ClassesPage = () => {
         ) : (
           <Table>
             <TableHeader>
-              <TableRow>
+              <TableRow key="header-row">
                 <TableHead
                   className="cursor-pointer hover:bg-gray-50 select-none"
                   onClick={() => handleSort("className")}

@@ -82,6 +82,7 @@ const MyBookingsTab = () => {
   const [paymentError, setPaymentError] = useState(null);
   const [bookingReviews, setBookingReviews] = useState([]);
   const [myReview, setMyReview] = useState(null);
+  const [bookingReviewStatuses, setBookingReviewStatuses] = useState(new Map());
   const [isReviewFormOpen, setIsReviewFormOpen] = useState(false);
   const [reviewFormData, setReviewFormData] = useState({
     rating: 5,
@@ -477,7 +478,7 @@ const MyBookingsTab = () => {
         rating: reviewFormData.rating,
         comment: reviewFormData.comment,
         reviewDate: new Date().toISOString(),
-        status: "COMPLETED",
+        eligibleAt: new Date().toISOString(),
         isApproved: true,
       };
 
@@ -1550,7 +1551,7 @@ const MyBookingsTab = () => {
                     comment: e.target.value,
                   }))
                 }
-                className="mt-2"
+                className="mt-2 dark:text-black"
                 rows={4}
               />
             </div>

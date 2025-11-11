@@ -1,6 +1,6 @@
 import { io } from "socket.io-client";
 
-const CHATBOT_BASE_URL = "http://localhost:3000";
+const CHATBOT_BASE_URL = "https://airsky-chatbot-4f69bc86dc4a.herokuapp.com";
 
 class ChatbotService {
   constructor() {

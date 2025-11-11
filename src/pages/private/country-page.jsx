@@ -41,7 +41,6 @@ import { countryApi } from "@/apis/country-api";
 import { useCountry } from "@/hooks/use-country";
 import { toast } from "sonner";
 
-
 // TanStack Table imports
 import {
   useReactTable,
@@ -178,7 +177,9 @@ const CountryPage = () => {
       columnHelper.accessor("countryName", {
         header: "Tên quốc gia",
         cell: (info) => (
-          <div className="font-medium text-gray-900 dark:text-white">{info.getValue()}</div>
+          <div className="font-medium text-gray-900 dark:text-white">
+            {info.getValue()}
+          </div>
         ),
       }),
 
@@ -381,6 +382,7 @@ const CountryPage = () => {
         success: (response) => {
           if (response.success) {
             setModalOpen(false);
+            setEditData(null); // Reset edit data after successful submission
             refresh();
             return isUpdate
               ? `Đã cập nhật quốc gia ${countryName} thành công!`
@@ -422,7 +424,7 @@ const CountryPage = () => {
             <RotateCcw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
             Làm mới
           </Button>
-    
+
           <Button onClick={handleAdd}>Thêm quốc gia</Button>
         </div>
       </div>

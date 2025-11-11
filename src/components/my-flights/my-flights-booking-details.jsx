@@ -287,9 +287,24 @@ const MyFlightsBookingDetails = ({ booking, onProceed, onBack }) => {
               </p>
               <div className="space-y-1">
                 {(() => {
-                  // Group passengers by type and calculate totals
+                  // Group passengers by type and calculate totals properly
+                  // Use checkinEligiblePassengers if available, otherwise fallback to passengers
+                  const passengersToUse =
+                    booking.checkinEligiblePassengers?.length > 0
+                      ? booking.checkinEligiblePassengers
+                      : booking.passengers || [];
+
+                  // Calculate base adult price (total price for all flight segments)
+                  const baseAdultPrice =
+                    booking.flightSegments && booking.flightSegments.length > 0
+                      ? booking.flightSegments.reduce(
+                          (sum, seg) => sum + (seg.price || 0),
+                          0
+                        )
+                      : 0;
+
                   const passengerGroups = {};
-                  booking.checkinEligiblePassengers?.forEach((passenger) => {
+                  passengersToUse.forEach((passenger) => {
                     if (!passengerGroups[passenger.type]) {
                       passengerGroups[passenger.type] = {
                         count: 0,
@@ -303,11 +318,26 @@ const MyFlightsBookingDetails = ({ booking, onProceed, onBack }) => {
                       };
                     }
                     passengerGroups[passenger.type].count += 1;
+
+                    // Use proper multiplier for each passenger type
+                    const multiplier = getPassengerMultiplier(passenger.type);
+                    const passengerPrice = baseAdultPrice * multiplier;
+
                     passengerGroups[passenger.type].totalPrice +=
-                      passenger.ticketPrice || 0;
+                      passengerPrice;
                   });
 
-                  return Object.values(passengerGroups).map((group) => (
+                  const result = Object.values(passengerGroups);
+
+                  if (result.length === 0) {
+                    return (
+                      <div className="text-sm text-gray-500 dark:text-gray-400">
+                        Không có thông tin giá vé
+                      </div>
+                    );
+                  }
+
+                  return result.map((group) => (
                     <div
                       key={group.label}
                       className="flex justify-between text-sm"
@@ -976,7 +1006,7 @@ const MyFlightsBookingDetails = ({ booking, onProceed, onBack }) => {
         )}
 
       {/* Price Summary */}
-      <Card className="border-blue-200 bg-blue-50 bg-gray-900">
+      <Card className="border-blue-200 bg-blue-50 dark:bg-gray-900">
         <CardHeader>
           <CardTitle className="text-lg">📊 Chi tiết giá</CardTitle>
         </CardHeader>
@@ -1048,7 +1078,8 @@ const MyFlightsBookingDetails = ({ booking, onProceed, onBack }) => {
                       ? "CHILD"
                       : "INFANT"
                   );
-                  const totalForType = baseAdultPrice * multiplier;
+                  const totalForType =
+                    baseAdultPrice * multiplier * group.count;
 
                   return (
                     <div

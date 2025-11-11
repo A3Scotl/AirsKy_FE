@@ -240,7 +240,7 @@ const NotificationModal = ({ isOpen, onClose }) => {
       />
 
       <div
-        className="fixed top-0 right-0 w-full sm:w-[480px] max-w-[480px] bg-white z-[9999] flex flex-col shadow-2xl h-screen overflow-hidden"
+        className="fixed top-0 right-0 w-full sm:w-[480px] max-w-[480px] bg-white z-[999999999999999] dark:bg-gray-900 flex flex-col shadow-2xl h-screen overflow-hidden"
         style={{
           position: "fixed",
           top: 0,
@@ -250,10 +250,10 @@ const NotificationModal = ({ isOpen, onClose }) => {
         }}
       >
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-white shrink-0">
+        <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-white dark:bg-gray-900 shrink-0">
           <div className="flex items-center gap-2">
             <Bell className="w-5 h-5 text-blue-600" />
-            <h2 className="text-lg font-semibold text-gray-900">Thông báo</h2>
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Thông báo</h2>
             {unreadCount > 0 && (
               <Badge variant="destructive" className="ml-2">
                 {unreadCount > 99 ? "99+" : unreadCount}
@@ -296,7 +296,7 @@ const NotificationModal = ({ isOpen, onClose }) => {
           className="flex-1 flex flex-col"
         >
           {/* Tab List */}
-          <div className="px-4 pt-4 border-b bg-white border-gray-200 shrink-0">
+          <div className="px-4 pt-4 border-b bg-white dark:bg-gray-900 border-gray-200 shrink-0">
             <TabsList className="grid w-full grid-cols-3">
               <TabsTrigger value="all">
                 Tất cả ({notifications.length})
@@ -311,8 +311,8 @@ const NotificationModal = ({ isOpen, onClose }) => {
           {/* All Tab */}
           <TabsContent
             value="all"
-            className="flex-1 bg-white overflow-auto flex flex-col mt-0"
-          >
+            className="flex-1 bg-white dark:bg-gray-900 overflow-auto flex flex-col mt-0"
+          > 
             {/* Filters */}
             <div className="p-4 border-b border-gray-200 shrink-0 space-y-3">
               <div className="relative">
@@ -388,7 +388,7 @@ const NotificationModal = ({ isOpen, onClose }) => {
 
             {/* Notifications List */}
             <ScrollArea
-              className="flex-1 bg-white overflow-y-scroll max-h-[70vh]"
+              className="flex-1 bg-white dark:bg-gray-900 overflow-y-scroll max-h-[70vh]"
               onScrollCapture={handleScroll}
               ref={scrollAreaRef}
             >
@@ -435,7 +435,7 @@ const NotificationModal = ({ isOpen, onClose }) => {
           {/* Unread Tab */}
           <TabsContent
             value="unread"
-            className="flex-1 bg-white overflow-y-scroll max-h-[90vh] flex flex-col mt-0"
+            className="flex-1 bg-white dark:bg-gray-900 overflow-y-scroll max-h-[90vh] flex flex-col mt-0"
           >
             <div className="p-4 border-b border-gray-200 shrink-0">
               <div className="text-center text-sm text-gray-600">
@@ -460,7 +460,7 @@ const NotificationModal = ({ isOpen, onClose }) => {
           {/* Settings Tab */}
           <TabsContent
             value="settings"
-            className="flex-1 flex flex-col bg-white mt-0 p-4 space-y-4"
+            className="flex-1 flex flex-col bg-white dark:gray-900 mt-0 p-4 space-y-4"
           >
             <div className="space-y-4">
               {[

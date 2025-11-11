@@ -129,7 +129,7 @@ function HomePage() {
       />
       <div className="pt-0">
         {/* Hero Section with Search Form - Fixed Parallax Swiper */}
-        <section className="relative text-white min-h-[90vh] sm:min-h-[95vh] lg:min-h-[100vh]">
+        <section className="relative text-white min-h-[120vh] sm:min-h-[95vh] lg:min-h-[100vh]">
           <Swiper
             speed={600}
             parallax={true}
@@ -143,7 +143,7 @@ function HomePage() {
             }}
             loop={true}
             modules={[Parallax, Pagination, Navigation, Autoplay]}
-            className="hero-swiper"
+            className="hero-swiper h-auto"
           >
             {heroSlides.map((slide, index) => (
               <SwiperSlide key={index}>
@@ -174,7 +174,7 @@ function HomePage() {
             ))}
           </Swiper>
 
-          <div className="absolute inset-0 mx-auto px-4 sm:px-6 lg:px-8 top-[35%] sm:top-[40%] lg:top-[45%] w-full z-[99999]">
+          <div className="absolute inset-0 mx-auto px-4 sm:px-6 lg:px-8 top-[35%] sm:top-[35%] lg:top-[45%] w-full z-[99999]">
             <div
               data-swiper-parallax="0"
               className="relative z-[100000] max-w-6xl mx-auto"

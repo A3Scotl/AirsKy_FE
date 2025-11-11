@@ -317,13 +317,13 @@ export function Header() {
                   <Menu className="h-6 w-6" />
                 </Button>
               </SheetTrigger>
-              <SheetContent side="left" className="p-0">
+              <SheetContent side="left" className="p-0 z-[100000]">
                 <SheetHeader className="p-4 border-b">
                   <SheetTitle className="text-[#2563eb] text-lg font-bold">
                     AirsSky
                   </SheetTitle>
                 </SheetHeader>
-                <nav className="flex flex-col space-y-4 p-4">
+                <nav className="flex flex-col space-y-4 p-4 ">
                   {MENU_ITEMS.map((item) => (
                     <Link
                       key={item.path}

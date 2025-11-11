@@ -186,7 +186,9 @@ const AirlinePage = () => {
       columnHelper.accessor("airlineName", {
         header: "Tên hãng bay",
         cell: (info) => (
-          <div className="font-medium text-gray-900 dark:text-white">{info.getValue()}</div>
+          <div className="font-medium text-gray-900 dark:text-white">
+            {info.getValue()}
+          </div>
         ),
       }),
 
@@ -400,6 +402,7 @@ const AirlinePage = () => {
         success: (response) => {
           if (response.success) {
             setModalOpen(false);
+            setEditData(null); // Reset edit data after successful submission
             refresh();
             return isUpdate
               ? `Đã cập nhật hãng bay ${airlineName} thành công!`
@@ -441,7 +444,7 @@ const AirlinePage = () => {
             <RotateCcw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
             Làm mới
           </Button>
-          
+
           <Button onClick={handleAdd}>Thêm hãng bay</Button>
         </div>
       </div>

@@ -141,12 +141,13 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
     if (time.match(/^\d{2}:\d{2}$/)) {
       let isoDate = date;
 
-      // Convert date from DD/MM/YYYY to YYYY-MM-DD format if needed
-      if (date && date.includes("/")) {
+      // Handle invalid dates or "N/A" values
+      if (!date || date === "N/A" || date === "undefined") {
+        isoDate = new Date().toISOString().split("T")[0];
+      } else if (date && date.includes("/")) {
+        // Convert date from DD/MM/YYYY to YYYY-MM-DD format if needed
         const [day, month, year] = date.split("/");
         isoDate = `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
-      } else if (!date) {
-        isoDate = new Date().toISOString().split("T")[0];
       }
 
       return `${isoDate}T${time}:00`;
@@ -936,20 +937,6 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
         fare?.travelClass?.classId ||
         1;
 
-      console.log("autoAssignSeats - flight data sources:", {
-        selectedFlight,
-        flightData,
-        flight,
-        flightId,
-        travelClassId,
-        fare,
-        fareId: fare?.id,
-        fareTravelClassId: fare?.travelClass?.id,
-        fareTravelClassClassId: fare?.travelClass?.classId,
-        flightDataSelectedClassTravelClassId:
-          flightData?.selectedClass?.travelClass?.id,
-      });
-
       if (!flightId || !travelClassId) {
         console.warn(
           "Missing flight ID or travel class ID for seat assignment"
@@ -1371,18 +1358,18 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
 
     try {
       // Debug: Check extrasData at start of handleSubmit
-      console.log("🚀 HANDLE SUBMIT START - extrasData:", {
-        selectedSeats: extrasData?.selectedSeats,
-        selectedReturnSeats: extrasData?.selectedReturnSeats,
-        multiCitySeats: extrasData?.multiCitySeats,
-        baggage: extrasData?.baggage,
-        hasSelectedSeats: !!(
-          extrasData?.selectedSeats &&
-          Object.keys(extrasData.selectedSeats).length > 0
-        ),
-        flightObject: flight,
-        fareObject: fare,
-      });
+      // console.log("🚀 HANDLE SUBMIT START - extrasData:", {
+      //   selectedSeats: extrasData?.selectedSeats,
+      //   selectedReturnSeats: extrasData?.selectedReturnSeats,
+      //   multiCitySeats: extrasData?.multiCitySeats,
+      //   baggage: extrasData?.baggage,
+      //   hasSelectedSeats: !!(
+      //     extrasData?.selectedSeats &&
+      //     Object.keys(extrasData.selectedSeats).length > 0
+      //   ),
+      //   flightObject: flight,
+      //   fareObject: fare,
+      // });
 
       // Set payment method for pay later
       const currentPaymentMethod = payLater ? "PAYPAL" : paymentMethod;
@@ -1960,7 +1947,7 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
             segmentOrder: index + 1,
             flightId: leg.id || leg.flightId,
             classId: travelClassId, // Use travelClassId instead of selectedClass.id
-            travelClassId: travelClassId,
+            // travelClassId: travelClassId,
             departure: {
               code: leg.departureAirport?.airportCode || leg.from || "N/A",
               city:
@@ -2059,11 +2046,11 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
               outboundData?.selectedClass?.travelClass?.id ||
               fare.travelClass?.id ||
               1,
-            travelClassId:
-              flight.selectedOutboundFare?.travelClass?.id ||
-              outboundData?.selectedClass?.travelClass?.id ||
-              fare.travelClass?.id ||
-              1,
+            // travelClassId:
+            //   flight.selectedOutboundFare?.travelClass?.id ||
+            //   outboundData?.selectedClass?.travelClass?.id ||
+            //   fare.travelClass?.id ||
+            //   1,
             departure: {
               code:
                 outboundData.departureAirport?.airportCode ||
@@ -2148,11 +2135,11 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
               returnData?.selectedClass?.travelClass?.id ||
               fare.travelClass?.id ||
               1,
-            travelClassId:
-              flight.selectedReturnFare?.travelClass?.id ||
-              returnData?.selectedClass?.travelClass?.id ||
-              fare.travelClass?.id ||
-              1,
+            // travelClassId:
+            //   flight.selectedReturnFare?.travelClass?.id ||
+            //   returnData?.selectedClass?.travelClass?.id ||
+            //   fare.travelClass?.id ||
+            //   1,
             departure: {
               code:
                 returnData.departureAirport?.airportCode ||
@@ -2267,10 +2254,10 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
               flightData.selectedClass?.travelClass?.id ||
               fare.travelClass?.id ||
               1,
-            travelClassId:
-              flightData.selectedClass?.travelClass?.id ||
-              fare.travelClass?.id ||
-              1,
+            // travelClassId:
+            //   flightData.selectedClass?.travelClass?.id ||
+            //   fare.travelClass?.id ||
+            //   1,
             departure: {
               code:
                 flightData.departureAirport?.code ||
@@ -2382,7 +2369,7 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
         dateOfBirth: passenger.dateOfBirth || passenger.dob || null,
         passportNumber: passenger.passportNumber || passenger.passport || "",
         type: passenger.type || "ADULT",
-        frequentFlyer: passenger.frequentFlyer || "",
+        // frequentFlyer: passenger.frequentFlyer || "",
         phone: (() => {
           let phone =
             passenger.phone ||

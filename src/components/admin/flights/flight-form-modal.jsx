@@ -571,16 +571,13 @@ const FlightFormModal = ({
         businessId: formData.businessId ? parseInt(formData.businessId) : null,
         tripType: formData.tripType,
         basePrice: finalBasePrice,
-        terminal: formData.terminal || null,
-        checkInCounter: formData.checkInCounter || null,
-        baggage: formData.baggage || null,
-        mealService: formData.mealService || null,
-        entertainment: formData.entertainment || null,
-        wifiAvailable: formData.wifiAvailable,
-        delayReason: formData.delayReason || null,
-        remarks: formData.remarks || null,
+        // Removed unsupported fields: terminal, checkInCounter, baggage, mealService, entertainment, wifiAvailable, delayReason, remarks
         ...(isEditMode && { flightId: flight.flightId }),
       };
+
+      // Log dữ liệu được gửi để debug
+      console.log("🚀 Flight data being sent to backend:", processedData);
+      console.log("📝 Form data:", formData);
 
       const result = await onSave(processedData, isEditMode);
       toast.dismiss(loadingToast);

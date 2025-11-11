@@ -42,7 +42,6 @@ import { airportApi } from "@/apis/airport-api";
 import { countryApi } from "@/apis/country-api";
 import { toast } from "sonner";
 
-
 // TanStack Table imports
 import {
   useReactTable,
@@ -189,7 +188,9 @@ const AirportPage = () => {
       columnHelper.accessor("airportName", {
         header: "Tên sân bay",
         cell: (info) => (
-          <div className="font-medium text-gray-900 dark:text-white">{info.getValue()}</div>
+          <div className="font-medium text-gray-900 dark:text-white">
+            {info.getValue()}
+          </div>
         ),
       }),
       columnHelper.accessor("cityNames", {
@@ -254,7 +255,7 @@ const AirportPage = () => {
       columnHelper.accessor("country", {
         header: "Quốc gia",
         cell: (info) => (
-          <div className="text-sm text-gray-900">
+          <div className="text-sm text-gray-900 dark:text-gray-200">
             {info.getValue() || info.row.original.countryName || "N/A"}
           </div>
         ),
@@ -513,6 +514,7 @@ const AirportPage = () => {
 
         if (response.success) {
           setModalOpen(false);
+          setEditData(null); // Reset edit data after successful submission
           const airportResponse = await airportApi.getAllAirports({
             size: 1000,
           });
@@ -564,7 +566,7 @@ const AirportPage = () => {
             <RotateCcw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
             Làm mới
           </Button>
-   
+
           <Button onClick={handleAdd}>Thêm sân bay</Button>
         </div>
       </div>
