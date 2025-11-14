@@ -1,27 +1,25 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo, useRef, startTransition } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { useSearch } from "@/contexts/search-context";
+import { Swiper, SwiperSlide } from "swiper/react";
+import { Pagination } from "swiper/modules";
+import "swiper/css";
+import "swiper/css/pagination";
 import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ChevronLeft, ChevronRight, Calendar, RefreshCw } from "lucide-react";
 import { flightApi } from "@/apis/flight-api";
-import { Skeleton } from "@/components/ui/skeleton";
-
-const FlexSearchSkeleton = () => (
-  <Card className="h-full">
-    <CardContent className="p-4 text-center flex flex-col justify-between h-full">
-      <Skeleton className="h-5 w-20 mx-auto mb-2" />
-      <Skeleton className="h-6 w-24 mx-auto" />
-    </CardContent>
-  </Card>
-);
+import { airportApi } from "@/apis/airport-api";
 
 export function FlightFlexSearch({
   searchCriteria,
   allFlights = [],
   onDateSelect,
-  isReturnSelection = false,
+  isReturnSelection = false, // New prop to indicate if selecting return flight
 }) {
+  const { updateSearchCriteria } = useSearch();
   // Optimized validation check
   const hasValidCriteria = useMemo(() => {
     if (!searchCriteria) return false;
@@ -44,22 +42,27 @@ export function FlightFlexSearch({
       extractAirportId(searchCriteria.to) ||
       extractAirportId(searchCriteria.toLocations?.[0]);
 
-    return Boolean(departureId && arrivalId);
+    const hasValidIds = Boolean(departureId && arrivalId);
+    // console.log('Validation check:', { departureId, arrivalId, hasValidIds, searchCriteria }); // Reduced logging
+    return hasValidIds;
   }, [searchCriteria]);
 
   if (!hasValidCriteria) return null;
 
   // Optimized state management
   const [dates, setDates] = useState([]);
+  const [selectedDate, setSelectedDate] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [dateOffset, setDateOffset] = useState(0);
   const [pricesByDate, setPricesByDate] = useState({});
 
   // Optimized refs for performance
+  const priceCache = useRef(new Map());
   const pendingRequests = useRef(new Set());
   const apiRequests = useRef(new Map());
   const abortController = useRef(new AbortController());
+  const swiperRef = useRef(null);
   const lastFetchedCriteria = useRef(null);
 
   // Simplified trip type detection
@@ -74,7 +77,7 @@ export function FlightFlexSearch({
 
   // Optimized price formatter with memoization
   const formatPrice = useCallback((price) => {
-    if (price == null || price === 0) return "--";
+    if (price == null || price === 0) return "N/A";
     return new Intl.NumberFormat("vi-VN", {
       style: "currency",
       currency: "VND",
@@ -141,6 +144,7 @@ export function FlightFlexSearch({
       typeof dateValue === "string" &&
       /^\d{4}-\d{2}-\d{2}$/.test(dateValue)
     ) {
+      // Create date in local timezone to avoid timezone issues
       const [year, month, day] = dateValue.split("-").map(Number);
       const date = new Date();
       date.setFullYear(year, month - 1, day);
@@ -155,85 +159,11 @@ export function FlightFlexSearch({
       return new Date();
     }
 
+    // Ensure we return date in local timezone
     const date = new Date(parsed);
     date.setHours(12, 0, 0, 0);
     return date;
   }, []);
-
-  // Optimized flight price extraction with availability filter
-  const extractFlightPrice = useCallback((flight) => {
-    // Priority: flightTravelClasses > direct price fields
-    if (flight?.flightTravelClasses?.length > 0) {
-      const validPrices = flight.flightTravelClasses
-        .map((tc) => tc.customPrice || tc.price)
-        .filter((price) => price > 0);
-
-      if (validPrices.length > 0) return Math.min(...validPrices);
-    }
-
-    // Fallback to direct price fields
-    const price = flight?.priceNumeric || flight?.price || flight?.totalPrice;
-
-    if (typeof price === "string") {
-      const numPrice = parseFloat(price.replace(/[^\d.]/g, ""));
-      return numPrice > 0 ? numPrice : null;
-    }
-
-    return price > 0 ? price : null;
-  }, []);
-
-  // Optimized flight date parser
-  const parseFlightDateStr = useCallback((departureTime) => {
-    if (!departureTime) return null;
-
-    const datePart = departureTime.split(" ")[0];
-    const parts = datePart.split(/[/.-]/);
-
-    if (parts.length !== 3) return null;
-
-    const [day, month, year] = parts.map(Number);
-
-    if (day >= 1 && day <= 31 && month >= 1 && month <= 12 && year >= 2020) {
-      return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(
-        2,
-        "0"
-      )}`;
-    }
-
-    return null;
-  }, []);
-
-  // Pre-populate pricesByDate from allFlights (one-time computation per change)
-  useEffect(() => {
-    const depId = getAirportIds.departureData?.id;
-    const arrId = getAirportIds.arrivalData?.id;
-    if (!depId || !arrId || allFlights.length === 0) return;
-
-    const newPrices = {};
-    allFlights.forEach((flight) => {
-      const dateStr = parseFlightDateStr(flight.departureTime);
-      if (!dateStr) return;
-
-      const flightDepId = flight.departureAirport?.airportId || flight.departureAirportId;
-      const flightArrId = flight.arrivalAirport?.airportId || flight.arrivalAirportId;
-
-      if (
-        String(flightDepId) === String(depId) &&
-        String(flightArrId) === String(arrId)
-      ) {
-        const price = extractFlightPrice(flight);
-        if (price > 0) {
-          if (!newPrices[dateStr] || price < newPrices[dateStr]) {
-            newPrices[dateStr] = price;
-          }
-        }
-      }
-    });
-
-    startTransition(() => {
-      setPricesByDate((prev) => ({ ...prev, ...newPrices }));
-    });
-  }, [allFlights, getAirportIds, parseFlightDateStr, extractFlightPrice]);
 
   // Optimized date generation - always 7 days with search date in center
   const generateDates = useMemo(() => {
@@ -334,125 +264,298 @@ export function FlightFlexSearch({
     isRoundTrip,
   ]);
 
-  // Optimized batch API price fetching (single call for multiple dates)
-  const fetchMultiplePricesFromAPI = useCallback(
-    async (dateObjs) => {
-      if (!getAirportIds.departureData?.id || !getAirportIds.arrivalData?.id) {
-        return dateObjs.map((d) => ({ priceKey: d.priceKey, price: null }));
+  // Optimized flight price extraction with availability filter
+  const extractFlightPrice = useCallback((flight) => {
+    // Priority: flightTravelClasses > direct price fields
+    if (flight?.flightTravelClasses?.length > 0) {
+      const validPrices = flight.flightTravelClasses
+        .map((tc) => tc.customPrice || tc.price)
+        .filter((price) => price > 0);
+
+      if (validPrices.length > 0) return Math.min(...validPrices);
+    }
+
+    // Fallback to direct price fields
+    const price = flight?.priceNumeric || flight?.price || flight?.totalPrice;
+
+    if (typeof price === "string") {
+      const numPrice = parseFloat(price.replace(/[^\d.]/g, ""));
+      return numPrice > 0 ? numPrice : null;
+    }
+
+    return price > 0 ? price : null;
+  }, []);
+
+  // Optimized flight date parser
+  const parseFlightDateStr = useCallback((departureTime) => {
+    if (!departureTime) return null;
+
+    const datePart = departureTime.split(" ")[0];
+    const parts = datePart.split(/[/.-]/);
+
+    if (parts.length !== 3) return null;
+
+    const [day, month, year] = parts.map(Number);
+
+    if (day >= 1 && day <= 31 && month >= 1 && month <= 12 && year >= 2020) {
+      return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(
+        2,
+        "0"
+      )}`;
+    }
+
+    return null;
+  }, []);
+
+  // Optimized price extraction from existing flights - always one-way logic
+  const getPriceFromAllFlights = useCallback(
+    (dateObj) => {
+      if (!getAirportIds.departureData?.id || !getAirportIds.arrivalData?.id)
+        return null;
+
+      const cacheKey = dateObj.priceKey;
+      if (priceCache.current.has(cacheKey)) {
+        return priceCache.current.get(cacheKey);
       }
 
-      const requestKey = dateObjs.map((d) => d.priceKey).sort().join("-");
+      // Always use one-way logic - filter flights for the specific route and date
+      const matchingFlights = allFlights.filter((flight) => {
+        const flightDate = parseFlightDateStr(flight.departureTime);
+        const depId =
+          flight.departureAirport?.airportId || flight.departureAirportId;
+        const arrId =
+          flight.arrivalAirport?.airportId || flight.arrivalAirportId;
+
+        return (
+          flightDate === dateObj.formatted &&
+          String(depId) === String(getAirportIds.departureData.id) &&
+          String(arrId) === String(getAirportIds.arrivalData.id)
+        );
+      });
+
+      // Found matching flights for date
+
+      const availablePrices = matchingFlights
+        .map(extractFlightPrice)
+        .filter(Boolean);
+      const minPrice =
+        availablePrices.length > 0 ? Math.min(...availablePrices) : null;
+
+      if (minPrice) {
+        priceCache.current.set(cacheKey, minPrice);
+        // Cached min price for date
+      }
+
+      return minPrice;
+    },
+    [allFlights, extractFlightPrice, parseFlightDateStr, getAirportIds]
+  );
+
+  // Optimized API price fetching with batch requests
+  const fetchPriceFromAPI = useCallback(
+    async (dateObj) => {
+      if (!getAirportIds.departureData?.id || !getAirportIds.arrivalData?.id) {
+        // Missing airport IDs for API fetch
+        return null;
+      }
+
+      const requestKey = dateObj.priceKey;
+
+      // Prevent duplicate requests
       if (apiRequests.current.has(requestKey)) {
+        // Using cached API request
         return apiRequests.current.get(requestKey);
       }
       if (pendingRequests.current.has(requestKey)) {
+        // Request already pending
         return null;
       }
 
       pendingRequests.current.add(requestKey);
 
       try {
-        const routes = dateObjs.map((dateObj) => ({
-          departureAirportId: parseInt(getAirportIds.departureData.id),
-          arrivalAirportId: parseInt(getAirportIds.arrivalData.id),
-          date: dateObj.formatted,
-        }));
+        let requestBody;
 
-        const requestBody = {
-          routes,
+        // Always use one-way API calls - even for round-trip, handle each direction separately
+        requestBody = {
+          routes: [
+            {
+              departureAirportId: parseInt(getAirportIds.departureData.id),
+              arrivalAirportId: parseInt(getAirportIds.arrivalData.id),
+              date: dateObj.formatted,
+            },
+          ],
           dateRangeDays: 0,
         };
 
+        // Calling compare-prices API
         const response = await flightApi.compareFlightPrices(requestBody);
+        // API response received
 
         if (response?.success && response.data?.prices?.length > 0) {
-          const priceMap = new Map(
-            response.data.prices.map((p) => [
-              `${p.date}-${p.departureAirportId}-${p.arrivalAirportId}`,
-              p.minPrice,
-            ])
+          // Always extract one-way price - get minPrice for the specific route and date
+          const matchingPrice = response.data.prices.find(
+            (p) =>
+              p.date === dateObj.formatted &&
+              p.departureAirportId ===
+                parseInt(getAirportIds.departureData.id) &&
+              p.arrivalAirportId === parseInt(getAirportIds.arrivalData.id)
           );
 
-          const results = dateObjs.map((dateObj) => {
-            const key = `${dateObj.formatted}-${getAirportIds.departureData.id}-${getAirportIds.arrivalData.id}`;
-            const price = priceMap.get(key) || null;
-            return { priceKey: dateObj.priceKey, price };
-          });
+          const price =
+            matchingPrice?.minPrice ||
+            response.data.prices[0]?.minPrice ||
+            null;
 
-          apiRequests.current.set(requestKey, results);
-          return results;
+          // Extracted price from API response
+
+          // Cache the result
+          if (price !== null) {
+            apiRequests.current.set(requestKey, price);
+          }
+          return price;
         }
 
-        return dateObjs.map((d) => ({ priceKey: d.priceKey, price: null }));
+        // No prices found in API response
+        return null;
       } catch (error) {
-        console.error("Batch API price fetch error:", error);
-        return dateObjs.map((d) => ({ priceKey: d.priceKey, price: null }));
+        console.error("API price fetch error:", error);
+        return null;
       } finally {
         pendingRequests.current.delete(requestKey);
       }
     },
-    [getAirportIds]
+    [isRoundTrip, getAirportIds]
   );
 
-  // Optimized price update function (single API call, single state update via deps)
-  const updatePrices = useCallback(
-    async (datesToFetch) => {
-      if (
-        !datesToFetch.length ||
-        loading ||
-        !getAirportIds.departureData?.id ||
-        !getAirportIds.arrivalData?.id
-      ) {
-        if (!getAirportIds.departureData?.id || !getAirportIds.arrivalData?.id) {
-          setError(
-            "Thiếu thông tin sân bay. Vui lòng chọn lại điểm đi và điểm đến."
-          );
-        }
-        return;
+  // Optimized price update function
+  const updatePrices = useCallback(async () => {
+    if (
+      !dates.length ||
+      loading ||
+      !getAirportIds.departureData?.id ||
+      !getAirportIds.arrivalData?.id
+    ) {
+      if (!getAirportIds.departureData?.id || !getAirportIds.arrivalData?.id) {
+        setError(
+          "Thiếu thông tin sân bay. Vui lòng chọn lại điểm đi và điểm đến."
+        );
       }
-
-      setLoading(true);
-      setError(null);
-
-      // Cancel previous requests
-      abortController.current.abort();
-      abortController.current = new AbortController();
-
-      const results = await fetchMultiplePricesFromAPI(datesToFetch);
-
-      // Collect new prices and update cache (triggers generateDates recompute once)
-      // Always set price to null if no valid price to avoid infinite loops
-      const newPrices = {};
-      results.forEach((r) => {
-        newPrices[r.priceKey] = r.price ?? null;
-      });
-
-      startTransition(() => {
-        setPricesByDate((prev) => ({ ...prev, ...newPrices }));
-      });
-
-      setLoading(false);
-    },
-    [loading, fetchMultiplePricesFromAPI, getAirportIds]
-  );
-
-  // Initialize dates and handle selection - use ref to prevent loops
-  const prevIsReturnSelectionRef = useRef(isReturnSelection);
-
-  useEffect(() => {
-    // Reset date offset when switching selection modes
-    if (prevIsReturnSelectionRef.current !== isReturnSelection) {
-      setDateOffset(0);
-      prevIsReturnSelectionRef.current = isReturnSelection;
+      return;
     }
 
-    startTransition(() => {
-      setDates(generateDates);
-    });
-  }, [generateDates, isReturnSelection]);
+    // console.log('Starting price update for dates:', dates.map(d => d.formatted)); // Reduced logging
+    setLoading(true);
+    setError(null);
 
-  // Effect for criteria changes: clear caches when criteria change
-  useEffect(() => {
+    // Cancel previous requests
+    abortController.current.abort();
+    abortController.current = new AbortController();
+
+    // Set all dates to loading first
+    const loadingDates = dates.map((dateObj) => ({
+      ...dateObj,
+      loading: dateObj.price === undefined,
+      error: false,
+    }));
+    setDates(loadingDates);
+
+    // Prioritize API calls for accurate pricing - fetch all dates from API
+    const datesToFetch = dates.filter((d) => d.price === undefined);
+
+    if (datesToFetch.length > 0) {
+      // Fetching prices from API
+
+      // Process in smaller batches for better performance
+      const batchSize = 2;
+
+      for (let i = 0; i < datesToFetch.length; i += batchSize) {
+        const batch = datesToFetch.slice(i, i + batchSize);
+        // Processing batch
+
+        const batchResults = await Promise.all(
+          batch.map(async (dateObj) => {
+            try {
+              // Fetching price for date
+              const price = await fetchPriceFromAPI(dateObj);
+
+              // Fallback to existing flights if API fails
+              if (price === null) {
+                // API failed, trying existing flights
+                const fallbackPrice = getPriceFromAllFlights(dateObj);
+                return {
+                  priceKey: dateObj.priceKey,
+                  price: fallbackPrice,
+                  error: fallbackPrice === null,
+                };
+              }
+
+              return { priceKey: dateObj.priceKey, price, error: false };
+            } catch (error) {
+              console.error(
+                "Price fetch error for",
+                dateObj.formatted,
+                ":",
+                error
+              );
+              // Try fallback
+              const fallbackPrice = getPriceFromAllFlights(dateObj);
+              return {
+                priceKey: dateObj.priceKey,
+                price: fallbackPrice,
+                error: fallbackPrice === null,
+              };
+            }
+          })
+        );
+
+        // Batch results processed
+
+        // Update state with batch results
+        setDates((prev) =>
+          prev.map((d) => {
+            const result = batchResults.find((r) => r.priceKey === d.priceKey);
+            if (!result) return d;
+
+            if (result.price !== null) {
+              setPricesByDate((prevPrices) => ({
+                ...prevPrices,
+                [d.priceKey]: result.price,
+              }));
+            }
+
+            return {
+              ...d,
+              price: result.price,
+              loading: false,
+              error: result.error,
+            };
+          })
+        );
+
+        // Small delay between batches
+        if (i + batchSize < datesToFetch.length) {
+          await new Promise((resolve) => setTimeout(resolve, 300));
+        }
+      }
+    } else {
+      // console.log('No dates to fetch, all prices already cached'); // Reduced logging
+    }
+
+    setLoading(false);
+  }, [
+    dates,
+    loading,
+    getPriceFromAllFlights,
+    fetchPriceFromAPI,
+    getAirportIds,
+  ]);
+
+  // Improved validation with stable comparison
+  const shouldUpdatePrices = useMemo(() => {
+    if (!dates.length) return false;
+
+    // Create stable criteria object
     const criteriaObj = {
       dep: getAirportIds.departureData?.id,
       arr: getAirportIds.arrivalData?.id,
@@ -470,14 +573,24 @@ export function FlightFlexSearch({
 
     // Check if criteria actually changed
     const criteriaChanged = criteriaStr !== lastFetchedCriteria.current;
+    const hasMissingPrices = dates.some((d) => d.price === undefined);
 
     if (criteriaChanged) {
+      // Criteria changed - should update prices
+      // console.log('Old:', lastFetchedCriteria.current); // Reduced logging
+      // console.log('New:', criteriaStr); // Reduced logging
       lastFetchedCriteria.current = criteriaStr;
-      apiRequests.current.clear();
-      pendingRequests.current.clear();
-      setPricesByDate({});
+      return true;
     }
+
+    if (hasMissingPrices) {
+      // Missing prices detected
+      return true;
+    }
+
+    return false;
   }, [
+    dates.length,
     getAirportIds,
     searchCriteria?.departDate,
     searchCriteria?.returnDate,
@@ -485,19 +598,59 @@ export function FlightFlexSearch({
     isReturnSelection,
   ]);
 
-  // Effect for fetching missing prices when dates change
-  useEffect(() => {
-    if (dates.length === 0) return;
+  // Initialize dates and handle selection - use ref to prevent loops
+  const prevIsReturnSelectionRef = useRef(isReturnSelection);
 
-    const missing = dates.filter((d) => d.price === undefined);
-    if (missing.length > 0 && !loading) {
+  useEffect(() => {
+    // Generating new dates for selection mode
+    setDates(generateDates);
+
+    // Auto-select based on search criteria
+    const targetDate = generateDates.find((d) => d.isSelected);
+    if (targetDate) {
+      setSelectedDate(targetDate);
+
+      // Auto-scroll to selected date
+      const selectedIndex = generateDates.findIndex((d) => d.isSelected);
+      if (selectedIndex !== -1 && swiperRef.current) {
+        setTimeout(() => swiperRef.current?.slideTo(selectedIndex), 100);
+      }
+    }
+
+    // Reset date offset when switching selection modes
+    if (prevIsReturnSelectionRef.current !== isReturnSelection) {
+      setDateOffset(0);
+      prevIsReturnSelectionRef.current = isReturnSelection;
+    }
+  }, [generateDates]); // Remove isReturnSelection from deps to prevent loop
+
+  // Update prices when criteria changes - with debounce
+  useEffect(() => {
+    if (shouldUpdatePrices) {
       const timer = setTimeout(() => {
-        updatePrices(missing);
-      }, 50);
+        updatePrices();
+      }, 50); // Reduced debounce to improve responsiveness
 
       return () => clearTimeout(timer);
     }
-  }, [dates, loading, updatePrices]);
+  }, [shouldUpdatePrices, updatePrices]);
+
+  // CRITICAL: Handle return selection changes - clear cache and refresh
+  useEffect(() => {
+    // Selection mode effect triggered
+
+    // Clear all caches when switching between outbound/return selection
+    priceCache.current.clear();
+    apiRequests.current.clear();
+    pendingRequests.current.clear();
+    setPricesByDate({});
+
+    // DON'T call updatePrices directly here to avoid infinite loop
+    // Let shouldUpdatePrices handle the refresh logic
+  }, [isReturnSelection]); // Remove updatePrices from dependencies
+
+  // Handle search criteria changes - this is handled by shouldUpdatePrices already
+  // Removed to prevent infinite loops
 
   // Cleanup on unmount
   useEffect(() => () => abortController.current?.abort(), []);
@@ -510,150 +663,280 @@ export function FlightFlexSearch({
 
   // Optimized refresh handler
   const handleRefresh = useCallback(() => {
-    // Refreshing prices - clearing caches
+    // Refreshing prices - clearing all caches
+    priceCache.current.clear();
     apiRequests.current.clear();
     pendingRequests.current.clear();
     setPricesByDate({});
     setError(null);
-  }, []);
+    updatePrices();
+  }, [updatePrices]);
 
   // Optimized date selection handler - handles both outbound and return selection
   const handleDateSelect = useCallback(
     (dateObj) => {
-      const selectedDate = dateObj.date.toISOString().split("T")[0];
-      if (isRoundTrip) {
-        if (isReturnSelection) {
-          onDateSelect?.({
-            departDate: searchCriteria.departDate,
-            returnDate: selectedDate,
-          });
-        } else {
-          onDateSelect?.({
-            departDate: selectedDate,
-            returnDate: searchCriteria.returnDate,
-          });
+      setSelectedDate(dateObj);
+
+      // Date selected
+
+      const newCriteria = { ...searchCriteria };
+
+      if (isReturnSelection) {
+        // Selecting return flight date
+        newCriteria.returnDate = new Date(dateObj.formatted + "T12:00:00");
+        // Updated return date
+      } else {
+        // Selecting outbound flight date
+        newCriteria.departDate = new Date(dateObj.formatted + "T12:00:00");
+        // Updated departure date
+
+        // Maintain return date if it exists for round-trip
+        if (isRoundTrip && dateObj.returnFormatted) {
+          newCriteria.returnDate = new Date(
+            dateObj.returnFormatted + "T12:00:00"
+          );
         }
+      }
+
+      // Final search criteria updated
+      updateSearchCriteria(newCriteria);
+      localStorage.setItem("searchCriteria", JSON.stringify(newCriteria));
+
+      // Callback with appropriate data structure
+      if (isRoundTrip) {
+        onDateSelect?.({
+          departDate: newCriteria.departDate
+            ? newCriteria.departDate.toISOString().split("T")[0]
+            : searchCriteria.departDate,
+          returnDate: newCriteria.returnDate
+            ? newCriteria.returnDate.toISOString().split("T")[0]
+            : null,
+          isReturnSelection,
+        });
       } else {
         onDateSelect?.(dateObj.date);
       }
     },
-    [isRoundTrip, onDateSelect, searchCriteria, isReturnSelection]
+    [
+      isRoundTrip,
+      onDateSelect,
+      searchCriteria,
+      updateSearchCriteria,
+      isReturnSelection,
+    ]
   );
 
   // Optimized navigation with bounds checking
   const moveDateRange = useCallback(
     (direction) => {
       const newOffset = dateOffset + (direction === "prev" ? -1 : 1);
-      if (newOffset < 0) return; // Prevent negative offset
-      setDateOffset(newOffset);
+      if (newOffset >= 0 && newOffset <= 12) {
+        setDateOffset(newOffset);
+        setSelectedDate(null);
+      }
     },
     [dateOffset]
   );
 
   return (
-    <div className="w-full bg-gradient-to-br mt-8 from-blue-900/5 via-white to-blue-900/10 dark:from-gray-900 dark:via-blue-900/10 dark:to-black/20 rounded-xl shadow-lg border border-gray-200/50 dark:border-gray-800/50 backdrop-blur-sm">
-      <div className="p-4 sm:p-6">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2">
-            <Calendar className="w-5 h-5 text-blue-900 dark:text-blue-300" />
-            <h3 className="font-semibold text-blue-900 dark:text-white">
-              {isReturnSelection
-                ? "Chọn ngày về linh hoạt"
-                : "Giá vé các ngày lân cận"}
-            </h3>
+    <div className="w-full bg-gradient-to-br from-white via-blue-50/30 to-indigo-50/20 dark:from-gray-900 dark:via-blue-950/20 dark:to-indigo-950/10 rounded-xl shadow-lg border border-gray-200/50 dark:border-gray-700/50 backdrop-blur-sm">
+      <div className="p-6 border-b border-gray-200/60 dark:border-gray-700/60 bg-gradient-to-r from-blue-600/5 to-indigo-600/5">
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-blue-600 rounded-lg shadow-sm">
+              <Calendar className="h-5 w-5 text-white" />
+            </div>
+            <div>
+              <h3 className="text-xl font-bold text-gray-900 dark:text-white">
+                {isReturnSelection
+                  ? "Chọn ngày về linh hoạt"
+                  : "Chọn ngày khởi hành linh hoạt"}
+              </h3>
+              <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                {isReturnSelection
+                  ? "So sánh giá vé ngày về để tìm chuyến bay giá rẻ nhất"
+                  : "So sánh giá vé theo ngày để tìm chuyến bay giá rẻ nhất"}
+              </p>
+            </div>
           </div>
           <Button
-            variant="ghost"
+            variant="outline"
             size="sm"
             onClick={handleRefresh}
             disabled={loading}
-            className="text-xs text-blue-900 dark:text-blue-300 hover:bg-blue-900/10 dark:hover:bg-blue-300/10"
+            className="flex items-center gap-2 border-gray-300 dark:border-gray-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-all duration-200"
           >
-            <RefreshCw
-              className={`w-3 h-3 mr-1 ${loading ? "animate-spin" : ""}`}
-            />
-            Làm mới
+            <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
+            <span className="hidden sm:inline font-medium">Làm mới</span>
           </Button>
         </div>
+      </div>
 
-        {loading && dates.length === 0 ? (
-          <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7 gap-3">
-            {Array.from({ length: 7 }).map((_, index) => (
-              <FlexSearchSkeleton key={index} />
-            ))}
+      <div className="p-6">
+        <div className="relative">
+          <div className="absolute left-2 top-1/2 -translate-y-1/2 z-10">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => moveDateRange("prev")}
+              disabled={dateOffset === 0}
+              className="bg-white/95 hover:bg-white shadow-lg border-gray-300 dark:border-gray-600 h-10 w-10 p-0 rounded-full backdrop-blur-sm transition-all duration-200 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <ChevronLeft className="h-5 w-5 text-gray-700 dark:text-gray-300" />
+            </Button>
           </div>
-        ) : (
-          <div className="relative">
-            <div className="absolute left-0 top-1/2 -translate-y-1/2 z-10">
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={() => !loading && moveDateRange("prev")}
-                disabled={dateOffset === 0 || loading}
-                className="bg-white/80 hover:bg-white shadow-lg border-gray-300 dark:border-gray-600 h-8 w-8 rounded-full backdrop-blur-sm transition-all duration-200 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <ChevronLeft className="h-4 w-4 text-gray-700 dark:text-gray-300" />
-              </Button>
-            </div>
-            <div className="absolute right-0 top-1/2 -translate-y-1/2 z-10">
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={() => !loading && moveDateRange("next")}
-                disabled={loading}
-                className="bg-white/80 hover:bg-white shadow-lg border-gray-300 dark:border-gray-600 h-8 w-8 rounded-full backdrop-blur-sm transition-all duration-200 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <ChevronRight className="h-4 w-4 text-gray-700 dark:text-gray-300" />
-              </Button>
-            </div>
+          <div className="absolute right-2 top-1/2 -translate-y-1/2 z-10">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => moveDateRange("next")}
+              disabled={dateOffset >= 12}
+              className="bg-white/95 hover:bg-white shadow-lg border-gray-300 dark:border-gray-600 h-10 w-10 p-0 rounded-full backdrop-blur-sm transition-all duration-200 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <ChevronRight className="h-5 w-5 text-gray-700 dark:text-gray-300" />
+            </Button>
+          </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7 gap-3 mx-8">
-              {dates.map((dateObj, index) => (
+          <Swiper
+            onSwiper={(swiper) => (swiperRef.current = swiper)}
+            modules={[Pagination]}
+            spaceBetween={16}
+            slidesPerView={1}
+            pagination={{
+              clickable: true,
+              el: ".swiper-pagination",
+              bulletClass:
+                "swiper-pagination-bullet !bg-gray-300 dark:!bg-gray-600",
+              bulletActiveClass: "swiper-pagination-bullet-active !bg-blue-600",
+            }}
+            breakpoints={{
+              640: { slidesPerView: 3 },
+              768: { slidesPerView: 5 },
+              1024: { slidesPerView: 7 },
+            }}
+            className="pb-10 px-14"
+          >
+            {dates.map((dateObj, index) => (
+              <SwiperSlide key={`${dateObj.formatted}-${index}`}>
                 <Card
-                  key={`${dateObj.formatted}-${index}`}
-                  className={`cursor-pointer transition-all duration-300 hover:shadow-xl hover:-translate-y-1 border-2 animate-in slide-in-from-bottom-2 delay-[${index * 50}ms] ${
+                  className={`cursor-pointer transition-all duration-300 hover:shadow-xl hover:scale-105 border-0 shadow-md ${
+                    selectedDate?.formatted === dateObj.formatted ||
                     dateObj.isSelected
-                      ? "border-blue-900 bg-blue-900/10 dark:bg-blue-300/10 dark:border-blue-300"
+                      ? "ring-2 ring-blue-500 bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/30 dark:to-blue-800/30 shadow-blue-200 dark:shadow-blue-900/50"
                       : dateObj.error
-                      ? "border-gray-200 bg-gray-50 dark:bg-gray-800/50 dark:border-gray-700 opacity-70"
+                      ? "bg-gradient-to-br from-red-50 to-red-100 dark:from-red-900/20 dark:to-red-800/20"
                       : dateObj.price && dateObj.price === minOverallPrice
-                      ? "border-green-500 bg-green-50 dark:bg-green-500/10 dark:border-green-500/50"
-                      : "border-gray-200 bg-white dark:bg-gray-800 dark:border-gray-700"
+                      ? "bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900/30 dark:to-green-800/30"
+                      : "hover:bg-gradient-to-br hover:from-gray-50 hover:to-blue-50/50 dark:hover:from-gray-700 dark:hover:to-blue-900/20 bg-white dark:bg-gray-800"
                   }`}
-                  onClick={() => !loading && handleDateSelect(dateObj)}
+                  onClick={() => handleDateSelect(dateObj)}
                 >
-                  <CardContent className="p-3 text-center h-full flex flex-col justify-between">
-                    <div className="text-xs font-semibold text-blue-900 dark:text-gray-300 mb-1">
+                  <CardContent className="p-4 text-center">
+                    <div className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                       {dateObj.display}
                     </div>
 
-                    {(loading && dateObj.price === undefined) ? (
-                      <Skeleton className="h-5 w-16 mx-auto" />
-                    ) : dateObj.error || !dateObj.price ? (
-                      <div className="text-xs text-gray-400 dark:text-gray-500 font-medium transition-opacity duration-200">
-                        --
+                    {dateObj.loading ? (
+                      <div className="flex justify-center py-3">
+                        <div className="animate-pulse h-5 bg-gray-300 dark:bg-gray-600 rounded w-16"></div>
+                      </div>
+                    ) : dateObj.error ||
+                      !dateObj.price ||
+                      dateObj.price === 0 ? (
+                      <div className="text-xs text-red-600 dark:text-red-400 py-3 font-medium">
+                        Không có chuyến
                       </div>
                     ) : (
                       <div
-                        className={`text-sm font-bold transition-all duration-200 ${
+                        className={`text-lg font-bold py-1 ${
                           dateObj.price === minOverallPrice
                             ? "text-green-600 dark:text-green-400"
-                            : "text-blue-900 dark:text-blue-300"
+                            : "text-blue-600 dark:text-blue-400"
                         }`}
                       >
                         {formatPrice(dateObj.price)}
                       </div>
                     )}
+
+                    <div className="flex justify-center gap-1 mt-2">
+                      {dateObj.isToday && (
+                        <Badge
+                          variant="secondary"
+                          className="text-xs px-2 py-0.5 bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300 border-blue-200 dark:border-blue-800"
+                        >
+                          Hôm nay
+                        </Badge>
+                      )}
+                      {dateObj.price && dateObj.price === minOverallPrice && (
+                        <Badge
+                          variant="secondary"
+                          className="text-xs px-2 py-0.5 bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300 border-green-200 dark:border-green-800"
+                        >
+                          Rẻ nhất
+                        </Badge>
+                      )}
+                      {(selectedDate?.formatted === dateObj.formatted ||
+                        dateObj.isSelected) && (
+                        <Badge
+                          variant="default"
+                          className="text-xs px-2 py-0.5 bg-blue-600 hover:bg-blue-700 text-white shadow-sm"
+                        >
+                          Đã chọn
+                        </Badge>
+                      )}
+                    </div>
                   </CardContent>
                 </Card>
-              ))}
+              </SwiperSlide>
+            ))}
+          </Swiper>
+
+          <div className="swiper-pagination flex justify-center mt-6"></div>
+        </div>
+
+        {loading && (
+          <div className="mt-6 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/30 rounded-xl border border-blue-200/50 dark:border-blue-800/50">
+            <div className="flex items-center gap-3">
+              <div className="animate-spin rounded-full h-5 w-5 border-2 border-blue-600 border-t-transparent"></div>
+              <p className="text-sm font-medium text-blue-700 dark:text-blue-300">
+                Đang tải giá vé cho các ngày...
+              </p>
             </div>
           </div>
         )}
 
         {error && (
-          <div className="mt-4 text-center text-xs text-red-600 dark:text-red-400">
-            {error}
+          <div className="mt-6 p-4 bg-gradient-to-r from-red-50 to-pink-50 dark:from-red-950/30 dark:to-pink-950/30 rounded-xl border border-red-200/50 dark:border-red-800/50">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="p-1 bg-red-100 dark:bg-red-900/50 rounded-full">
+                  <svg
+                    className="h-4 w-4 text-red-600 dark:text-red-400"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"
+                    />
+                  </svg>
+                </div>
+                <p className="text-sm font-medium text-red-700 dark:text-red-300">
+                  {error}
+                </p>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleRefresh}
+                className="text-xs border-red-300 dark:border-red-700 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors duration-200"
+              >
+                Thử lại
+              </Button>
+            </div>
           </div>
         )}
       </div>

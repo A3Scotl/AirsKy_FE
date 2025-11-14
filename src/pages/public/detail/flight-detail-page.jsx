@@ -852,7 +852,7 @@ const FareOption = ({
           className={`w-full font-semibold transition-all duration-200 ${
             isSelected
               ? "bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 shadow-lg"
-              : "bg-white border-2 border-gray-300 hover:border-blue-400 hover:bg-blue-50 text-gray-700 dark:text-white"
+              : "bg-white dark:bg-gray-900 border-2 border-gray-300 hover:border-blue-400 hover:bg-blue-50 text-gray-700 dark:text-white"
           }`}
           variant={isSelected ? "default" : "outline"}
         >
@@ -1414,15 +1414,11 @@ const FlightDetail = () => {
           }
         } else {
           // Fallback: Try to load from localStorage
-          console.log("Trying to load flight data from localStorage...");
+
           try {
             const savedFlightData = localStorage.getItem("selectedFlight");
             if (savedFlightData) {
               const parsedFlightData = JSON.parse(savedFlightData);
-              console.log(
-                "📦 Loaded flight data from localStorage:",
-                parsedFlightData
-              );
 
               // Transform to match expected structure if needed
               const transformedFlight = normalizeFlightData(parsedFlightData);
@@ -1555,18 +1551,10 @@ const FlightDetail = () => {
       const currentFlightData = passedFlightData || flightData;
       const currentSelectedFare = passedSelectedFare || selectedFare;
 
-      console.log("🔧 handleProceedToBooking called with:", {
-        passedFlightData: !!passedFlightData,
-        passedSelectedFare: !!passedSelectedFare,
-        currentFlightData: currentFlightData?.id,
-        currentSelectedFare: currentSelectedFare,
-      });
-
       // QUICK FIX: Check if we already have good data in localStorage
       const existingSelectedFlight = JSON.parse(
         localStorage.getItem("selectedFlight") || "{}"
       );
-      console.log("🔍 Existing selectedFlight:", existingSelectedFlight);
 
       // If existing data is good (not N/A), preserve it and just update classes/price
       if (
@@ -1576,7 +1564,6 @@ const FlightDetail = () => {
         existingSelectedFlight.outboundFlight?.to &&
         existingSelectedFlight.outboundFlight?.to !== "N/A"
       ) {
-        console.log("✅ Preserving existing good round-trip data");
 
         // Just update the selected classes and pricing
         if (outboundFare && returnFare) {
@@ -1752,30 +1739,6 @@ const FlightDetail = () => {
           );
 
         // Debug raw flight data before mapping
-        console.log(
-          "🔍 Raw outbound flight data:",
-          currentFlightData.outboundFlight
-        );
-        console.log(
-          "🔍 Raw return flight data:",
-          currentFlightData.returnFlight
-        );
-        console.log(
-          "🔍 Outbound departureTime:",
-          currentFlightData.outboundFlight?.departureTime
-        );
-        console.log(
-          "🔍 Outbound arrivalTime:",
-          currentFlightData.outboundFlight?.arrivalTime
-        );
-        console.log(
-          "🔍 Return departureTime:",
-          currentFlightData.returnFlight?.departureTime
-        );
-        console.log(
-          "🔍 Return arrivalTime:",
-          currentFlightData.returnFlight?.arrivalTime
-        );
 
         bookingData = {
           type: "ROUND_TRIP",
@@ -1811,7 +1774,7 @@ const FlightDetail = () => {
                 currentFlightData.outboundFlight?.departureDateTime ||
                 currentFlightData.departure?.datetime ||
                 currentFlightData.departureTime;
-              console.log("🔍 Outbound departureTime raw value:", timeValue);
+
               return formatTimeVN(timeValue);
             })(),
             arrivalTime: (() => {
@@ -1820,7 +1783,7 @@ const FlightDetail = () => {
                 currentFlightData.outboundFlight?.arrivalDateTime ||
                 currentFlightData.arrival?.datetime ||
                 currentFlightData.arrivalTime;
-              console.log("🔍 Outbound arrivalTime raw value:", timeValue);
+
               return formatTimeVN(timeValue);
             })(),
             departureDate: (() => {
@@ -1829,7 +1792,7 @@ const FlightDetail = () => {
                 currentFlightData.outboundFlight?.departureDate ||
                 currentFlightData.departure?.datetime ||
                 currentFlightData.departureTime;
-              console.log("🔍 Outbound departureDate raw value:", dateValue);
+
               return formatDateVN(dateValue);
             })(),
             arrivalDate: (() => {
@@ -1838,7 +1801,7 @@ const FlightDetail = () => {
                 currentFlightData.outboundFlight?.arrivalDateTime ||
                 currentFlightData.arrival?.datetime ||
                 currentFlightData.arrivalTime;
-              console.log("🔍 Outbound arrivalDate raw value:", dateValue);
+
               return formatDateVN(dateValue);
             })(),
             from:
@@ -1962,7 +1925,7 @@ const FlightDetail = () => {
                 flightData.returnFlight?.departureDateTime ||
                 flightData.returnDeparture?.datetime ||
                 flightData.return?.departureTime;
-              console.log("🔍 Return departureTime raw value:", timeValue);
+
               return formatTimeVN(timeValue);
             })(),
             arrivalTime: (() => {
@@ -1971,7 +1934,7 @@ const FlightDetail = () => {
                 flightData.returnFlight?.arrivalDateTime ||
                 flightData.returnArrival?.datetime ||
                 flightData.return?.arrivalTime;
-              console.log("🔍 Return arrivalTime raw value:", timeValue);
+
               return formatTimeVN(timeValue);
             })(),
             departureDate: (() => {
@@ -1980,7 +1943,7 @@ const FlightDetail = () => {
                 flightData.returnFlight?.departureDateTime ||
                 flightData.returnDeparture?.datetime ||
                 flightData.return?.departureTime;
-              console.log("🔍 Return departureDate raw value:", dateValue);
+
               return formatDateVN(dateValue);
             })(),
             arrivalDate: (() => {
@@ -1989,7 +1952,7 @@ const FlightDetail = () => {
                 flightData.returnFlight?.arrivalDateTime ||
                 flightData.returnArrival?.datetime ||
                 flightData.return?.arrivalTime;
-              console.log("🔍 Return arrivalDate raw value:", dateValue);
+
               return formatDateVN(dateValue);
             })(),
             from:
@@ -2250,30 +2213,30 @@ const FlightDetail = () => {
         {/* Flight Overview */}
         <Card className="mb-8">
           <CardHeader>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-4">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div className="flex items-center space-x-3 sm:space-x-4">
                 <img
                   src={flightData.airlineLogo}
                   alt={flightData.airline}
-                  className="w-12 h-12 rounded-lg object-contain"
+                  className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg object-contain"
                   onError={(e) => {
                     e.target.src = "/placeholder.svg";
                   }}
                 />
                 <div>
-                  <CardTitle className="text-2xl font-bold dark:text-white">
+                  <CardTitle className="text-xl sm:text-2xl font-bold dark:text-white">
                     {flightData.airline}
                   </CardTitle>
-                  <p className="text-gray-600 dark:text-gray-300">
+                  <p className="text-sm sm:text-base text-gray-600 dark:text-gray-300">
                     Chuyến bay {flightData.flightNumber}
                   </p>
                 </div>
               </div>
-              <div className="text-right">
-                <div className="text-3xl font-bold text-blue-600">
+              <div className="text-left sm:text-right w-full sm:w-auto">
+                <div className="text-2xl sm:text-3xl font-bold text-blue-600">
                   {formatCurrencyVND(flightData.totalPrice || flightData.price)}
                 </div>
-                <p className="text-sm text-gray-500 dark:text-gray-400">
+                <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">
                   Giá từ / người
                 </p>
               </div>
@@ -2292,7 +2255,7 @@ const FlightDetail = () => {
                 {flightData.legs.map((leg, index) => (
                   <div key={index} className="space-y-4">
                     <h3
-                      className="font-semibold text-lg"
+                      className="font-semibold text-base sm:text-lg"
                       style={{ color: `hsl(${index * 60}, 70%, 50%)` }}
                     >
                       Chặng {index + 1}:{" "}
@@ -2300,39 +2263,39 @@ const FlightDetail = () => {
                       {leg.arrivalAirport?.airportCode || leg.to}
                     </h3>
                     <div
-                      className="flex items-center justify-between p-4 rounded-lg"
+                      className="flex flex-col sm:flex-row items-center justify-between p-3 sm:p-4 rounded-lg gap-4 sm:gap-0"
                       style={{
                         backgroundColor: `hsl(${index * 60}, 70%, 95%)`,
                       }}
                     >
                       <div className="text-center">
-                        <div className="text-2xl font-bold">
+                        <div className="text-xl sm:text-2xl font-bold">
                           {formatTimeVN(leg.departureTime)}
                         </div>
-                        <div className="text-sm text-gray-600">
+                        <div className="text-xs sm:text-sm text-gray-600">
                           {leg.departureAirport?.airportName ||
                             leg.departureAirport?.name ||
                             "N/A"}
                         </div>
-                        <div className="text-sm font-medium">
+                        <div className="text-xs sm:text-sm font-medium">
                           {leg.departureAirport?.airportCode || leg.from}
                         </div>
                         <div className="text-xs text-gray-500">
                           {formatDateVN(leg.departureTime)}
                         </div>
                       </div>
-                      <div className="flex-1 mx-6">
+                      <div className="flex-1 mx-0 sm:mx-6 w-full sm:w-auto">
                         <div className="relative">
                           <div className="absolute inset-0 flex items-center">
                             <div className="w-full border-t border-gray-300"></div>
                           </div>
                           <div className="relative flex justify-center text-sm">
                             <span className="bg-gray-50 px-2 text-gray-500">
-                              <Plane className="w-4 h-4" />
+                              <Plane className="w-3 h-3 sm:w-4 sm:h-4" />
                             </span>
                           </div>
                         </div>
-                        <div className="text-center text-sm text-gray-500 mt-2">
+                        <div className="text-center text-xs sm:text-sm text-gray-500 mt-2">
                           {formatDuration(leg.duration)}
                         </div>
                         <div className="text-center text-xs text-gray-400">
@@ -2340,15 +2303,15 @@ const FlightDetail = () => {
                         </div>
                       </div>
                       <div className="text-center">
-                        <div className="text-2xl font-bold">
+                        <div className="text-xl sm:text-2xl font-bold">
                           {formatTimeVN(leg.arrivalTime)}
                         </div>
-                        <div className="text-sm text-gray-600">
+                        <div className="text-xs sm:text-sm text-gray-600">
                           {leg.arrivalAirport?.airportName ||
                             leg.arrivalAirport?.name ||
                             "N/A"}
                         </div>
-                        <div className="text-sm font-medium">
+                        <div className="text-xs sm:text-sm font-medium">
                           {leg.arrivalAirport?.airportCode || leg.to}
                         </div>
                         <div className="text-xs text-gray-500">
@@ -2379,27 +2342,27 @@ const FlightDetail = () => {
               </div>
             ) : flightData.isRoundTrip ? (
               // Round-trip flight summary
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 sm:gap-8">
                 {/* Outbound */}
                 <div className="space-y-4">
-                  <h3 className="font-semibold text-lg text-blue-600">
+                  <h3 className="font-semibold text-base sm:text-lg text-blue-600">
                     Chuyến đi
                   </h3>
-                  <div className="text-sm text-gray-600 mb-2">
+                  <div className="text-xs sm:text-sm text-gray-600 mb-2">
                     {flightData.outboundFlight?.flightNumber || "N/A"} •{" "}
                     {flightData.outboundFlight?.aircraft?.aircraftName || "N/A"}
                   </div>
                   <div className="flex items-center justify-between">
                     <div className="text-center">
-                      <div className="text-2xl font-bold">
+                      <div className="text-xl sm:text-2xl font-bold">
                         {flightData.outboundFlight?.departureTime}
                       </div>
-                      <div className="text-sm text-gray-600">
+                      <div className="text-xs sm:text-sm text-gray-600">
                         {flightData.outboundFlight?.departureAirport?.city ||
                           flightData.outboundFlight?.departureAirport?.name ||
                           "N/A"}
                       </div>
-                      <div className="text-sm font-medium">
+                      <div className="text-xs sm:text-sm font-medium">
                         {flightData.outboundFlight?.departureAirport?.code ||
                           flightData.outboundFlight?.from ||
                           "N/A"}
@@ -2408,18 +2371,18 @@ const FlightDetail = () => {
                         {flightData.outboundFlight?.departureDate || "N/A"}
                       </div>
                     </div>
-                    <div className="flex-1 mx-6">
+                    <div className="flex-1 mx-3 sm:mx-6">
                       <div className="relative">
                         <div className="absolute inset-0 flex items-center">
                           <div className="w-full border-t border-gray-300"></div>
                         </div>
                         <div className="relative flex justify-center text-sm">
                           <span className="bg-gray-50 px-2 text-gray-500">
-                            <Plane className="w-4 h-4" />
+                            <Plane className="w-3 h-3 sm:w-4 sm:h-4" />
                           </span>
                         </div>
                       </div>
-                      <div className="text-center text-sm text-gray-500 mt-2">
+                      <div className="text-center text-xs sm:text-sm text-gray-500 mt-2">
                         {flightData.outboundFlight?.duration} phút
                       </div>
                       <div className="text-center text-xs text-gray-400">
@@ -2429,15 +2392,15 @@ const FlightDetail = () => {
                       </div>
                     </div>
                     <div className="text-center">
-                      <div className="text-2xl font-bold">
+                      <div className="text-xl sm:text-2xl font-bold">
                         {flightData.outboundFlight?.arrivalTime}
                       </div>
-                      <div className="text-sm text-gray-600">
+                      <div className="text-xs sm:text-sm text-gray-600">
                         {flightData.outboundFlight?.arrivalAirport?.city ||
                           flightData.outboundFlight?.arrivalAirport?.name ||
                           "N/A"}
                       </div>
-                      <div className="text-sm font-medium">
+                      <div className="text-xs sm:text-sm font-medium">
                         {flightData.outboundFlight?.arrivalAirport?.code ||
                           flightData.outboundFlight?.to ||
                           "N/A"}
@@ -2451,24 +2414,24 @@ const FlightDetail = () => {
 
                 {/* Return */}
                 <div className="space-y-4">
-                  <h3 className="font-semibold text-lg text-green-600">
+                  <h3 className="font-semibold text-base sm:text-lg text-green-600">
                     Chuyến về
                   </h3>
-                  <div className="text-sm text-gray-600 mb-2">
+                  <div className="text-xs sm:text-sm text-gray-600 mb-2">
                     {flightData.returnFlight?.flightNumber || "N/A"} •{" "}
                     {flightData.returnFlight?.aircraft?.aircraftName || "N/A"}
                   </div>
                   <div className="flex items-center justify-between">
                     <div className="text-center">
-                      <div className="text-2xl font-bold">
+                      <div className="text-xl sm:text-2xl font-bold">
                         {flightData.returnFlight?.departureTime}
                       </div>
-                      <div className="text-sm text-gray-600">
+                      <div className="text-xs sm:text-sm text-gray-600">
                         {flightData.returnFlight?.departureAirport?.city ||
                           flightData.returnFlight?.departureAirport?.name ||
                           "N/A"}
                       </div>
-                      <div className="text-sm font-medium">
+                      <div className="text-xs sm:text-sm font-medium">
                         {flightData.returnFlight?.departureAirport?.code ||
                           flightData.returnFlight?.from ||
                           "N/A"}
@@ -2477,18 +2440,18 @@ const FlightDetail = () => {
                         {flightData.returnFlight?.departureDate || "N/A"}
                       </div>
                     </div>
-                    <div className="flex-1 mx-6">
+                    <div className="flex-1 mx-3 sm:mx-6">
                       <div className="relative">
                         <div className="absolute inset-0 flex items-center">
                           <div className="w-full border-t border-gray-300"></div>
                         </div>
                         <div className="relative flex justify-center text-sm">
                           <span className="bg-gray-50 px-2 text-gray-500">
-                            <Plane className="w-4 h-4 rotate-180" />
+                            <Plane className="w-3 h-3 sm:w-4 sm:h-4 rotate-180" />
                           </span>
                         </div>
                       </div>
-                      <div className="text-center text-sm text-gray-500 mt-2">
+                      <div className="text-center text-xs sm:text-sm text-gray-500 mt-2">
                         {flightData.returnFlight?.duration} phút
                       </div>
                       <div className="text-center text-xs text-gray-400">
@@ -2498,15 +2461,15 @@ const FlightDetail = () => {
                       </div>
                     </div>
                     <div className="text-center">
-                      <div className="text-2xl font-bold">
+                      <div className="text-xl sm:text-2xl font-bold">
                         {flightData.returnFlight?.arrivalTime}
                       </div>
-                      <div className="text-sm text-gray-600">
+                      <div className="text-xs sm:text-sm text-gray-600">
                         {flightData.returnFlight?.arrivalAirport?.city ||
                           flightData.returnFlight?.arrivalAirport?.name ||
                           "N/A"}
                       </div>
-                      <div className="text-sm font-medium">
+                      <div className="text-xs sm:text-sm font-medium">
                         {flightData.returnFlight?.arrivalAirport?.code ||
                           flightData.returnFlight?.to ||
                           "N/A"}
@@ -2520,58 +2483,58 @@ const FlightDetail = () => {
               </div>
             ) : (
               // One-way flight summary
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-4 sm:gap-0">
                 <div className="text-center">
-                  <div className="text-3xl font-bold">
+                  <div className="text-2xl sm:text-3xl font-bold">
                     {flightData.departure?.time ||
                       flightData.departureTime ||
                       "N/A"}
                   </div>
-                  <div className="text-lg font-medium">
+                  <div className="text-sm sm:text-lg font-medium">
                     {flightData.departure?.city || flightData.from || "N/A"}
                   </div>
-                  <div className="text-sm text-gray-600">
+                  <div className="text-xs sm:text-sm text-gray-600">
                     {flightData.departure?.code || flightData.fromCode || "N/A"}
                   </div>
-                  <div className="text-sm text-gray-500">
+                  <div className="text-xs sm:text-sm text-gray-500">
                     {flightData.departure?.date ||
                       flightData.departureDate ||
                       "N/A"}
                   </div>
                 </div>
-                <div className="flex-1 mx-8">
+                <div className="flex-1 mx-4 sm:mx-8">
                   <div className="relative">
                     <div className="absolute inset-0 flex items-center">
                       <div className="w-full border-t-2 border-blue-300"></div>
                     </div>
                     <div className="relative flex justify-center">
-                      <span className="bg-gray-50 dark:bg-gray-900 px-4 py-2">
-                        <Plane className="w-6 h-6 text-blue-600" />
+                      <span className="bg-gray-50 dark:bg-gray-900 px-2 sm:px-4 py-2">
+                        <Plane className="w-4 h-4 sm:w-6 sm:h-6 text-blue-600" />
                       </span>
                     </div>
                   </div>
-                  <div className="text-center mt-4">
-                    <div className="text-sm font-medium text-gray-700">
+                  <div className="text-center mt-2 sm:mt-4">
+                    <div className="text-xs sm:text-sm font-medium text-gray-700">
                       {formatDuration(flightData.duration)}
                     </div>
-                    <div className="text-sm text-gray-500">
+                    <div className="text-xs sm:text-sm text-gray-500">
                       {formatStops(flightData.stops)}
                     </div>
                   </div>
                 </div>
                 <div className="text-center">
-                  <div className="text-3xl font-bold">
+                  <div className="text-2xl sm:text-3xl font-bold">
                     {flightData.arrival?.time ||
                       flightData.arrivalTime ||
                       "N/A"}
                   </div>
-                  <div className="text-lg font-medium">
+                  <div className="text-sm sm:text-lg font-medium">
                     {flightData.arrival?.city || flightData.to || "N/A"}
                   </div>
-                  <div className="text-sm text-gray-600">
+                  <div className="text-xs sm:text-sm text-gray-600">
                     {flightData.arrivalAirport?.code || "N/A"}
                   </div>
-                  <div className="text-sm text-gray-500">
+                  <div className="text-xs sm:text-sm text-gray-500">
                     {flightData.arrival?.date ||
                       flightData.arrivalDate ||
                       "N/A"}
@@ -2615,7 +2578,7 @@ const FlightDetail = () => {
                                 backgroundColor: `hsl(${index * 60}, 70%, 95%)`,
                               }}
                             >
-                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <div>
                                   <span className="text-sm text-gray-600">
                                     Số hiệu chuyến bay:
@@ -2713,7 +2676,7 @@ const FlightDetail = () => {
                           <h4 className="font-semibold mb-2">
                             Tóm tắt hành trình
                           </h4>
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
                             <div>
                               <span className="text-gray-600">
                                 Tổng số chặng:
@@ -2787,7 +2750,7 @@ const FlightDetail = () => {
                             Chuyến đi
                           </h3>
                           <div className="bg-blue-50 dark:bg-gray-900  rounded-lg p-4 space-y-4">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                               <div>
                                 <span className="text-sm text-gray-600">
                                   Số hiệu chuyến bay:
@@ -2834,7 +2797,7 @@ const FlightDetail = () => {
                             Chuyến về
                           </h3>
                           <div className="bg-green-50 dark:bg-gray-900 rounded-lg p-4 space-y-4">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                               <div>
                                 <span className="text-sm text-gray-600">
                                   Số hiệu chuyến bay:
@@ -2878,7 +2841,7 @@ const FlightDetail = () => {
                     ) : (
                       // One-way flight details
                       <div className="space-y-6">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                           <div>
                             <h4 className="font-semibold mb-2">
                               Thông tin chuyến bay
@@ -2969,7 +2932,6 @@ const FlightDetail = () => {
                   ? "Chọn hạng vé cho chuyến bay khứ hồi"
                   : "Chọn loại vé phù hợp"}
               </CardTitle>
-             
             </CardHeader>
             <CardContent>
               {flightData?.isMultiCity ? (
@@ -3509,18 +3471,17 @@ const FlightDetail = () => {
                 </div>
               )}
             </CardContent>
-            
           </Card>
-           {(outboundFare || returnFare || selectedFare) && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={resetFareSelection}
-                  className="w-full"
-                >
-                  Đặt lại lựa chọn
-                </Button>
-              )}
+          {(outboundFare || returnFare || selectedFare) && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={resetFareSelection}
+              className="w-full"
+            >
+              Đặt lại lựa chọn
+            </Button>
+          )}
 
           {/* Fare Summary for Multi-city */}
           {flightData?.isMultiCity &&
@@ -3623,8 +3584,8 @@ const FlightDetail = () => {
         {routeReviews.length > 0 && (
           <Card className="mb-8 mt-">
             <CardHeader>
-              <div className="flex items-center justify-between">
-                <CardTitle className="flex items-center gap-2">
+              <div className="flex items-center justify-between flex-wrap">
+                <CardTitle className="flex items-center gap-2 ">
                   <Star className="h-5 w-5 text-yellow-500" />
                   Đánh giá từ hành khách về tuyến bay này
                 </CardTitle>
@@ -3725,18 +3686,18 @@ const FlightDetail = () => {
 
             {/* Modal */}
             <div
-              className="fixed top-0 right-0 h-full w-1/3 bg-white dark:bg-gray-800 border-l border-gray-200 shadow-2xl z-50 flex flex-col"
+              className="fixed inset-0 sm:top-0 sm:right-0 sm:h-full sm:w-1/3 w-full h-full bg-white dark:bg-gray-800 border-l sm:border-l border-gray-200 shadow-2xl z-50 flex flex-col"
               style={{
-                width: "33.333333%",
-                height: "100vh",
+                width: window.innerWidth < 640 ? "100%" : "33.333333%",
+                height: window.innerWidth < 640 ? "100vh" : "100vh",
               }}
             >
               {/* Header */}
-              <div className="p-6 border-b border-gray-200 flex-shrink-0">
+              <div className="p-4 sm:p-6 border-b border-gray-200 flex-shrink-0">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <Star className="h-5 w-5 text-yellow-500" />
-                    <h2 className="text-lg font-semibold">
+                    <Star className="h-4 w-4 sm:h-5 sm:w-5 text-yellow-500" />
+                    <h2 className="text-base sm:text-lg font-semibold">
                       Tất cả đánh giá ({routeReviews.length})
                     </h2>
                   </div>
@@ -3744,15 +3705,15 @@ const FlightDetail = () => {
                     onClick={() => setReviewsModalOpen(false)}
                     className="p-1 hover:bg-gray-100 rounded-full transition-colors"
                   >
-                    <X className="h-5 w-5 text-gray-500" />
+                    <X className="h-4 w-4 sm:h-5 sm:w-5 text-gray-500" />
                   </button>
                 </div>
               </div>
 
               <div className="flex-1 overflow-hidden flex flex-col">
                 {/* Filters and Search */}
-                <div className="p-4 border-b bg-gray-50 dark:bg-gray-800 space-y-3 flex-shrink-0">
-                  <div className="flex gap-2">
+                <div className="p-3 sm:p-4 border-b bg-gray-50 dark:bg-gray-800 space-y-3 flex-shrink-0">
+                  <div className="flex flex-col sm:flex-row gap-2">
                     <div className="flex-1">
                       <Label className="text-xs text-gray-600 dark:text-white flex items-center gap-1 mb-2">
                         <Filter className="h-3 w-3" />
@@ -3797,23 +3758,23 @@ const FlightDetail = () => {
                 </div>
 
                 {/* Reviews List */}
-                <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                <div className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-3 sm:space-y-4">
                   {getFilteredAndSortedReviews().length === 0 ? (
                     <div className="text-center py-8 text-gray-500">
-                      <Star className="h-8 w-8 mx-auto mb-2 text-gray-300" />
+                      <Star className="h-6 w-6 sm:h-8 sm:w-8 mx-auto mb-2 text-gray-300" />
                       <p className="text-sm">Không tìm thấy đánh giá nào</p>
                     </div>
                   ) : (
                     getPaginatedReviews().map((review) => (
                       <div
                         key={review.reviewId}
-                        className="bg-white dark:bg-gray-400 border rounded-lg p-4 shadow-sm"
+                        className="bg-white dark:bg-gray-400 border rounded-lg p-3 sm:p-4 shadow-sm"
                       >
-                        <div className="flex items-center gap-3 mb-3">
+                        <div className="flex items-center gap-2 sm:gap-3 mb-3">
                           <img
                             src={review.userAvatar || "/placeholder-avatar.png"}
                             alt={review.userName}
-                            className="w-10 h-10 rounded-full object-cover"
+                            className="w-8 h-8 sm:w-10 sm:h-10 rounded-full object-cover"
                             onError={(e) => {
                               e.target.src = "/placeholder-avatar.png";
                             }}

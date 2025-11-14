@@ -280,7 +280,7 @@ const UserDetailsModal = ({
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-6xl max-h-[95vh] overflow-hidden p-0 dark:bg-gray-900 dark:border-gray-700">
+      <DialogContent className="max-w-[95vw] sm:max-w-[90vw] md:max-w-4xl lg:max-w-6xl max-h-[95vh] overflow-hidden p-0 dark:bg-gray-900 dark:border-gray-700">
         <DialogHeader className="sr-only">
           <DialogTitle>Thông tin chi tiết người dùng</DialogTitle>
         </DialogHeader>

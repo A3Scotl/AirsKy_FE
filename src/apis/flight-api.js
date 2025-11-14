@@ -341,6 +341,40 @@ export const flightApi = {
     }
   },
 
+  /**
+   * Hủy chuyến bay với lý do bắt buộc
+   * @param {number} flightId - ID chuyến bay
+   * @param {object} params - { reason: string } - Lý do hủy (bắt buộc)
+   * @returns {Promise<{ success: boolean, data?: any, message: string }>}
+   */
+  cancelFlight: async (flightId, params) => {
+    const queryParams = new URLSearchParams();
+    if (params.reason) queryParams.append("reason", params.reason);
+    const queryString = queryParams.toString();
+    const endpoint = `/flights/${flightId}/cancel${
+      queryString ? `?${queryString}` : ""
+    }`;
+    return apiHandler("post", endpoint);
+  },
+
+  /**
+   * Delay chuyến bay với lý do và thời gian mới bắt buộc
+   * @param {number} flightId - ID chuyến bay
+   * @param {object} params - { reason: string, newDepartureTime: string } - Lý do delay và thời gian khởi hành mới (ISO format)
+   * @returns {Promise<{ success: boolean, data?: any, message: string }>}
+   */
+  delayFlight: async (flightId, params) => {
+    const queryParams = new URLSearchParams();
+    if (params.reason) queryParams.append("reason", params.reason);
+    if (params.newDepartureTime)
+      queryParams.append("newDepartureTime", params.newDepartureTime);
+    const queryString = queryParams.toString();
+    const endpoint = `/flights/${flightId}/delay${
+      queryString ? `?${queryString}` : ""
+    }`;
+    return apiHandler("post", endpoint);
+  },
+
   compareFlightPrices: async (params) => {
     return apiHandler("post", "/flights/compare-prices", params);
   },

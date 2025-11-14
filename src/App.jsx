@@ -91,15 +91,12 @@ function AppRoutes() {
     if (user?.id && localStorage.getItem("token")) {
       webSocketService
         .connect(user.id, localStorage.getItem("token"))
-        .then(() => {
-          console.log("✅ WebSocket connected successfully");
-        })
+        .then(() => {})
         .catch((error) => {
           console.error("❌ WebSocket connection failed:", error);
         });
     } else if (!user) {
       // Disconnect WebSocket when user is not authenticated
-      console.log("🔌 Disconnecting WebSocket (user not authenticated)");
       webSocketService.disconnect();
     }
 
@@ -167,7 +164,7 @@ function AppRoutes() {
                   </PageTransition>
                 }
               />
-          
+
               <Route
                 path="/profile"
                 element={
@@ -305,7 +302,6 @@ function AppRoutes() {
     </>
   );
 }
-
 
 function App() {
   // Create QueryClient instance

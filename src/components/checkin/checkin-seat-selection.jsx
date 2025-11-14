@@ -379,41 +379,16 @@ const CheckInSeatSelection = ({
         booking.travelClassId;
 
       // Try to get flight and travel class info from different sources
-      console.log("🔍 Debug flight data:", {
-        selectedPassenger,
-        targetSegment,
-        bookingFlightSegments: booking.flightSegments,
-        bookingFlightId: booking.flightId,
-        currentPassenger,
-        finalFlightId,
-        finalTravelClassId,
-      });
 
       // Get available seats for the target segment
       const segmentAvailableSeats = booking.availableSeats?.find(
         (segment) => segment.segmentId === targetSegment?.segmentId
       );
 
-      console.log("🛩️ Attempting to load seats with:", {
-        finalFlightId,
-        finalTravelClassId,
-        selectedPassenger,
-        targetSegment,
-        segmentAvailableSeats,
-        booking,
-        currentPassenger,
-      });
-
       // Always try to call API first to get real seatId
       if (finalFlightId && finalTravelClassId) {
         setLoadingSeats(true);
         try {
-          console.log(
-            "🛩️ Loading seats from API for flight:",
-            finalFlightId,
-            "class:",
-            finalTravelClassId
-          );
 
           const response =
             await flightApi.getSeatsFlightByFlightIdAndTravelClassId(
@@ -422,10 +397,6 @@ const CheckInSeatSelection = ({
             );
 
           if (response.success && response.data) {
-            console.log(
-              "✅ Seats loaded successfully from API:",
-              response.data
-            );
 
             // Mark seats as available based on segment's availableSeats
             let processedSeats = response.data.map((seat) => ({
@@ -443,7 +414,7 @@ const CheckInSeatSelection = ({
               currentSeat &&
               !processedSeats.find((seat) => seat.seatNumber === currentSeat)
             ) {
-              console.log("➕ Adding current seat to seats data:", currentSeat);
+
               const currentSeatData = {
                 seatId: `current-${currentSeat}`, // Generate a temporary ID for current seat
                 seatNumber: currentSeat,
@@ -456,10 +427,6 @@ const CheckInSeatSelection = ({
               processedSeats.push(currentSeatData);
             }
 
-            console.log(
-              "✅ Processed seats with availability:",
-              processedSeats
-            );
             setSeatsData(processedSeats);
 
             // Build seat type pricing from API data
@@ -493,10 +460,7 @@ const CheckInSeatSelection = ({
         segmentAvailableSeats.availableSeats &&
         Array.isArray(segmentAvailableSeats.availableSeats)
       ) {
-        console.log(
-          "🪑 Using available seats from segment data as fallback:",
-          segmentAvailableSeats.availableSeats
-        );
+
         const fallbackSeats = segmentAvailableSeats.availableSeats.map(
           (seatNumber, index) => ({
             seatId: seatNumber, // Use seatNumber as seatId for available seats
@@ -514,10 +478,7 @@ const CheckInSeatSelection = ({
           currentSeat &&
           !fallbackSeats.find((seat) => seat.seatNumber === currentSeat)
         ) {
-          console.log(
-            "➕ Adding current seat to fallback seats data:",
-            currentSeat
-          );
+
           const currentSeatData = {
             seatId: `current-${currentSeat}`, // Generate a temporary ID for current seat
             seatNumber: currentSeat,
@@ -588,10 +549,7 @@ const CheckInSeatSelection = ({
       );
       if (currentSeatData?.seatId) {
         setCurrentSeatId(currentSeatData.seatId);
-        console.log("✅ Current seat ID resolved:", {
-          seatNumber: currentSeat,
-          seatId: currentSeatData.seatId,
-        });
+
       } else {
         console.warn("⚠️ Could not find seatId for current seat:", currentSeat);
       }
@@ -755,7 +713,7 @@ const CheckInSeatSelection = ({
   const handleProceedToPayment = () => {
     // Skip payment if already processing payment success
     if (isProcessingPaymentSuccess) {
-      console.log("⏭️ Skipping payment - payment success in progress");
+
       return;
     }
 
@@ -782,12 +740,6 @@ const CheckInSeatSelection = ({
       totalAmount: finalTotal,
     };
 
-    console.log("💳 Proceeding to payment with combined data:", {
-      finalTotal,
-      services,
-      selectedSeat,
-      paymentData,
-    });
     onProceedToPayment(finalTotal, services, selectedSeat, paymentData);
   };
 
@@ -799,7 +751,7 @@ const CheckInSeatSelection = ({
       selectedSeat.seatNumber === seatNumber &&
       currentSeat === seatNumber
     ) {
-      console.log("✅ Seat already selected and confirmed:", seatNumber);
+
       return;
     }
 
@@ -808,15 +760,12 @@ const CheckInSeatSelection = ({
 
     // If there's a current seat (from booking) and we're changing to a different seat
     if (currentSeat && currentSeat !== seatNumber) {
-      console.log("🔄 Seat change detected:", {
-        from: currentSeat,
-        to: seatNumber,
-      });
+
       // Calculate seat change using API
       await calculateSeatChangeWithAPI(seatNumber, seatType, seatId);
     } else {
       // Selecting current seat or no current seat - just select normally
-      console.log("✅ Normal seat selection:", seatNumber);
+
       onSelectSeat(seatNumber, seatType, seatId);
     }
   };
@@ -829,7 +778,7 @@ const CheckInSeatSelection = ({
   ) => {
     // Skip calculation if processing payment success to prevent duplicate API calls
     if (isProcessingPaymentSuccess) {
-      console.log("⏭️ Skipping seat calculation - payment success in progress");
+
       return;
     }
 
@@ -837,7 +786,7 @@ const CheckInSeatSelection = ({
     try {
       // For INFANT passengers, skip seat calculation entirely
       if (currentPassenger?.type === "INFANT") {
-        console.log("👶 INFANT passenger - skipping seat calculation");
+
         return;
       }
 
@@ -862,12 +811,10 @@ const CheckInSeatSelection = ({
         servicesToAdd: servicesToAdd,
       };
 
-      console.log("🧮 Calculating seat change with data:", seatChangeData);
-
       const response = await bookingApi.calculateSeatChange(seatChangeData);
 
       if (response.success && response.data) {
-        console.log("✅ Seat change calculation:", response.data);
+
         setSeatChangeCalculation(response.data);
         setPendingSeatSelection({
           seatNumber: newSeatNumber,
@@ -881,9 +828,7 @@ const CheckInSeatSelection = ({
           response.data.totalCharge === 0 ||
           response.data.priceDifference === 0
         ) {
-          console.log(
-            "💰 Seat change is free, confirming seat change without payment"
-          );
+
           // Select the seat and mark as confirmed
           onSelectSeat(newSeatNumber, newSeatType, newSeatId);
           setSeatChangeConfirmed(true);
@@ -919,10 +864,6 @@ const CheckInSeatSelection = ({
 
       // Mark that seat change has been confirmed through popup
       setSeatChangeConfirmed(true);
-
-      console.log(
-        "✅ Seat change confirmed, user can now select additional services before final payment"
-      );
 
       // Close dialog and let user continue selecting services
       // Don't proceed to payment immediately - let user select more services first
@@ -966,18 +907,14 @@ const CheckInSeatSelection = ({
     try {
       // For INFANT passengers, proceed directly to check-in without seat selection
       if (isInfant) {
-        console.log(
-          "👶 INFANT passenger - proceeding directly to check-in without seat selection"
-        );
+
         await onConfirm();
         return;
       }
 
       // If seat change has already been confirmed, proceed directly to check-in
       if (seatChangeConfirmed) {
-        console.log(
-          "✅ Seat change already confirmed, proceeding with check-in"
-        );
+
         await onConfirm();
         return;
       }
@@ -988,7 +925,7 @@ const CheckInSeatSelection = ({
         currentSeat &&
         selectedSeat.seatNumber !== currentSeat
       ) {
-        console.log("🔄 Need to process seat change before check-in");
+
         await calculateSeatChangeWithAPI(
           selectedSeat.seatNumber,
           selectedSeat.seatType,
@@ -996,14 +933,14 @@ const CheckInSeatSelection = ({
         );
       } else if (currentSeat && !selectedSeat) {
         // User wants to keep current seat - just proceed with check-in
-        console.log("✅ Keeping current seat, proceeding with check-in");
+
         await onConfirm();
       } else if (selectedSeat) {
         // User has selected a seat but no current seat (new selection)
-        console.log("✅ New seat selection, proceeding with check-in");
+
         await onConfirm();
       } else {
-        console.log("⚠️ No seat selected");
+
         toast.error("Vui lòng chọn ghế trước khi check-in");
       }
     } finally {
@@ -1439,11 +1376,7 @@ const CheckInSeatSelection = ({
                                         hoveredSeat === seat.seatNumber
                                       }
                                       onClick={() => {
-                                        console.log("🎯 Seat clicked:", {
-                                          seatNumber: seat.seatNumber,
-                                          seatType: seat.seatType,
-                                          seatId: seat.seatId,
-                                        });
+
                                         if (
                                           !seat.seatId &&
                                           currentSeat !== seat.seatNumber
@@ -1511,11 +1444,7 @@ const CheckInSeatSelection = ({
                                         hoveredSeat === seat.seatNumber
                                       }
                                       onClick={() => {
-                                        console.log("🎯 Seat clicked:", {
-                                          seatNumber: seat.seatNumber,
-                                          seatType: seat.seatType,
-                                          seatId: seat.seatId,
-                                        });
+
                                         if (
                                           !seat.seatId &&
                                           currentSeat !== seat.seatNumber

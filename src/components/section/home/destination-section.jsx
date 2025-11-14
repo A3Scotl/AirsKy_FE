@@ -23,9 +23,6 @@ export function DestinationSection() {
   }, []);
 
   const handleDestinationClick = (destination) => {
-    console.log("🚀 Destination clicked:", destination.country);
-    console.log("📋 Flights data to send:", destination.flights);
-    console.log("🧭 Navigating to: /flights");
 
     navigate("/flights", {
       state: {

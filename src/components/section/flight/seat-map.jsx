@@ -52,13 +52,8 @@ const SeatMap = ({
       // Try different ways to get flightId
       const flightId =
         flightInfo?.id || flightInfo?.flightId || flightInfo?.flight?.id;
-      console.log("🔍 SeatMap loading check:", {
-        flightInfo,
-        extractedFlightId: flightId,
-      });
 
       if (!flightId) {
-        console.log("❌ No flightId available, using provided seats");
         setCompleteSeats(seats);
         return;
       }
@@ -71,8 +66,6 @@ const SeatMap = ({
           { id: 2, name: "Thương gia", type: "BUSINESS" },
           { id: 3, name: "Hạng nhất", type: "FIRST" },
         ];
-
-        console.log(`🔄 Loading complete seats for flight ${flightId}...`);
 
         // Load seats for all travel classes in parallel
         const seatPromises = travelClassIds.map(async (travelClass) => {
@@ -87,9 +80,6 @@ const SeatMap = ({
               const seatsData = Array.isArray(response.data)
                 ? response.data
                 : [];
-              console.log(
-                `✅ Loaded ${seatsData.length} ${travelClass.name} seats`
-              );
 
               // Ensure each seat has correct travel class info
               return seatsData.map((seat) => ({
@@ -109,7 +99,6 @@ const SeatMap = ({
         const seatResults = await Promise.all(seatPromises);
         const allSeats = seatResults.flat();
 
-        console.log(`🎯 Loaded ${allSeats.length} total seats`);
         setCompleteSeats(allSeats);
       } catch (error) {
         console.error("Error loading complete seats:", error);
@@ -140,7 +129,6 @@ const SeatMap = ({
         seatsByPosition[positionKey].push(seat);
       });
 
-      console.log("🔍 Seats by position analysis:");
       Object.entries(seatsByPosition).forEach(([position, positionSeats]) => {
         // console.log(`Position ${position}: ${positionSeats.length} seats`);
         const seatNumbers = positionSeats.map((s) => s.seatNumber);
@@ -197,14 +185,6 @@ const SeatMap = ({
           seats: rowSeats,
         });
       });
-
-      console.log(`📊 Total layout rows: ${layout.length}`);
-      console.log(
-        `🎯 Total seats in layout: ${layout.reduce(
-          (sum, row) => sum + row.seats.length,
-          0
-        )}`
-      );
 
       setSeatLayout(layout);
       setSeatsByPosition(seatsByPosition);
@@ -292,11 +272,11 @@ const SeatMap = ({
     }
 
     return (
-      <TooltipProvider key={seat.seatId}>
+      <Tooltip>
         <Tooltip>
           <TooltipTrigger asChild>
             <button
-              className={`relative w-14 h-14 rounded-xl flex items-center justify-center text-xs font-bold transition-all duration-300 border-2 shadow-xl transform ${
+              className={`relative w-10 h-10 sm:w-12 sm:h-12 md:w-14 md:h-14 rounded-lg sm:rounded-xl flex items-center justify-center text-xs font-bold transition-all duration-300 border-2 shadow-xl transform ${
                 isSelected
                   ? "bg-gradient-to-b from-blue-400 to-blue-600 text-white scale-110 shadow-2xl border-blue-300 ring-4 ring-blue-200 transform rotate-1 -translate-y-1"
                   : isDisabledByClass
@@ -519,7 +499,7 @@ const SeatMap = ({
             </div>
           </TooltipContent>
         </Tooltip>
-      </TooltipProvider>
+      </Tooltip>
     );
   };
 
@@ -548,26 +528,26 @@ const SeatMap = ({
         </div>
 
         {/* Column labels */}
-        <div className="flex items-center justify-center space-x-2 mb-4">
+        <div className="flex items-center justify-center mb-4">
           <div className="w-10"></div>
-          <div className="flex space-x-2">
-            <div className="w-14 text-center text-sm font-bold text-gray-600">
+          <div className="flex gap-1 sm:gap-2">
+            <div className="w-12 sm:w-14 text-center text-sm font-bold text-gray-600">
               A
             </div>
-            <div className="w-14 text-center text-sm font-bold text-gray-600">
+            <div className="w-12 sm:w-14 text-center text-sm font-bold text-gray-600">
               B
             </div>
-            <div className="w-14 text-center text-sm font-bold text-gray-600">
+            <div className="w-12 sm:w-14 text-center text-sm font-bold text-gray-600">
               C
             </div>
-            <div className="w-16"></div> {/* Aisle space */}
-            <div className="w-14 text-center text-sm font-bold text-gray-600">
+            <div className="w-8 sm:w-16"></div> {/* Aisle space */}
+            <div className="w-12 sm:w-14 text-center text-sm font-bold text-gray-600">
               D
             </div>
-            <div className="w-14 text-center text-sm font-bold text-gray-600">
+            <div className="w-12 sm:w-14 text-center text-sm font-bold text-gray-600">
               E
             </div>
-            <div className="w-14 text-center text-sm font-bold text-gray-600">
+            <div className="w-12 sm:w-14 text-center text-sm font-bold text-gray-600">
               F
             </div>
           </div>
@@ -594,7 +574,7 @@ const SeatMap = ({
             return (
               <div
                 key={rowNumber}
-                className="flex items-center justify-center space-x-3"
+                className="flex items-center justify-center gap-1 sm:gap-3"
               >
                 {/* Left emergency exit door */}
                 {hasEmergencyExit && (
@@ -608,7 +588,7 @@ const SeatMap = ({
                 )}
 
                 {/* Seats arranged in 6 columns A-F */}
-                <div className="flex space-x-2">
+                <div className="flex gap-1 sm:gap-2">
                   {/* Columns A, B, C (Left side) */}
                   {["A", "B", "C"].map((column) => {
                     const positionKey = `${rowNum}-${column}`;
@@ -620,12 +600,16 @@ const SeatMap = ({
                         className="flex flex-col gap-1"
                       >
                         {positionSeats.length > 0 ? (
-                          positionSeats.map((seat) => renderSeat(seat))
+                          positionSeats.map((seat) => (
+                            <div key={seat.seatId}>{renderSeat(seat)}</div>
+                          ))
                         ) : (
                           // Empty seat placeholder
-                          <div className="w-14 h-14 rounded-xl border-2 border-gray-200 bg-gray-100 flex items-center justify-center text-gray-400 text-xs">
-                            {rowNum}
-                            {column}
+                          <div
+                            key={`empty-${rowNum}-A`}
+                            className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl border-2 border-gray-200 bg-gray-100 flex items-center justify-center text-gray-400 text-xs"
+                          >
+                            {rowNum}A
                           </div>
                         )}
                       </div>
@@ -633,7 +617,7 @@ const SeatMap = ({
                   })}
 
                   {/* Simple Aisle - Just a clean walkway */}
-                  <div className="w-8 h-16 bg-gradient-to-b from-gray-100 to-gray-200 border-l-2 border-r-2 border-gray-300 shadow-inner rounded-sm mx-4"></div>
+                  <div className="w-4 sm:w-8 h-12 sm:h-16 bg-gradient-to-b from-gray-100 to-gray-200 border-l-2 border-r-2 border-gray-300 shadow-inner rounded-sm mx-2 sm:mx-4"></div>
 
                   {/* Columns D, E, F (Right side) */}
                   {["D", "E", "F"].map((column) => {
@@ -646,12 +630,16 @@ const SeatMap = ({
                         className="flex flex-col gap-1"
                       >
                         {positionSeats.length > 0 ? (
-                          positionSeats.map((seat) => renderSeat(seat))
+                          positionSeats.map((seat) => (
+                            <div key={seat.seatId}>{renderSeat(seat)}</div>
+                          ))
                         ) : (
                           // Empty seat placeholder
-                          <div className="w-14 h-14 rounded-xl border-2 border-gray-200 bg-gray-100 flex items-center justify-center text-gray-400 text-xs">
-                            {rowNum}
-                            {column}
+                          <div
+                            key={`empty-${rowNum}-D`}
+                            className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl border-2 border-gray-200 bg-gray-100 flex items-center justify-center text-gray-400 text-xs"
+                          >
+                            {rowNum}D
                           </div>
                         )}
                       </div>
@@ -678,43 +666,45 @@ const SeatMap = ({
   };
 
   return (
-    <div className="space-y-6">
+    <div className="">
       {/* Legend */}
 
       {/* Aircraft Layout */}
-      <Card>
+      <Card className="p-0">
         <CardHeader>
           <CardTitle className="text-xl flex items-center gap-2">
             <Plane className="w-6 h-6 text-blue-600" />
             Bản đồ ghế ngồi trên máy bay
           </CardTitle>
         </CardHeader>
-        <CardContent>
-          {isLoadingSeats ? (
-            <div className="flex items-center justify-center py-12">
-              <div className="text-center">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-                <p className="text-gray-600">Loading seat map...</p>
-              </div>
-            </div>
-          ) : (
-            <div className="space-y-8">
-              {/* Front Section */}
-              {renderSection(1)}
-
-              {/* Aisle */}
-              <div className="flex justify-center">
-                <div className="w-full max-w-md h-8 bg-gray-200 rounded-full flex items-center justify-center">
-                  <span className="text-sm text-gray-600 font-medium">
-                    AISLE
-                  </span>
+        <CardContent className="overflow-x-auto">
+          <TooltipProvider>
+            {isLoadingSeats ? (
+              <div className="flex items-center justify-center py-12">
+                <div className="text-center">
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                  <p className="text-gray-600">Loading seat map...</p>
                 </div>
               </div>
+            ) : (
+              <div className="space-y-8 p-2 sm:p-4">
+                {/* Front Section */}
+                {renderSection(1)}
 
-              {/* Rear Section */}
-              {renderSection(2)}
-            </div>
-          )}
+                {/* Aisle */}
+                <div className="flex justify-center">
+                  <div className="w-full max-w-md h-8 bg-gray-200 rounded-full flex items-center justify-center">
+                    <span className="text-sm text-gray-600 font-medium">
+                      AISLE
+                    </span>
+                  </div>
+                </div>
+
+                {/* Rear Section */}
+                {renderSection(2)}
+              </div>
+            )}
+          </TooltipProvider>
         </CardContent>
       </Card>
     </div>

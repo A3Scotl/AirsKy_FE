@@ -63,10 +63,6 @@ const validateLoginForm = (formData) => {
 };
 
 const handleLoginBackendErrors = (response, setValidationErrors) => {
-  console.log("Full login backend response:", response);
-  console.log("Login response data:", response.data);
-  console.log("Login response error:", response.error);
-  console.log("Login response message:", response.message);
 
   // Now response.data contains the full error response from backend
   const fullErrorData = response.data;
@@ -76,10 +72,6 @@ const handleLoginBackendErrors = (response, setValidationErrors) => {
     fullErrorData?.error ||
     fullErrorData?.message ||
     errorMessage;
-
-  console.log("Login backend error message:", errorMessage);
-  console.log("Login full error data:", fullErrorData);
-  console.log("Login backend error field:", backendError);
 
   // Map backend errors to field-specific errors
   const fieldErrors = {};
@@ -163,19 +155,11 @@ export default function LoginForm({ setCurrentView }) {
     setLoading(true);
 
     try {
-      console.log("🔐 Attempting login with:", {
-        email: formData.email,
-        password: "***",
-      });
 
       const response = await authApi.login(formData);
-      console.log("📡 Login API response:", response);
-      console.log("📡 Login response success:", response.success);
-      console.log("📡 Login response message:", response.message);
-      console.log("📡 Login response data:", response.data);
 
       if (response.success) {
-        console.log("✅ Login successful, processing token...");
+      
         // Try multiple token field names
         const token =
           response.data?.accessToken ||
@@ -189,12 +173,9 @@ export default function LoginForm({ setCurrentView }) {
           return;
         }
 
-        console.log("💾 Saving token to localStorage");
         localStorage.setItem("token", token);
 
-        console.log("🔍 Decoding JWT token...");
         const decoded = jwtDecode(token);
-        console.log("📝 Decoded JWT:", decoded);
 
         // Try multiple user ID sources
         const userData = {
@@ -208,8 +189,6 @@ export default function LoginForm({ setCurrentView }) {
           role: decoded.role || response.data?.user?.role || "USER",
           exp: decoded.exp,
         };
-
-        console.log("👤 Final user data:", userData);
 
         login(userData);
         toast.success(response.message || "Đăng nhập thành công!");

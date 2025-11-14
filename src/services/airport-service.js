@@ -321,7 +321,7 @@ class AirportService {
     if (this.cache.has(cacheKey)) {
       const cached = this.cache.get(cacheKey);
       if (Date.now() - cached.timestamp < this.cacheTimeout) {
-        console.log("Service: Dùng cache cho nearby airports");
+
         return cached.data;
       }
     }
@@ -337,9 +337,7 @@ class AirportService {
           const countryStr = String(airport.country || "");
           return countryStr.toLowerCase().includes(countrySearchTerm);
         });
-        console.log(
-          `Service: Lọc theo country '${options.country}': ${filteredAirports.length} sân bay`
-        );
+
       }
 
       // Filter chỉ lấy sân bay active
@@ -355,9 +353,7 @@ class AirportService {
       );
 
       nearbyAirports.forEach((airport, index) => {
-        console.log(
-          `  ${index + 1}. ${airport.airportCode} - ${airport.distance}km`
-        );
+
       });
 
       // Cache kết quả
@@ -391,7 +387,7 @@ class AirportService {
       return nearbyAirports;
     } catch (error) {
       console.error("❌ Lỗi lấy vị trí hiện tại:", error);
-      console.log("🔄 Fallback: trả về sân bay Việt Nam");
+
       // Fallback: trả về sân bay Việt Nam
       return this.getAllAirports({ country: "Vietnam", limit: 10 });
     }

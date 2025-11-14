@@ -77,17 +77,7 @@ const BookingConfirmation = () => {
         (paymentReturnFlag && urlBookingCode === bookingCode);
 
       if (isPaymentReturn || paymentCompletedFlag || paypalSuccessFlag) {
-        console.log(
-          "🔄 Detected payment return, refreshing payment status for booking:",
-          bookingCode,
-          {
-            paymentReturn,
-            urlBookingCode,
-            paymentReturnFlag: !!paymentReturnFlag,
-            paymentCompletedFlag: !!paymentCompletedFlag,
-            paypalSuccessFlag: !!paypalSuccessFlag,
-          }
-        );
+
         setIsRefreshingPayment(true);
 
         try {
@@ -97,7 +87,6 @@ const BookingConfirmation = () => {
 
           if (response.success && response.data) {
             const paymentData = response.data;
-            console.log("✅ Refreshed payment status:", paymentData.status);
 
             // Update booking data with new payment information
             const updatedBookingData = {
@@ -133,7 +122,6 @@ const BookingConfirmation = () => {
               window.history.replaceState({}, document.title, newUrl);
             }
 
-            console.log("✅ Payment status updated successfully");
           }
         } catch (error) {
           console.error("❌ Error refreshing payment status:", error);
@@ -391,7 +379,7 @@ const BookingConfirmation = () => {
                 <p className="text-sm text-blue-600 dark:text-blue-400 mb-2">
                   Mã đặt chỗ của bạn
                 </p>
-                <div className="flex items-center justify-center gap-2">
+                <div className="flex flex-col sm:flex-row items-center justify-center gap-2">
                   <span className="text-2xl font-bold text-blue-900 dark:text-blue-100">
                     {bookingDetails.bookingCode}
                   </span>
@@ -446,10 +434,10 @@ const BookingConfirmation = () => {
                             </span>
                           </div>
 
-                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 items-center">
                             {/* Departure */}
-                            <div className="text-center">
-                              <MapPin className="mx-auto mb-2 text-blue-600" />
+                            <div className="text-center md:text-left">
+                              <MapPin className="mx-auto md:mx-0 mb-2 text-blue-600" />
                               <p className="font-semibold dark:text-gray-200">
                                 {segment.departure.city}
                               </p>
@@ -470,7 +458,7 @@ const BookingConfirmation = () => {
                             </div>
 
                             {/* Flight Duration */}
-                            <div className="text-center">
+                            <div className="text-center my-4 sm:my-0">
                               <div className="flex items-center justify-center">
                                 <div className="h-px bg-gray-300 flex-1"></div>
                                 <Plane
@@ -485,8 +473,8 @@ const BookingConfirmation = () => {
                             </div>
 
                             {/* Arrival */}
-                            <div className="text-center">
-                              <MapPin className="mx-auto mb-2 text-green-600" />
+                            <div className="text-center md:text-right">
+                              <MapPin className="mx-auto md:ml-auto md:mr-0 mb-2 text-green-600" />
                               <p className="font-semibold dark:text-gray-200">
                                 {segment.arrival.city}
                               </p>
@@ -528,9 +516,9 @@ const BookingConfirmation = () => {
                       {bookingDetails.passengers.map((passenger, index) => (
                         <div
                           key={index}
-                          className="flex justify-between items-center p-3 bg-gray-50 dark:bg-gray-800 rounded"
+                          className="flex flex-col sm:flex-row justify-between sm:items-center p-3 bg-gray-50 dark:bg-gray-800 rounded"
                         >
-                          <div>
+                          <div className="mb-2 sm:mb-0">
                             <p className="font-medium dark:text-gray-200">
                               {passenger.firstName} {passenger.lastName}
                             </p>
@@ -1110,9 +1098,9 @@ const BookingConfirmation = () => {
                   <div className="space-y-3">
                     {/* Flight fare breakdown */}
                     <div className="space-y-1">
-                      <div className="flex justify-between font-medium">
+                      <div className="flex flex-col sm:flex-row justify-between font-medium">
                         <span>✈️ Vé máy bay</span>
-                        <span>
+                        <span className="text-right sm:text-left">
                           {formatCurrencyVND(bookingDetails.price.subtotal)}
                         </span>
                       </div>
@@ -1162,21 +1150,23 @@ const BookingConfirmation = () => {
                               return (
                                 <div
                                   key={type}
-                                  className="flex justify-between items-center"
+                                  className="flex flex-col sm:flex-row justify-between sm:items-center"
                                 >
-                                  <span className="flex-1">
-                                    {count} {typeLabel}
-                                  </span>
-                                  <span className="text-xs text-gray-500 mr-2">
-                                    (
-                                    {multiplier === 1
-                                      ? "100%"
-                                      : multiplier === 0.75
-                                      ? "75%"
-                                      : "10%"}
-                                    )
-                                  </span>
-                                  <span className="text-right">
+                                  <div className="flex items-center">
+                                    <span className="flex-1">
+                                      {count} {typeLabel}
+                                    </span>
+                                    <span className="text-xs text-gray-500 ml-2 mr-2">
+                                      (
+                                      {multiplier === 1
+                                        ? "100%"
+                                        : multiplier === 0.75
+                                        ? "75%"
+                                        : "10%"}
+                                      )
+                                    </span>
+                                  </div>
+                                  <span className="text-right text-xs sm:text-sm">
                                     {formatCurrencyVND(pricePerPassenger)} ×{" "}
                                     {count} = {formatCurrencyVND(totalForType)}
                                   </span>
@@ -1654,7 +1644,7 @@ const BookingConfirmation = () => {
                 <CardTitle>Tiếp Theo Là Gì?</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <Button
                     variant="default"
                     className="w-full bg-green-600 hover:bg-green-700"

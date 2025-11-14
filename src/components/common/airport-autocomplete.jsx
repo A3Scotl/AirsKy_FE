@@ -50,9 +50,7 @@ const AirportAutocomplete = ({
     const newCodes = (value || []).map((loc) => loc.airportCode).sort();
 
     if (JSON.stringify(currentCodes) !== JSON.stringify(newCodes)) {
-      console.log(
-        "AirportAutocomplete: Updating selectedLocations from value prop"
-      );
+
       // Remove duplicates from the incoming value
       const uniqueValue = (value || []).filter(
         (location, index, self) =>
@@ -151,14 +149,13 @@ const AirportAutocomplete = ({
   // Parse search term to extract city and airport code
   const parseSearchTerm = (term) => {
     const trimmed = term.trim();
-    console.log("🔍 Parsing search term:", trimmed);
 
     // Check if format is "City (CODE)"
     const bracketMatch = trimmed.match(/^(.+?)\s*\(([^)]+)\)$/);
     if (bracketMatch) {
       const cityName = bracketMatch[1].trim();
       const airportCode = bracketMatch[2].trim().toUpperCase();
-      console.log("✅ Parsed bracket format:", { cityName, airportCode });
+
       return {
         cityName,
         airportCode,
@@ -168,7 +165,7 @@ const AirportAutocomplete = ({
 
     // Check if it's just an airport code (3 letters)
     if (/^[A-Z]{3}$/.test(trimmed.toUpperCase())) {
-      console.log("✅ Parsed as airport code:", trimmed.toUpperCase());
+
       return {
         cityName: trimmed.toUpperCase(),
         airportCode: trimmed.toUpperCase(),
@@ -198,7 +195,7 @@ const AirportAutocomplete = ({
     });
 
     if (matchingAirport) {
-      console.log("✅ Found matching airport:", matchingAirport);
+
       const primaryCityName =
         Array.isArray(matchingAirport.cityNames) &&
         matchingAirport.cityNames.length > 0
@@ -214,7 +211,7 @@ const AirportAutocomplete = ({
     }
 
     // Fallback: create custom location
-    console.log("⚠️ No matching airport found, creating custom location");
+
     return {
       cityName: trimmed,
       airportCode: trimmed.toUpperCase(),
@@ -298,7 +295,6 @@ const AirportAutocomplete = ({
         airportName: parsed.displayName,
       };
 
-      console.log("🎯 Created custom location from Enter key:", customLocation);
       handleLocationSelect(customLocation);
     }
   };
@@ -332,7 +328,7 @@ const AirportAutocomplete = ({
   };
 
   return (
-    <div className={`relative z-[999999] ${className}`} ref={dropdownRef}>
+    <div className={`relative ${className}`} ref={dropdownRef}>
       <div
         className={`min-h-[40px] w-full border border-gray-300 rounded-md px-3 py-2 bg-white dark:bg-gray-800 cursor-text transition-colors focus-within:border-blue-500 focus-within:ring-1 focus-within:ring-blue-500 ${
           disabled ? "bg-gray-50 cursor-not-allowed" : ""
@@ -345,10 +341,13 @@ const AirportAutocomplete = ({
             {selectedLocations.map((location, index) => (
               <span
                 key={`selected-${location.airportCode}-${index}`}
-                className="inline-flex items-center bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full"
+                className="inline-flex items-center bg-blue-100 text-blue-800 text-xs px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full"
               >
-                <MapPin className="w-3 h-3 mr-1" />
-                {location.city} ({location.airportCode})
+                <MapPin className="w-2.5 h-2.5 sm:w-3 sm:h-3 mr-1" />
+                <span className="hidden sm:inline">
+                  {location.city} ({location.airportCode})
+                </span>
+                <span className="sm:hidden">{location.airportCode}</span>
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
@@ -356,7 +355,7 @@ const AirportAutocomplete = ({
                   }}
                   className="ml-1 hover:bg-blue-200 rounded-full p-0.5"
                 >
-                  <X className="w-3 h-3" />
+                  <X className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
                 </button>
               </span>
             ))}
@@ -380,7 +379,7 @@ const AirportAutocomplete = ({
             onKeyPress={handleKeyPress}
             onFocus={() => !disabled && setIsOpen(true)}
             disabled={disabled}
-            className="flex-1 border-none outline-none bg-transparent text-sm placeholder-gray-400"
+            className="flex-1 border-none outline-none bg-transparent text-xs sm:text-sm placeholder-gray-400"
           />
           {searchTerm.trim() && (
             <button
@@ -394,16 +393,14 @@ const AirportAutocomplete = ({
                   country: parsed.airportId ? "Vietnam" : "Tùy chỉnh",
                   airportName: parsed.displayName,
                 };
-                console.log(
-                  "🎯 Created custom location from button click:",
-                  customLocation
-                );
+
                 handleLocationSelect(customLocation);
               }}
-              className="ml-2 text-blue-600 hover:text-blue-800 text-sm font-medium"
+              className="ml-1 sm:ml-2 text-blue-600 hover:text-blue-800 text-xs sm:text-sm font-medium"
               title="Thêm địa điểm này"
             >
-              Thêm
+              <span className="hidden sm:inline">Thêm</span>
+              <span className="sm:hidden">+</span>
             </button>
           )}
         </div>
@@ -411,13 +408,13 @@ const AirportAutocomplete = ({
 
       {/* Dropdown */}
       {isOpen && !disabled && (
-        <div className="absolute w-96 top-full mt-1 bg-white border border-gray-200 dark:bg-black rounded-lg shadow-xl max-h-80 overflow-y-auto z-[999999] ring-1 ring-black/5">
+        <div className="absolute w-full sm:w-96 top-full mt-1 bg-white border border-gray-200 dark:bg-black rounded-lg shadow-xl max-h-80 overflow-y-auto z-[999999] ring-1 ring-black/5">
           {/* Header */}
           {searchTerm === "" && (
-            <div className="p-3 border-b bg-gray-50 dark:bg-black dark:text-white">
+            <div className="p-2 sm:p-3 border-b bg-gray-50 dark:bg-black dark:text-white">
               <div className="flex items-center justify-between">
-                <h4 className="font-medium text-sm text-gray-700 dark:text-white flex items-center">
-                  <Plane className="w-4 h-4 mr-2" />
+                <h4 className="font-medium text-xs sm:text-sm text-gray-700 dark:text-white flex items-center">
+                  <Plane className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
                   {/* Kiểm tra xem có phải kết quả nearby không */}
                   {destinationsToShow().some(
                     (dest) => dest.distance !== undefined
@@ -434,7 +431,12 @@ const AirportAutocomplete = ({
                     disabled={isLoading}
                   >
                     <Navigation className="w-3 h-3 mr-1" />
-                    {isLoading ? "Đang tìm..." : "Gần tôi"}
+                    <span className="hidden sm:inline">
+                      {isLoading ? "Đang tìm..." : "Gần tôi"}
+                    </span>
+                    <span className="sm:hidden">
+                      {isLoading ? "..." : "Gần"}
+                    </span>
                   </button>
                 )}
               </div>
@@ -443,17 +445,19 @@ const AirportAutocomplete = ({
 
           {/* Search header */}
           {searchTerm.length >= 2 && (
-            <div className="p-3 border-b bg-blue-50">
-              <h4 className="font-medium text-sm text-blue-700 flex items-center">
+            <div className="p-2 sm:p-3 border-b bg-blue-50">
+              <h4 className="font-medium text-xs sm:text-sm text-blue-700 flex items-center">
                 {isLoading ? (
                   <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Đang tìm kiếm...
+                    <Loader2 className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2 animate-spin" />
+                    <span className="text-xs sm:text-sm">Đang tìm kiếm...</span>
                   </>
                 ) : (
                   <>
-                    <Plane className="w-4 h-4 mr-2" />
-                    Kết quả cho "{searchTerm}"
+                    <Plane className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
+                    <span className="text-xs sm:text-sm">
+                      Kết quả cho "{searchTerm}"
+                    </span>
                   </>
                 )}
               </h4>
@@ -462,7 +466,7 @@ const AirportAutocomplete = ({
 
           {/* Error message */}
           {error && (
-            <div className="p-3 text-sm text-red-600 bg-red-50 border-b">
+            <div className="p-2 sm:p-3 text-xs sm:text-sm text-red-600 bg-red-50 border-b">
               Có lỗi xảy ra khi tìm kiếm. Vui lòng thử lại.
             </div>
           )}
@@ -477,15 +481,15 @@ const AirportAutocomplete = ({
                 <div
                   key={`search-result-${destination.airportCode}-${destination.city}`}
                   onClick={() => handleLocationSelect(destination)}
-                  className={`p-3 hover:bg-gray-50 dark:hover:bg-gray-600 cursor-pointer border-b last:border-b-0 transition-colors ${
+                  className={`p-2 sm:p-3 hover:bg-gray-50 dark:hover:bg-gray-600 cursor-pointer border-b last:border-b-0 transition-colors ${
                     isSelected ? "bg-blue-50 dark:bg-gray-800" : ""
                   }`}
                 >
                   <div className="flex items-start">
-                    <MapPin className="w-4 h-4 mr-3 mt-0.5 text-gray-400 flex-shrink-0" />
+                    <MapPin className="w-3 h-3 sm:w-4 sm:h-4 mr-2 sm:mr-3 mt-0.5 text-gray-400 flex-shrink-0" />
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between">
-                        <div className="font-medium text-sm dark:text-white text-gray-900 truncate">
+                        <div className="font-medium text-xs sm:text-sm dark:text-white text-gray-900 truncate">
                           {Array.isArray(destination.cityNames) &&
                           destination.cityNames.length > 0
                             ? destination.cityNames[0]
@@ -493,18 +497,18 @@ const AirportAutocomplete = ({
                           ({destination.airportCode})
                         </div>
                         {destination.distance && (
-                          <div className="text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded font-medium ml-2 flex-shrink-0">
+                          <div className="text-xs text-blue-600 bg-blue-50 px-1 sm:px-2 py-0.5 sm:py-1 rounded font-medium ml-1 sm:ml-2 flex-shrink-0">
                             {destination.distance.toFixed(1)} km
                           </div>
                         )}
                       </div>
-                      <div className="text-xs text-gray-500 truncate">
+                      <div className="text-xs text-gray-500 truncate mt-0.5">
                         {destination.airportName || destination.airport},{" "}
                         {destination.country}
                       </div>
                     </div>
                     {isSelected && (
-                      <div className="text-blue-500 text-xs font-medium ml-2">
+                      <div className="text-blue-500 text-xs font-medium ml-1 sm:ml-2">
                         ✓
                       </div>
                     )}
@@ -513,12 +517,12 @@ const AirportAutocomplete = ({
               );
             })
           ) : !isLoading && searchTerm.length >= 2 ? (
-            <div className="p-4 text-sm text-gray-500 text-center">
+            <div className="p-3 sm:p-4 text-xs sm:text-sm text-gray-500 text-center">
               <div className="mb-2">
                 Không tìm thấy sân bay nào cho "{searchTerm}"
               </div>
               <div className="text-xs text-gray-400 mb-2">Bạn có thể:</div>
-              <div className="text-xs text-blue-600">
+              <div className="text-xs text-blue-600 leading-relaxed">
                 • Nhập "Tên thành phố (MÃ)" (VD: "Hanoi (HAN)")
                 <br />• Nhập chỉ "MÃ" (VD: "HAN")
                 {/* <br />
@@ -527,16 +531,18 @@ const AirportAutocomplete = ({
               </div>
             </div>
           ) : !isLoading && searchTerm.length > 0 && searchTerm.length < 2 ? (
-            <div className="p-3 text-sm text-gray-500 text-center">
+            <div className="p-2 sm:p-3 text-xs sm:text-sm text-gray-500 text-center">
               Nhập ít nhất 2 ký tự để tìm kiếm
             </div>
           ) : null}
 
           {/* Loading state */}
           {isLoading && destinationsToShow.length === 0 && (
-            <div className="p-4 text-center">
-              <Loader2 className="w-6 h-6 animate-spin mx-auto text-blue-500" />
-              <div className="text-sm text-gray-500 mt-2">Đang tìm kiếm...</div>
+            <div className="p-3 sm:p-4 text-center">
+              <Loader2 className="w-5 h-5 sm:w-6 sm:h-6 animate-spin mx-auto text-blue-500" />
+              <div className="text-xs sm:text-sm text-gray-500 mt-2">
+                Đang tìm kiếm...
+              </div>
             </div>
           )}
         </div>

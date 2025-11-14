@@ -172,18 +172,7 @@ const AncillaryServicesPage = () => {
   // Handle toggle status
   const handleToggleStatus = useCallback(
     async (serviceId) => {
-      // Find the service to check its current status
-      const service = services.find((s) => s.serviceId === serviceId);
-      if (!service) {
-        throw new Error("Không tìm thấy dịch vụ");
-      }
-
-      // Determine new status: null -> true, true -> false, false -> true
-      const newStatus = service.isActive === null ? true : !service.isActive;
-
-      const response = await ancillaryServiceApi.updateService(serviceId, {
-        isActive: newStatus,
-      });
+      const response = await ancillaryServiceApi.toggleActiveStatus(serviceId);
       if (response.success) {
         await loadServices();
         return response.data;
@@ -193,16 +182,25 @@ const AncillaryServicesPage = () => {
         );
       }
     },
-    [services, loadServices]
+    [loadServices]
   );
 
   // Handle form submit
   const handleFormSubmit = useCallback(
     async (serviceData) => {
+      // Map form fields to API fields
+      const apiData = {
+        ...serviceData,
+        serviceName: serviceData.name,
+        thumbnail: serviceData.imageUrl,
+        name: undefined, // Remove the name field to avoid confusion
+        imageUrl: undefined, // Remove the imageUrl field to avoid confusion
+      };
+
       if (editingService) {
-        return await handleUpdateService(serviceData);
+        return await handleUpdateService(apiData);
       } else {
-        return await handleCreateService(serviceData);
+        return await handleCreateService(apiData);
       }
     },
     [editingService, handleCreateService, handleUpdateService]
@@ -216,7 +214,13 @@ const AncillaryServicesPage = () => {
 
   // Handle edit service
   const handleEditService = useCallback((service) => {
-    setEditingService(service);
+    // Map API fields to form fields
+    const formService = {
+      ...service,
+      name: service.serviceName || service.name,
+      imageUrl: service.thumbnail || service.imageUrl,
+    };
+    setEditingService(formService);
     setShowForm(true);
   }, []);
 
@@ -255,7 +259,7 @@ const AncillaryServicesPage = () => {
 
       <div className="space-y-6">
         {/* Header */}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center flex-wrap gap-4">
           <div>
             <h1 className="text-3xl font-bold tracking-tight">
               Dịch vụ đi kèm
@@ -273,10 +277,7 @@ const AncillaryServicesPage = () => {
               <RefreshCw className="h-4 w-4" />
               Làm mới
             </Button>
-            <Button
-              onClick={handleCreateNew}
-              className="bg-blue-600 hover:bg-blue-700 dark:text-white"
-            >
+            <Button onClick={handleCreateNew} className=" ">
               <Plus className="h-4 w-4 mr-2" />
               Thêm dịch vụ
             </Button>

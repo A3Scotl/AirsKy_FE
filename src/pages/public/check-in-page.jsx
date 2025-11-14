@@ -60,7 +60,6 @@ export default function CheckInPage() {
           .toString(36)
           .substr(2, 9)}`;
         updateSessionRef.current = newSession;
-        console.log("🆔 Created new update session:", newSession);
 
         // Save to localStorage if we have booking code
         if (bookingCodeFromUrl) {
@@ -71,7 +70,7 @@ export default function CheckInPage() {
         }
       } else {
         updateSessionRef.current = sessionId;
-        console.log("🔄 Restored update session:", sessionId);
+
       }
     }
   }, []); // Run once on mount
@@ -104,16 +103,9 @@ export default function CheckInPage() {
     if (!bookingCode) return;
 
     if (paymentSuccess) {
-      console.log(
-        "💰 Processing payment success for booking code:",
-        bookingCode
-      );
 
       if (paymentSuccessProcessedRef.current.has(bookingCode)) {
-        console.log(
-          "⏭️ Payment success already processed for booking:",
-          bookingCode
-        );
+
         return;
       }
 
@@ -125,10 +117,6 @@ export default function CheckInPage() {
 
       const processPaymentSuccess = async () => {
         try {
-          console.log(
-            "🔍 Looking for saved booking data with key:",
-            `checkin_booking_${bookingCode}`
-          );
 
           let savedBookingData = localStorage.getItem(
             `checkin_booking_${bookingCode}`
@@ -151,10 +139,7 @@ export default function CheckInPage() {
                   const parsed = JSON.parse(data);
                   if (parsed.bookingCode === bookingCode) {
                     savedBookingData = data;
-                    console.log(
-                      "✅ Found booking data with matching booking code:",
-                      key
-                    );
+
                     break;
                   }
                 } catch (e) {
@@ -196,13 +181,6 @@ export default function CheckInPage() {
               ...latestBookingResponse.data,
               paymentData: bookingData.paymentData,
             };
-            console.log("📊 Latest booking data after payment:", {
-              bookingCode: updatedBookingData.bookingCode,
-              paymentStatus: updatedBookingData.status,
-              checkinStatus:
-                updatedBookingData.checkinEligiblePassengers?.[0]
-                  ?.checkinStatus,
-            });
 
             // Check if payment is still pending - if so, we need to wait or confirm payment
             if (updatedBookingData.status === "PAYMENT_PENDING") {
@@ -224,10 +202,7 @@ export default function CheckInPage() {
                   ...retryResponse.data,
                   paymentData: bookingData.paymentData,
                 };
-                console.log("🔄 Retried booking lookup:", {
-                  bookingCode: updatedBookingData.bookingCode,
-                  paymentStatus: updatedBookingData.status,
-                });
+
               }
 
               // If still pending, force it to CONFIRMED for check-in purposes
@@ -637,30 +612,8 @@ export default function CheckInPage() {
       throw new Error("Không tìm thấy thông tin ghế");
     }
 
-    console.log("🔍 [RESOLVE_SEAT_ID] Searching for seatId:", {
-      currentSeatNumber,
-      passengerSegmentId: passenger?.segmentId,
-      passengerName:
-        passenger?.fullName || `${passenger?.firstName} ${passenger?.lastName}`,
-      availableSeatDetails: bookingData.seatTypeDetails?.map((d) => ({
-        seatNumber: d.seatNumber,
-        segmentId: d.segmentId,
-        passengerName: d.passengerName,
-        seatId: d.seatId,
-      })),
-    });
-
     const seatDetails = bookingData.seatTypeDetails?.find((detail) => {
       const seatMatch = detail.seatNumber === currentSeatNumber;
-
-      console.log(`🔍 [SEAT_MATCH] Checking detail:`, {
-        detailSeat: detail.seatNumber,
-        detailSegmentId: detail.segmentId,
-        detailPassengerName: detail.passengerName,
-        detailSeatId: detail.seatId,
-        seatMatch,
-        passengerSegmentId: passenger?.segmentId,
-      });
 
       // For one-way flights, passenger.segmentId might be null
       if (passenger?.segmentId === null) {
@@ -669,19 +622,15 @@ export default function CheckInPage() {
           passenger.fullName ||
           `${passenger.firstName} ${passenger.lastName}`.trim();
         const match = seatMatch && detail.passengerName === passengerFullName;
-        console.log(`   One-way match result: ${match}`);
+
         return match;
       } else {
         // Multi-segment flight: match by both seat number and segmentId
         const match = seatMatch && detail.segmentId === passenger.segmentId;
-        console.log(
-          `   Multi-segment match result: ${match} (segmentId: ${detail.segmentId} === ${passenger.segmentId})`
-        );
+
         return match;
       }
     });
-
-    console.log(`✅ [SEAT_FOUND] Final seat details:`, seatDetails);
 
     if (!seatDetails?.seatId) {
       throw new Error(`Không tìm thấy ID ghế cho ghế ${currentSeatNumber}`);
@@ -713,21 +662,6 @@ export default function CheckInPage() {
         );
       }
 
-      console.log("🔍 [PASSENGER_SELECTION] Debug info:", {
-        selectedSegment: selectedSegment
-          ? {
-              passengerId: selectedSegment.passengerId,
-              segmentId: selectedSegment.segmentId,
-              flightNumber: selectedSegment.flightNumber,
-            }
-          : null,
-        availablePassengers: booking.checkinEligiblePassengers?.map((p) => ({
-          passengerId: p.passengerId,
-          segmentId: p.segmentId,
-          flightNumber: p.flightNumber,
-        })),
-      });
-
       // Get the correct passenger for the selected segment
       let selectedPassenger;
       if (selectedSegment) {
@@ -744,13 +678,6 @@ export default function CheckInPage() {
         selectedPassenger =
           filteredBooking?.checkinEligiblePassengers?.[0] || passengers[0];
       }
-
-      console.log("✅ [PASSENGER_SELECTED] Final selected passenger:", {
-        passengerId: selectedPassenger?.passengerId,
-        segmentId: selectedPassenger?.segmentId,
-        flightNumber: selectedPassenger?.flightNumber,
-        seatNumber: selectedPassenger?.seatNumber,
-      });
 
       const newSeatId = resolveSeatId(booking, selectedSeat, selectedPassenger);
 
@@ -771,17 +698,6 @@ export default function CheckInPage() {
           d.seatId === newSeatId ||
           d.seatNumber === selectedPassenger?.seatNumber
       );
-
-      console.log("🔍 [SEAT_VALIDATION] Seat ID validation:", {
-        newSeatId,
-        finalSegmentId,
-        selectedSeat: selectedPassenger?.seatNumber,
-        seatValidation,
-        expectedSegmentId: finalSegmentId,
-        actualSegmentFromSeat: seatValidation?.segmentId,
-        seatIdBelongsToCorrectSegment:
-          seatValidation?.segmentId === finalSegmentId,
-      });
 
       // CRITICAL: Validate seat belongs to correct segment (only for multi-segment flights)
       if (
@@ -816,38 +732,7 @@ export default function CheckInPage() {
         seatNumber: selectedSeat?.seatNumber, // Include seat number for new seat assignments
       };
 
-      console.log("📤 [CHECK-IN] Form data gửi về backend:", {
-        checkinData,
-        bookingInfo: {
-          bookingCode: booking.bookingCode,
-          status: booking.status,
-          paymentStatus: booking.paymentStatus,
-          hasCheckedInSegments: hasCheckedInSegments,
-          isBookingPaid: isBookingPaid,
-          selectedSegment: selectedSegment,
-          flightSegments: booking.flightSegments?.map((s) => ({
-            segmentOrder: s.segmentOrder,
-            checkinStatus: s.checkinStatus,
-            flightNumber: s.flightNumber,
-          })),
-        },
-        passengerInfo: {
-          passengerId: selectedPassenger.passengerId,
-          fullName: selectedPassenger.fullName,
-          seatNumber: selectedPassenger.seatNumber,
-          segmentId: selectedPassenger.segmentId,
-          flightNumber: selectedPassenger.flightNumber,
-        },
-      });
-
       const response = await bookingApi.processCheckin(checkinData);
-
-      console.log("📥 [CHECK-IN] Response từ backend:", {
-        success: response.success,
-        data: response.data,
-        message: response.message,
-        fullResponse: response,
-      });
 
       if (response.success && response.data) {
         const checkinResponse = response.data;
@@ -929,17 +814,6 @@ export default function CheckInPage() {
       const currentUrlParams = new URLSearchParams(window.location.search);
       const isFromPaymentSuccess = currentUrlParams.get("paymentSuccess");
 
-      console.log("🔍 Checking update conditions:", {
-        hasPaymentData: !!paymentData,
-        hasUpdatedTotal,
-        isProcessingPaymentSuccess,
-        paymentAlreadyProcessed: processedPaymentRef.current.has(
-          booking.bookingCode
-        ),
-        isFromPaymentSuccess: !!isFromPaymentSuccess,
-        bookingCode: booking.bookingCode,
-      });
-
       if (
         paymentData &&
         !hasUpdatedTotal &&
@@ -958,13 +832,6 @@ export default function CheckInPage() {
             reason: "seat_change_and_services",
           };
 
-          console.log("💰 Calling updateBookingTotal API:", {
-            bookingId: booking.bookingId || booking.id,
-            updateData,
-            sessionId,
-            bookingCode: booking.bookingCode,
-          });
-
           const updateResponse = await bookingApi.updateBookingTotal(
             booking.bookingId || booking.id,
             updateData
@@ -972,11 +839,7 @@ export default function CheckInPage() {
 
           if (updateResponse.success) {
             setHasUpdatedTotal(true);
-            console.log("✅ updateBookingTotal successful:", {
-              bookingCode: booking.bookingCode,
-              additionalAmount: cost,
-              newTotal: updateResponse.data?.totalAmount,
-            });
+
           } else {
             console.error("❌ updateBookingTotal failed:", updateResponse);
             throw new Error(updateResponse.message);
@@ -1101,11 +964,6 @@ export default function CheckInPage() {
     servicesData
   ) => {
     try {
-      console.log("🎫 Starting auto check-in after payment with data:", {
-        bookingCode: bookingData.bookingCode,
-        seatData,
-        servicesData,
-      });
 
       const selectedPassenger = bookingData.checkinEligiblePassengers?.[0];
       if (!selectedPassenger) {
@@ -1129,12 +987,9 @@ export default function CheckInPage() {
         })),
       };
 
-      console.log("📝 Submitting check-in data:", checkinData);
-
       const response = await bookingApi.processCheckin(checkinData);
 
       if (response.success && response.data) {
-        console.log("✅ Auto check-in successful:", response.data);
 
         // Check-in is now complete after payment - no additional payment required
         const updatedBooking = {
@@ -1157,7 +1012,6 @@ export default function CheckInPage() {
       console.error("❌ Auto check-in failed:", error);
 
       // If auto check-in fails, redirect to completion page for manual check-in
-      console.log("🔄 Redirecting to completion page for manual check-in");
 
       toast.info("Vui lòng hoàn tất check-in thủ công");
 
@@ -1179,11 +1033,6 @@ export default function CheckInPage() {
         console.warn("No booking code available for refresh");
         return;
       }
-
-      console.log(
-        "🔄 Refreshing check-in status for booking:",
-        booking.bookingCode
-      );
 
       // Re-fetch booking data to get updated check-in status
       const refreshResponse = await checkinApi.lookupBookingForCheckin(
@@ -1207,7 +1056,7 @@ export default function CheckInPage() {
 
         // Nếu tất cả segments đã check-in, không làm gì thêm
         if (checkedInSegments.length === allSegments.length) {
-          console.log("✅ All segments checked in successfully");
+
           toast.success("Tất cả các chuyến bay đã được check-in thành công!");
           return;
         }
@@ -1253,10 +1102,7 @@ export default function CheckInPage() {
         }
 
         if (nextSelectableSegment) {
-          console.log(
-            "🎯 Auto-selecting next eligible segment:",
-            nextSelectableSegment.segmentOrder
-          );
+
           setSelectedSegment(nextSelectableSegment);
 
           // Reset seat and services selection for new segment
@@ -1268,7 +1114,7 @@ export default function CheckInPage() {
             `Đã chuyển sang check-in chuyến ${nextSelectableSegment.segmentOrder}: ${nextSelectableSegment.flightNumber}`
           );
         } else {
-          console.log("⏳ Waiting for previous segments to be checked in");
+
           toast.info(
             "Vui lòng hoàn thành check-in chuyến bay trước đó trước khi tiếp tục."
           );

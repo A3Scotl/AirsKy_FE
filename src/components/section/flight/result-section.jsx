@@ -37,35 +37,6 @@ import {
 } from "./flight-constants.jsx";
 import { EmptyState } from "./flight-components.jsx";
 
-const initialState = {
-  allItineraries: [],
-  allFlights: [],
-  loading: false,
-  error: null,
-  flightsLoaded: false,
-};
-
-function searchReducer(state, action) {
-  switch (action.type) {
-    case "SEARCH_START":
-      return { ...state, loading: true, error: null };
-    case "SEARCH_SUCCESS":
-      return {
-        ...state,
-        loading: false,
-        allItineraries: action.payload.itineraries,
-        allFlights: action.payload.flights || [],
-        flightsLoaded: true,
-      };
-    case "SEARCH_ERROR":
-      return { ...state, loading: false, error: action.payload, allItineraries: [], allFlights: [] };
-    case "RESET":
-      return initialState;
-    default:
-      return state;
-  }
-}
-
 const FlightCardSkeleton = () => (
   <Card className="p-4">
     <div className="flex flex-col sm:flex-row gap-4">
@@ -109,8 +80,13 @@ export function FlightSearchResults() {
   const [roundTripStep, setRoundTripStep] = useState("outbound"); // 'outbound' or 'return'
   const [selectedOutboundFlight, setSelectedOutboundFlight] = useState(null);
 
-  const [state, dispatch] = useReducer(searchReducer, initialState);
-  const { allItineraries, allFlights, loading, error, flightsLoaded } = state;
+  const [allItineraries, setAllItineraries] = useState([]);
+  const [allFlights, setAllFlights] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [flightsLoaded, setFlightsLoaded] = useState(false);
+
+  // Track if we're in flex search update mode
   const [isFlexSearchUpdate, setIsFlexSearchUpdate] = useState(false);
 
   const resultsRef = useRef(null);
@@ -124,7 +100,7 @@ export function FlightSearchResults() {
     ) {
       filterFlightsByTripType(allFlights, "ALL", searchCriteria);
     }
-  }, [allFlights, flightsLoaded, loading, allItineraries.length, searchCriteria]);
+  }, [allFlights, flightsLoaded, loading, allItineraries.length]);
 
   useEffect(() => {
     setTabPages((prev) => ({
@@ -333,7 +309,7 @@ export function FlightSearchResults() {
     [getLowestPrice, searchCriteria]
   );
 
-  const handleTripTypeChange = useCallback(newTripType => {
+  const handleTripTypeChange = useCallback((newTripType) => {
     setActiveTab((prevActiveTab) => {
       if (prevActiveTab !== newTripType) {
         setTabExpandedFlights((prev) => ({
@@ -351,6 +327,31 @@ export function FlightSearchResults() {
 
       return prevActiveTab;
     });
+  }, []);
+
+  const loadAllFlights = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const response = await flightApi.getAllFlights({ size: 100 });
+
+      if (response.success && response.data?.content) {
+        setAllFlights(response.data.content);
+        setTabExpandedFlights({});
+        setTabPages({});
+      } else {
+        setAllFlights([]);
+        setAllItineraries([]);
+      }
+    } catch (err) {
+      setError("Không thể tải danh sách chuyến bay");
+      setAllFlights([]);
+      setAllItineraries([]);
+    } finally {
+      setLoading(false);
+      setFlightsLoaded(true);
+    }
   }, []);
 
   const toggleDetails = useCallback(
@@ -764,14 +765,7 @@ export function FlightSearchResults() {
           .filter((flight) => flight.direction === "return")
           .map((flight, index) => {
             const lowestPrice = getLowestPrice(flight);
-            console.log(
-              "Return flight:",
-              flight.flightId,
-              "lowest price:",
-              lowestPrice,
-              "travel classes:",
-              flight.flightTravelClasses
-            );
+
             return {
               itineraryId: `return-${flight.flightId || index}`,
               tripType: "ROUND_TRIP",
@@ -988,7 +982,8 @@ export function FlightSearchResults() {
 
   const handleSearch = useCallback(
     async (searchData) => {
-      dispatch({ type: "SEARCH_START" });
+      setLoading(true);
+      setError(null);
 
       // CRITICAL: Don't reset round trip state during flex-search date changes
       // Only reset when starting completely new search from search form
@@ -1001,14 +996,11 @@ export function FlightSearchResults() {
       setIsFlexSearchUpdate(isFlexSearchUpdate);
 
       if (!isFlexSearchUpdate) {
-        console.log("New search started - resetting round trip state");
+
         setRoundTripStep("outbound");
         setSelectedOutboundFlight(null);
       } else {
-        console.log(
-          "Flex search update - maintaining round trip state:",
-          roundTripStep
-        );
+
       }
 
       const formatDateForAPI = (dateInput) => {
@@ -1169,14 +1161,7 @@ export function FlightSearchResults() {
             // Create itineraries for outbound flights first
             const outboundItineraries = outboundFlights.map((flight, index) => {
               const lowestPrice = getLowestPrice(flight);
-              console.log(
-                "Outbound flight:",
-                flight.flightId,
-                "lowest price:",
-                lowestPrice,
-                "travel classes:",
-                flight.flightTravelClasses
-              );
+
               return {
                 itineraryId: `outbound-${flight.flightId || index}`,
                 tripType: "ROUND_TRIP",
@@ -1188,10 +1173,10 @@ export function FlightSearchResults() {
               };
             });
 
-            dispatch({ type: "SEARCH_SUCCESS", payload: { itineraries: outboundItineraries, flights: [...outboundFlights, ...returnFlights] } });
+            setAllItineraries(outboundItineraries);
+            setFlightsLoaded(true);
 
-
-             const updatedSearchCriteria = {
+            const updatedSearchCriteria = {
               ...searchData,
               fromLocations:
                 searchData.fromLocations ||
@@ -1220,7 +1205,7 @@ export function FlightSearchResults() {
 
             return;
           } catch (error) {
-            dispatch({ type: "SEARCH_ERROR", payload: "Lỗi khi tìm kiếm chuyến bay khứ hồi: " + error.message });
+            setError("Lỗi khi tìm kiếm chuyến bay khứ hồi: " + error.message);
             return;
           }
         } else if (searchData.tripType === "MULTI_CITY") {
@@ -1228,7 +1213,7 @@ export function FlightSearchResults() {
             !searchData.multiCityTrips ||
             searchData.multiCityTrips.length === 0
           ) {
-            dispatch({ type: "SEARCH_ERROR", payload: "Không có thông tin chặng bay nào để tìm kiếm" });
+            setError("Không có thông tin chặng bay nào để tìm kiếm");
             return;
           }
 
@@ -1310,10 +1295,12 @@ export function FlightSearchResults() {
                 )
                 .join(", ");
 
-              dispatch({
-                type: "SEARCH_ERROR",
-                payload: `Không thể tạo lịch trình đa thành phố. ${segmentStatus}. Cần có chuyến bay cho tất cả các chặng.`
-              });
+              setError(
+                `Không thể tạo lịch trình đa thành phố. ${segmentStatus}. Cần có chuyến bay cho tất cả các chặng.`
+              );
+              setAllItineraries([]);
+              setAllFlights([]);
+              setFlightsLoaded(true);
               return;
             }
 
@@ -1405,12 +1392,14 @@ export function FlightSearchResults() {
               }
             );
 
-            dispatch({ type: "SEARCH_SUCCESS", payload: { itineraries: formattedItineraries, flights: [] } });
+            setAllItineraries(formattedItineraries);
+            setAllFlights([]);
+            setFlightsLoaded(true);
             return;
           } catch (error) {
-            dispatch({ type: "SEARCH_ERROR", payload:
+            setError(
               "Lỗi khi tìm kiếm chuyến bay đa thành phố: " + error.message
-          });
+            );
             return;
           }
         }
@@ -1501,7 +1490,8 @@ export function FlightSearchResults() {
             });
           }
 
-          dispatch({ type: "SEARCH_SUCCESS", payload: { itineraries } });
+          setAllItineraries(itineraries);
+          setFlightsLoaded(true);
 
           setTripTypeFilter(searchData.tripType);
 
@@ -1530,17 +1520,22 @@ export function FlightSearchResults() {
             }
           }, 100);
         } else {
-          dispatch({ type: "SEARCH_ERROR", payload: response.message || "Có lỗi xảy ra khi tìm kiếm chuyến bay" });
+          setError(response.message || "Có lỗi xảy ra khi tìm kiếm chuyến bay");
+          setAllItineraries([]);
         }
       } catch (err) {
-        dispatch({ type: "SEARCH_ERROR", payload: "Không thể kết nối đến máy chủ. Vui lòng thử lại sau." });
+        setError("Không thể kết nối đến máy chủ. Vui lòng thử lại sau.");
+        setAllItineraries([]);
+      } finally {
+        setLoading(false);
       }
     },
-    [updateSearchCriteria, getLowestPrice]
+    [updateSearchCriteria]
   );
 
   const processFlightsData = useCallback((flights) => {
-    dispatch({ type: "SEARCH_START" });
+    setLoading(true);
+    setError(null);
 
     try {
       const itineraries = flights.map((flight, index) => ({
@@ -1552,7 +1547,8 @@ export function FlightSearchResults() {
         totalStops: flight.stopsList?.length || 0,
       }));
 
-      dispatch({ type: "SEARCH_SUCCESS", payload: { itineraries } });
+      setAllItineraries(itineraries);
+      setLoading(false);
 
       setFilters(DEFAULT_FILTERS);
 
@@ -1568,9 +1564,11 @@ export function FlightSearchResults() {
         }
       }, 100);
     } catch (err) {
-      dispatch({ type: "SEARCH_ERROR", payload: "Có lỗi xảy ra khi xử lý dữ liệu chuyến bay" });
+      setError("Có lỗi xảy ra khi xử lý dữ liệu chuyến bay");
+      setAllItineraries([]);
+      setLoading(false);
     }
-  }, [getLowestPrice]);
+  }, []);
 
   const filteredAndSortedItineraries = useMemo(() => {
     let filtered = allItineraries.filter((itinerary) => {
@@ -1841,7 +1839,6 @@ export function FlightSearchResults() {
     startIndex,
     startIndex + FLIGHTS_PER_PAGE
   );
-  console.log(filteredAndSortedItineraries);
 
   const handlePageChange = useCallback(
     (page) => {
@@ -2041,7 +2038,7 @@ export function FlightSearchResults() {
           </div>
         </div>
 
-        <div className="relative">
+        <div className="relative z-[1000000]">
           <SearchForm
             onSearch={handleSearch}
             initialValues={searchFormInitialValues}
@@ -2062,10 +2059,6 @@ export function FlightSearchResults() {
             }
             isReturnSelection={roundTripStep === "return"}
             onDateSelect={(dateSelection) => {
-              console.log("FlexSearch date selected:", {
-                dateSelection,
-                currentRoundTripStep: roundTripStep,
-              });
 
               if (
                 typeof dateSelection === "object" &&
@@ -2131,7 +2124,8 @@ export function FlightSearchResults() {
                       size="sm"
                       className="text-gray-500 hover:text-gray-700"
                       onClick={() => {
-                        dispatch({ type: "RESET" });
+                        clearSearchCriteria();
+                        setAllItineraries([]);
                         setFlightsLoaded(false);
                         setActiveTab("ALL");
                         setTripTypeFilter(null);
@@ -2243,23 +2237,26 @@ export function FlightSearchResults() {
                           variant="outline"
                           size="sm"
                           onClick={() => {
-                            console.log(
-                              "Quay lại button clicked - switching to outbound"
-                            );
+
                             setRoundTripStep("outbound");
                             // Reset return flights and show outbound flights again
-                            const outboundItineraries = allFlights
-                              .filter((flight) => flight.direction === "outbound")
-                              .map((flight, index) => ({
-                                itineraryId: `outbound-${flight.flightId || index}`,
-                                tripType: "ROUND_TRIP",
-                                direction: "outbound",
-                                legs: [flight],
-                                totalPrice: getLowestPrice(flight),
-                                totalDuration: flight.duration || 0,
-                                totalStops: flight.stopsList?.length || 0,
-                              }));
-                            dispatch({ type: "SEARCH_SUCCESS", payload: { itineraries: outboundItineraries, flights: allFlights } });
+                            setAllItineraries(
+                              allFlights
+                                .filter(
+                                  (flight) => flight.direction === "outbound"
+                                )
+                                .map((flight, index) => ({
+                                  itineraryId: `outbound-${
+                                    flight.flightId || index
+                                  }`,
+                                  tripType: "ROUND_TRIP",
+                                  direction: "outbound",
+                                  legs: [flight],
+                                  totalPrice: getLowestPrice(flight),
+                                  totalDuration: flight.duration || 0,
+                                  totalStops: flight.stopsList?.length || 0,
+                                }))
+                            );
                             setTabPages((prev) => ({
                               ...prev,
                               [activeTab]: 1,

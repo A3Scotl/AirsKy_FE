@@ -340,7 +340,7 @@ const FlightCalendar = ({ flights }) => {
         open={!!selectedFlight}
         onOpenChange={() => setSelectedFlight(null)}
       >
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-[95vw] sm:max-w-[80vw] md:max-w-xl lg:max-w-2xl">
           <DialogHeader>
             <DialogTitle className="flex items-center space-x-2">
               <Plane className="h-5 w-5" />

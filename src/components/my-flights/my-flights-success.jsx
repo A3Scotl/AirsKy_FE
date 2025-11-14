@@ -34,17 +34,17 @@ const MyFlightsSuccess = ({ booking, onNewSearch }) => {
 
   const handleDownloadInvoice = () => {
     // In real app, this would trigger a download
-    console.log("Downloading invoice...");
+
   };
 
   const handleEmailInvoice = () => {
     // In real app, this would send email
-    console.log("Sending invoice via email...");
+
   };
 
   const handleProceedToCheckIn = () => {
     // Navigate to check-in page with booking data
-    console.log("Proceeding to check-in...");
+
   };
 
   return (

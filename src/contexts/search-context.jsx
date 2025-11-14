@@ -82,7 +82,6 @@ export function SearchProvider({ children }) {
         urlCriteria.returnDate = null;
       }
 
-      console.log("🔗 Using search criteria from URL params:", urlCriteria);
       setSearchCriteria(urlCriteria);
       setHasProcessedInitialCriteria(true);
       return;
@@ -90,10 +89,7 @@ export function SearchProvider({ children }) {
 
     // If no URL params but we have location state (destination click), use it
     if (location.state?.searchCriteria) {
-      console.log(
-        "🎯 Using search criteria from destination click:",
-        location.state.searchCriteria
-      );
+    
       setSearchCriteria(location.state.searchCriteria);
       setHasProcessedInitialCriteria(true);
       return;
@@ -173,10 +169,6 @@ export function SearchProvider({ children }) {
           }
         }
 
-        console.log(
-          "💾 Using search criteria from localStorage:",
-          parsedCriteria
-        );
         setSearchCriteria(parsedCriteria);
       } catch (error) {
         console.error("Error parsing saved search criteria:", error);
@@ -187,11 +179,10 @@ export function SearchProvider({ children }) {
   }, [searchParams, location.state, hasProcessedInitialCriteria]);
 
   const updateSearchCriteria = (criteria) => {
-    console.log("🔄 Updating search criteria:", criteria);
 
     // Check if trip type is changing and clear related localStorage data
     if (searchCriteria && criteria.tripType !== searchCriteria.tripType) {
-      console.log("🧹 Trip type changed, clearing flight selection data");
+     
       localStorage.removeItem("selectedFlight");
       localStorage.removeItem("selectedReturn");
       localStorage.removeItem("bookedFlights");
@@ -309,7 +300,7 @@ export function SearchProvider({ children }) {
   };
 
   const clearSearchCriteria = () => {
-    console.log("🗑️ Clearing search criteria");
+    
     setSearchCriteria(null);
     setHasProcessedInitialCriteria(false);
     localStorage.removeItem("searchCriteria");

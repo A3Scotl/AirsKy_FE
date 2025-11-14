@@ -120,19 +120,19 @@ export const CountrySelect = ({
           )}
         </SelectValue>
       </SelectTrigger>
-      <SelectContent className="max-h-[200px]">
+      <SelectContent className="max-h-[200px] sm:max-h-[250px] md:max-h-[300px] max-w-[80vw]">
         {/* Search Input */}
         <div className="p-2 border-b">
           <Input
             placeholder="Tìm kiếm quốc gia..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="h-8"
+            className="h-8 text-sm"
           />
         </div>
 
         {/* Country List */}
-        <div className="max-h-[150px] overflow-y-auto">
+        <div className="max-h-[120px] sm:max-h-[150px] md:max-h-[200px] overflow-y-auto">
           {filteredCountries.length > 0 ? (
             filteredCountries.map((country) => (
               <SelectItem key={country.code} value={country.code}>

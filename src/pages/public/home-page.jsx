@@ -206,10 +206,10 @@ function HomePage() {
             ))}
           </Swiper>
 
-          <div className="absolute inset-0 mx-auto px-4 sm:px-6 lg:px-8 top-[35%] sm:top-[35%] lg:top-[45%] w-full z-[99999]">
+          <div className="absolute inset-0 mx-auto px-4 sm:px-6 lg:px-8 top-[35%] sm:top-[35%] lg:top-[45%] w-full z-[10]">
             <div
               data-swiper-parallax="0"
-              className="relative z-[100000] max-w-6xl mx-auto"
+              className="relative z-[11] max-w-6xl mx-auto"
             >
               <div className="search-form-overlay">
                 <SearchForm onSearch={handleHomeSearch} />
@@ -221,19 +221,27 @@ function HomePage() {
         {/* <DestinationSection /> */}
 
         <div className="" ref={suggestionRef}>
-          <SuggestionSection className={suggestionInView ? "animate-fadeInUp" : "opacity-0"} />
+          <SuggestionSection
+            className={suggestionInView ? "animate-fadeInUp" : "opacity-0"}
+          />
         </div>
 
         <div className="" ref={featuresRef}>
-          <FeaturesSection className={featuresInView ? "animate-fadeInUp" : "opacity-0"} />
+          <FeaturesSection
+            className={featuresInView ? "animate-fadeInUp" : "opacity-0"}
+          />
         </div>
 
         <div className="" ref={blogRef}>
-          <BlogSection className={blogInView ? "animate-fadeInUp" : "opacity-0"} />
+          <BlogSection
+            className={blogInView ? "animate-fadeInUp" : "opacity-0"}
+          />
         </div>
 
         <div className="" ref={faqRef}>
-          <FAQSection className={faqInView ? "animate-fadeInUp" : "opacity-0"} />
+          <FAQSection
+            className={faqInView ? "animate-fadeInUp" : "opacity-0"}
+          />
         </div>
       </div>
 

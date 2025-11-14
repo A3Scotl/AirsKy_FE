@@ -99,7 +99,6 @@ const createPlaneIcon = (bgGradient) =>
 
 // Utility Functions
 const createCurvedPath = (start, end, steps = 100, direction = "outbound") => {
-  console.log("createCurvedPath called with:", { start, end, direction });
 
   if (
     !start?.lat ||
@@ -111,11 +110,10 @@ const createCurvedPath = (start, end, steps = 100, direction = "outbound") => {
     isNaN(end.lat) ||
     isNaN(end.lon)
   ) {
-    console.log("createCurvedPath: Invalid coordinates, returning empty array");
+
     return [];
   }
 
-  console.log("createCurvedPath: Creating path with valid coordinates");
   const latlngs = [];
   const dLat = (end.lat - start.lat) / steps;
   const dLon = (end.lon - start.lon) / steps;
@@ -128,7 +126,6 @@ const createCurvedPath = (start, end, steps = 100, direction = "outbound") => {
     latlngs.push([lat + offset, lon + offset]);
   }
 
-  console.log("createCurvedPath: Created path with", latlngs.length, "points");
   return latlngs;
 };
 
@@ -146,7 +143,6 @@ const calculateDistance = (lat1, lon1, lat2, lon2) => {
 };
 
 const getAirportCoords = async (airport) => {
-  console.log("getAirportCoords called with:", airport);
 
   const airportName =
     typeof airport === "string"
@@ -158,13 +154,6 @@ const getAirportCoords = async (airport) => {
       : airport?.airportCode || airport?.code;
   const lat = parseFloat(airport?.lat || airport?.latitude);
   const lon = parseFloat(airport?.lon || airport?.longitude);
-
-  console.log("getAirportCoords parsed:", {
-    airportName,
-    airportCode,
-    lat,
-    lon,
-  });
 
   // Initialize cache if not exists
   if (!getAirportCoords.cache) {
@@ -178,11 +167,7 @@ const getAirportCoords = async (airport) => {
         Object.entries(parsedCache).forEach(([key, value]) => {
           getAirportCoords.cache.set(key, value);
         });
-        console.log(
-          "✅ Loaded airport cache from localStorage:",
-          getAirportCoords.cache.size,
-          "entries"
-        );
+
       }
     } catch (error) {
       console.warn("Failed to load airport cache from localStorage:", error);
@@ -191,10 +176,7 @@ const getAirportCoords = async (airport) => {
 
   // Check memory cache first
   if (airportCode && getAirportCoords.cache.has(airportCode)) {
-    console.log(
-      "✅ getAirportCoords: Using cached coordinates for",
-      airportCode
-    );
+
     return getAirportCoords.cache.get(airportCode);
   }
 
@@ -205,9 +187,7 @@ const getAirportCoords = async (airport) => {
   // 4. Fallback coordinates (0,0) - ENSURES APP NEVER BREAKS
 
   if (lat && lon && !isNaN(lat) && !isNaN(lon)) {
-    console.log(
-      "⚡ getAirportCoords: Using existing coordinates from flight data"
-    );
+
     const result = { lat, lon, name: airportName, code: airportCode };
     // Cache the result
     if (airportCode) {
@@ -216,8 +196,6 @@ const getAirportCoords = async (airport) => {
     }
     return result;
   }
-
-  console.log("🌐 getAirportCoords: Fetching from OpenStreetMap API...");
 
   // Try multiple search queries for better results
   const searchQueries = [
@@ -229,7 +207,6 @@ const getAirportCoords = async (airport) => {
 
   for (const query of searchQueries) {
     try {
-      console.log(`🔍 Trying query: "${query}"`);
 
       const response = await fetch(
         `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
@@ -250,7 +227,6 @@ const getAirportCoords = async (airport) => {
       }
 
       const data = await response.json();
-      console.log(`Query "${query}" returned:`, data);
 
       if (data.length > 0) {
         // Find the best match (prefer airports)
@@ -276,11 +252,6 @@ const getAirportCoords = async (airport) => {
           code: airportCode,
         };
 
-        console.log(
-          `✅ getAirportCoords: Successfully fetched from OpenStreetMap:`,
-          result
-        );
-
         // Cache the result
         if (airportCode) {
           getAirportCoords.cache.set(airportCode, result);
@@ -297,7 +268,6 @@ const getAirportCoords = async (airport) => {
 
   // If all queries failed, try a broader search without country filter
   try {
-    console.log("🌍 Trying broader search without country filter...");
 
     const response = await fetch(
       `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
@@ -313,7 +283,6 @@ const getAirportCoords = async (airport) => {
     );
 
     const data = await response.json();
-    console.log("Broader search returned:", data);
 
     if (data.length > 0) {
       const result = {
@@ -322,11 +291,6 @@ const getAirportCoords = async (airport) => {
         name: data[0].display_name.split(",")[0] || airportName,
         code: airportCode,
       };
-
-      console.log(
-        `✅ getAirportCoords: Successfully fetched with broader search:`,
-        result
-      );
 
       // Cache the result
       if (airportCode) {
@@ -341,9 +305,7 @@ const getAirportCoords = async (airport) => {
   }
 
   // Final fallback: return default coordinates to prevent app crashes
-  console.log(
-    "🛡️ getAirportCoords: All methods failed, using fallback coordinates"
-  );
+
   const fallbackResult = {
     lat: 0,
     lon: 0,
@@ -369,7 +331,7 @@ const saveCacheToLocalStorage = () => {
         cacheObject[key] = value;
       });
       localStorage.setItem("airportCoordsCache", JSON.stringify(cacheObject));
-      console.log("💾 Saved airport cache to localStorage");
+
     }
   } catch (error) {
     console.warn("Failed to save airport cache to localStorage:", error);
@@ -613,13 +575,7 @@ const FlightInfoOverlay = ({ processedSearchData, legs, coordsMap }) => {
                       <div className="text-xs text-gray-500 mt-1 bg-white/80 px-2 py-1 rounded">
                         {(() => {
                           const departureTime = extractDepartureTime(leg);
-                          console.log(
-                            `Leg ${leg.originalIndex} departureTime:`,
-                            {
-                              extractedTime: departureTime,
-                              formattedTime: formatTimeHHMM(departureTime),
-                            }
-                          );
+
                           return formatTimeHHMM(departureTime);
                         })()}
                       </div>
@@ -666,10 +622,7 @@ const FlightInfoOverlay = ({ processedSearchData, legs, coordsMap }) => {
                       <div className="text-xs text-gray-500 mt-1 bg-white/80 px-2 py-1 rounded">
                         {(() => {
                           const arrivalTime = extractArrivalTime(leg);
-                          console.log(`Leg ${leg.originalIndex} arrivalTime:`, {
-                            extractedTime: arrivalTime,
-                            formattedTime: formatTimeHHMM(arrivalTime),
-                          });
+
                           return formatTimeHHMM(arrivalTime);
                         })()}
                       </div>
@@ -931,26 +884,12 @@ const FlightRouteMap = ({
   const _coordsMapProp = propCoordsMap ?? coordsMap ?? null;
 
   // Debug logging
-  console.log("FlightRouteMap Props:", {
-    searchData,
-    flightInfo,
-    propProcessedSearchData: _processedSearchDataProp,
-    propLegs: _legsProp,
-    propCoordsMap: _coordsMapProp,
-  });
 
   // Compute a single processed search data object from either searchData, flightInfo or the provided processed search data prop
   const finalProcessedSearchData = useMemo(() => {
-    console.log("FlightRouteMap received data (memo):", {
-      searchData,
-      flightInfo,
-      providedProcessedSearchData: _processedSearchDataProp,
-    });
+
     if (_processedSearchDataProp) {
-      console.log(
-        "Using provided processedSearchData:",
-        _processedSearchDataProp
-      );
+
       return _processedSearchDataProp;
     }
     const data =
@@ -960,7 +899,7 @@ const FlightRouteMap = ({
         oneWayFlights: { content: [flightInfo] },
       }) ||
       null;
-    console.log("Final processed search data (computed):", data);
+
     return data;
   }, [searchData, flightInfo, _processedSearchDataProp]);
 
@@ -970,22 +909,9 @@ const FlightRouteMap = ({
       setError(null);
 
       // Debug log all props first (using normalized props)
-      console.log("FlightRouteMap Props (normalized):", {
-        legs: _legsProp,
-        coordsMap: _coordsMapProp,
-        processedSearchData: finalProcessedSearchData,
-        hasLegs: !!_legsProp,
-        hasCoordsMap: !!_coordsMapProp,
-        hasProcessedSearchData: !!finalProcessedSearchData,
-      });
 
       // If we have props data, use it but resolve coordinates
       if (_legsProp && _coordsMapProp && finalProcessedSearchData) {
-        console.log("🎯 Using props data with coordinate resolution:", {
-          legs: _legsProp,
-          coordsMap: _coordsMapProp,
-          processedSearchData: finalProcessedSearchData,
-        });
 
         // Check if legs has the expected structure or needs transformation
         let processedLegs = _legsProp;
@@ -997,7 +923,7 @@ const FlightRouteMap = ({
           _legsProp[0].flightNumber &&
           !_legsProp[0].flight
         ) {
-          console.log("🔄 Transforming raw flight legs to expected structure");
+
           processedLegs = _legsProp.map((rawLeg, index) => {
             // Try to extract departure and arrival info from the raw leg
             const depCode =
@@ -1044,13 +970,12 @@ const FlightRouteMap = ({
               segments: [],
             };
           });
-          console.log("✅ Transformed legs:", processedLegs);
+
         }
 
         // Resolve coordinates for all airports in coordsMap
         const resolveCoordsPromises = Object.entries(_coordsMapProp).map(
           async ([code, airport]) => {
-            console.log(`🔍 Resolving coordinates for ${code}:`, airport);
 
             // If airport already has valid coordinates, use them
             if (
@@ -1059,23 +984,19 @@ const FlightRouteMap = ({
               airport.lat !== 0 &&
               airport.lon !== 0
             ) {
-              console.log(`✅ ${code} already has valid coordinates:`, airport);
+
               return { code, coords: airport };
             }
 
             // Otherwise, resolve coordinates using airport code
             try {
-              console.log(`🌐 Calling getAirportCoords for ${code} with:`, {
-                code: code,
-                airportName: airport.name,
-                airportCode: code,
-              });
+
               const resolvedCoords = await getAirportCoords({
                 code: code,
                 airportName: airport.name,
                 airportCode: code,
               });
-              console.log(`✅ ${code} resolved coordinates:`, resolvedCoords);
+
               return { code, coords: resolvedCoords };
             } catch (error) {
               console.error(
@@ -1088,32 +1009,23 @@ const FlightRouteMap = ({
           }
         );
 
-        console.log(
-          "⏳ Starting Promise.allSettled for coordinate resolution..."
-        );
         try {
           const resolvedCoordsResults = await Promise.allSettled(
             resolveCoordsPromises
-          );
-          console.log(
-            "✅ Promise.allSettled completed:",
-            resolvedCoordsResults
           );
 
           const resolvedCoordsMap = {};
 
           resolvedCoordsResults.forEach((result, index) => {
-            console.log(`📊 Processing result ${index}:`, result);
+
             if (result.status === "fulfilled") {
               const { code, coords } = result.value;
               resolvedCoordsMap[code] = coords;
-              console.log(`✅ Added ${code} to resolvedCoordsMap:`, coords);
+
             } else {
               console.error(`❌ Result ${index} rejected:`, result.reason);
             }
           });
-
-          console.log("🎯 Final resolved coordinates map:", resolvedCoordsMap);
 
           setMapLegs(processedLegs);
           setMapCoordsMap(resolvedCoordsMap);
@@ -1155,7 +1067,7 @@ const FlightRouteMap = ({
               segments: [],
             }));
         } else if (tripType === "round_trip") {
-          console.log("Processing round-trip data:", finalProcessedSearchData);
+
           const pairs = finalProcessedSearchData.roundTripPairs || [];
 
           // Handle direct outboundFlight and returnFlight structure
@@ -1163,9 +1075,7 @@ const FlightRouteMap = ({
             finalProcessedSearchData.outboundFlight &&
             finalProcessedSearchData.returnFlight
           ) {
-            console.log(
-              "Using direct outboundFlight and returnFlight structure"
-            );
+
             parsedLegs = [
               {
                 flight: finalProcessedSearchData.outboundFlight,
@@ -1290,7 +1200,7 @@ const FlightRouteMap = ({
             processedSearchData.outboundFlight &&
             processedSearchData.returnFlight
           ) {
-            console.log("Using outboundFlight and returnFlight");
+
             parsedLegs = [
               {
                 flight: processedSearchData.outboundFlight,
@@ -1316,12 +1226,12 @@ const FlightRouteMap = ({
               },
             ];
           } else {
-            console.log("No valid round-trip data found");
+
           }
         } else if (tripType === "multi_city") {
           // Check if we have direct legs for multi-city
           if (_legsProp && Array.isArray(_legsProp) && _legsProp.length > 0) {
-            console.log("Using legs for multi-city:", _legsProp);
+
             parsedLegs = _legsProp.map((leg, index) => ({
               flight: leg,
               dep: leg.departureAirport ||
@@ -1373,13 +1283,6 @@ const FlightRouteMap = ({
         }
 
         parsedLegs.forEach((leg, legIndex) => {
-          console.log(`Processing leg ${legIndex} in parsing:`, {
-            direction: leg.direction,
-            stopsType: typeof leg.stops,
-            stopsIsArray: Array.isArray(leg.stops),
-            stopsLength: Array.isArray(leg.stops) ? leg.stops.length : "N/A",
-            stops: leg.stops,
-          });
 
           allAirports.add(JSON.stringify(leg.dep));
 
@@ -1437,10 +1340,6 @@ const FlightRouteMap = ({
         setCoordsMap(newCoordsMap);
         setMapLegs(parsedLegs);
 
-        console.log("Final parsed legs:", parsedLegs);
-        console.log("Total legs parsed:", parsedLegs.length);
-        console.log("Parsed legs:", parsedLegs);
-        console.log("Coords map:", newCoordsMap);
       } catch (err) {
         setError("Không thể phân tích dữ liệu chuyến bay.");
         console.error(err);
@@ -1466,14 +1365,6 @@ const FlightRouteMap = ({
   }, [coordsMap]);
 
   useEffect(() => {
-    console.log("Flight path rendering useEffect triggered:", {
-      hasMap: !!mapRef.current,
-      showFlightPath,
-      legsCount: mapLegs.length,
-      coordsCount: Object.keys(mapCoordsMap).length,
-      loading,
-      processedSearchData: finalProcessedSearchData?.tripType,
-    });
 
     if (
       !mapRef.current ||
@@ -1482,26 +1373,15 @@ const FlightRouteMap = ({
       Object.keys(mapCoordsMap).length === 0 ||
       loading
     ) {
-      console.log("Skipping flight path rendering due to conditions not met");
+
       return;
     }
 
     const map = mapRef.current;
     const cleanup = [];
 
-    console.log("Starting to render flight paths for", mapLegs.length, "legs");
-
     mapLegs.forEach((leg, legIndex) => {
-      console.log(`Rendering leg ${legIndex}:`, {
-        direction: leg.direction,
-        segmentsCount: Array.isArray(leg.segments)
-          ? leg.segments.length
-          : "not array",
-        dep: leg.dep?.code,
-        arr: leg.arr?.code,
-        hasDepCoords: !!coordsMap[leg.dep?.code],
-        hasArrCoords: !!coordsMap[leg.arr?.code],
-      });
+
       const tripType = processedSearchData?.tripType || "one_way";
       const isInbound = leg.direction === "Inbound";
       const color =
@@ -1566,24 +1446,13 @@ const FlightRouteMap = ({
 
       let fullPath = [];
       const segmentsArray = Array.isArray(leg.segments) ? leg.segments : [];
-      console.log(
-        `Leg ${legIndex} has ${segmentsArray.length} segments to render`
-      );
 
       segmentsArray.forEach((seg, segIndex) => {
-        console.log(`Processing segment ${segIndex} for leg ${legIndex}:`, {
-          from: seg.from?.code,
-          to: seg.to?.code,
-          hasFromCoords: !!mapCoordsMap[seg.from?.code],
-          hasToCoords: !!mapCoordsMap[seg.to?.code],
-          fromCoords: mapCoordsMap[seg.from?.code],
-          toCoords: mapCoordsMap[seg.to?.code],
-        });
 
         const fromCoords = mapCoordsMap[seg.from.code];
         const toCoords = mapCoordsMap[seg.to.code];
         if (fromCoords && toCoords && fromCoords !== toCoords) {
-          console.log(`Creating path from ${seg.from.code} to ${seg.to.code}`);
+
           const segPath = createCurvedPath(
             fromCoords,
             toCoords,
@@ -1600,9 +1469,7 @@ const FlightRouteMap = ({
             lineCap: "round",
             lineJoin: "round",
           }).addTo(map);
-          console.log(
-            `Added polyline for segment ${segIndex}, path length: ${segPath.length}`
-          );
+
           if (tripType === "round_trip") {
             const shadowLine = L.polyline(segPath, {
               weight: weight + 2,
@@ -1616,16 +1483,12 @@ const FlightRouteMap = ({
           }
           cleanup.push(() => map.removeLayer(line));
         } else {
-          console.log(
-            `Skipping segment ${segIndex} - missing coordinates or same airport`
-          );
+
         }
       });
 
-      console.log(`Leg ${legIndex} full path length: ${fullPath.length}`);
-
       if (fullPath.length > 0) {
-        console.log(`Creating animated marker for leg ${legIndex}`);
+
         const animatedMarker = L.marker(fullPath[0], {
           icon: legPlaneIcon,
         }).addTo(map);
@@ -1709,33 +1572,21 @@ const FlightRouteMap = ({
   ]);
 
   const renderMarkers = useMemo(() => {
-    console.log(
-      "renderMarkers called with legs:",
-      mapLegs.length,
-      "coords:",
-      Object.keys(mapCoordsMap).length
-    );
+
     if (mapLegs.length === 0 || Object.keys(mapCoordsMap).length === 0)
       return null;
 
     const airportData = new Map();
     mapLegs.forEach((leg, legIndex) => {
-      console.log(`Processing leg ${legIndex}:`, {
-        direction: leg.direction,
-        stopsType: typeof leg.stops,
-        stopsIsArray: Array.isArray(leg.stops),
-        stopsLength: Array.isArray(leg.stops) ? leg.stops.length : "N/A",
-      });
 
       if (leg.dep?.airportCode)
         airportData.set(leg.dep.airportCode, { ...leg.dep, type: "departure" });
 
       // Ensure leg.stops is an array before calling forEach
       const stopsArray = Array.isArray(leg.stops) ? leg.stops : [];
-      console.log(`Leg ${legIndex} stops array:`, stopsArray);
 
       stopsArray.forEach((stop, stopIndex) => {
-        console.log(`Processing stop ${stopIndex} for leg ${legIndex}:`, stop);
+
         if (stop?.airportCode) {
           const existing = airportData.get(stop.airportCode) || {};
           airportData.set(stop.airportCode, {
@@ -1753,8 +1604,6 @@ const FlightRouteMap = ({
         });
       }
     });
-
-    console.log("Final airport data:", Array.from(airportData.entries()));
 
     return Array.from(airportData.entries())
       .map(([code, data]) => {

@@ -74,7 +74,7 @@ const SettingsTab = () => {
   };
 
   const saveSettings = () => {
-    console.log("Cài đặt đã lưu:", settings);
+
     // Gọi API để lưu cài đặt (ví dụ: POST /api/settings)
   };
 

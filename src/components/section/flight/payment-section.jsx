@@ -260,7 +260,7 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
         const ratesResponse = await pointsApi.getPointsRedemptionRates();
         if (ratesResponse.success) {
           setPointsRates(ratesResponse.data);
-          console.log("🎁 Points Rates Loaded:", ratesResponse.data);
+
         }
 
         // Calculate total points (user loyalty points + membership points)
@@ -277,11 +277,6 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
         totalUserPoints += membershipPoints;
         setUserPoints(totalUserPoints);
 
-        console.log("🎁 Points Calculation:", {
-          userLoyalty: user?.loyaltyPoints || 0,
-          membershipPoints,
-          totalUserPoints,
-        });
       } catch (error) {
         console.error("Error loading points data:", error);
       }
@@ -301,19 +296,15 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
       // First try to get from user object (from auth API)
       const userTier = user?.loyaltyTier || user?.membershipTier || user?.tier;
       if (userTier) {
-        console.log("🔍 Using membership tier from user object:", userTier);
+
         setUserMembershipTier(userTier);
         return;
       }
 
       // Fallback to loyalty API
       try {
-        console.log(
-          "🔍 Loading membership tier from loyalty API for user:",
-          user.id
-        );
+
         const loyaltyStats = await loyaltyApi.getLoyaltyStats();
-        console.log("🔍 Loyalty stats response:", loyaltyStats);
 
         // Assuming the API returns tier information
         const tier =
@@ -322,16 +313,9 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
           loyaltyStats.level ||
           loyaltyStats.loyaltyTier ||
           "STANDARD";
-        console.log("🔍 Extracted tier from loyalty stats:", {
-          tier,
-          loyaltyStatsTier: loyaltyStats.tier,
-          loyaltyStatsMembershipTier: loyaltyStats.membershipTier,
-          loyaltyStatsLevel: loyaltyStats.level,
-          loyaltyStatsLoyaltyTier: loyaltyStats.loyaltyTier,
-          fullResponse: loyaltyStats,
-        });
+
         setUserMembershipTier(tier);
-        console.log("🔍 Set membership tier to:", tier);
+
       } catch (error) {
         console.error("❌ Error loading membership tier:", error);
         setUserMembershipTier("STANDARD"); // Fallback to STANDARD
@@ -388,12 +372,9 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
   // Calculate membership discount based on user tier
   const calculateMembershipDiscount = () => {
     if (!user?.id) {
-      console.log("🔍 Membership discount: User not logged in");
+
       return 0; // Only for logged-in users
     }
-
-    console.log("🔍 Full user object:", user);
-    console.log("🔍 User membership tier from state:", userMembershipTier);
 
     const membershipTier =
       user.loyaltyTier ||
@@ -401,17 +382,6 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
       user.tier ||
       userMembershipTier ||
       "STANDARD";
-    console.log("🔍 Membership discount calculation:", {
-      userId: user.id,
-      membershipTier,
-      userMembershipTier,
-      userMembershipTierFromState: userMembershipTier,
-      userMembershipTierFromUser: user?.membershipTier,
-      userTier: user?.tier,
-      userMembership: user?.membership,
-      userLoyaltyTier: user?.loyaltyTier,
-      currentTotalAmount,
-    });
 
     const discountRates = {
       STANDARD: 0,
@@ -422,13 +392,6 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
 
     const rate = discountRates[membershipTier] || 0;
     const discount = Math.round(currentTotalAmount * rate);
-
-    console.log("🔍 Membership discount result:", {
-      tier: membershipTier,
-      rate,
-      discount,
-      finalAmount: currentTotalAmount - discount,
-    });
 
     return discount;
   };
@@ -460,7 +423,6 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
     setDealError("");
 
     try {
-      console.log("🔍 Checking deal code:", dealCode);
 
       // First, get deal info by code
       const dealResponse = await dealApi.getDealByCode(dealCode.trim());
@@ -474,7 +436,6 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
       }
 
       const dealData = dealResponse.data;
-      console.log("📋 Deal data:", dealData);
 
       // Check if deal is active
       if (!dealData.isActive) {
@@ -506,14 +467,6 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
           flight?.departureAirportCode;
         const flightArrivalAirportCode =
           flight?.flight?.arrivalAirport?.code || flight?.arrivalAirportCode;
-
-        console.log("🔍 Deal airport check:", {
-          dealDeparture: dealData.departureAirportCode,
-          dealArrival: dealData.arrivalAirportCode,
-          flightDeparture: flightDepartureAirportCode,
-          flightArrival: flightArrivalAirportCode,
-          flight: flight,
-        });
 
         if (
           dealData.departureAirportCode !== flightDepartureAirportCode ||
@@ -595,13 +548,6 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
 
       // Ensure discount doesn't exceed base amount
       discountAmount = Math.min(discountAmount, baseAmount);
-
-      console.log("💰 Discount calculation:", {
-        baseAmount,
-        discountPercentage: dealData.discountPercentage,
-        calculatedDiscount: discountAmount,
-        maxDiscountAmount: dealData.maxDiscountAmount,
-      });
 
       setDealDiscount(discountAmount);
       setDealApplied(true);
@@ -896,7 +842,7 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
 
   // Auto-assignment is now handled in extras-section automatically
   const autoAssignSeats = async () => {
-    console.log("🎲 Starting auto-assignment process");
+
     try {
       // Get flight data from localStorage if available
       const selectedFlight = JSON.parse(
@@ -909,15 +855,6 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
         selectedFlight.return !== undefined ||
         selectedFlight.type === "ROUND_TRIP";
       const isMultiCityFlight = selectedFlight.type === "MULTI_CITY";
-
-      console.log("🛩️ Flight type detection:", {
-        isRoundTripFlight,
-        isMultiCityFlight,
-        selectedFlightType: selectedFlight.type,
-        hasReturnProperty: !!selectedFlight.return,
-        hasReturnFlightProperty: !!selectedFlight.returnFlight,
-        selectedFlight: selectedFlight,
-      });
 
       // For round-trip, we need to handle multiple flights
       if (isRoundTripFlight) {
@@ -969,33 +906,11 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
       }
 
       // Debug seats API response
-      console.log("🛩️ Seats API Response:", {
-        success: seatsResponse.success,
-        totalSeats: seatsResponse.data?.length || 0,
-        flightId,
-        travelClassId,
-        sampleSeats: seatsResponse.data?.slice(0, 3) || [],
-        allStatuses: [
-          ...new Set((seatsResponse.data || []).map((s) => s.status)),
-        ],
-        allSeatTypes: [
-          ...new Set((seatsResponse.data || []).map((s) => s.seatType)),
-        ],
-        allClassIds: [
-          ...new Set((seatsResponse.data || []).map((s) => s.classId)),
-        ],
-      });
 
       // Filter only available seats
       const availableSeats = seatsResponse.data.filter(
         (seat) => seat.status === "AVAILABLE"
       );
-
-      console.log("✅ Available seats after filtering:", {
-        availableCount: availableSeats.length,
-        totalFromAPI: seatsResponse.data?.length || 0,
-        sampleAvailable: availableSeats.slice(0, 3),
-      });
 
       if (availableSeats.length === 0) {
         console.warn("⚠️ No available seats found");
@@ -1065,17 +980,6 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
   };
 
   const autoAssignSeatsForRoundTrip = async (selectedFlight) => {
-    console.log("🔄 Auto-assigning seats for round-trip flights");
-    console.log("🔍 Debug selectedFlight structure:", {
-      selectedFlight,
-      keys: Object.keys(selectedFlight),
-      hasFlight: !!selectedFlight.flight,
-      hasReturn: !!selectedFlight.return,
-      hasOutbound: !!selectedFlight.outbound,
-      hasReturnFlight: !!selectedFlight.returnFlight,
-      hasOutboundFlight: !!selectedFlight.outboundFlight,
-      type: selectedFlight.type,
-    });
 
     try {
       // Handle different selectedFlight structures - prioritize outboundFlight/returnFlight
@@ -1085,18 +989,8 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
         selectedFlight.outbound;
       const returnFlight = selectedFlight.returnFlight || selectedFlight.return;
 
-      console.log("✈️ Flight objects extracted:", {
-        outboundFlight,
-        returnFlight,
-        outboundExists: !!outboundFlight,
-        returnExists: !!returnFlight,
-      });
-
       // Try alternative ways to get return flight data
       if (!returnFlight) {
-        console.log(
-          "🔍 Searching for return flight in alternative locations..."
-        );
 
         // Check if flights are stored differently in localStorage
         const localStorageKeys = [
@@ -1108,16 +1002,14 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
         for (const key of localStorageKeys) {
           const stored = JSON.parse(localStorage.getItem(key) || "null");
           if (stored) {
-            console.log(`📂 Found data in localStorage.${key}:`, stored);
+
           }
         }
 
         // Try to extract flights from flightObject structure
         // From debug logs: flightObject has outboundData/returnData
         if (flight && flight.outboundData && flight.returnData) {
-          console.log(
-            "✅ Found round-trip flights in flight.outboundData/returnData"
-          );
+
           return await processRoundTripSeats(
             flight.outboundData,
             flight.returnData,
@@ -1129,10 +1021,7 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
         // Check if return flight is in selectedFlight.returnFlight
         const altReturnFlight = selectedFlight.returnFlight;
         if (altReturnFlight) {
-          console.log(
-            "✅ Found return flight in selectedFlight.returnFlight:",
-            altReturnFlight
-          );
+
           return await processRoundTripSeats(
             outboundFlight,
             altReturnFlight,
@@ -1197,13 +1086,6 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
         fare?.travelClass?.id ||
         1;
 
-      console.log("🛩️ Round-trip flight IDs:", {
-        outboundFlightId,
-        returnFlightId,
-        outboundTravelClassId,
-        returnTravelClassId,
-      });
-
       // Fetch seats for both flights
       const [outboundSeatsResponse, returnSeatsResponse] = await Promise.all([
         flightApi.getSeatsFlightByFlightIdAndTravelClassId(
@@ -1216,17 +1098,6 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
         ),
       ]);
 
-      console.log("🎫 Round-trip seats API responses:", {
-        outbound: {
-          success: outboundSeatsResponse.success,
-          totalSeats: outboundSeatsResponse.data?.length || 0,
-        },
-        return: {
-          success: returnSeatsResponse.success,
-          totalSeats: returnSeatsResponse.data?.length || 0,
-        },
-      });
-
       // Process available seats for both flights
       const outboundAvailableSeats = outboundSeatsResponse.success
         ? outboundSeatsResponse.data.filter(
@@ -1236,11 +1107,6 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
       const returnAvailableSeats = returnSeatsResponse.success
         ? returnSeatsResponse.data.filter((seat) => seat.status === "AVAILABLE")
         : [];
-
-      console.log("✈️ Available seats for round-trip:", {
-        outboundAvailable: outboundAvailableSeats.length,
-        returnAvailable: returnAvailableSeats.length,
-      });
 
       // Create seat mapping for both flights
       const seatMapping = {};
@@ -1292,19 +1158,6 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
           (seat) => seat.seatType === "STANDARD" && seat.status === "AVAILABLE"
         );
 
-        console.log(`🎯 Auto-assignment filtering for ${passengerKey}:`, {
-          outboundTotal: outboundAvailableSeats.length,
-          outboundStandard: outboundStandardSeats.length,
-          returnTotal: returnAvailableSeats.length,
-          returnStandard: returnStandardSeats.length,
-          outboundSeatTypes: [
-            ...new Set(outboundAvailableSeats.map((s) => s.seatType)),
-          ],
-          returnSeatTypes: [
-            ...new Set(returnAvailableSeats.map((s) => s.seatType)),
-          ],
-        });
-
         if (
           outboundStandardSeats.length > 0 &&
           returnStandardSeats.length > 0
@@ -1322,8 +1175,6 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
           assignedSeats[`${passengerKey}_segment2`] = returnSeat.seatNumber;
         }
       });
-
-      console.log("🎲 Round-trip auto-assigned seats:", assignedSeats);
 
       return {
         seats: assignedSeats,
@@ -1357,19 +1208,6 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
     setIsProcessing(true);
 
     try {
-      // Debug: Check extrasData at start of handleSubmit
-      // console.log("🚀 HANDLE SUBMIT START - extrasData:", {
-      //   selectedSeats: extrasData?.selectedSeats,
-      //   selectedReturnSeats: extrasData?.selectedReturnSeats,
-      //   multiCitySeats: extrasData?.multiCitySeats,
-      //   baggage: extrasData?.baggage,
-      //   hasSelectedSeats: !!(
-      //     extrasData?.selectedSeats &&
-      //     Object.keys(extrasData.selectedSeats).length > 0
-      //   ),
-      //   flightObject: flight,
-      //   fareObject: fare,
-      // });
 
       // Set payment method for pay later
       const currentPaymentMethod = payLater ? "PAYPAL" : paymentMethod;
@@ -1383,31 +1221,17 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
         extrasData?.selectedSeats &&
         Object.keys(extrasData.selectedSeats).length > 0;
 
-      console.log("🔍 Payment Section Debug - Extras Data:", {
-        selectedSeats: extrasData?.selectedSeats,
-        hasSelectedSeats,
-        selectedSeatsCount: Object.keys(extrasData?.selectedSeats || {}).length,
-        passengersCount: formData.passengers?.length || 0,
-      });
-
       // Process extras data to ensure seat assignments are in correct format
       const processedExtrasData = processExtrasDataForBooking(
         extrasData,
         flight,
         formData.passengers
       );
-      console.log("📋 Processed Extras Data:", processedExtrasData);
 
       // Update hasSelectedSeats based on processed data
       const updatedHasSelectedSeats =
         processedExtrasData?.seatAssignments &&
         processedExtrasData.seatAssignments.length > 0;
-
-      console.log("🔄 Updated seat selection status:", {
-        originalHasSelectedSeats: hasSelectedSeats,
-        updatedHasSelectedSeats,
-        seatAssignmentsCount: processedExtrasData?.seatAssignments?.length || 0,
-      });
 
       // Always get available seats data for mapping, but only auto-assign if no seats selected
       autoAssignResult = await autoAssignSeats();
@@ -1416,37 +1240,15 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
       const seatFetchFlightId = autoAssignResult.flightId;
       const seatFetchTravelClassId = autoAssignResult.travelClassId;
 
-      console.log("handleSubmit - seat fetch IDs:", {
-        seatFetchFlightId,
-        seatFetchTravelClassId,
-        autoAssignResult,
-      });
-
       // Always prioritize manual selections from extrasData, fallback to auto-assignment if needed
       const finalSelectedSeats = {
         ...autoAssignResult.seats, // Auto-assigned seats as base
         ...(extrasData?.selectedSeats || {}), // Manual selections override auto-assigned
       };
 
-      console.log("🎯 Final Selected Seats for processing:", {
-        hasManualSelections:
-          Object.keys(extrasData?.selectedSeats || {}).length > 0,
-        hasAutoAssigned: Object.keys(autoAssignResult.seats || {}).length > 0,
-        finalSeats: finalSelectedSeats,
-      });
-
       // Get seat mapping from API (seatNumber -> seatId)
       const seatMapping = autoAssignResult.seatMapping;
       const allAvailableSeats = autoAssignResult.availableSeatsData;
-
-      console.log("=== FULL BOOKING DATA DEBUG ===");
-      console.log("Selected seats from extrasData:", extrasData?.selectedSeats);
-      console.log("Final selected seats object:", finalSelectedSeats);
-      console.log(
-        "Available seats data length:",
-        allAvailableSeats?.length || 0
-      );
-      console.log("Seat mapping object:", seatMapping);
 
       if (!hasSelectedSeats) {
         // Only auto-assign if no seats were selected in extras
@@ -1468,15 +1270,6 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
             ? selectedSeatData.seatNumber
             : selectedSeatData;
 
-        console.log(`getSeatIdFromMapping called with:`, {
-          selectedSeatData: selectedSeatData,
-          extractedSeatNumber: seatNumber,
-          flightId: flightId,
-          travelClassId: travelClassId,
-          flightIdType: typeof flightId,
-          travelClassIdType: typeof travelClassId,
-        });
-
         // Validate parameters first
         if (
           !flightId ||
@@ -1495,17 +1288,13 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
 
         // If no seat selected, return null for auto-assignment
         if (!seatNumber) {
-          console.log(
-            `No seat selected, will auto-assign for flight ${flightId}, class ${travelClassId}`
-          );
+
           return null;
         }
 
         // First try to find seat using direct API call (more reliable for round-trip)
         if (seatNumber) {
-          console.log(
-            `🔍 Direct API search for seat ${seatNumber} on flight ${flightId}, class ${travelClassId}`
-          );
+
           try {
             const apiResponse =
               await flightApi.getSeatsFlightByFlightIdAndTravelClassId(
@@ -1521,10 +1310,7 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
                 (seat) => seat.seatNumber === seatNumber
               );
               if (foundSeat) {
-                console.log(
-                  `✅ Found seat ${seatNumber} via direct API:`,
-                  foundSeat
-                );
+
                 const seatInfo = {
                   seatId: foundSeat.seatId || foundSeat.id,
                   seatNumber: foundSeat.seatNumber,
@@ -1540,10 +1326,7 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
 
                 return seatInfo;
               } else {
-                console.log(
-                  `❌ Seat ${seatNumber} not found in API. Available seats:`,
-                  apiSeats.map((s) => s.seatNumber).slice(0, 10)
-                );
+
               }
             }
           } catch (error) {
@@ -1557,10 +1340,7 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
         // Fallback to mapping if direct API fails
         if (seatNumber && seatMapping && seatMapping[seatNumber]) {
           // Return mapped seat ID if available
-          console.log(
-            `Mapped seat ${seatNumber} to ID:`,
-            seatMapping[seatNumber]
-          );
+
           // Need to get seatType from the selected seat data
           const selectedSeatData = allAvailableSeats.find(
             (seat) => seat.seatNumber === seatNumber
@@ -1583,34 +1363,13 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
 
         // If seatNumber is from selectedSeats but not in mapping, try to find it in availableSeatsData
         if (seatNumber && allAvailableSeats && allAvailableSeats.length > 0) {
-          console.log(
-            `🔍 Searching for seat ${seatNumber} in available seats:`,
-            {
-              totalSeats: allAvailableSeats.length,
-              sampleSeats: allAvailableSeats.slice(0, 5).map((s) => ({
-                seatNumber: s.seatNumber,
-                seatId: s.seatId,
-                flightId: s.flightId,
-                travelClassId: s.travelClassId,
-                status: s.status,
-              })),
-              searchCriteria: {
-                lookingFor: seatNumber,
-                flightId: flightId,
-                travelClassId: travelClassId,
-              },
-            }
-          );
 
           const selectedSeatData = allAvailableSeats.find(
             (seat) => seat.seatNumber === seatNumber
           );
 
           if (selectedSeatData) {
-            console.log(
-              `✅ Found selected seat ${seatNumber} in available seats:`,
-              selectedSeatData
-            );
+
             const seatInfo = {
               seatId: selectedSeatData.seatId || selectedSeatData.id,
               seatNumber: selectedSeatData.seatNumber,
@@ -1626,15 +1385,9 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
 
             return seatInfo;
           } else {
-            console.log(
-              `❌ Seat ${seatNumber} NOT found in available seats. Available seat numbers:`,
-              allAvailableSeats.map((s) => s.seatNumber).slice(0, 20)
-            );
 
             // Try alternative API call without classId filter (same as extras-section)
-            console.log(
-              `🔄 Trying alternative API call without classId filter...`
-            );
+
             try {
               const alternativeSeatsResponse = await flightApi.getSeatsByFlight(
                 flightId
@@ -1642,22 +1395,6 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
               const alternativeSeats = alternativeSeatsResponse.success
                 ? alternativeSeatsResponse.data
                 : alternativeSeatsResponse;
-
-              console.log(`🔍 Alternative API response:`, {
-                success: alternativeSeatsResponse.success,
-                totalSeats: Array.isArray(alternativeSeats)
-                  ? alternativeSeats.length
-                  : 0,
-                sampleSeats: Array.isArray(alternativeSeats)
-                  ? alternativeSeats.slice(0, 5).map((s) => ({
-                      seatNumber: s.seatNumber,
-                      seatId: s.seatId,
-                      flightId: s.flightId,
-                      travelClassId: s.travelClassId,
-                      status: s.status,
-                    }))
-                  : "Not an array",
-              });
 
               if (
                 Array.isArray(alternativeSeats) &&
@@ -1668,10 +1405,7 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
                 );
 
                 if (altSelectedSeatData) {
-                  console.log(
-                    `✅ Found seat ${seatNumber} using alternative API:`,
-                    altSelectedSeatData
-                  );
+
                   return {
                     seatId:
                       altSelectedSeatData.seatId || altSelectedSeatData.id,
@@ -1679,10 +1413,7 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
                     priceVND: altSelectedSeatData.priceVND || 0,
                   };
                 } else {
-                  console.log(
-                    `❌ Seat ${seatNumber} still NOT found in alternative API. Available:`,
-                    alternativeSeats.map((s) => s.seatNumber).slice(0, 20)
-                  );
+
                 }
               }
             } catch (altError) {
@@ -1693,9 +1424,7 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
 
         // If seat "26C" not found, let's check if it exists in a fresh API call
         if (seatNumber === "26C") {
-          console.log(
-            `🚀 Making fresh API call to check seat ${seatNumber} availability for flightId: ${flightId}, travelClassId: ${travelClassId}`
-          );
+
           try {
             const freshSeatsResponse =
               await flightApi.getSeatsFlightByFlightIdAndTravelClassId(
@@ -1705,22 +1434,13 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
             const freshSeats = freshSeatsResponse.success
               ? freshSeatsResponse.data
               : freshSeatsResponse;
-            console.log(`🔍 Fresh API response for seat search:`, {
-              totalSeats: freshSeats?.length || 0,
-              seatNumbers: freshSeats?.map((s) => s.seatNumber) || [],
-              hasRequestedSeat:
-                freshSeats?.some((s) => s.seatNumber === seatNumber) || false,
-              sampleData: freshSeats?.slice(0, 3) || [],
-            });
+
           } catch (error) {
             console.error("Error making fresh API call:", error);
           }
         }
 
         // CRITICAL: Selected seat not found - try to find ANY available seat with same type/preferences
-        console.log(
-          `🔄 SELECTED SEAT ${seatNumber} NOT FOUND - Attempting smart fallback for flight ${flightId}, travelClass ${travelClassId}`
-        );
 
         try {
           // Try to get all available seats for this flight/class
@@ -1739,12 +1459,6 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
               (seat) => seat.status === "AVAILABLE" || !seat.status
             );
 
-            console.log(`📊 Available seats for smart fallback:`, {
-              totalAvailable: availableOnly.length,
-              seatNumbers: availableOnly.map((s) => s.seatNumber),
-              seatTypes: [...new Set(availableOnly.map((s) => s.seatType))],
-            });
-
             // If we have seat type preference from selected seat data, try to find similar seat
             if (allAvailableSeats && allAvailableSeats.length > 0) {
               const originalSeatData = allAvailableSeats.find(
@@ -1758,10 +1472,7 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
                 );
 
                 if (sameTypeSeat) {
-                  console.log(
-                    `✅ Found alternative seat with same type (${originalSeatData.seatType}):`,
-                    sameTypeSeat
-                  );
+
                   return {
                     seatId: sameTypeSeat.seatId || sameTypeSeat.id,
                     seatNumber: sameTypeSeat.seatNumber,
@@ -1775,10 +1486,7 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
             // If no same-type seat found, take the first available seat
             if (availableOnly.length > 0) {
               const fallbackSeat = availableOnly[0];
-              console.log(
-                `⚠️ Using first available seat as fallback:`,
-                fallbackSeat
-              );
+
               return {
                 seatId: fallbackSeat.seatId || fallbackSeat.id,
                 seatNumber: fallbackSeat.seatNumber,
@@ -1792,15 +1500,13 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
         }
 
         // Final fallback to random assignment
-        console.log(
-          `🔄 FALLING BACK TO RANDOM ASSIGNMENT for flight ${flightId}, travelClass ${travelClassId}`
-        );
+
         const randomSeat = await getRandomAvailableSeat(
           flightId,
           travelClassId
         );
         if (randomSeat) {
-          console.log(`✅ Assigned random seat:`, randomSeat);
+
           return randomSeat;
         } else {
           console.error(
@@ -1840,16 +1546,6 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
         (selectedFlight?.outbound && selectedFlight?.return ? true : false);
 
       // Debug flight type detection
-      console.log("Flight type detection:", {
-        isMultiCity,
-        isRoundTrip,
-        flightType: flight?.type,
-        isRoundTripFlag: flight?.isRoundTrip,
-        hasOutboundFlight: !!flight?.outboundFlight,
-        hasReturnFlight: !!flight?.returnFlight,
-        outboundFlightId: flight?.outboundFlight?.id,
-        returnFlightId: flight?.returnFlight?.id,
-      });
 
       // Helper function to get random available seat
       const getRandomAvailableSeat = async (flightId, travelClassId) => {
@@ -2023,18 +1719,6 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
           localStorageFlight.returnFlight ||
           selectedFlight.returnFlight ||
           selectedFlight.return;
-
-        console.log("Creating ROUND-TRIP segments with data:", {
-          outboundData,
-          returnData,
-          outboundId: outboundData?.id || outboundData?.flightId,
-          returnId: returnData?.id || returnData?.flightId,
-          flightSource: flight.outboundFlight
-            ? "flight prop"
-            : localStorageFlight.outboundFlight
-            ? "localStorage.flight"
-            : "localStorage.outbound",
-        });
 
         bookingData.flightSegments = [
           // Outbound segment
@@ -2221,20 +1905,6 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
         const flightData = localStorageFlight || flight;
 
         // Debug localStorage data for one-way flight
-        console.log(
-          "One-way flight - selectedFlight from localStorage:",
-          selectedFlight
-        );
-        console.log("One-way flight - flightData:", flightData);
-        console.log(
-          "One-way flight - flightData.departureAirport:",
-          flightData.departureAirport
-        );
-        console.log(
-          "One-way flight - flightData.arrivalAirport:",
-          flightData.arrivalAirport
-        );
-        console.log("One-way flight - flight prop:", flight);
 
         bookingData.flightSegments = [
           {
@@ -2394,23 +2064,6 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
         seatAssignments: [], // Will be populated below for each flight segment
       }));
 
-      console.log(
-        "🔍 Debug passengers phone data:",
-        formData.passengers.map((p) => ({
-          firstName: p.firstName,
-          lastName: p.lastName,
-          rawPhone: p.phone,
-          phoneNumber: p.phoneNumber,
-          contactPhone: formData.contact?.phone,
-          finalPhone: p.phone || p.phoneNumber || formData.contact?.phone || "",
-        }))
-      );
-
-      console.log(
-        "Created passengers array with seatAssignments structure:",
-        bookingData.passengers
-      );
-
       // Assign seats for all passengers and segments
       for (
         let segmentIndex = 0;
@@ -2436,11 +2089,7 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
 
           // Skip INFANT passengers - they don't need seats
           if (passenger.type === "INFANT") {
-            console.log(
-              `⏭️ Skipping seat assignment for INFANT passenger ${
-                passengerIndex + 1
-              }`
-            );
+
             continue;
           }
 
@@ -2484,17 +2133,6 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
                 priceVND: 0,
               };
 
-              console.log(
-                `🎲 Using auto-assigned STANDARD seat for ${passengerKey} segment ${
-                  segmentIndex + 1
-                }:`,
-                {
-                  autoSeatNumber,
-                  roundTripSeatKey,
-                  mappedSeatId,
-                  selectedSeat,
-                }
-              );
             }
           }
 
@@ -2514,33 +2152,13 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
                 seatType: "STANDARD", // Default for processed assignments
                 autoAssigned: true,
               };
-              console.log(
-                `✅ Using processed seat assignment for ${passengerKey}:`,
-                selectedSeat
-              );
+
             } else {
-              console.log(
-                `🔄 No seat found for ${passengerKey}, will attempt auto-assignment`
-              );
+
             }
           } else {
-            console.log(
-              `✅ Using manual seat selection for ${passengerKey}:`,
-              selectedSeat
-            );
-          }
 
-          console.log(
-            `Seat selection debug for ${passengerKey} segment ${segmentIndex}:`,
-            {
-              isMultiCity,
-              isRoundTrip,
-              segmentIndex,
-              selectedSeat,
-              availableOutboundSeats: extrasData.selectedSeats,
-              availableReturnSeats: extrasData.selectedReturnSeats,
-            }
-          );
+          }
 
           // Use segment's own flightId and travelClassId for accurate seat lookup
           const actualFlightId = segment.flightId;
@@ -2572,30 +2190,12 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
             seatNumber = selectedSeat.seatNumber;
             seatPriceVND = selectedSeat.priceVND || 0;
 
-            console.log(
-              `✅ Using direct seat data from extras for ${passengerKey}:`,
-              {
-                seatId,
-                seatType,
-                seatNumber,
-                seatPriceVND,
-                originalSelectedSeat: selectedSeat,
-              }
-            );
           } else if (selectedSeat && typeof selectedSeat === "string") {
             // Handle legacy string format (seatNumber only)
             const seatResult = await getSeatIdFromMapping(
               selectedSeat,
               actualFlightId,
               actualTravelClassId
-            );
-
-            console.log(
-              `Legacy seat format for ${passengerKey} in segment ${segment.segmentOrder}:`,
-              {
-                selectedSeat,
-                seatResult,
-              }
             );
 
             seatId = seatResult?.seatId || seatResult; // Handle both object and primitive return
@@ -2617,13 +2217,6 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
                 autoAssignResult.seatMapping[roundTripSeatKey] ||
                 autoAssignResult.seatMapping[selectedSeat];
 
-              console.log(`🔄 Round-trip seat mapping for ${selectedSeat}:`, {
-                roundTripSeatKey,
-                mappedSeatId: seatId,
-                availableMappingKeys: Object.keys(
-                  autoAssignResult.seatMapping
-                ).slice(0, 5),
-              });
             }
 
             // If still no seatId, try to find it in segmentSpecificSeats for this flight
@@ -2641,38 +2234,13 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
 
               if (foundSeat) {
                 seatId = foundSeat.seatId || foundSeat.id;
-                console.log(
-                  `🎯 Found seatId in segmentSpecificSeats for ${selectedSeat}:`,
-                  {
-                    foundSeat,
-                    seatId,
-                  }
-                );
+
               }
             }
           } else {
             // No seat selected - try to auto-assign from available seats
-            console.log(
-              `⚡ No seat selected for ${passengerKey}, attempting auto-assignment`
-            );
 
             // segmentSpecificSeats already defined above
-
-            console.log("🔍 Available seats for auto-assignment:", {
-              totalAvailable: availableSeatsResult.length,
-              segmentSpecificCount: segmentSpecificSeats.length,
-              isRoundTrip: autoAssignResult?.isRoundTrip,
-              currentSegment: segmentIndex + 1,
-              actualTravelClassId,
-              availableSeats: segmentSpecificSeats.slice(0, 3), // Show first 3 for debugging
-              seatTypes: [
-                ...new Set(segmentSpecificSeats.map((s) => s.seatType)),
-              ],
-              statuses: [...new Set(segmentSpecificSeats.map((s) => s.status))],
-              classIds: [
-                ...new Set(segmentSpecificSeats.map((s) => s.classId)),
-              ],
-            });
 
             const standardSeats = segmentSpecificSeats.filter(
               (seat) =>
@@ -2681,22 +2249,6 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
                 (seat.travelClassId === actualTravelClassId ||
                   seat.classId === actualTravelClassId)
             );
-
-            console.log("🎯 Filtered STANDARD seats:", {
-              filteredCount: standardSeats.length,
-              filter: {
-                seatType: "STANDARD",
-                status: "AVAILABLE",
-                classId: actualTravelClassId,
-              },
-              sampleSeats: standardSeats.slice(0, 2),
-              availableStandardSeatsOnly: availableSeatsResult
-                .filter((s) => s.seatType === "STANDARD")
-                .slice(0, 3),
-              allSeatTypesInResult: [
-                ...new Set(availableSeatsResult.map((s) => s.seatType)),
-              ],
-            });
 
             if (standardSeats.length > 0) {
               // Pick a random available STANDARD seat
@@ -2707,22 +2259,6 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
               seatNumber = randomSeat.seatNumber;
               seatPriceVND = 0; // STANDARD seats are free
 
-              console.log(
-                `🎲 Auto-assigned STANDARD seat for ${passengerKey}:`,
-                {
-                  seatId,
-                  seatType,
-                  seatNumber,
-                  randomSeat,
-                  randomSeatStructure: {
-                    seatId: randomSeat.seatId,
-                    id: randomSeat.id,
-                    seatNumber: randomSeat.seatNumber,
-                    seatType: randomSeat.seatType,
-                    status: randomSeat.status,
-                  },
-                }
-              );
             } else {
               console.warn(
                 `⚠️ No STANDARD seats available for auto-assignment for ${passengerKey}`
@@ -2736,14 +2272,6 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
 
           // Add seat assignment to passenger's seatAssignments array (NEW API FORMAT)
           // Backend only needs segmentOrder, seatId, and seatType
-          console.log(`🔍 Pre-assignment validation for ${passengerKey}:`, {
-            seatId,
-            seatNumber,
-            seatType,
-            hasValidSeatId: !!seatId,
-            hasValidSeatNumber: !!seatNumber,
-            willAddAssignment: !!(seatId && seatNumber),
-          });
 
           if (seatId && seatNumber) {
             const seatAssignment = {
@@ -2756,14 +2284,6 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
               seatAssignment
             );
 
-            console.log(`✅ Added seat assignment for ${passengerKey}:`, {
-              passengerName: `${formData.passengers[passengerIndex]?.firstName} ${formData.passengers[passengerIndex]?.lastName}`,
-              seatNumber,
-              seatType,
-              seatId,
-              segmentOrder: segment.segmentOrder,
-              seatAssignment,
-            });
           } else {
             console.error(
               `❌ Failed to assign seat for passenger ${
@@ -2792,124 +2312,15 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
 
       // Show debug info if enabled
       if (showDebug) {
-        console.log("=== BOOKING DATA DEBUG (NEW API FORMAT) ===");
-        console.log("User ID:", user?.id || "Not logged in");
-        console.log(
-          "Flight Type:",
-          flight?.type ||
-            (isMultiCity
-              ? "MULTI_CITY"
-              : isRoundTrip
-              ? "ROUND_TRIP"
-              : "ONE_WAY")
-        );
-        console.log(
-          "Flight Segments Count:",
-          bookingData.flightSegments.length
-        );
-        console.log(
-          "Deal Applied:",
-          dealApplied,
-          "Deal Code:",
-          dealCode,
-          "Discount:",
-          dealDiscount
-        );
-        console.log(
-          "Points Applied:",
-          pointsApplied,
-          "Points Redeemed:",
-          pointsToRedeem,
-          "Points Discount:",
-          pointsDiscount
-        );
-        console.log(
-          "Original Amount:",
-          currentTotalAmount,
-          "Final Amount:",
-          finalAmount
-        );
-        console.log("Selected Seats:", {
-          regular: extrasData.selectedSeats || {},
-          return: extrasData.selectedReturnSeats || {},
-          multiCity: extrasData.multiCitySeats || {},
-        });
-        console.log(
-          "Seat Assignment Results (NEW API FORMAT):",
-          bookingData.passengers.map((p) => ({
-            passenger: p.firstName + " " + p.lastName,
-            seatAssignments: p.seatAssignments,
-            baggagePackage: p.baggagePackage,
-          }))
-        );
-        console.log(
-          "Final Seat Assignments per Passenger:",
-          bookingData.passengers.map((passenger, index) => ({
-            passengerName: passenger.firstName + " " + passenger.lastName,
-            totalSegments: bookingData.flightSegments.length,
-            assignedSegments: passenger.seatAssignments.length,
-            seatAssignments: passenger.seatAssignments.map((assignment) => ({
-              segmentOrder: assignment.segmentOrder,
-              seatId: assignment.seatId,
-              seatType: assignment.seatType,
-            })),
-          }))
-        );
 
         // Add full booking data log before API call
-        console.log("=== FULL BOOKING DATA BEFORE API CALL ===");
-        console.log("Full Booking Data:", JSON.stringify(bookingData, null, 2));
-        console.log(
-          "Flight Segments Details:",
-          bookingData.flightSegments.map((segment) => ({
-            segmentOrder: segment.segmentOrder,
-            flightId: segment.flightId,
-            classId: segment.classId,
-            from: `${segment.departure.code} (${segment.departure.city})`,
-            to: `${segment.arrival.code} (${segment.arrival.city})`,
-            price: segment.price,
-          }))
-        );
-        console.log(
-          "🪑 Seat Assignments Summary:",
-          bookingData.passengers.map((passenger, index) => ({
-            passengerIndex: index,
-            name: `${passenger.firstName} ${passenger.lastName}`,
-            seatAssignmentsCount: passenger.seatAssignments.length,
-            seats: passenger.seatAssignments.map((assignment) => ({
-              segmentOrder: assignment.segmentOrder,
-              seatId: assignment.seatId,
-              seatType: assignment.seatType,
-            })),
-          }))
-        );
-        console.log(
-          "Passenger Details (NEW API FORMAT):",
-          bookingData.passengers.map((p) => ({
-            name: `${p.firstName} ${p.lastName}`,
-            type: p.type,
-            passport: p.passportNumber,
-            seatAssignments: p.seatAssignments,
-            baggage: p.baggagePackage,
-          }))
-        );
-        console.log(
-          "Ancillary Services:",
-          bookingData.ancillaryServices.length > 0
-            ? bookingData.ancillaryServices
-            : "No ancillary services selected"
-        );
-        console.log("Full Booking Data:", JSON.stringify(bookingData, null, 2));
+
         toast.info(
           "Check console for detailed booking data with new API format"
         );
       }
 
       // Debug: Log booking data being sent to backend
-      console.log("=== BOOKING DATA SENT TO BACKEND ===");
-      console.log("Payment Method:", currentPaymentMethod);
-      console.log("Pay Later:", payLater);
-      console.log("Full Booking Data:", JSON.stringify(bookingData, null, 2));
 
       const result = await bookingApi.createBooking(bookingData);
 
@@ -4110,20 +3521,6 @@ const Payment = ({ formData, extrasData, flight, fare }) => {
                   (p) => p.membershipCode && p.membershipData?.valid
                 );
                 const hasPointsRates = !!pointsRates;
-
-                console.log("🎁 Points Redemption Debug:", {
-                  hasUser,
-                  hasMembershipCode,
-                  hasPointsRates,
-                  userPoints,
-                  passengers: formData.passengers.map((p) => ({
-                    name: `${p.firstName} ${p.lastName}`,
-                    membershipCode: p.membershipCode,
-                    membershipData: p.membershipData,
-                    hasValid: p.membershipData?.valid,
-                    points: p.membershipData?.currentPoints,
-                  })),
-                });
 
                 // Show if user is logged in OR has valid membership code (regardless of points amount)
                 return (hasUser || hasMembershipCode) && hasPointsRates;

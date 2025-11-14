@@ -55,14 +55,6 @@ const RevenueChart = ({
   detailed = false,
   dateRange,
 }) => {
-  console.log("💰 RevenueChart received data:", {
-    bookingsType: typeof bookings,
-    bookingsValue: bookings,
-    bookingsLength: bookings?.length,
-    isLoading,
-    hasBookings: Array.isArray(bookings),
-  });
-
   if (isLoading) {
     return (
       <Card className={detailed ? "col-span-full" : ""}>
@@ -209,27 +201,6 @@ const RevenueChart = ({
     uniqueCustomers > 0 ? totalRevenue / uniqueCustomers : 0;
   const revenuePerFlight = totalFlights > 0 ? totalRevenue / totalFlights : 0;
   const avgBookingValue = totalBookings > 0 ? totalRevenue / totalBookings : 0;
-
-  // Debug metrics calculation
-  console.log("📊 Revenue Metrics Debug:", {
-    totalRevenue,
-    totalBookings,
-    uniqueCustomers,
-    totalFlights,
-    revenuePerCustomer,
-    revenuePerFlight,
-    avgBookingValue,
-    sampleBooking: bookings[0],
-    bookingKeys: bookings[0] ? Object.keys(bookings[0]) : [],
-    userIds: bookings.slice(0, 3).map((b) => ({
-      userId: b.userId,
-      customerId: b.customerId,
-      userField: b.user,
-      flightId: b.flightId,
-      flightField: b.flight,
-      outboundFlightId: b.outboundFlightId,
-    })),
-  });
 
   const revenueTarget = totalRevenue * 1.15;
   const targetAchievement = (totalRevenue / revenueTarget) * 100;

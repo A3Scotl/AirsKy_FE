@@ -32,11 +32,7 @@ export default function QRPay() {
     const currentlyProcessing = localStorage.getItem(qrProcessingKey);
 
     if (alreadySucceeded || currentlyProcessing) {
-      console.log("💡 QR Payment already succeeded or in progress:", {
-        bookingCode,
-        alreadySucceeded: !!alreadySucceeded,
-        currentlyProcessing: !!currentlyProcessing,
-      });
+
       setStatus("success");
       toast.success("Thanh toán đã thành công!");
       return;
@@ -44,13 +40,10 @@ export default function QRPay() {
 
     const checkPaymentStatus = async () => {
       try {
-        console.log("🏦 Checking QR payment status for booking:", bookingCode);
 
         const response = await axios.get(
           `https://airsky.onrender.com/api/v1/payments/sepay/check/${bookingCode}`
         );
-
-        console.log("🏦 QR payment check response:", response.data);
 
         if (response.data?.success) {
           // Mark QR payment as being processed and succeeded
@@ -58,10 +51,6 @@ export default function QRPay() {
           const qrProcessingKey = `qr_payment_processing_${bookingCode}`;
           localStorage.setItem(qrProcessingKey, Date.now().toString());
           localStorage.setItem(qrPaymentKey, Date.now().toString());
-          console.log("🧹 Set QR payment flags:", {
-            qrPaymentKey,
-            qrProcessingKey,
-          });
 
           setStatus("success");
           toast.success("Thanh toán thành công!");
@@ -131,9 +120,7 @@ export default function QRPay() {
 
           // Priority: booking payment > checkin payment > my-flights payment
           if (isBookingFlow && bookingBookingCodeForRedirect) {
-            console.log(
-              "🔄 QR Payment success - redirecting to confirm booking (booking payment)"
-            );
+
             setTimeout(() => {
               // Set flag to indicate payment status needs refresh
               localStorage.setItem(
@@ -145,10 +132,7 @@ export default function QRPay() {
               );
             }, 3000);
           } else if (isCheckinFlow && bookingCodeForRedirect) {
-            console.log(
-              "🔄 QR Payment success - redirecting to check-in for booking:",
-              bookingCodeForRedirect
-            );
+
             setTimeout(
               () =>
                 navigate(
@@ -157,10 +141,7 @@ export default function QRPay() {
               3000
             );
           } else if (isMyFlightsFlow && myFlightsBookingCodeForRedirect) {
-            console.log(
-              "🔄 QR Payment success - redirecting to my-flights success for booking:",
-              myFlightsBookingCodeForRedirect
-            );
+
             setTimeout(
               () =>
                 navigate("/my-flights", {
@@ -174,9 +155,7 @@ export default function QRPay() {
               3000
             );
           } else {
-            console.log(
-              "🔄 QR Payment success - redirecting to confirm booking (fallback)"
-            );
+
             setTimeout(() => {
               // Set flag for fallback case too
               if (bookingCode) {
@@ -211,7 +190,7 @@ export default function QRPay() {
       // Clean up processing flag when component unmounts (optional cleanup)
       const qrProcessingKey = `qr_payment_processing_${bookingCode}`;
       // Note: We might not want to remove this here if user navigates away and comes back
-      console.log("🧹 Component unmount - polling stopped for:", bookingCode);
+
     };
   }, [bookingCode, navigate]);
 
@@ -241,13 +220,13 @@ export default function QRPay() {
         </p>
 
         {/* Back Button */}
-        <button
+        {/* <button
           onClick={() => navigate(-1)}
           className="mt-4 bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 mr-4 flex items-center gap-2"
         >
           <ArrowLeft className="w-4 h-4" />
           Quay lại
-        </button>
+        </button> */}
 
         <button
           onClick={() => {

@@ -331,5 +331,5 @@ self.onmessage = function(e) {
 
 // Handle worker termination
 self.onbeforeunload = function() {
-  console.log("Chart worker terminated");
+
 };

@@ -21,13 +21,13 @@ class ChatbotService {
       });
 
       this.socket.on("connect", () => {
-        console.log("Connected to chatbot server");
+
         this.isConnected = true;
         resolve();
       });
 
       this.socket.on("disconnect", () => {
-        console.log("Disconnected from chatbot server");
+
         this.isConnected = false;
       });
 
@@ -76,7 +76,7 @@ class ChatbotService {
 
         // Set up response handler
         this.messageHandlers.set("chat_response", (response) => {
-          console.log("📥 Raw socket response:", response);
+
           clearTimeout(timeout);
           this.messageHandlers.delete("chat_response");
           resolve({

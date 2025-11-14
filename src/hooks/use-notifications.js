@@ -75,7 +75,6 @@ export const useNotifications = (userId, token) => {
         });
 
         if (response.success) {
-          console.log("fetchNotifications - response.data:", response.data);
 
           // Handle case where response.data is the API response object itself
           let apiData = response.data;
@@ -84,9 +83,7 @@ export const useNotifications = (userId, token) => {
             typeof apiData === "object" &&
             apiData.success !== undefined
           ) {
-            console.log(
-              "Response.data is a response object, using response.data.data"
-            );
+
             apiData = apiData.data;
           }
 
@@ -236,9 +233,8 @@ export const useNotifications = (userId, token) => {
    */
   const handleNewNotification = useCallback(
     (event) => {
-      console.log("🔔 handleNewNotification called with event:", event);
+
       const newNotification = event.detail;
-      console.log("📬 New notification received:", newNotification);
 
       if (!newNotification || !newNotification.notificationId) {
         console.warn("⚠️ Invalid notification received:", newNotification);
@@ -247,13 +243,9 @@ export const useNotifications = (userId, token) => {
 
       // Check if notification is for current user
       if (newNotification.userId && newNotification.userId !== userId) {
-        console.log(
-          `🚫 Notification for user ${newNotification.userId}, but current user is ${userId}`
-        );
+
         return;
       }
-
-      console.log("✅ Notification is for current user, processing...");
 
       // Check for duplicates
       const notificationKey = `${newNotification.notificationId}_${newNotification.createdAt}`;
@@ -262,7 +254,7 @@ export const useNotifications = (userId, token) => {
       if (recentNotifications.current.has(notificationKey)) {
         const lastSeen = recentNotifications.current.get(notificationKey);
         if (now - lastSeen < NOTIFICATION_DEDUPE_WINDOW) {
-          console.log("🔄 Duplicate notification detected, skipping");
+
           return; // Skip duplicate
         }
       }
@@ -282,20 +274,19 @@ export const useNotifications = (userId, token) => {
         (n) => n.notificationId === newNotification.notificationId
       );
       if (exists) {
-        console.log("🔍 Notification already exists, skipping");
+
         return;
       }
 
-      console.log("➕ Adding new notification to state");
       // Add new notification to the top of the list
       setNotifications((prev) => [newNotification, ...prev]);
 
       // Update unread count if notification is unread
       if (!newNotification.read) {
-        console.log("📈 Incrementing unread count");
+
         setUnreadCount((prev) => prev + 1);
       }
-      console.log("✅ Notification processing complete");
+
     },
     [userId, notifications]
   );

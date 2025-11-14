@@ -58,8 +58,6 @@ class FontLoader {
         'Inter, "Noto Sans", "Source Sans Pro", "Segoe UI", system-ui, -apple-system, "Arial Unicode MS", sans-serif';
 
       this.loadedFonts.add(fontName);
-      console.log("✅ Vietnamese-optimized fonts loaded successfully");
-      console.log("🔤 Font stack:", this.vietnameseFontStack);
 
       return fontName;
     } catch (error) {
@@ -82,7 +80,6 @@ class FontLoader {
     try {
       // Đây là placeholder - trong thực tế cần implement
       // jsPDF addFileToVFS và addFont methods
-      console.log(`Loading custom font: ${fontName}`);
 
       // Giả lập load font
       this.loadedFonts.add(fontName);
@@ -182,7 +179,7 @@ class FontLoader {
     try {
       // Load Roboto fonts ngay từ đầu cho PDF rendering
       await this.loadRobotoFont();
-      console.log("Font loader initialized with Roboto fonts");
+
     } catch (error) {
       console.warn("Font loader initialization failed:", error);
     }
@@ -194,7 +191,7 @@ class FontLoader {
   async ensureFontsForPDF() {
     try {
       if (!this.loadedFonts.has("Roboto-Regular")) {
-        console.log("Loading Roboto fonts for PDF...");
+
         await this.loadRobotoFont();
       }
       return true;

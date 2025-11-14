@@ -95,21 +95,13 @@ export const useAirportSearch = (options = {}) => {
   const getNearbyAirports = useCallback(
     async (latitude, longitude, radius = 100) => {
       try {
-        console.log("🚁 Hook: Bắt đầu tìm sân bay gần nhất");
-        console.log("📝 Tham số:", {
-          latitude,
-          longitude,
-          radius,
-          country,
-          maxResults,
-        });
 
         setIsLoading(true);
 
         let results;
         if (latitude && longitude) {
           // Nếu có tọa độ cụ thể
-          console.log("📍 Sử dụng tọa độ cụ thể");
+
           results = await serviceImplAirport.getNearbyAirports(
             latitude,
             longitude,
@@ -120,19 +112,13 @@ export const useAirportSearch = (options = {}) => {
           );
         } else {
           // Auto-detect vị trí hiện tại
-          console.log("🔍 Auto-detect vị trí hiện tại");
+
           results =
             await serviceImplAirport.getNearbyAirportsFromCurrentLocation({
               country: country,
               limit: maxResults,
             });
         }
-
-        console.log(
-          "✅ Hook: Nhận được kết quả từ service:",
-          results.length,
-          "sân bay"
-        );
 
         // Lọc trong vòng 1000km theo yêu cầu của user
         const filteredResults = results.filter((airport) => {
@@ -144,11 +130,8 @@ export const useAirportSearch = (options = {}) => {
           return distanceNum <= 1000;
         });
 
-        console.log(
-          `🎯 Hook: Lọc trong 1000km - ${filteredResults.length}/${results.length} sân bay`
-        );
         filteredResults.forEach((airport) => {
-          console.log(`  - ${airport.airportCode}: ${airport.distance}km`);
+
         });
 
         setSearchResults(filteredResults);
@@ -158,21 +141,17 @@ export const useAirportSearch = (options = {}) => {
         setError(err);
 
         // Fallback: trả về sân bay mặc định
-        console.log("🔄 Hook: Fallback - lấy sân bay mặc định");
+
         const fallbackResults = await serviceImplAirport.getAllAirports({
           country: country || "Vietnam",
           limit: maxResults,
         });
-        console.log(
-          "🔄 Hook: Fallback kết quả:",
-          fallbackResults.length,
-          "sân bay"
-        );
+
         setSearchResults(fallbackResults);
         return fallbackResults;
       } finally {
         setIsLoading(false);
-        console.log("🏁 Hook: Hoàn thành tìm sân bay gần nhất");
+
       }
     },
     [maxResults, country]

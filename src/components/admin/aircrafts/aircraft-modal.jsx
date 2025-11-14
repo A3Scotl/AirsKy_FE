@@ -178,7 +178,7 @@ const AircraftModal = ({ open, onClose, onSubmit, initialData }) => {
 
   return (
     <Dialog open={open} onOpenChange={isSubmitting ? undefined : handleClose}>
-      <DialogContent className="sm:max-w-[425px] dark:bg-gray-900 dark:border-gray-700">
+      <DialogContent className="max-w-[95vw] sm:max-w-[80vw] md:max-w-lg lg:max-w-xl mx-auto max-h-[90vh] overflow-y-auto dark:bg-gray-900 dark:border-gray-700">
         <DialogHeader>
           <DialogTitle className="dark:text-white">
             {initialData ? "Chỉnh sửa máy bay" : "Thêm máy bay mới"}
@@ -186,7 +186,7 @@ const AircraftModal = ({ open, onClose, onSubmit, initialData }) => {
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="aircraftCode" className="dark:text-gray-300">
                 Mã máy bay *
@@ -285,20 +285,20 @@ const AircraftModal = ({ open, onClose, onSubmit, initialData }) => {
             )}
           </div>
 
-          <DialogFooter className="dark:bg-gray-900">
+          <DialogFooter className="dark:bg-gray-900 flex-col sm:flex-row gap-2">
             <Button
               type="button"
               variant="outline"
               onClick={handleClose}
               disabled={isSubmitting}
-              className="dark:border-gray-600 dark:hover:bg-gray-700 dark:text-gray-300"
+              className="w-full sm:w-auto dark:border-gray-600 dark:hover:bg-gray-700 dark:text-gray-300"
             >
               Hủy
             </Button>
             <Button
               type="submit"
               disabled={!isFormValid() || isSubmitting}
-              className={`${
+              className={`w-full sm:w-auto ${
                 !isFormValid() || isSubmitting
                   ? "opacity-50 cursor-not-allowed"
                   : ""

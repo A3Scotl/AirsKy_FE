@@ -80,7 +80,7 @@ const PaymentAnalytics = ({
 
         const response = await paymentApi.getAllPayments(params);
         if (response.success) {
-          console.log("[PaymentAnalytics] Raw payments data:", response.data);
+         
           setPayments(response.data.content || response.data || []);
         }
       } catch (error) {
@@ -94,10 +94,7 @@ const PaymentAnalytics = ({
   }, [dateRange, startDate, endDate]);
   // Calculate analytics data from real payments
   const analyticsData = useMemo(() => {
-    console.log(
-      "[PaymentAnalytics] Calculating analytics from payments:",
-      payments
-    );
+  
 
     if (!payments.length) {
       return {
@@ -123,11 +120,11 @@ const PaymentAnalytics = ({
 
     // Since API already filters by date range, use all payments
     const filteredPayments = payments;
-    console.log("[PaymentAnalytics] Filtered payments:", filteredPayments);
+    
 
     // Calculate transaction metrics
     const total = filteredPayments.length;
-    console.log("[PaymentAnalytics] Total payments:", total);
+  
 
     // Check what statuses exist in the data
     const statusCounts = {};
@@ -135,7 +132,7 @@ const PaymentAnalytics = ({
       const status = p.status || "UNKNOWN";
       statusCounts[status] = (statusCounts[status] || 0) + 1;
     });
-    console.log("[PaymentAnalytics] Status distribution:", statusCounts);
+  
 
     // Use COMPLETED status for successful payments (as user mentioned)
     const successful = filteredPayments.filter(
@@ -153,39 +150,23 @@ const PaymentAnalytics = ({
     const failed = total - successful - pending - refunded - cancelled;
     const successRate = total > 0 ? (successful / total) * 100 : 0;
 
-    console.log("[PaymentAnalytics] Transaction metrics:", {
-      total,
-      successful,
-      pending,
-      refunded,
-      failed,
-      successRate,
-    });
+  
 
     // Calculate revenue metrics - only from COMPLETED payments
     const successfulPayments = filteredPayments.filter(
       (p) => p.status === "COMPLETED"
     );
-    console.log(
-      "[PaymentAnalytics] Successful payments for revenue:",
-      successfulPayments
-    );
+   
 
     const totalRevenue = successfulPayments.reduce((sum, p) => {
       const amount = p.amount || p.totalAmount || 0;
-      console.log(
-        `[PaymentAnalytics] Payment ${p.id}: amount=${amount}, status=${p.status}`
-      );
+    
       return sum + amount;
     }, 0);
 
     const averageTransaction = successful > 0 ? totalRevenue / successful : 0;
 
-    console.log("[PaymentAnalytics] Revenue metrics:", {
-      totalRevenue,
-      averageTransaction,
-      successfulPaymentsCount: successfulPayments.length,
-    });
+   
 
     // Simple growth calculation (compare with previous period of same length)
     let dailyGrowth = 0;
@@ -253,23 +234,7 @@ const PaymentAnalytics = ({
       })
     );
 
-    console.log("[PaymentAnalytics] Final analytics result:", {
-      revenueMetrics: {
-        totalRevenue,
-        averageTransaction,
-        dailyGrowth,
-        monthlyGrowth,
-      },
-      transactionMetrics: {
-        total,
-        successful,
-        failed,
-        pending,
-        refunded,
-        successRate,
-      },
-      paymentMethodsCount: paymentMethods.length,
-    });
+    
 
     return {
       revenueMetrics: {

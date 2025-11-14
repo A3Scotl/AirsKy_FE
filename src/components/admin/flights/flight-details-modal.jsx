@@ -54,6 +54,8 @@ const TEXT = {
   delayed: "Hoãn",
   cancelled: "Đã Hủy",
   completed: "Hoàn Thành",
+  cancelReason: "Lý Do Hủy",
+  delayReason: "Lý Do Hoãn",
   travelClasses: "Hạng vé (giá tùy chỉnh)",
   className: "Tên Lớp",
   customPrice: "Giá Tùy Chỉnh",
@@ -455,7 +457,6 @@ const FlightDetailsModal = ({ flight, open, onClose, onEdit, onDelete }) => {
     const rows = Math.ceil(aircraft.totalSeats / totalSeatsPerRow);
     const seats = [];
     let seatCounter = 1;
-    console.log(seats);
 
     for (let row = 1; row <= rows; row++) {
       const rowSeats = [];
@@ -768,6 +769,38 @@ const FlightDetailsModal = ({ flight, open, onClose, onEdit, onDelete }) => {
                     </p>
                   </div>
                 </div>
+
+                {(flight.cancelReason || flight.delayReason) && (
+                  <>
+                    <Separator className="dark:bg-gray-600" />
+                    <div className="space-y-2">
+                      {flight.cancelReason && (
+                        <div>
+                          <p className="text-gray-600 dark:text-gray-400 text-sm">
+                            <span className="font-medium">
+                              {TEXT.cancelReason}:
+                            </span>
+                          </p>
+                          <p className="font-semibold dark:text-white text-red-600 dark:text-red-400">
+                            {flight.cancelReason}
+                          </p>
+                        </div>
+                      )}
+                      {flight.delayReason && (
+                        <div>
+                          <p className="text-gray-600 dark:text-gray-400 text-sm">
+                            <span className="font-medium">
+                              {TEXT.delayReason}:
+                            </span>
+                          </p>
+                          <p className="font-semibold dark:text-white text-yellow-600 dark:text-yellow-400">
+                            {flight.delayReason}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  </>
+                )}
               </CardContent>
             </Card>
 
@@ -1195,7 +1228,7 @@ const FlightDetailsModal = ({ flight, open, onClose, onEdit, onDelete }) => {
                               {rowIndex + 1}
                             </span>
                             {row.map((seat, seatIndex) => {
-                              console.log(seat);
+
                               return (
                                 <div
                                   key={seatIndex}

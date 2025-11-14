@@ -362,20 +362,9 @@ const createNormalizedFlight = async (
   // Try to fetch full flight data from API
   let fullFlightData = null;
   try {
-    console.log(
-      `[ChatbotWidget] Fetching full flight data for ID: ${flightId}`
-    );
     const response = await flightApi.getFlightById(flightId);
     if (response.success && response.data) {
       fullFlightData = response.data;
-      console.log(
-        `[ChatbotWidget] Successfully fetched full data for flight ${flightId}:`,
-        fullFlightData
-      );
-      console.log(
-        `[ChatbotWidget] flightTravelClasses in API response:`,
-        fullFlightData.flightTravelClasses
-      );
     } else {
       console.warn(
         `[ChatbotWidget] API call failed or no data for flight ${flightId}:`,
@@ -558,15 +547,6 @@ const createNormalizedFlight = async (
     direction: direction, // Add direction for roundtrip flights
   };
 
-  console.log(`[ChatbotWidget] Normalized flight data for ${flightId}:`, {
-    departureTime: departureDateTime.time,
-    arrivalTime: arrivalDateTime.time,
-    departureDate: departureDateTime.date,
-    arrivalDate: arrivalDateTime.date,
-    originalDeparture: flightToUse.departureTime || flight.departureTime,
-    originalArrival: flightToUse.arrivalTime || flight.arrivalTime,
-  });
-
   return normalizedFlight;
 };
 
@@ -662,9 +642,6 @@ const convertToItineraries = async (flights) => {
         if (!/^\d+$/.test(flightId)) {
           flightId = flight.flightId || "1";
         }
-
-        console.log(`[convertToItineraries] Processing flight:`, flight);
-        console.log(`[convertToItineraries] Extracted flightId: ${flightId}`);
 
         const normalizedFlight = await createNormalizedFlight(
           flight,
@@ -874,11 +851,6 @@ const FlightWithFareOptions = ({
   const navigate = useNavigate();
 
   // Debug: Log flight data to check if flightTravelClasses exists
-  console.log("[FlightWithFareOptions] Flight data:", flight);
-  console.log(
-    "[FlightWithFareOptions] flightTravelClasses:",
-    flight.flightTravelClasses
-  );
 
   // Parse base price from flight.price (remove currency symbols and format)
   const parsePrice = (priceStr) => {
@@ -893,13 +865,11 @@ const FlightWithFareOptions = ({
   };
 
   const basePrice = parsePrice(flight.price);
-  console.log("[FlightWithFareOptions] Base price parsed:", basePrice);
 
   // Use real fare options from flight.flightTravelClasses if available, otherwise create default ones
   const fareOptions =
     flight.flightTravelClasses && flight.flightTravelClasses.length > 0
       ? flight.flightTravelClasses.map((ftc) => {
-          console.log("[FlightWithFareOptions] Processing ftc:", ftc);
           return {
             id:
               ftc.id ||
@@ -1000,10 +970,6 @@ const FlightWithFareOptions = ({
             availableSeats: 10,
           },
         ];
-
-  console.log("[FlightWithFareOptions] Final fare options:", fareOptions);
-
-  console.log("[FlightWithFareOptions] Generated fareOptions:", fareOptions);
 
   const formatDuration = (duration) => {
     if (typeof duration === "string") {
@@ -1424,9 +1390,6 @@ const FlightDetailModal = ({
     if (!selectedFareOption) return;
 
     // Debug log the flight data to understand the structure
-    console.log("🔍 Flight data before processing:", flight);
-    console.log("🔍 Departure time:", flight.departureTime);
-    console.log("🔍 Arrival time:", flight.arrivalTime);
 
     // Helper functions for formatting (matching flight-detail-page.jsx)
     const formatTimeVN = (timeStr) => {
@@ -1640,8 +1603,6 @@ const FlightDetailModal = ({
       bookingDate: formatDateTimeVN(new Date()),
       source: "chatbot",
     };
-
-    console.log("📤 Chatbot booking data prepared:", bookingData);
 
     localStorage.setItem("selectedFlight", JSON.stringify(bookingData));
     navigate("/booking-stepper", { state: { bookingData } });
@@ -1986,7 +1947,6 @@ const ChatbotWidget = () => {
 
   // Round-trip selection handlers
   const handleOutboundFlightSelect = useCallback((flight) => {
-    console.log("Selected outbound flight:", flight);
     setSelectedOutboundFlight(flight);
     setRoundTripStep("return");
 
@@ -2002,7 +1962,6 @@ const ChatbotWidget = () => {
 
   const handleReturnFlightSelect = useCallback(
     (flight) => {
-      console.log("Selected return flight:", flight);
       setSelectedReturnFlight(flight);
       setRoundTripStep("completed");
 
@@ -2161,9 +2120,7 @@ const ChatbotWidget = () => {
       setIsTyping(true);
 
       try {
-        console.log("[ChatbotWidget] Sending message:", message);
         const result = await chatbotService.sendMessage(message, null);
-        console.log("[ChatbotWidget] Received result:", result);
 
         if (!result?.response) throw new Error("Invalid response from server");
 
@@ -2173,7 +2130,6 @@ const ChatbotWidget = () => {
           result.response.response?.type === "flight_results" ||
           result.response.response?.type === "no_results"
         ) {
-          console.log("[ChatbotWidget] Processing template response");
           // Template response - format for display
           const templateResponse = result.response.response;
           botMessage = {
@@ -2194,25 +2150,11 @@ const ChatbotWidget = () => {
           };
 
           // Debug: Log flight data from chatbot service
-          console.log(
-            "[ChatbotWidget] Template response flights:",
-            templateResponse.flights
-          );
+
           if (templateResponse.flights && templateResponse.flights.length > 0) {
-            templateResponse.flights.forEach((flight, index) => {
-              console.log(`[ChatbotWidget] Flight ${index} data:`, flight);
-              console.log(
-                `[ChatbotWidget] Flight ${index} flightId:`,
-                flight.flightId
-              );
-              console.log(
-                `[ChatbotWidget] Flight ${index} has flightTravelClasses:`,
-                !!flight.flightTravelClasses
-              );
-            });
+            templateResponse.flights.forEach((flight, index) => {});
           }
         } else {
-          console.log("[ChatbotWidget] Processing legacy response");
           // Legacy response format or fallback
           botMessage = {
             id: messages.length + 2,
@@ -2231,9 +2173,7 @@ const ChatbotWidget = () => {
           };
         }
 
-        console.log("[ChatbotWidget] Created bot message:", botMessage);
         setMessages((prev) => [...prev, botMessage]);
-        console.log("[ChatbotWidget] Messages updated, setting pagination");
 
         // Reset round-trip selection state for new flight search
         if (botMessage.templateData?.flights?.length > 0) {
@@ -2261,7 +2201,6 @@ const ChatbotWidget = () => {
         setQuickReplies((prev) =>
           [message, ...prev.filter((r) => r !== message)].slice(0, 5)
         );
-        console.log("[ChatbotWidget] Processing completed successfully");
       } catch (error) {
         console.error("Chatbot error:", error);
         setMessages((prev) => [
@@ -2277,9 +2216,6 @@ const ChatbotWidget = () => {
           },
         ]);
       } finally {
-        console.log(
-          "[ChatbotWidget] Finally block - setting isTyping to false"
-        );
         setIsTyping(false);
       }
     },
@@ -2330,8 +2266,6 @@ const ChatbotWidget = () => {
   // Clean flight data
   const cleanFlightData = useCallback((flights) => {
     return flights.map((flight) => {
-      console.log("🔍 Raw flight data from server:", flight); // Debug log
-
       // Handle template flight format (new format)
       if (flight.flightId || flight.flightNumber) {
         const cleaned = {
@@ -2359,7 +2293,7 @@ const ChatbotWidget = () => {
           aircraft: flight.aircraft || flight.aircraft_model || "Airbus A321",
           tripType: flight.tripType || flight.trip_type || "ONE_WAY",
         };
-        console.log("✅ Cleaned template flight data:", cleaned);
+
         return cleaned;
       }
 
@@ -2377,7 +2311,7 @@ const ChatbotWidget = () => {
         price: flight.price || 1440000,
         tripType: flight.tripType || "ONE_WAY",
       };
-      console.log("✅ Cleaned legacy flight data:", cleaned); // Debug log
+
       return cleaned;
     });
   }, []);
@@ -2385,35 +2319,25 @@ const ChatbotWidget = () => {
   // Parse messages for flights
   const parsedMessages = useMemo(() => {
     return messages.map((message) => {
-      console.log("Processing message:", message); // Debug log
-      console.log("Message context:", message.context); // Debug log
-      console.log("Message data:", message.data); // Debug log
-
       let flights = [];
       if (
         message.templateData?.flights &&
         Array.isArray(message.templateData.flights)
       ) {
         // Handle template response flights
-        console.log(
-          "Using template data flights:",
-          message.templateData.flights
-        );
+
         flights = cleanFlightData(message.templateData.flights);
       } else if (
         message.context?.type === "flights" &&
         Array.isArray(message.data?.flights)
       ) {
-        console.log("Using message.data.flights:", message.data.flights); // Debug log
         flights = cleanFlightData(message.data.flights);
       } else if (
         message.context?.type === "flights" &&
         Array.isArray(message.data)
       ) {
-        console.log("Using message.data as flights array:", message.data); // Debug log
         flights = cleanFlightData(message.data);
       } else if (message.text && message.sender === "bot") {
-        console.log("Parsing from text:", message.text); // Debug log
         const flightBlocks = message.text.split("\n").reduce(
           (blocks, line, i, lines) => {
             if (/^\d+\./.test(line.trim())) {
@@ -2434,10 +2358,8 @@ const ChatbotWidget = () => {
           .map(parseFlightText)
           .filter(Boolean)
           .map((f) => cleanFlightData([f])[0]);
-        console.log("Parsed flights from text:", flights); // Debug log
       }
 
-      console.log("Final flights for message:", flights); // Debug log
       return { ...message, flights };
     });
   }, [messages, cleanFlightData]);
@@ -2459,19 +2381,19 @@ const ChatbotWidget = () => {
   }, []);
 
   return (
-    <div className="fixed bottom-22 right-8 z-[100000]">
+    <div className="fixed bottom-22 right-8 sm:right-8 md:right-8 z-[100000]">
       {!isOpen ? (
         <Button
           onClick={() => setIsOpen(true)}
-          className="rounded-full w-14 h-14 bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 shadow-lg hover:shadow-xl transition-all duration-300"
+          className="rounded-full w-12 h-12 sm:w-12 sm:h-12 bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 shadow-lg hover:shadow-xl transition-all duration-300"
           aria-label="Mở khung chat"
         >
-          <MessageCircle className="w-6 h-6" />
+          <MessageCircle className="w-5 h-5 sm:w-5 sm:h-5" />
         </Button>
       ) : (
         <div
           ref={chatContainerRef}
-          className="w-[90vw] max-w-[400px] sm:max-w-[500px] md:max-w-[700px] h-[80vh] max-h-[600px] bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-2xl flex flex-col overflow-hidden transition-all duration-300"
+          className="w-[95vw] max-w-[350px] sm:max-w-[400px] md:max-w-[500px] lg:max-w-[700px] h-[85vh] max-h-[500px] sm:max-h-[600px] bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-2xl flex flex-col overflow-hidden transition-all duration-300"
         >
           <div className="flex items-center justify-between p-3 bg-blue-600 dark:bg-blue-700 text-white rounded-t-xl">
             <div className="flex items-center gap-2">
@@ -2627,26 +2549,28 @@ const ChatbotWidget = () => {
                 </div>
               </div>
             ))}
-            <div className="flex justify-start">
-              <div className="bg-gray-100 dark:bg-gray-800 rounded-lg p-2 text-xs font-light">
-                <div className="flex items-center gap-1">
-                  <div className="flex gap-1">
-                    <div className="w-2 h-2 bg-gray-400 dark:bg-gray-500 rounded-full animate-bounce" />
-                    <div
-                      className="w-2 h-2 bg-gray-400 dark:bg-gray-500 rounded-full animate-bounce"
-                      style={{ animationDelay: "0.1s" }}
-                    />
-                    <div
-                      className="w-2 h-2 bg-gray-400 dark:bg-gray-500 rounded-full animate-bounce"
-                      style={{ animationDelay: "0.2s" }}
-                    />
+            {isTyping && (
+              <div className="flex justify-start">
+                <div className="bg-gray-100 dark:bg-gray-800 rounded-lg p-2 text-xs font-light">
+                  <div className="flex items-center gap-1">
+                    <div className="flex gap-1">
+                      <div className="w-2 h-2 bg-gray-400 dark:bg-gray-500 rounded-full animate-bounce" />
+                      <div
+                        className="w-2 h-2 bg-gray-400 dark:bg-gray-500 rounded-full animate-bounce"
+                        style={{ animationDelay: "0.1s" }}
+                      />
+                      <div
+                        className="w-2 h-2 bg-gray-400 dark:bg-gray-500 rounded-full animate-bounce"
+                        style={{ animationDelay: "0.2s" }}
+                      />
+                    </div>
+                    <span className="text-gray-500 dark:text-gray-400 text-xs font-light">
+                      Đang trả lời
+                    </span>
                   </div>
-                  <span className="text-gray-500 dark:text-gray-400 text-xs font-light">
-                    Đang trả lời...
-                  </span>
                 </div>
               </div>
-            </div>
+            )}
             <div ref={messagesEndRef} />
           </div>
           <div className="p-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">

@@ -35,8 +35,6 @@ import { formatCurrencyVND } from "@/utils/currency-utils";
 
 const FlightInfo = ({ flightDetails, fare }) => {
   // Debug logging
-  console.log("🔍 FlightInfo received data:", flightDetails);
-  console.log("🔍 FlightInfo fare:", fare);
 
   // Helper to get airport code - aligned with result-section.jsx structure
   const getAirportCode = (airport) => {
@@ -59,12 +57,7 @@ const FlightInfo = ({ flightDetails, fare }) => {
 
   // Debug round-trip structure
   if (isRoundTrip) {
-    console.log("🔍 Round-trip flight structure:", {
-      hasOutbound: !!flightDetails.outbound,
-      hasOutboundFlight: !!flightDetails.outboundFlight,
-      hasReturn: !!flightDetails.return,
-      hasReturnFlight: !!flightDetails.returnFlight,
-    });
+
   }
 
   if (isMultiCity && (flightDetails.legs || flightDetails.multiCity?.legs)) {
@@ -170,10 +163,6 @@ const FlightInfo = ({ flightDetails, fare }) => {
     // Use exact field names from result-section.jsx: outboundFlight & returnFlight
     const outbound = flightDetails.outboundFlight;
     const returnFlight = flightDetails.returnFlight;
-
-    console.log("🔥 Round-trip detected!");
-    console.log("🔥 Outbound data:", outbound);
-    console.log("🔥 Return data:", returnFlight);
 
     return (
       <div className="my-6 sm:my-8 space-y-4">
@@ -530,11 +519,6 @@ function FlightBookingStepper() {
     const storedFlight = localStorage.getItem("selectedFlight");
     const storedFormData = localStorage.getItem(localStorageKey);
 
-    console.log("Loading data from localStorage:", {
-      flight: storedFlight,
-      formData: storedFormData,
-    });
-
     if (storedFormData) {
       try {
         const parsedData = JSON.parse(storedFormData);
@@ -556,16 +540,6 @@ function FlightBookingStepper() {
     ) {
       try {
         const flightData = JSON.parse(storedFlight);
-        console.log("📍 Flight data loaded:", flightData);
-        console.log("📍 Flight type:", flightData.type || flightData.tripType);
-        console.log(
-          "📍 Outbound flight:",
-          flightData.outbound || flightData.outboundFlight
-        );
-        console.log(
-          "📍 Return flight:",
-          flightData.return || flightData.returnFlight
-        );
 
         // Set flight data directly - data from result-section.jsx should be clean
         setFlight(flightData);
@@ -580,12 +554,6 @@ function FlightBookingStepper() {
           // For round-trip, use EXACT field names from result-section.jsx
           const outbound = flightData.outboundFlight;
           const returnFlight = flightData.returnFlight;
-
-          console.log("📍 Round-trip fare extraction:", {
-            outbound: outbound,
-            returnFlight: returnFlight,
-            totalPrice: flightData.totalPrice,
-          });
 
           const combinedFare = {
             id: `${outbound?.id || "outbound"}-${returnFlight?.id || "return"}`,
@@ -763,7 +731,6 @@ function FlightBookingStepper() {
           flight.departureDate
         );
 
-        console.log("Validation result:", { isValid, errors });
         setValidationErrors(errors || {});
 
         if (!isValid) {
@@ -915,7 +882,7 @@ function FlightBookingStepper() {
               onClick={handleNext}
               disabled={currentStep === steps.length}
             >
-              {currentStep === steps.length ? "" : "Tiếp tục →"}
+              {currentStep === steps.length ? "Hoàn tất thanh toán" : "Tiếp tục →"}
             </button>
           </div>
           <AlertDialog

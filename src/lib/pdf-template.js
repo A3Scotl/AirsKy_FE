@@ -46,12 +46,6 @@ class PDFTemplate {
     this.doc.setFont("helvetica", "normal");
     this.fontLoaded = true;
 
-    console.log(
-      `PDF template initialized with Roboto canvas rendering ${
-        robotoLoaded ? "(Roboto available)" : "(fallback to system font)"
-      }`
-    );
-
     return this.doc;
   }
 
@@ -77,7 +71,7 @@ class PDFTemplate {
       }
     } catch (e) {
       // If decoding fails, continue with original text
-      console.log("UTF-8 decode failed, using original text");
+
     }
 
     // STEP 3: Apply minimal, high-impact replacements only for common broken patterns
@@ -291,9 +285,6 @@ class PDFTemplate {
         // If we can measure text properly, fonts are working
         const fontsReady = textWidth > 0;
 
-        console.log(
-          `PDF fonts ready: ${fontsReady}, using font stack: ${fontStack}`
-        );
         return fontsReady;
       }
 

@@ -407,7 +407,7 @@ const CountryPage = () => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex justify-between items-center">
+      <div className="flex justify-between items-center flex-wrap gap-3">
         <div>
           <h1 className="text-2xl font-bold">Quản lý Quốc gia</h1>
           <p className="text-sm text-gray-600 mt-1">

@@ -78,10 +78,6 @@ export default function ResetForm({ setCurrentView }) {
   };
 
   const handleError = (response, defaultMessage) => {
-    console.log("Reset form error response:", response);
-    console.log("Reset form response data:", response.data);
-    console.log("Reset form response error:", response.error);
-    console.log("Reset form response message:", response.message);
 
     // Handle new backend response format
     const fullErrorData = response.data;
@@ -91,8 +87,6 @@ export default function ResetForm({ setCurrentView }) {
       fullErrorData?.error ||
       fullErrorData?.message ||
       errorMessage;
-
-    console.log("Reset form backend error:", backendError);
 
     const message = backendError?.toLowerCase() || "";
 
@@ -144,9 +138,6 @@ export default function ResetForm({ setCurrentView }) {
       const response = await authApi.forgotPasswordRequest({
         email: formData.email,
       });
-      console.log("Reset password request response:", response);
-      console.log("Reset password request success:", response.success);
-      console.log("Reset password request message:", response.message);
 
       if (response.success) {
         toast.success(successMessages.otpSent);
@@ -178,10 +169,6 @@ export default function ResetForm({ setCurrentView }) {
         newPassword: formData.newPassword,
       });
 
-      console.log("Reset password response:", response);
-      console.log("Reset password success:", response.success);
-      console.log("Reset password message:", response.message);
-
       if (response.success) {
         toast.success(successMessages.passwordReset);
         setCurrentView("login");
@@ -202,9 +189,6 @@ export default function ResetForm({ setCurrentView }) {
     setLoading(true);
     try {
       const response = await authApi.resendOtpCode({ email: formData.email });
-      console.log("Resend OTP response:", response);
-      console.log("Resend OTP success:", response.success);
-      console.log("Resend OTP message:", response.message);
 
       if (response.success) {
         toast.success(successMessages.otpResent);

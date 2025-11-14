@@ -41,6 +41,8 @@ const AncillaryServiceForm = ({
     price: 0,
     isActive: true,
     imageUrl: "",
+    maxQuantity: 1,
+    isPerPassenger: true,
   });
 
   const [errors, setErrors] = useState({});
@@ -99,12 +101,15 @@ const AncillaryServiceForm = ({
   useEffect(() => {
     if (service) {
       const initialData = {
-        name: service.name || "",
+        name: service.serviceName || service.name || "",
         description: service.description || "",
         serviceType: service.serviceType || "",
         price: service.price || 0,
         isActive: service.isActive !== undefined ? service.isActive : true,
-        imageUrl: service.imageUrl || "",
+        imageUrl: service.thumbnail || service.imageUrl || "",
+        maxQuantity: service.maxQuantity || 1,
+        isPerPassenger:
+          service.isPerPassenger !== undefined ? service.isPerPassenger : true,
       };
       setFormData(initialData);
       setOriginalData(initialData);
@@ -117,6 +122,8 @@ const AncillaryServiceForm = ({
         price: 0,
         isActive: true,
         imageUrl: "",
+        maxQuantity: 1,
+        isPerPassenger: true,
       };
       setFormData(initialData);
       setOriginalData(initialData);
@@ -166,12 +173,12 @@ const AncillaryServiceForm = ({
       newErrors.serviceType = "Loại dịch vụ là bắt buộc";
     }
 
-    if (formData.price < 0) {
-      newErrors.price = "Giá phải lớn hơn hoặc bằng 0";
+    if (formData.price <= 0) {
+      newErrors.price = "Giá phải lớn hơn 0";
     }
 
-    if (formData.priority < 1 || formData.priority > 5) {
-      newErrors.priority = "Độ ưu tiên phải từ 1 đến 5";
+    if (formData.maxQuantity < 1) {
+      newErrors.maxQuantity = "Số lượng tối đa phải lớn hơn 0";
     }
 
     setErrors(newErrors);
@@ -202,7 +209,7 @@ const AncillaryServiceForm = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto dark:bg-gray-900 dark:text-white">
+      <DialogContent className="max-w-[95vw] sm:max-w-[80vw] md:max-w-lg lg:max-w-xl max-h-[90vh] overflow-y-auto dark:bg-gray-900 dark:text-white">
         <DialogHeader className="dark:bg-gray-900">
           <DialogTitle className="dark:text-white">
             {service ? "Chỉnh sửa dịch vụ" : "Thêm dịch vụ mới"}
@@ -312,6 +319,47 @@ const AncillaryServiceForm = ({
               {errors.price && (
                 <p className="text-sm text-red-500 mt-1">{errors.price}</p>
               )}
+            </div>
+
+            {/* Max Quantity */}
+            <div>
+              <Label htmlFor="maxQuantity" className="dark:text-gray-300">
+                Số lượng tối đa
+              </Label>
+              <Input
+                id="maxQuantity"
+                type="number"
+                min="1"
+                value={formData.maxQuantity}
+                onChange={(e) =>
+                  handleInputChange("maxQuantity", Number(e.target.value))
+                }
+                placeholder="1"
+                disabled={loading}
+                className={`text-black dark:bg-gray-700 dark:border-gray-600 dark:text-white ${
+                  errors.maxQuantity ? "border-red-500" : ""
+                }`}
+              />
+              {errors.maxQuantity && (
+                <p className="text-sm text-red-500 mt-1">
+                  {errors.maxQuantity}
+                </p>
+              )}
+            </div>
+
+            {/* Is Per Passenger */}
+            <div className="flex items-center space-x-2">
+              <Switch
+                id="isPerPassenger"
+                checked={formData.isPerPassenger}
+                onCheckedChange={(checked) =>
+                  handleInputChange("isPerPassenger", checked)
+                }
+                disabled={loading}
+              />
+              <Label htmlFor="isPerPassenger" className="dark:text-gray-300">
+                Theo hành khách
+              </Label>
             </div>
 
             {/* Active Status */}

@@ -355,7 +355,7 @@ const PaymentTable = ({
                   return;
                 }
                 // Handle bulk refund
-                console.log("Bulk refund:", refundablePayments);
+            
                 toast.success(
                   `Đã yêu cầu hoàn tiền ${refundablePayments.length} giao dịch`
                 );

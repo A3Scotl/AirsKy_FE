@@ -136,7 +136,9 @@ const CategoryTable = () => {
           </Button>
         ),
         cell: (info) => (
-          <div className="font-medium text-gray-900 dark:text-white">{info.getValue()}</div>
+          <div className="font-medium text-gray-900 dark:text-white">
+            {info.getValue()}
+          </div>
         ),
       }),
 
@@ -318,7 +320,6 @@ const CategoryTable = () => {
       setRowSelection({});
       toast.success(`Đã xóa ${selectedCategories.length} category thành công!`);
     } catch (error) {
-      
       toast.error("Có lỗi xảy ra khi xóa categories");
     }
   };
@@ -359,7 +360,6 @@ const CategoryTable = () => {
         `Đã ${actionText} ${selectedCategories.length} category thành công!`
       );
     } catch (error) {
-      
       toast.error(`Có lỗi xảy ra khi ${actionText} categories`);
     }
   };
@@ -371,7 +371,6 @@ const CategoryTable = () => {
       await fetchCategories(currentPage, itemsPerPage, searchTerm);
       toast.success("Đã làm mới danh sách category");
     } catch (error) {
-      
       toast.error("Có lỗi xảy ra khi làm mới");
     } finally {
       setRefreshing(false);
@@ -442,7 +441,6 @@ const CategoryTable = () => {
         setCategories([]);
       }
     } catch (err) {
-     
       setError("Có lỗi xảy ra khi tải danh sách category");
       setCategories([]);
     } finally {
@@ -542,7 +540,6 @@ const CategoryTable = () => {
         toast.error(result.message || `Không thể ${actionText} category`);
       }
     } catch (error) {
-    
       toast.error(`Có lỗi xảy ra khi ${actionText} category`);
     }
   };
@@ -566,7 +563,6 @@ const CategoryTable = () => {
         toast.error(result.message || "Không thể xóa category");
       }
     } catch (error) {
-     
       toast.error("Có lỗi xảy ra khi xóa category");
     }
   };
@@ -598,7 +594,6 @@ const CategoryTable = () => {
         toast.error("Không thể tải danh sách bài viết");
       }
     } catch (error) {
- 
       setBlogsForCategory([]);
       toast.error("Có lỗi xảy ra khi tải danh sách bài viết");
     } finally {
@@ -837,7 +832,7 @@ const CategoryTable = () => {
 
       {/* Blogs Modal */}
       <Dialog open={isBlogsModalOpen} onOpenChange={setIsBlogsModalOpen}>
-        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+        <DialogContent className="max-w-[95vw] sm:max-w-[90vw] md:max-w-3xl lg:max-w-4xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
               Bài viết trong category: {selectedCategoryForBlogs?.name}

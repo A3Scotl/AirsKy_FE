@@ -23,7 +23,6 @@ const CheckInSuccess = ({ booking, onNewCheckIn, onDownload, onEmail }) => {
   const [downloadStarted, setDownloadStarted] = useState(false);
 
   // Debug logging to see what data is received
-  console.log("🎉 CheckInSuccess received booking data:", booking);
 
   const handleEmail = async () => {
     try {

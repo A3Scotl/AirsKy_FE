@@ -15,7 +15,7 @@ class WebSocketService {
   connect(userId, token) {
     return new Promise((resolve, reject) => {
       if (this.isConnected) {
-        console.log("WebSocket already connected");
+
         resolve();
         return;
       }
@@ -43,11 +43,11 @@ class WebSocketService {
         },
         debug: (str) => {
           if (import.meta.env.MODE === "development") {
-            console.log("STOMP:", str);
+
           }
         },
         onConnect: (frame) => {
-          console.log("websocket-service.js:61 WebSocket connected");
+
           this.isConnected = true;
           this.reconnectAttempts = 0;
           this.subscribeToNotifications(userId);
@@ -59,7 +59,7 @@ class WebSocketService {
           resolve(frame);
         },
         onDisconnect: (frame) => {
-          console.log("WebSocket disconnected");
+
           this.isConnected = false;
           this.subscriptions.clear();
           window.dispatchEvent(
@@ -94,26 +94,22 @@ class WebSocketService {
     this.subscriptions.clear();
 
     const userQueue = `/user/${userId}/queue/notifications`;
-    console.log(" Subscribing to user queue:", userQueue);
+
     const userSubscription = this.stompClient.subscribe(
       userQueue,
       (message) => {
-        console.log(" Received message on user queue:", userQueue);
-        console.log(" User queue message headers:", message.headers);
-        console.log(" User queue message body:", message.body);
+
         this.handleNotificationMessage(message);
       }
     );
     this.subscriptions.set(userQueue, userSubscription);
 
     const broadcastQueue = "/topic/notifications";
-    console.log(" Subscribing to broadcast queue:", broadcastQueue);
+
     const broadcastSubscription = this.stompClient.subscribe(
       broadcastQueue,
       (message) => {
-        console.log(" Received message on broadcast queue:", broadcastQueue);
-        console.log(" Broadcast queue message headers:", message.headers);
-        console.log(" Broadcast queue message body:", message.body);
+
         this.handleNotificationMessage(message);
       }
     );
@@ -122,11 +118,8 @@ class WebSocketService {
 
   handleNotificationMessage(message) {
     try {
-      console.log(" WebSocket message received:", message);
-      console.log(" Message destination:", message.headers?.destination);
-      console.log(" Message body:", message.body);
+
       const rawNotification = JSON.parse(message.body);
-      console.log(" Raw notification data:", rawNotification);
 
       const notification = {
         notificationId: rawNotification.notificationId || rawNotification.id,
@@ -142,13 +135,10 @@ class WebSocketService {
         userId: rawNotification.userId || this.userId,
       };
 
-      console.log(" Mapped notification:", notification);
-
       window.dispatchEvent(
         new CustomEvent("notificationReceived", { detail: notification })
       );
 
-      console.log(" Notification event dispatched");
     } catch (error) {
       console.error(" Error processing notification:", error);
     }
@@ -168,7 +158,7 @@ class WebSocketService {
           timestamp: new Date().toISOString(),
         }),
       });
-      console.log(" Test message sent to /app/test");
+
       return true;
     } catch (error) {
       console.error(" Failed to send test message:", error);
@@ -228,7 +218,6 @@ class WebSocketService {
         }),
       });
 
-      console.log(" Test notifications sent to both user and broadcast queues");
       return true;
     } catch (error) {
       console.error(" Failed to send test notification:", error);
@@ -239,9 +228,6 @@ class WebSocketService {
   handleReconnect(userId, token) {
     if (this.reconnectAttempts < this.maxReconnectAttempts) {
       this.reconnectAttempts++;
-      console.log(
-        `Attempting to reconnect (${this.reconnectAttempts}/${this.maxReconnectAttempts})...`
-      );
 
       setTimeout(() => {
         this.connect(userId, token).catch(() => {});
@@ -258,7 +244,7 @@ class WebSocketService {
       this.stompClient.deactivate();
       this.isConnected = false;
       this.stompClient = null;
-      console.log("WebSocket disconnected");
+
     }
   }
 }

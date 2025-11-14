@@ -283,7 +283,7 @@ const AdminPaymentPage = () => {
   return (
     <div className="p-6 space-y-6">
       {/* Header Section */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 flex-wrap">
         <div>
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
             Quản lý thanh toán

@@ -260,7 +260,7 @@ const AirportModal = ({ open, onClose, onSubmit, initialData, countries }) => {
       } else if (form.thumbnail) {
         formData.thumbnailUrl = form.thumbnail;
       } else {
-        console.log("[AirportModal] No thumbnail to send");
+
       }
 
       await onSubmit(formData);
@@ -280,7 +280,7 @@ const AirportModal = ({ open, onClose, onSubmit, initialData, countries }) => {
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-3xl mx-auto max-h-[90vh] overflow-y-auto dark:bg-gray-900 dark:text-white">
+      <DialogContent className="max-w-[95vw] sm:max-w-[80vw] md:max-w-2xl lg:max-w-3xl mx-auto max-h-[90vh] overflow-y-auto dark:bg-gray-900 dark:text-white">
         <DialogHeader className="dark:bg-gray-900">
           <DialogTitle className="dark:text-white">
             {initialData ? "Cập nhật sân bay" : "Thêm sân bay"}
@@ -457,16 +457,16 @@ const AirportModal = ({ open, onClose, onSubmit, initialData, countries }) => {
               Đang hoạt động
             </label>
           </div>
-          <DialogFooter className="dark:bg-gray-900">
+          <DialogFooter className="dark:bg-gray-900 flex-col sm:flex-row gap-2">
             <Button
               type="button"
               variant="outline"
               onClick={onClose}
-              className="dark:border-gray-600 dark:hover:bg-gray-700"
+              className="w-full sm:w-auto dark:border-gray-600 dark:hover:bg-gray-700"
             >
               Hủy
             </Button>
-            <Button type="submit">
+            <Button type="submit" className="w-full sm:w-auto">
               {initialData ? "Cập nhật" : "Thêm mới"}
             </Button>
           </DialogFooter>

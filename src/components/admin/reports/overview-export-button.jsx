@@ -697,7 +697,7 @@ const OverviewExportButton = ({
       </Button>
 
       <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-        <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-y-auto dark:bg-gray-900 dark:border-gray-700">
+        <DialogContent className="max-w-[95vw] sm:max-w-[80vw] md:max-w-lg lg:max-w-xl max-h-[80vh] overflow-y-auto dark:bg-gray-900 dark:border-gray-700">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 dark:text-white">
               <Download className="h-5 w-5" /> Xuất Báo Cáo Tổng Quan

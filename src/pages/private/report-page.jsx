@@ -157,10 +157,6 @@ const AdminReportPage = () => {
       const fromDate = new Date();
       fromDate.setDate(today.getDate() - days);
 
-      console.log(
-        `Setting dateRange for ${period}: from ${fromDate.toISOString()} to ${today.toISOString()}`
-      );
-
       setDateRange({
         from: fromDate,
         to: today,
@@ -251,7 +247,7 @@ const AdminReportPage = () => {
 
   // Handle tab change with smooth transition
   const handleTabChange = (newTab) => {
-    console.log(`🔄 Switching to ${newTab} tab`);
+
     setReportType(newTab);
 
     // Optional: Clear cache for other tabs to free memory
@@ -274,27 +270,8 @@ const AdminReportPage = () => {
       : [];
 
   // Debug bookings data path
-  console.log(`📊 Bookings data for ${reportType}:`, {
-    reportsDataBookings: reportsData?.bookings,
-    reportsDataBookingsLength: reportsData?.bookings?.length,
-    rawDataContent: reportsData?.rawData?.content?.length,
-    rawDataDataContent: reportsData?.rawData?.data?.content?.length,
-    finalBookings: bookings.length,
-    finalBookingsType: typeof bookings,
-    fullReportsData: reportsData,
-  });
 
   // Debug bookings data flow
-  console.log("📈 Bookings data debug:", {
-    reportsDataBookings: reportsData?.bookings,
-    reportsDataBookingsType: typeof reportsData?.bookings,
-    rawDataContent: reportsData?.rawData?.data?.content?.length,
-    rawDataDirectContent: reportsData?.rawData?.content?.length,
-    fullReportsData: reportsData,
-    finalBookings: bookings?.length,
-    finalBookingsType: typeof bookings,
-    currentTab: reportType,
-  });
 
   const users = Array.isArray(reportsData?.users) ? reportsData.users : [];
 
@@ -324,13 +301,6 @@ const AdminReportPage = () => {
     const totalUsers = reportsData?.totalUsers || 0;
 
     // Debug log to check data structure
-    console.log("📊 Report data structure:", {
-      type: reportsData?.type,
-      flights: flights.length,
-      bookings: bookings.length,
-      users: users.length,
-      rawData: reportsData,
-    });
 
     // Calculate summary statistics
     const totalRevenue = Array.isArray(bookings)

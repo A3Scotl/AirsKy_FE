@@ -268,12 +268,7 @@ const TableRowItem = memo(({ row, headers, type, onRowClick }) => {
 
         // Debug log for date field
         if (header === "Ngày" && (type === "overview" || type === "revenue")) {
-          console.log(
-            `Debug - Type: ${type}, Header: ${header}, Key: ${key}, Value:`,
-            value,
-            "Row:",
-            row
-          );
+
         }
 
         // Format dữ liệu theo từng loại
@@ -1114,7 +1109,6 @@ const ReportTable = ({
           },
         ];
 
-        console.log("Overview categories:", overviewCategories.slice(0, 2));
         return overviewCategories;
 
       case "revenue":
@@ -1194,7 +1188,6 @@ const ReportTable = ({
             };
           });
 
-        console.log("Revenue data:", revenueResult.slice(0, 3)); // Debug: in 3 dòng đầu
         return revenueResult;
 
       default:
@@ -1528,7 +1521,7 @@ const ReportTable = ({
     };
 
     return (
-      <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+      <DialogContent className="max-w-[95vw] sm:max-w-[80vw] md:max-w-xl lg:max-w-2xl max-h-[80vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Info className="h-5 w-5" />

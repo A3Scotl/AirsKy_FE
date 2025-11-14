@@ -176,7 +176,7 @@ const AirlineModal = ({ open, onClose, onSubmit, initialData }) => {
       } else if (form.thumbnail) {
         formData.thumbnail = form.thumbnail;
       } else {
-        console.log("[AirlineModal] No thumbnail to send");
+
       }
 
       await onSubmit(formData);
@@ -196,7 +196,7 @@ const AirlineModal = ({ open, onClose, onSubmit, initialData }) => {
 
   return (
     <Dialog open={open} onOpenChange={isSubmitting ? undefined : handleClose}>
-      <DialogContent className="max-w-3xl mx-auto max-h-[90vh] overflow-auto dark:bg-gray-900 dark:border-gray-700">
+      <DialogContent className="max-w-[95vw] sm:max-w-[80vw] md:max-w-2xl lg:max-w-3xl mx-auto max-h-[90vh] overflow-auto dark:bg-gray-900 dark:border-gray-700">
         <DialogHeader>
           <DialogTitle className="dark:text-white">
             {initialData ? "Cập nhật hãng bay" : "Thêm hãng bay"}
@@ -207,15 +207,16 @@ const AirlineModal = ({ open, onClose, onSubmit, initialData }) => {
               : "Thêm một hãng bay mới vào hệ thống."}
           </DialogDescription>
         </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <Label
-              htmlFor="airline_code"
-              className="text-sm font-medium dark:text-gray-200"
-            >
-              Mã hãng bay *
-            </Label>
-            <Input
+        <form onSubmit={handleSubmit} className="space-y-4 px-1">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label
+                htmlFor="airline_code"
+                className="text-sm font-medium dark:text-gray-200"
+              >
+                Mã hãng bay *
+              </Label>
+              <Input
               id="airline_code"
               name="airline_code"
               value={form.airline_code}
@@ -228,41 +229,40 @@ const AirlineModal = ({ open, onClose, onSubmit, initialData }) => {
                 errors.airline_code ? "border-red-500 dark:border-red-500" : ""
               }`}
             />
-            {errors.airline_code && (
-              <p className="mt-1 text-sm text-red-600 dark:text-red-400">
-                {errors.airline_code}
-              </p>
-            )}
-          </div>
+              {errors.airline_code && (
+                <p className="mt-1 text-sm text-red-600 dark:text-red-400">
+                  {errors.airline_code}
+                </p>
+              )}
+            </div>
 
-          <div className="space-y-2">
-            <Label
-              htmlFor="airline_name"
-              className="text-sm font-medium dark:text-gray-200"
-            >
-              Tên hãng bay *
-            </Label>
-            <Input
-              id="airline_name"
-              name="airline_name"
-              value={form.airline_name}
-              onChange={handleChange}
-              maxLength={100}
-              required
-              disabled={isSubmitting}
-              placeholder="VD: Vietnam Airlines"
-              className={`text-black dark:text-black dark:bg-white ${
-                errors.airline_name ? "border-red-500 dark:border-red-500" : ""
-              }`}
-            />
-            {errors.airline_name && (
-              <p className="mt-1 text-sm text-red-600 dark:text-red-400">
-                {errors.airline_name}
-              </p>
-            )}
-          </div>
-
-          <div className="space-y-2">
+            <div className="space-y-2">
+              <Label
+                htmlFor="airline_name"
+                className="text-sm font-medium dark:text-gray-200"
+              >
+                Tên hãng bay *
+              </Label>
+                <Input
+                  id="airline_name"
+                  name="airline_name"
+                  value={form.airline_name}
+                  onChange={handleChange}
+                  maxLength={100}
+                  required
+                  disabled={isSubmitting}
+                  placeholder="VD: Vietnam Airlines"
+                  className={`text-black dark:text-black dark:bg-white ${
+                    errors.airline_name ? "border-red-500 dark:border-red-500" : ""
+                  }`}
+                />
+                {errors.airline_name && (
+                  <p className="mt-1 text-sm text-red-600 dark:text-red-400">
+                    {errors.airline_name}
+                  </p>
+                )}
+              </div>
+            </div>          <div className="space-y-2">
             <Label
               htmlFor="contact"
               className="text-sm font-medium dark:text-gray-200"
@@ -316,13 +316,13 @@ const AirlineModal = ({ open, onClose, onSubmit, initialData }) => {
               Đang hoạt động
             </Label>
           </div>
-          <DialogFooter className="dark:bg-gray-900">
+          <DialogFooter className="dark:bg-gray-900 flex-col sm:flex-row gap-2">
             <Button
               type="button"
               variant="outline"
               onClick={handleClose}
               disabled={isSubmitting}
-              className="dark:border-gray-600 dark:hover:bg-gray-700 dark:text-gray-300"
+              className="w-full sm:w-auto dark:border-gray-600 dark:hover:bg-gray-700 dark:text-gray-300"
             >
               Hủy
             </Button>
@@ -333,7 +333,7 @@ const AirlineModal = ({ open, onClose, onSubmit, initialData }) => {
                 (initialData && !hasDataChanged()) ||
                 isSubmitting
               }
-              className={`${
+              className={`w-full sm:w-auto ${
                 !isFormValid() ||
                 (initialData && !hasDataChanged()) ||
                 isSubmitting

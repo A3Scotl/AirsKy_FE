@@ -53,7 +53,7 @@ import { aircraftApi } from "@/apis/aircraft-api";
 import { handleFetch } from "@/utils/fetch-helper.js";
 import { toast } from "sonner";
 import FlightTableSkeleton from "@/components/admin/flights/flight-table-skeleton";
-
+import { DateTimePicker, TimePicker } from "@/components/ui/date-time-picker";
 
 // Utility functions for flight statistics
 const getWeekKey = (date) => {
@@ -102,7 +102,7 @@ const getLastWeekStats = () => {
     const stored = localStorage.getItem("flight_weekly_stats");
     if (!stored) {
       // Không có dữ liệu lưu trữ, trả về null
-      console.log("No stored weekly stats data");
+
       return null;
     }
 
@@ -117,12 +117,12 @@ const getLastWeekStats = () => {
     // Trả về dữ liệu của tuần trước nếu có
     const lastWeekData = weeklyData[lastWeekKey];
     if (lastWeekData) {
-      console.log("Found last week data:", lastWeekData);
+
       return lastWeekData;
     }
 
     // Không có dữ liệu tuần trước
-    console.log("No data for last week:", lastWeekKey);
+
     return null;
   } catch (error) {
     console.error("Error getting last week stats:", error);
@@ -140,7 +140,7 @@ const clearWeeklyStats = () => {
 };
 const AdminFlights = () => {
   const [searchQuery, setSearchQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState("on-time"); // Mặc định lọc chuyến bay "Đúng giờ"
+  const [statusFilter, setStatusFilter] = useState("active"); // Mặc định lọc chuyến bay hoạt động (không bao gồm đã hủy)
   const [aircraftFilter, setAircraftFilter] = useState("all");
   const [showFlightModal, setShowFlightModal] = useState(false);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
@@ -153,6 +153,10 @@ const AdminFlights = () => {
   const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
   const [flightToCancel, setFlightToCancel] = useState(null);
   const [cancellationReason, setCancellationReason] = useState("");
+  const [isDelayModalOpen, setIsDelayModalOpen] = useState(false);
+  const [flightToDelay, setFlightToDelay] = useState(null);
+  const [delayReason, setDelayReason] = useState("");
+  const [selectedDateTime, setSelectedDateTime] = useState(null);
   const storedUser = localStorage.getItem("user");
   const user = storedUser ? JSON.parse(storedUser) : null;
 
@@ -443,6 +447,62 @@ const AdminFlights = () => {
     }
   };
 
+  const openDelayModal = (flight) => {
+    setFlightToDelay(flight);
+    setIsDelayModalOpen(true);
+    setDelayReason(""); // Reset lý do mỗi khi mở modal
+    // Set thời gian mặc định là 1 giờ sau thời gian khởi hành hiện tại
+    const currentDepartureTime = new Date(flight.departureTime);
+    const defaultTime = new Date(
+      currentDepartureTime.getTime() + 60 * 60 * 1000
+    ); // +1 giờ
+    setSelectedDateTime(defaultTime);
+  };
+
+  const handleConfirmDelay = async () => {
+    if (!flightToDelay) return;
+    if (!delayReason.trim()) {
+      toast.error("Vui lòng nhập lý do delay chuyến bay.");
+      return;
+    }
+    if (!selectedDateTime) {
+      toast.error("Vui lòng chọn thời gian khởi hành mới.");
+      return;
+    }
+    // Validation: thời gian delay phải sau thời gian khởi hành hiện tại của chuyến bay
+    const currentDepartureTime = new Date(flightToDelay.departureTime);
+
+    if (selectedDateTime <= currentDepartureTime) {
+      toast.error(
+        "Thời gian khởi hành mới phải sau thời gian khởi hành hiện tại của chuyến bay."
+      );
+      return;
+    }
+
+    try {
+      const result = await flightApi.delayFlight(flightToDelay.flightId, {
+        reason: delayReason,
+        newDepartureTime: selectedDateTime
+          .toLocaleString("sv-SE", { timeZone: "Asia/Ho_Chi_Minh" })
+          .replace(" ", "T"),
+      });
+      if (result.success) {
+        toast.success("Delay chuyến bay thành công!");
+        handleRefresh(); // Tải lại dữ liệu để cập nhật trạng thái
+      }
+    } catch (error) {
+      console.error("Delay flight error:", error);
+      toast.error(
+        `Lỗi khi delay chuyến bay: ${
+          error.response?.data?.error || error.message
+        }`
+      );
+    } finally {
+      setIsDelayModalOpen(false);
+      setFlightToDelay(null);
+    }
+  };
+
   const handleAddFlight = () => {
     setSelectedFlight(null);
     setModalMode("add");
@@ -577,7 +637,7 @@ const AdminFlights = () => {
   return (
     <div className="space-y-6">
       {/* Page Header */}
-      <div className="flex justify-between items-center">
+      <div className="flex justify-between flex-wrap gap-3 items-center">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
             Quản lý chuyến bay
@@ -605,8 +665,6 @@ const AdminFlights = () => {
           >
             Clear Stats
           </Button> */}
-
-
 
           {/* Chỉ hiển thị khi role là BUSINESS */}
           {user?.role !== "ADMIN" && (
@@ -704,6 +762,7 @@ const AdminFlights = () => {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">Tất cả</SelectItem>
+                    <SelectItem value="active">Chuyến bay hoạt động</SelectItem>
                     <SelectItem value="on-time">Đúng giờ</SelectItem>
                     <SelectItem value="departed">Đã khởi hành</SelectItem>
                     <SelectItem value="delayed">Trễ</SelectItem>
@@ -742,6 +801,7 @@ const AdminFlights = () => {
                   aircraftFilter={aircraftFilter}
                   onViewFlight={handleViewFlight}
                   onEditFlight={handleEditFlight}
+                  onDelayFlight={openDelayModal}
                   onDeleteFlight={openCancelModal}
                 />
               )}
@@ -798,12 +858,193 @@ const AdminFlights = () => {
               value={cancellationReason}
               onChange={(e) => setCancellationReason(e.target.value)}
               placeholder="Ví dụ: Lý do kỹ thuật, thời tiết xấu..."
+              className="dark:text-black"
             />
           </div>
           <AlertDialogFooter>
             <AlertDialogCancel>Hủy bỏ</AlertDialogCancel>
             <AlertDialogAction onClick={handleConfirmCancel}>
               Xác nhận
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Delay Flight Modal */}
+      <AlertDialog open={isDelayModalOpen} onOpenChange={setIsDelayModalOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delay chuyến bay</AlertDialogTitle>
+            <AlertDialogDescription>
+              Delay chuyến bay <strong>{flightToDelay?.flightNumber}</strong>.
+              Thời gian khởi hành hiện tại:{" "}
+              <strong>
+                {flightToDelay?.departureTime
+                  ? new Date(flightToDelay.departureTime).toLocaleString(
+                      "vi-VN"
+                    )
+                  : "N/A"}
+              </strong>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <label htmlFor="delayReason" className="font-medium">
+                Lý do delay (bắt buộc)
+              </label>
+              <Input
+                id="delayReason"
+                value={delayReason}
+                onChange={(e) => setDelayReason(e.target.value)}
+                placeholder="Ví dụ: Thời tiết xấu, lý do kỹ thuật..."
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="font-medium">
+                Thời gian khởi hành mới (bắt buộc)
+              </label>
+              <div className="grid grid-cols-2 gap-2">
+                <DateTimePicker
+                  date={selectedDateTime}
+                  onDateChange={(date) => {
+                    if (date) {
+                      // Kiểm tra ngày không được trước ngày khởi hành hiện tại
+                      const currentDepartureTime = new Date(
+                        flightToDelay?.departureTime
+                      );
+                      const currentDepartureDate = new Date(
+                        currentDepartureTime
+                      );
+                      currentDepartureDate.setHours(0, 0, 0, 0); // Reset time để so sánh chỉ ngày
+                      const selectedDate = new Date(date);
+                      selectedDate.setHours(0, 0, 0, 0);
+
+                      if (selectedDate < currentDepartureDate) {
+                        toast.error(
+                          "Không thể chọn ngày trước ngày khởi hành hiện tại của chuyến bay."
+                        );
+                        return;
+                      }
+
+                      // Tính thời gian tối thiểu cho phép (sau thời gian khởi hành hiện tại ít nhất 30 phút)
+                      const minTime = new Date(
+                        currentDepartureTime.getTime() + 30 * 60 * 1000
+                      ); // +30 phút
+
+                      let defaultTime = "00:00";
+                      if (
+                        date.toDateString() ===
+                        currentDepartureTime.toDateString()
+                      ) {
+                        // Nếu chọn cùng ngày khởi hành, set time mặc định là sau minTime
+                        defaultTime = minTime.toTimeString().slice(0, 5);
+                      }
+
+                      const currentTime = selectedDateTime
+                        ? selectedDateTime.toTimeString().slice(0, 5)
+                        : defaultTime;
+                      const [hours, minutes] = currentTime.split(":");
+                      const newDateTime = new Date(date);
+                      newDateTime.setHours(parseInt(hours), parseInt(minutes));
+
+                      // Nếu thời gian mới nhỏ hơn minTime, set thành minTime
+                      if (newDateTime < minTime) {
+                        newDateTime.setTime(minTime.getTime());
+                      }
+
+                      setSelectedDateTime(newDateTime);
+                    } else {
+                      setSelectedDateTime(null);
+                    }
+                  }}
+                  placeholder="Chọn ngày"
+                  minDate={
+                    flightToDelay
+                      ? new Date(flightToDelay.departureTime)
+                      : new Date()
+                  }
+                />
+                <TimePicker
+                  value={
+                    selectedDateTime
+                      ? selectedDateTime.toTimeString().slice(0, 5)
+                      : ""
+                  }
+                  onChange={(timeValue) => {
+                    if (selectedDateTime && timeValue) {
+                      const [hours, minutes] = timeValue.split(":");
+                      const newDateTime = new Date(selectedDateTime);
+                      newDateTime.setHours(parseInt(hours), parseInt(minutes));
+
+                      // Validation: thời gian phải sau thời gian khởi hành hiện tại ít nhất 30 phút
+                      const currentDepartureTime = new Date(
+                        flightToDelay?.departureTime
+                      );
+                      const minTime = new Date(
+                        currentDepartureTime.getTime() + 30 * 60 * 1000
+                      );
+
+                      if (newDateTime < minTime) {
+                        toast.error(
+                          "Thời gian delay phải ít nhất 30 phút sau thời gian khởi hành hiện tại."
+                        );
+                        // Reset về thời gian hợp lệ
+                        setSelectedDateTime(minTime);
+                        return;
+                      }
+
+                      setSelectedDateTime(newDateTime);
+                    } else if (timeValue) {
+                      // Nếu chỉ có time, tạo date từ ngày khởi hành hiện tại + 1 ngày
+                      const currentDepartureTime = new Date(
+                        flightToDelay?.departureTime
+                      );
+                      const nextDay = new Date(currentDepartureTime);
+                      nextDay.setDate(nextDay.getDate() + 1);
+                      const [hours, minutes] = timeValue.split(":");
+                      nextDay.setHours(parseInt(hours), parseInt(minutes));
+
+                      setSelectedDateTime(nextDay);
+                    }
+                  }}
+                  placeholder="Chọn giờ"
+                />
+              </div>
+              {selectedDateTime && (
+                <div className="text-sm">
+                  <p className="text-gray-600">
+                    Thời gian đã chọn:{" "}
+                    {selectedDateTime.toLocaleString("vi-VN")}
+                  </p>
+                  {(() => {
+                    const currentDepartureTime = new Date(
+                      flightToDelay?.departureTime
+                    );
+                    const diffMinutes = Math.floor(
+                      (selectedDateTime - currentDepartureTime) / (1000 * 60)
+                    );
+                    if (diffMinutes < 30) {
+                      return (
+                        <p className="text-red-600">
+                          ⚠️ Thời gian delay phải ít nhất 30 phút
+                        </p>
+                      );
+                    } else {
+                      return (
+                        <p className="text-green-600">
+                          ✅ Delay {diffMinutes} phút
+                        </p>
+                      );
+                    }
+                  })()}
+                </div>
+              )}
+            </div>
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Hủy bỏ</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmDelay}>
+              Xác nhận Delay
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

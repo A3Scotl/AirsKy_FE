@@ -10,6 +10,8 @@ import {
   Save,
   Edit,
   AlertTriangle,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -65,7 +67,7 @@ const TEXT = {
   gate: "Cổng",
   terminal: "Nhà Ga",
   checkInCounter: "Quầy Check-in",
-  pricingInfo: "Thông Tin Giá Vé",
+  flightStatus: "Trạng Thái Chuyến Bay",
   flightType: "Loại Chuyến Bay",
   requiredField: "Trường này là bắt buộc",
   arrivalAfterDeparture: "Thời gian đến phải sau thời gian khởi hành",
@@ -90,6 +92,7 @@ const TEXT = {
   selectDepartureAirport: "Sân Bay Đi",
   selectArrivalAirport: "Sân Bay Đến",
   delayReason: "Lý Do Hoãn Bay",
+  cancelReason: "Lý Do Hủy Bay",
   remarks: "Ghi Chú",
   baggage: "Hành Lý",
   mealService: "Dịch Vụ Ăn Uống",
@@ -146,6 +149,7 @@ const FlightFormModal = ({
     mealService: "",
     entertainment: "",
     wifiAvailable: false,
+    cancelReason: "",
     delayReason: "",
     remarks: "",
   };
@@ -161,6 +165,7 @@ const FlightFormModal = ({
 
   const [showConflictModal, setShowConflictModal] = useState(false);
   const [isWithin24Hours, setIsWithin24Hours] = useState(false);
+  const [isSeatLayoutExpanded, setIsSeatLayoutExpanded] = useState(true);
 
   // Calculate minimum date and time constraints
   const today = new Date();
@@ -276,13 +281,16 @@ const FlightFormModal = ({
         basePrice: flight.basePrice || "",
         type: flight.type || "",
         status: flight.status || "ON_TIME",
-        businessId: String(flight.business?.id || flight.businessId || ""),
+        businessId: String(
+          flight.business?.id || flight.businessId || flight.businessName || ""
+        ),
         terminal: flight.terminal || "",
         checkInCounter: flight.checkInCounter || "",
         baggage: flight.baggage || "",
         mealService: flight.mealService || "",
         entertainment: flight.entertainment || "",
         wifiAvailable: flight.wifiAvailable || false,
+        cancelReason: flight.cancelReason || "",
         delayReason: flight.delayReason || "",
         remarks: flight.remarks || "",
       });
@@ -571,13 +579,14 @@ const FlightFormModal = ({
         businessId: formData.businessId ? parseInt(formData.businessId) : null,
         tripType: formData.tripType,
         basePrice: finalBasePrice,
-        // Removed unsupported fields: terminal, checkInCounter, baggage, mealService, entertainment, wifiAvailable, delayReason, remarks
+        terminal: formData.terminal,
+        cancelReason: formData.cancelReason,
+        delayReason: formData.delayReason,
+        remarks: formData.remarks,
         ...(isEditMode && { flightId: flight.flightId }),
       };
 
       // Log dữ liệu được gửi để debug
-      console.log("🚀 Flight data being sent to backend:", processedData);
-      console.log("📝 Form data:", formData);
 
       const result = await onSave(processedData, isEditMode);
       toast.dismiss(loadingToast);
@@ -843,7 +852,7 @@ const FlightFormModal = ({
               {isEditMode && (
                 <div>
                   <Label className="dark:text-gray-300">
-                    {TEXT.flightStatus}
+                    {TEXT.flightStatus || "Trạng Thái"}
                   </Label>
                   <Select
                     value={formData.status}
@@ -1114,7 +1123,7 @@ const FlightFormModal = ({
                     />
                   </div>
 
-                  {formData.status === "DELAYED" && (
+                  {isEditMode && (
                     <div className="col-span-3">
                       <Label>{TEXT.delayReason}</Label>
                       <Input
@@ -1122,10 +1131,26 @@ const FlightFormModal = ({
                         onChange={(e) =>
                           handleInputChange("delayReason", e.target.value)
                         }
-                        disabled={loading}
+                        disabled={loading || formData.status !== "DELAYED"}
+                        placeholder="Nhập lý do hoãn bay"
                       />
                     </div>
                   )}
+
+                  {isEditMode && (
+                    <div className="col-span-3">
+                      <Label>{TEXT.cancelReason}</Label>
+                      <Input
+                        value={formData.cancelReason}
+                        onChange={(e) =>
+                          handleInputChange("cancelReason", e.target.value)
+                        }
+                        disabled={loading || formData.status !== "CANCELLED"}
+                        placeholder="Nhập lý do hủy bay"
+                      />
+                    </div>
+                  )}
+
                   <div className="col-span-3">
                     <Label>{TEXT.remarks}</Label>
                     <Input
@@ -1134,6 +1159,7 @@ const FlightFormModal = ({
                         handleInputChange("remarks", e.target.value)
                       }
                       disabled={loading}
+                      placeholder="Nhập ghi chú"
                     />
                   </div>
                 </>
@@ -1267,52 +1293,72 @@ const FlightFormModal = ({
           {seatLayout && selectedAircraft && (
             <Card>
               <CardHeader>
-                <CardTitle className="text-base flex items-center">
-                  <Users className="h-4 w-4 mr-2" />
-                  Bố trí ghế - {selectedAircraft.aircraftName}
-                </CardTitle>
-                <CardDescription className="text-xs">
-                  Tổng: {selectedAircraft.totalSeats} | Đã đặt:{" "}
-                  {flight?.bookedSeats?.length || 0}
-                </CardDescription>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="text-base flex items-center">
+                      <Users className="h-4 w-4 mr-2" />
+                      Bố trí ghế - {selectedAircraft.aircraftName}
+                    </CardTitle>
+                    <CardDescription className="text-xs">
+                      Tổng: {selectedAircraft.totalSeats} | Đã đặt:{" "}
+                      {flight?.bookedSeats?.length || 0}
+                    </CardDescription>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() =>
+                      setIsSeatLayoutExpanded(!isSeatLayoutExpanded)
+                    }
+                    className="h-8 w-8 p-0 dark:text-gray-300 dark:hover:bg-gray-800"
+                  >
+                    {isSeatLayoutExpanded ? (
+                      <ChevronUp className="h-4 w-4" />
+                    ) : (
+                      <ChevronDown className="h-4 w-4" />
+                    )}
+                  </Button>
+                </div>
               </CardHeader>
-              <CardContent className="overflow-x-auto">
-                <div className="min-w-max">
-                  {seatLayout.map((row, rIdx) => (
-                    <div key={rIdx} className="flex mb-1">
-                      <span className="w-6 text-xs mr-2">{rIdx + 1}</span>
-                      {row.map((seat, sIdx) => (
-                        <div
-                          key={sIdx}
-                          className={`w-6 h-6 mx-1 text-[8px] flex items-center justify-center rounded border ${
-                            seat.type === "aisle"
-                              ? "bg-gray-200 border-gray-300"
-                              : seat.booked
-                              ? "bg-red-100 border-red-400"
-                              : "bg-green-100 border-green-400"
-                          }`}
-                        >
-                          {seat.id}
-                        </div>
-                      ))}
+              {isSeatLayoutExpanded && (
+                <CardContent className="overflow-x-auto">
+                  <div className="min-w-max">
+                    {seatLayout.map((row, rIdx) => (
+                      <div key={rIdx} className="flex mb-1">
+                        <span className="w-6 text-xs mr-2">{rIdx + 1}</span>
+                        {row.map((seat, sIdx) => (
+                          <div
+                            key={sIdx}
+                            className={`w-6 h-6 mx-1 text-[8px] flex items-center justify-center rounded border ${
+                              seat.type === "aisle"
+                                ? "bg-gray-200 border-gray-300"
+                                : seat.booked
+                                ? "bg-red-100 border-red-400"
+                                : "bg-green-100 border-green-400"
+                            }`}
+                          >
+                            {seat.id}
+                          </div>
+                        ))}
+                      </div>
+                    ))}
+                  </div>
+                  <div className="mt-2 flex space-x-4 text-xs">
+                    <div className="flex items-center">
+                      <div className="w-3 h-3 bg-green-100 border border-green-400 mr-1"></div>
+                      Còn trống
                     </div>
-                  ))}
-                </div>
-                <div className="mt-2 flex space-x-4 text-xs">
-                  <div className="flex items-center">
-                    <div className="w-3 h-3 bg-green-100 border border-green-400 mr-1"></div>
-                    Còn trống
+                    <div className="flex items-center">
+                      <div className="w-3 h-3 bg-red-100 border border-red-400 mr-1"></div>
+                      Đã đặt
+                    </div>
+                    <div className="flex items-center">
+                      <div className="w-3 h-3 bg-gray-200 border border-gray-300 mr-1"></div>
+                      Lối đi
+                    </div>
                   </div>
-                  <div className="flex items-center">
-                    <div className="w-3 h-3 bg-red-100 border border-red-400 mr-1"></div>
-                    Đã đặt
-                  </div>
-                  <div className="flex items-center">
-                    <div className="w-3 h-3 bg-gray-200 border border-gray-300 mr-1"></div>
-                    Lối đi
-                  </div>
-                </div>
-              </CardContent>
+                </CardContent>
+              )}
             </Card>
           )}
 

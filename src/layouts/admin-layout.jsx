@@ -13,12 +13,12 @@ const AdminLayout = () => {
       <AdminSidebar sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
 
       {/* Main Content */}
-      <div className=" h-[100vh] flex-1 flex flex-col overflow-hidden">
+      <div className=" min-h-screen flex-1 flex flex-col overflow-hidden">
         {/* Header */}
         <AdminHeader setSidebarOpen={setSidebarOpen} />
 
         {/* Main Content Area */}
-        <main className="flex-1 relative  overflow-y-auto focus:outline-none">
+        <main className="flex-1 relative overflow-y-auto focus:outline-none">
           <div className="py-6">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8">
               <Outlet />

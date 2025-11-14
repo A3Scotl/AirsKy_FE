@@ -81,7 +81,6 @@ const MyBlogsTab = () => {
         setSavedTotal(savedRes.data?.totalElements || 0);
       }
 
-      console.log("Blogs data refreshed");
     } catch (error) {
       console.error("Error refreshing blogs data:", error);
     } finally {

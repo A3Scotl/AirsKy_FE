@@ -557,7 +557,7 @@ const ReviewPage = () => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex justify-between items-center">
+      <div className="flex justify-between flex-wrap gap-3 items-center">
         <div>
           <h1 className="text-2xl font-bold">Quản lý Đánh giá</h1>
           <p className="text-sm text-gray-600 mt-1">

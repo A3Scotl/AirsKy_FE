@@ -65,12 +65,6 @@ const CheckInCompletion = ({
       !isAlreadyCheckedIn &&
       currentPassenger // Always allow auto check-in if passenger exists
     ) {
-      console.log("🔄 Auto check-in attempt from payment success", {
-        selectedSeat,
-        selectedServices,
-        bookingCode: booking.bookingCode,
-        passenger: currentPassenger?.fullName,
-      });
 
       performAutoCheckIn();
     }
@@ -133,7 +127,6 @@ const CheckInCompletion = ({
       }
 
       // Note: Seat selection is optional for check-in
-      console.log("🎯 Resolved seat ID for auto check-in:", newSeatId);
 
       const checkinData = {
         bookingCode: booking.bookingCode,
@@ -145,44 +138,10 @@ const CheckInCompletion = ({
         })),
       };
 
-      console.log("� [AUTO CHECK-IN] Form data gửi về backend:", {
-        checkinData,
-        bookingInfo: {
-          bookingCode: booking.bookingCode,
-          status: booking.status,
-          paymentStatus: booking.paymentStatus,
-          hasCheckedInSegments: booking?.flightSegments?.some(
-            (segment) => segment.checkinStatus === "COMPLETED"
-          ),
-          selectedSegment: selectedSegment,
-          flightSegments: booking.flightSegments?.map((s) => ({
-            segmentOrder: s.segmentOrder,
-            checkinStatus: s.checkinStatus,
-            flightNumber: s.flightNumber,
-          })),
-        },
-        passengerInfo: {
-          passengerId: selectedPassenger.passengerId,
-          fullName: selectedPassenger.fullName,
-          seatNumber: selectedPassenger.seatNumber,
-        },
-        servicesInfo: {
-          selectedServices: selectedServices,
-          servicesToAdd: checkinData.servicesToAdd,
-        },
-      });
-
       const response = await bookingApi.processCheckin(checkinData);
 
-      console.log("📥 [AUTO CHECK-IN] Response từ backend:", {
-        success: response.success,
-        data: response.data,
-        message: response.message,
-        fullResponse: response,
-      });
-
       if (response.success && response.data) {
-        console.log("✅ Auto check-in successful:", response.data);
+
         toast.success("Check-in hoàn tất thành công!");
 
         // Small delay to ensure backend updates are processed
@@ -205,7 +164,7 @@ const CheckInCompletion = ({
   // Track original total when component mounts (before any updates)
   useEffect(() => {
     if (booking?.totalAmount && !originalTotal) {
-      console.log("💰 Tracking original total:", booking.totalAmount);
+
       setOriginalTotal(booking.totalAmount);
     }
   }, [booking?.totalAmount, originalTotal]);
@@ -213,10 +172,7 @@ const CheckInCompletion = ({
   // Detect if total has been updated (when user comes to payment page with additional cost)
   useEffect(() => {
     if (additionalCost > 0 && !hasTotalBeenUpdated && originalTotal) {
-      console.log(
-        "💸 Total has been updated - additional cost:",
-        additionalCost
-      );
+
       setHasTotalBeenUpdated(true);
     }
   }, [additionalCost, hasTotalBeenUpdated, originalTotal]);
@@ -224,23 +180,11 @@ const CheckInCompletion = ({
   // Function to revert total amount if user goes back without payment
   const revertTotalAmount = async () => {
     if (!hasTotalBeenUpdated || !originalTotal || !booking?.id) {
-      console.log(
-        "ℹ️ No need to revert total - not updated or no original total",
-        {
-          hasTotalBeenUpdated,
-          originalTotal,
-          bookingId: booking?.id,
-        }
-      );
+
       return;
     }
 
     try {
-      console.log("🔄 Reverting total amount:", {
-        from: booking?.totalAmount,
-        to: originalTotal,
-        bookingId: booking.id,
-      });
 
       const revertData = {
         totalAmount: originalTotal,
@@ -253,7 +197,7 @@ const CheckInCompletion = ({
       );
 
       if (response.success) {
-        console.log("✅ Total amount reverted successfully");
+
         toast.success("Đã hoàn lại số tiền ban đầu");
         setHasTotalBeenUpdated(false);
       } else {
@@ -268,7 +212,6 @@ const CheckInCompletion = ({
 
   // Handle back button with total revert
   const handleBackWithRevert = async () => {
-    console.log("⬅️ User going back from payment page");
 
     // Revert total if it was updated
     await revertTotalAmount();
@@ -361,8 +304,6 @@ const CheckInCompletion = ({
         paymentMethod: paymentMethod,
       };
 
-      console.log("💳 Step 2: Creating payment with data:", paymentData);
-
       const response = await paymentApi.createPayment(paymentData);
 
       if (response.success && response.data) {
@@ -387,8 +328,6 @@ const CheckInCompletion = ({
               JSON.stringify(checkinPaymentInfo)
             ); // backup for button
 
-            console.log("💾 Stored checkin payment info:", checkinPaymentInfo);
-
             // Redirect to PayPal
             window.location.href = checkoutUrl;
           } else {
@@ -411,11 +350,6 @@ const CheckInCompletion = ({
             localStorage.setItem(
               "checkin_payment_info_backup",
               JSON.stringify(checkinPaymentInfo)
-            );
-
-            console.log(
-              "💾 Stored checkin payment info for QR:",
-              checkinPaymentInfo
             );
 
             // Redirect to QR payment page with check-in flag
@@ -947,7 +881,6 @@ const CheckInCompletion = ({
               //     </div>
               //   </div>
 
-            
               //   <div
               //     className={`mt-6 pt-4 border-t ${
               //       isAlreadyCheckedIn ? "border-green-400" : "border-blue-400"

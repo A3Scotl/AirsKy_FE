@@ -155,7 +155,7 @@ const AdminSidebar = ({ sidebarOpen, setSidebarOpen }) => {
       {/* Sidebar */}
       <div
         className={`
-          fixed inset-y-0 left-0 z-50 w-64 h-[100vh] shadow-lg transform transition-transform duration-300 ease-in-out
+          fixed inset-y-0 left-0 z-50 w-64 min-h-screen shadow-lg transform transition-transform duration-300 ease-in-out
           lg:translate-x-0 lg:static lg:inset-0
           ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}
           ${isDark ? "bg-gray-800" : "bg-white"}
@@ -169,7 +169,9 @@ const AdminSidebar = ({ sidebarOpen, setSidebarOpen }) => {
               src="https://res.cloudinary.com/dzwjgfd7t/image_upload/v1755141382/flight%20booking/main_logo-removebg_xyofym.png"
               alt="AirsSky"
             /> */}
-            <span className="ml-2 text-xl font-bold text-black dark:text-white">AirSky</span>
+            <span className="ml-2 text-xl font-bold text-black dark:text-white">
+              AirSky
+            </span>
           </div>
           <div className="flex items-center space-x-2">
             <Button

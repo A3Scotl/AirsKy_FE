@@ -61,7 +61,7 @@ const BlogDetailPage = () => {
   const [isSaving, setIsSaving] = useState(false);
   const { user, loading: authLoading } = useAuth();
   const isAuthenticated = !!(user && user.id);
-  console.log("Auth status:", { user, isAuthenticated, authLoading });
+
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   // Related blogs
@@ -78,7 +78,7 @@ const BlogDetailPage = () => {
     setIsLiking(true);
     try {
       const result = await blogLikeApi.toggleLike(post.blogId);
-      console.log("toggleLike result:", result);
+
       if (result.success) {
         setIsLiked(result.isLiked);
         setLikeCount((prev) =>
@@ -356,11 +356,11 @@ const BlogDetailPage = () => {
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Article Meta & Share */}
-        <div className="flex justify-between items-center mb-8 p-6 rounded-xl shadow-sm ">
-          <div className="">
-            <nav className="text-sm text-gray-500 flex items-center gap-2 max-w-6xl mx-auto">
+        <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4 mb-8 p-4 md:p-6 rounded-xl shadow-sm">
+          <div className="w-full">
+            <nav className="text-sm text-gray-500 flex items-center gap-2 flex-wrap">
               <Link
                 to="/blog"
                 className="hover:underline text-blue-600 font-medium"
@@ -376,13 +376,13 @@ const BlogDetailPage = () => {
                   : "Chưa phân loại"}
               </span>
               <span className="mx-1">/</span>
-              <span className="text-gray-700 font-semibold">
+              <span className="text-gray-700 font-semibold truncate" title={post?.title || slug}>
                 {post?.title || slug}
               </span>
             </nav>
           </div>
-          <div>
-            <div className="flex items-center space-x-2">
+          <div className="w-full md:w-auto">
+            <div className="flex items-center space-x-2 justify-start md:justify-end">
               <div className="flex items-center space-x-4">
                 <Button
                   variant={isLiked ? "default" : "outline"}
@@ -507,7 +507,7 @@ const BlogDetailPage = () => {
         </div>
 
         {/* Related Blogs Section dưới cùng */}
-        <div className="max-w-7xl mx-auto mt-10 mb-14">
+        <div className="max-w-7xl mx-auto mt-10 mb-14 px-4 sm:px-6 lg:px-8">
           <h2 className="text-2xl font-bold mb-6 text-gray-800">
             Bài viết liên quan
           </h2>
@@ -534,7 +534,7 @@ const BlogDetailPage = () => {
               autoplay={{ delay: 5000 }}
               breakpoints={{
                 640: { slidesPerView: 2 },
-                1024: { slidesPerView: 4 },
+                1024: { slidesPerView: 3 },
               }}
               className="related-blogs-swiper"
             >

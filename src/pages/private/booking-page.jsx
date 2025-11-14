@@ -187,12 +187,7 @@ const AdminBookings = () => {
 
                   page++;
                 } else {
-                  console.log(
-                    "API call failed for page",
-                    page,
-                    ":",
-                    response?.message || "Unknown error"
-                  );
+
                   hasMore = false;
                 }
               } catch (pageError) {
@@ -244,12 +239,7 @@ const AdminBookings = () => {
               typeof booking.passengers !== "number" &&
               !Array.isArray(booking.passengers)
             ) {
-              console.log(
-                "Invalid passengers data:",
-                booking.passengers,
-                "type:",
-                typeof booking.passengers
-              );
+
             }
 
             return {
@@ -487,7 +477,7 @@ const AdminBookings = () => {
   return (
     <div className="space-y-6">
       {/* Page Header */}
-      <div className="flex justify-between items-center">
+      <div className="flex justify-between flex-wrap gap-3 items-center">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
             {TEXT.pageTitle}

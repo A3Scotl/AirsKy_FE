@@ -1,7 +1,6 @@
 import axiosInstance from "./axios-instance";
 import { toast } from "sonner";
 
-
 /**
  * Hàm dùng chung để gọi API
  * @param {'get' | 'post' | 'put' | 'delete' | 'patch'} method - HTTP method
@@ -26,11 +25,9 @@ export const apiHandler = async (method, url, data = null, config = {}) => {
 
       for (let [key, value] of data.entries()) {
         if (value instanceof File) {
-          console.log(
-            `  ${key}: File(${value.name}, ${value.size} bytes, ${value.type})`
-          );
+
         } else {
-          console.log(`  ${key}: ${value}`);
+
         }
       }
     }
@@ -57,15 +54,9 @@ export const apiHandler = async (method, url, data = null, config = {}) => {
       `[apiHandler] API call failed: ${method.toUpperCase()} ${url}`,
       error
     );
-    console.log("Error response:", error?.response);
-    console.log("Error response data:", error?.response?.data);
 
     // Handle error from axios interceptor (custom error object) - check this first
     if (error && typeof error === "object" && error.success === false) {
-      console.log("Handling axios interceptor error:", error);
-      console.log("Interceptor error data:", error.data);
-      console.log("Interceptor error message:", error.message);
-      console.log("Interceptor error field:", error.error);
 
       return {
         success: false,
@@ -82,7 +73,7 @@ export const apiHandler = async (method, url, data = null, config = {}) => {
       !error.response &&
       !("success" in error)
     ) {
-      console.log("Handling network/other error:", error);
+
       return {
         success: false,
         data: null,
@@ -96,10 +87,6 @@ export const apiHandler = async (method, url, data = null, config = {}) => {
     const message =
       errorData?.message || error?.message || "Lỗi không xác định";
     const errorDetail = errorData?.error || errorData?.message;
-
-    console.log("Final error data:", errorData);
-    console.log("Final message:", message);
-    console.log("Final error detail:", errorDetail);
 
     // Xử lý thông báo riêng cho tài khoản bị khóa
     if (errorDetail === "Account is deactivated") {

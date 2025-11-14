@@ -65,7 +65,6 @@ const CountryModal = ({ open, onClose, onSubmit, initialData }) => {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-   
 
     const formData = {
       countryCode: form.country_code,
@@ -77,66 +76,63 @@ const CountryModal = ({ open, onClose, onSubmit, initialData }) => {
     if (initialData) {
       // Update mode
       if (form.thumbnailFile instanceof File) {
-        
         formData.thumbnailFile = form.thumbnailFile;
       } else if (form.thumbnail && form.thumbnail !== initialData.thumbnail) {
-     
         formData.thumbnail = form.thumbnail;
       } else if (initialData.thumbnail) {
-       
         formData.existingThumbnail = initialData.thumbnail;
       }
     } else {
       // Create mode
       if (form.thumbnailFile instanceof File) {
-        
         formData.thumbnailFile = form.thumbnailFile;
       } else if (form.thumbnail) {
         formData.thumbnail = form.thumbnail;
       } else {
-        console.log("[CountryModal] Create - No thumbnail");
+
       }
     }
 
-  
     onSubmit(formData);
   };
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-[95vw] sm:max-w-[80vw] md:max-w-2xl lg:max-w-3xl mx-auto max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
             {initialData ? "Cập nhật quốc gia" : "Thêm quốc gia"}
           </DialogTitle>
         </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium ">Mã quốc gia</label>
-            <Input
-              label="Mã quốc gia"
-              name="country_code"
-              value={form.country_code}
-              onChange={handleChange}
-              maxLength={3}
-              required
-              placeholder="VD: VN"
-              className="dark:text-black"
-            />
-          </div>
+        <form onSubmit={handleSubmit} className="space-y-4 px-1">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium ">Mã quốc gia</label>
+              <Input
+                label="Mã quốc gia"
+                name="country_code"
+                value={form.country_code}
+                onChange={handleChange}
+                maxLength={3}
+                required
+                placeholder="VD: VN"
+                className="dark:text-black"
+              />
+            </div>
 
-          <div>
-            <label className="block text-sm font-medium">Tên quốc gia</label>
-            <Input
-              label="Tên quốc gia"
-              name="country_name"
-              value={form.country_name}
-              onChange={handleChange}
-              maxLength={100}
-              required
-              placeholder="VD: Việt Nam"
-             className="dark:text-black"
-            />
+            <div>
+              <label className="block text-sm font-medium">Tên quốc gia</label>
+              <Input
+                label="Tên quốc gia"
+                name="country_name"
+                value={form.country_name}
+                onChange={handleChange}
+                maxLength={100}
+                required
+                placeholder="VD: Việt Nam"
+                className="dark:text-black"
+              />
+            </div>
           </div>
 
           <div className="w-full">
@@ -157,11 +153,16 @@ const CountryModal = ({ open, onClose, onSubmit, initialData }) => {
             />
             <label htmlFor="is_active">Đang hoạt động</label>
           </div>
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={onClose}>
+          <DialogFooter className="flex-col sm:flex-row gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={onClose}
+              className="w-full sm:w-auto"
+            >
               Hủy
             </Button>
-            <Button type="submit">
+            <Button type="submit" className="w-full sm:w-auto">
               {initialData ? "Cập nhật" : "Thêm mới"}
             </Button>
           </DialogFooter>

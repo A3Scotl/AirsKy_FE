@@ -30,7 +30,7 @@ const CategoryDetailModal = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[600px] dark:bg-gray-900 dark:border-gray-700">
+      <DialogContent className="max-w-[95vw] sm:max-w-[80vw] md:max-w-lg lg:max-w-xl dark:bg-gray-900 dark:border-gray-700">
         <DialogHeader>
           <DialogTitle className="flex items-center justify-between dark:text-white">
             Chi tiết Category

@@ -544,7 +544,7 @@ const AccountTab = ({ userProfile, onProfileUpdate }) => {
       {/* Profile Overview Card */}
       <Card className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/20 dark:to-indigo-950/20 border-blue-200 dark:border-blue-800">
         <CardHeader className="pb-4">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center flex-wrap gap-2 justify-between">
             <div className="flex items-center space-x-4">
               <Avatar className="w-20 h-20 border-4 border-white shadow-lg">
                 <AvatarImage
@@ -1198,7 +1198,7 @@ const AccountTab = ({ userProfile, onProfileUpdate }) => {
           ) : loyaltyStats ? (
             <div className="space-y-6">
               {/* Current Tier */}
-              <div className="flex items-center justify-between p-4 border rounded-lg bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20">
+              <div className="flex items-center flex-wrap gap-2 justify-between p-4 border rounded-lg bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20">
                 <div className="flex items-center space-x-3">
                   {(() => {
                     const tierInfo = getLoyaltyTierDisplay(

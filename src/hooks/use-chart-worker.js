@@ -54,7 +54,6 @@ export const useChartWorker = () => {
           requestQueue.current.clear();
         };
 
-        console.log("✅ Chart Web Worker initialized");
       } catch (error) {
         console.warn("⚠️ Failed to initialize Web Worker:", error);
         setError("Web Worker not supported");

@@ -184,12 +184,7 @@ export const findNearestAirports = async (
             coordinates: airportCoords,
           };
         } else {
-          console.log(
-            "⚠️ Utils: Không geocode được:",
-            locationQuery,
-            "cho sân bay",
-            airport.airportCode
-          );
+
           // Vẫn thêm airport nhưng với distance cao
           return {
             ...airport,
@@ -226,11 +221,7 @@ export const findNearestAirports = async (
     .slice(0, limit);
 
   sortedAirports.forEach((airport, index) => {
-    console.log(
-      `  ${index + 1}. ${airport.airportCode} - ${airport.city}: ${
-        airport.distance
-      }km`
-    );
+
   });
 
   return sortedAirports;

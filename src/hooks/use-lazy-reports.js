@@ -52,7 +52,7 @@ export const useLazyReports = (dateRange, period = "30days") => {
     return useQuery({
       queryKey: generateCacheKey("revenue", dateRange, period),
       queryFn: async () => {
-        console.log("Loading Revenue data...");
+
         const startTime = performance.now();
         const batchSize = getBatchSize(dateRange, period);
 
@@ -79,7 +79,6 @@ export const useLazyReports = (dateRange, period = "30days") => {
         });
 
         const endTime = performance.now();
-        console.log(`Revenue data loaded in ${endTime - startTime}ms`);
 
         return {
           bookings: filteredBookings,
@@ -105,7 +104,7 @@ export const useLazyReports = (dateRange, period = "30days") => {
     return useQuery({
       queryKey: generateCacheKey("bookings", dateRange, period),
       queryFn: async () => {
-        console.log("Loading Bookings data...");
+
         const startTime = performance.now();
         const batchSize = getBatchSize(dateRange, period);
 
@@ -132,7 +131,6 @@ export const useLazyReports = (dateRange, period = "30days") => {
         });
 
         const endTime = performance.now();
-        console.log(`Bookings data loaded in ${endTime - startTime}ms`);
 
         return {
           bookings: filteredBookings,
@@ -158,7 +156,7 @@ export const useLazyReports = (dateRange, period = "30days") => {
     return useQuery({
       queryKey: generateCacheKey("customers", dateRange, period),
       queryFn: async () => {
-        console.log("Loading Customers data...");
+
         const startTime = performance.now();
         const batchSize = getBatchSize(dateRange, period);
 
@@ -168,7 +166,6 @@ export const useLazyReports = (dateRange, period = "30days") => {
         });
 
         const endTime = performance.now();
-        console.log(`Customers data loaded in ${endTime - startTime}ms`);
 
         return {
           users: usersResult.data?.content || [],
@@ -190,7 +187,7 @@ export const useLazyReports = (dateRange, period = "30days") => {
     return useQuery({
       queryKey: generateCacheKey("flights", dateRange, period),
       queryFn: async () => {
-        console.log("Loading Flights data...");
+
         const startTime = performance.now();
         const batchSize = getBatchSize(dateRange, period);
 
@@ -217,7 +214,6 @@ export const useLazyReports = (dateRange, period = "30days") => {
         });
 
         const endTime = performance.now();
-        console.log(`Flights data loaded in ${endTime - startTime}ms`);
 
         return {
           flights: filteredFlights,
@@ -243,7 +239,7 @@ export const useLazyReports = (dateRange, period = "30days") => {
     return useQuery({
       queryKey: generateCacheKey(`${type}-export`, null, "alldata"),
       queryFn: async () => {
-        console.log(`Loading ALL ${type} data for export...`);
+
         const startTime = performance.now();
 
         let allData = [];
@@ -292,8 +288,6 @@ export const useLazyReports = (dateRange, period = "30days") => {
               break;
             }
           }
-
-          console.log(`Loaded ${allData.length} ${type} records for export`);
 
           if (type === "bookings") {
             return {
@@ -388,7 +382,7 @@ export const useLazyReports = (dateRange, period = "30days") => {
     return useQuery({
       queryKey: generateCacheKey("overview", dateRange, period),
       queryFn: async () => {
-        console.log("Loading Overview data...");
+
         const startTime = performance.now();
         const batchSize = Math.min(getBatchSize(dateRange, period), 300);
 
@@ -439,7 +433,6 @@ export const useLazyReports = (dateRange, period = "30days") => {
             : [];
 
         const endTime = performance.now();
-        console.log(`Overview data loaded in ${endTime - startTime}ms`);
 
         return {
           bookings: filteredBookings,
@@ -482,7 +475,7 @@ export const useLazyReports = (dateRange, period = "30days") => {
     (type) => {
       const cacheKey = generateCacheKey(type, dateRange, period);
       if (!queryClient.getQueryData(cacheKey)) {
-        console.log(`Prefetching ${type} data...`);
+
         queryClient.prefetchQuery({
           queryKey: cacheKey,
           queryFn: async () => {

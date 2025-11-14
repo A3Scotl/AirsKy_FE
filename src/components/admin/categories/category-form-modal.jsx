@@ -97,11 +97,9 @@ const CategoryFormModal = ({ isOpen, onClose, category, onSuccess }) => {
       let result;
       if (category) {
         // Update category
-       
 
         // Fallback to different possible ID field names
         const categoryId = category.categoryId;
-     
 
         if (!categoryId) {
           throw new Error("Không thể xác định ID của category");
@@ -134,7 +132,6 @@ const CategoryFormModal = ({ isOpen, onClose, category, onSuccess }) => {
         }
       }
     } catch (error) {
-    
       toast.error("Có lỗi xảy ra khi lưu category");
     } finally {
       setLoading(false);
@@ -143,7 +140,7 @@ const CategoryFormModal = ({ isOpen, onClose, category, onSuccess }) => {
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[600px]">
+      <DialogContent className="max-w-[95vw] sm:max-w-[80vw] md:max-w-lg lg:max-w-xl">
         <DialogHeader>
           <DialogTitle className="flex items-center justify-between">
             {category ? "Chỉnh sửa Category" : "Thêm Category mới"}

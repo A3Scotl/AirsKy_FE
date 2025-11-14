@@ -27,7 +27,7 @@ const BlogDetailModal = ({ open, onClose, blog }) => {
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto dark:bg-gray-900 dark:border-gray-700">
+      <DialogContent className="max-w-[95vw] sm:max-w-[90vw] md:max-w-3xl lg:max-w-4xl max-h-[90vh] overflow-y-auto dark:bg-gray-900 dark:border-gray-700">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 dark:text-white">
             <Globe className="h-5 w-5" />

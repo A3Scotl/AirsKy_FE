@@ -56,7 +56,6 @@ import { toast } from "sonner";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/contexts/auth-context";
 
-
 const AdminUsers = () => {
   const { user: currentUser } = useAuth();
   const [searchQuery, setSearchQuery] = useState("");
@@ -149,12 +148,8 @@ const AdminUsers = () => {
 
       const response = await userApi.getAllUsers(apiParams);
 
-      console.log("Fetched users:", response);
-      console.log("API response data:", response.data);
-      console.log("Has filters:", hasFilters);
-
       if (response.success && response.data?.content) {
-        console.log("Raw user data:", response.data.content[0]); // Debug log
+
         let allUsers = response.data.content;
 
         let finalUsers;
@@ -245,10 +240,8 @@ const AdminUsers = () => {
         }));
 
         setUsers(transformedUsers);
-        console.log("Transformed users:", transformedUsers[0]); // Debug log
 
         setPagination(finalPagination);
-        console.log("Final pagination:", finalPagination);
 
         // If API didn't provide totalBookings/totalSpent for users on this page,
         // fetch per-user stats for current page to show accurate numbers in table.
@@ -524,7 +517,7 @@ const AdminUsers = () => {
   return (
     <div className="space-y-6">
       {/* Page Header */}
-      <div className="flex justify-between items-center">
+      <div className="flex justify-between flex-wrap gap-3 items-center">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">
             Quản lý người dùng

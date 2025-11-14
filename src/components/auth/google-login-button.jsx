@@ -117,8 +117,6 @@ const GoogleLoginButton = ({ className = "", disabled = false }) => {
         lastName: googleDecoded.family_name,
       };
 
-      console.log("🚀 [DEBUG] Sending Google login data to backend");
-
       const result = await authApi.googleLogin(googleLoginData);
 
       if (result.success && result.data) {
@@ -137,7 +135,6 @@ const GoogleLoginButton = ({ className = "", disabled = false }) => {
         try {
           // Decode JWT token từ backend để lấy user ID
           const backendDecoded = jwtDecode(token);
-          console.log("🔍 [DEBUG] Backend JWT decoded:", backendDecoded);
 
           // VALIDATION: JWT từ backend PHẢI có user ID số trong claim "id"
           const jwtUserId = backendDecoded.id;
@@ -153,13 +150,6 @@ const GoogleLoginButton = ({ className = "", disabled = false }) => {
             toast.error("Lỗi xác thực người dùng, vui lòng thử lại");
             return;
           }
-
-          console.log(
-            "✅ [DEBUG] JWT user ID validated:",
-            jwtUserId,
-            "Type:",
-            typeof jwtUserId
-          );
 
           // Tạo userData cơ bản từ JWT và Google profile data
           const userData = {
@@ -178,30 +168,15 @@ const GoogleLoginButton = ({ className = "", disabled = false }) => {
             authProvider: "GOOGLE",
           };
 
-          console.log("✅ [DEBUG] Initial user data from JWT + Google:", {
-            id: userData.id,
-            email: userData.email,
-            role: userData.role,
-            authProvider: userData.authProvider,
-            avatar: userData.avatar,
-            googleAvatar: userData.googleAvatar,
-          });
-
           login(userData);
           toast.success("Đăng nhập Google thành công!");
 
           // Sau login thành công, fetch profile đầy đủ từ database để update thông tin mới nhất
           try {
-            console.log(
-              "🔄 [DEBUG] Fetching complete user profile from database..."
-            );
+        
             const profileResult = await authApi.me();
 
             if (profileResult.success && profileResult.data) {
-              console.log(
-                "✅ [DEBUG] Database profile fetched:",
-                profileResult.data
-              );
 
               // Update user data với thông tin từ database (firstName, lastName, avatar có thể khác)
               const updatedUserData = {
@@ -212,18 +187,6 @@ const GoogleLoginButton = ({ className = "", disabled = false }) => {
                 // Ensure authProvider is preserved
                 authProvider: "GOOGLE",
               };
-
-              console.log(
-                "🔄 [DEBUG] Updated user data with database profile:",
-                {
-                  id: updatedUserData.id,
-                  email: updatedUserData.email,
-                  firstName: updatedUserData.firstName,
-                  lastName: updatedUserData.lastName,
-                  avatar: updatedUserData.avatar,
-                  googleAvatar: updatedUserData.googleAvatar,
-                }
-              );
 
               login(updatedUserData); // Update với data đầy đủ
             } else {

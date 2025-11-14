@@ -235,12 +235,12 @@ const NotificationModal = ({ isOpen, onClose }) => {
   return (
     <>
       <div
-        className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[9998] w-[100vw] h-[100vh]"
+        className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[1000000] w-[100vw] h-[100vh]"
         onClick={onClose}
       />
 
       <div
-        className="fixed top-0 right-0 w-full sm:w-[480px] max-w-[480px] bg-white z-[999999999999999] dark:bg-gray-900 flex flex-col shadow-2xl h-screen overflow-hidden"
+        className="fixed top-0 right-0 w-full sm:w-[480px] max-w-[480px] bg-white z-[1000001] dark:bg-gray-900 flex flex-col shadow-2xl h-screen overflow-hidden"
         style={{
           position: "fixed",
           top: 0,
@@ -253,7 +253,9 @@ const NotificationModal = ({ isOpen, onClose }) => {
         <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-white dark:bg-gray-900 shrink-0">
           <div className="flex items-center gap-2">
             <Bell className="w-5 h-5 text-blue-600" />
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Thông báo</h2>
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+              Thông báo
+            </h2>
             {unreadCount > 0 && (
               <Badge variant="destructive" className="ml-2">
                 {unreadCount > 99 ? "99+" : unreadCount}
@@ -265,10 +267,10 @@ const NotificationModal = ({ isOpen, onClose }) => {
               variant="outline"
               size="sm"
               onClick={() => {
-                console.log("🧪 Testing WebSocket notification...");
+
                 const success = webSocketService.sendTestNotificationToSelf();
                 if (success) {
-                  console.log("✅ Test notification sent successfully");
+
                 } else {
                   console.error("❌ Failed to send test notification");
                 }
@@ -312,7 +314,7 @@ const NotificationModal = ({ isOpen, onClose }) => {
           <TabsContent
             value="all"
             className="flex-1 bg-white dark:bg-gray-900 overflow-auto flex flex-col mt-0"
-          > 
+          >
             {/* Filters */}
             <div className="p-4 border-b border-gray-200 shrink-0 space-y-3">
               <div className="relative">

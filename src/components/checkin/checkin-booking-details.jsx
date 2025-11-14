@@ -80,61 +80,29 @@ const CheckInBookingDetails = ({
   };
 
   // Get all segments with their passenger info
-  console.log(
-    "🔍 checkinEligiblePassengers:",
-    booking.checkinEligiblePassengers
-  );
-  console.log("🔍 flightSegments:", booking.flightSegments);
 
   const segmentsWithPassengers =
     booking.flightSegments?.map((segment) => {
-      console.log(
-        `🔍 Looking for passenger with segmentId ${
-          segment.segmentId
-        } (${typeof segment.segmentId})`
-      );
-      console.log(
-        `🔍 Total passengers in array: ${booking.checkinEligiblePassengers?.length}`
-      );
-      console.log(
-        `🔍 All eligible passengers:`,
-        booking.checkinEligiblePassengers?.map((p) => ({
-          passengerId: p.passengerId,
-          segmentId: p.segmentId,
-          type: typeof p.segmentId,
-        }))
-      );
 
       let passengerIndex = 0;
       const passenger = booking.checkinEligiblePassengers?.find((p) => {
         passengerIndex++;
-        console.log(
-          `  [${passengerIndex}] Checking passenger segmentId ${
-            p.segmentId
-          } (${typeof p.segmentId}) against segment ${segment.segmentId}`
-        );
 
         // For one-way flights, passenger.segmentId might be null, so match by flightNumber instead
         let match = false;
         if (p.segmentId === null && segment.segmentId !== null) {
           // One-way flight: match by flightNumber
           match = p.flightNumber === segment.flightNumber;
-          console.log(
-            `    One-way flight matching by flightNumber: ${p.flightNumber} === ${segment.flightNumber} = ${match}`
-          );
+
         } else {
           // Multi-segment flight: match by segmentId
           match = Number(p.segmentId) === Number(segment.segmentId);
-          console.log(`    Multi-segment matching by segmentId: ${match}`);
+
         }
 
-        console.log(`    Final match result: ${match}`);
         return match;
       });
-      console.log(
-        `  Checked ${passengerIndex} passengers, Found passenger:`,
-        passenger
-      );
+
       return {
         segment,
         passenger,
@@ -147,7 +115,6 @@ const CheckInBookingDetails = ({
   );
 
   // Debug: Log the sorted segments
-  console.log("🔍 sortedSegments:", sortedSegments);
 
   // Kiểm tra có hành khách nào đủ điều kiện check-in
   const hasEligiblePassengers = sortedSegments.some(
@@ -170,7 +137,7 @@ const CheckInBookingDetails = ({
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <p className="text-sm text-gray-600 dark:text-gray-300">
                 Mã đặt chỗ
@@ -273,8 +240,8 @@ const CheckInBookingDetails = ({
             <CardContent className="space-y-4">
               {/* Flight Route */}
               {segment && (
-                <div className="flex items-center justify-between p-4 bg-blue-50 dark:bg-gray-900 rounded-lg">
-                  <div className="text-center">
+                <div className="flex flex-col sm:flex-row items-center justify-between p-4 bg-blue-50 dark:bg-gray-900 rounded-lg gap-4">
+                  <div className="text-center sm:text-left">
                     <div className="flex items-center gap-2">
                       <MapPin className="w-4 h-4 text-blue-600" />
                       <p className="font-bold text-lg">
@@ -299,7 +266,7 @@ const CheckInBookingDetails = ({
                     </p>
                   </div>
 
-                  <div className="text-center">
+                  <div className="text-center sm:text-right">
                     <div className="flex items-center gap-2">
                       <MapPin className="w-4 h-4 text-blue-600" />
                       <p className="font-bold text-lg">
@@ -317,7 +284,7 @@ const CheckInBookingDetails = ({
               )}
 
               {/* Passenger Details */}
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
                 <div>
                   <p className="text-sm text-gray-600 dark:text-gray-300">
                     Loại hành khách

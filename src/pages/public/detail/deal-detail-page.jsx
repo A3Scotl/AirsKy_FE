@@ -162,7 +162,7 @@ const DealDetailPage = () => {
       {/* Content Tabs */}
       <div className="container mx-auto px-4 py-12">
         {/* Tab Navigation */}
-        <div className="flex items-center justify-center mb-8 bg-white rounded-xl p-2 shadow-sm max-w-2xl mx-auto">
+        <div className="flex items-center justify-start md:justify-center mb-8 bg-white rounded-xl p-2 shadow-sm max-w-2xl mx-auto overflow-x-auto whitespace-nowrap">
           {[
             { id: "overview", label: "Tổng quan", icon: Info },
             { id: "conditions", label: "Điều kiện", icon: AlertCircle },

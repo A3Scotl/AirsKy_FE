@@ -110,16 +110,11 @@ const SeatSelectionWrapper = ({
       seatClassId: seat.seatClassId,
     }));
 
-  console.log(
-    `🎫 SeatSelectionWrapper - userTravelClassId:`,
-    userTravelClassId
-  );
-
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 p-0">
       {/* Passenger Selection Tabs */}
       {passengers.length > 1 && (
-        <Card>
+        <Card className="p-0">
           <CardHeader>
             <CardTitle className="text-lg">Chọn ghế cho hành khách</CardTitle>
           </CardHeader>
@@ -199,15 +194,15 @@ const SeatSelectionWrapper = ({
       )}
 
       {/* Seat Map */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
+      <Card className="p-0">
+        <CardHeader className="p-0">
+          {/* <CardTitle className="flex items-center gap-2">
             <Crown className="w-5 h-5 text-blue-600" />
             {flightTitle}
             {isReturnFlight && " - Chuyến Về"}
-          </CardTitle>
+          </CardTitle> */}
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-0">
           <SeatMap
             seats={transformedSeats}
             selectedSeats={getSelectedSeatsArray()}

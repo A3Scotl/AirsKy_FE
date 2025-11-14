@@ -88,7 +88,9 @@ const DealCardSkeleton = ({ isLarge = false }) => {
           <Skeleton
             className={`h-6 w-3/4 mb-2 ${isLarge ? "text-2xl" : "text-lg"}`}
           />
-          <Skeleton className={`h-4 w-full mb-3 ${isLarge ? "text-base" : "text-sm"}`} />
+          <Skeleton
+            className={`h-4 w-full mb-3 ${isLarge ? "text-base" : "text-sm"}`}
+          />
           <div className="flex items-center space-x-2 mb-3">
             <Skeleton className="h-6 w-20 rounded-lg" />
             <Skeleton className="h-4 w-16" />
@@ -269,8 +271,7 @@ const DealsPage = () => {
       const userTier = userLoyalty?.currentTier || "STANDARD";
       const tierHierarchy = { STANDARD: 0, SILVER: 1, GOLD: 2, PLATINUM: 3 };
       const userTierLevel = tierHierarchy[userTier] || 0;
-      const requiredTierLevel =
-        tierHierarchy[deal.requiredLoyaltyTier] || 0;
+      const requiredTierLevel = tierHierarchy[deal.requiredLoyaltyTier] || 0;
       return userTierLevel >= requiredTierLevel;
     }
 
@@ -372,7 +373,10 @@ const DealsPage = () => {
   // Paginated list for "All Discount Codes"
   const allDealsPaginated = useMemo(() => {
     const startIndex = (allDealsCurrentPage - 1) * allDealsItemsPerPage;
-    return allDealsFiltered.slice(startIndex, startIndex + allDealsItemsPerPage);
+    return allDealsFiltered.slice(
+      startIndex,
+      startIndex + allDealsItemsPerPage
+    );
   }, [allDealsFiltered, allDealsCurrentPage, allDealsItemsPerPage]);
 
   const allDealsTotalPages = Math.ceil(
@@ -398,10 +402,8 @@ const DealsPage = () => {
     return filtered.sort((a, b) => {
       if (sortBy === "discount")
         return b.discountPercentage - a.discountPercentage;
-      if (sortBy === "expiry")
-        return new Date(a.validTo) - new Date(b.validTo);
-      if (sortBy === "usage")
-        return a.remainingUsage - b.remainingUsage;
+      if (sortBy === "expiry") return new Date(a.validTo) - new Date(b.validTo);
+      if (sortBy === "usage") return a.remainingUsage - b.remainingUsage;
       return 0;
     });
   }, [flightDeals, sortBy]);
@@ -443,16 +445,13 @@ const DealsPage = () => {
           (deal) =>
             !deal.isGuestOnly &&
             !deal.isLoyaltyExclusive &&
-            !(
-              deal.dealCode && deal.dealCode.toUpperCase().startsWith("POINTS")
-            )
+            !(deal.dealCode && deal.dealCode.toUpperCase().startsWith("POINTS"))
         )
         .sort((a, b) => b.discountPercentage - a.discountPercentage);
     }
 
     return sortedForFeatured.slice(0, 3);
   }, [allDealsFiltered, flightDeals, isDealApplicable]);
-
 
   return (
     <>
@@ -465,9 +464,9 @@ const DealsPage = () => {
         {/* Hero Banner */}
         <section className="relative bg-gradient-to-r from-blue-600 to-blue-900 text-white pt-24 pb-16">
           <div className="absolute inset-0 bg-black/20"></div>
-          <div className="relative left-28 container  py-16 px-6 lg:px-8 flex flex-wrap justify-between items-center">
-            <div>
-              <h1 className="text-4xl md:text-5xl font-bold mb-4 ">
+          <div className="relative container mx-auto py-12 px-6 lg:px-8 text-center md:text-left">
+            <div className="md:w-2/3 lg:w-1/2">
+              <h1 className="text-4xl md:text-5xl font-bold mb-4">
                 Khuyến Mãi & Ưu Đãi
               </h1>
               <p className="text-lg md:text-xl text-blue-100 max-w-3xl">
@@ -613,7 +612,7 @@ const DealsPage = () => {
                 </SheetTrigger>
                 <SheetContent
                   side="right"
-                  className="w-full sm:w-[540px] md:w-[720px] lg:w-[900px] xl:w-[1000px] h-screen overflow-y-auto p-0 z-[9999] dark:bg-gray-900"
+                  className="w-full sm:max-w-lg md:max-w-2xl lg:max-w-4xl h-screen overflow-y-auto p-0 z-[9999] dark:bg-gray-900"
                 >
                   <div className="p-6 h-full flex flex-col">
                     <SheetHeader className="mb-6">
@@ -770,7 +769,7 @@ const DealsPage = () => {
             <Swiper
               modules={[Autoplay]}
               spaceBetween={20}
-              slidesPerView={2}
+              slidesPerView={1}
               loop={true}
               autoplay={{ delay: 2000, disableOnInteraction: false }}
               breakpoints={{

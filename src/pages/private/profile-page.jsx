@@ -698,7 +698,7 @@ const AdminProfilePage = () => {
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-6">
       <div className="max-w-6xl mx-auto space-y-6">
         {/* Header */}
-        <div className="flex items-center justify-between">
+        <div className="flex items-center flex-wrap gap-3 justify-between">
           <div>
             <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
               Trang cá nhân
@@ -764,33 +764,48 @@ const AdminProfilePage = () => {
 
         {/* Main Content Tabs */}
         <Tabs defaultValue="profile" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-6">
-            <TabsTrigger value="profile" className="flex items-center gap-2">
-              <User className="h-4 w-4" />
-              Thông tin cá nhân
+          <TabsList className="grid w-full grid-cols-2 md:grid-cols-3 lg:grid-cols-6 h-auto p-1">
+            <TabsTrigger
+              value="profile"
+              className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2 text-xs sm:text-sm py-2 px-1 sm:px-3"
+            >
+              <User className="h-3 w-3 sm:h-4 sm:w-4" />
+              <span className="text-center">Thông tin</span>
             </TabsTrigger>
-            <TabsTrigger value="loyalty" className="flex items-center gap-2">
-              <Award className="h-4 w-4" />
-              Điểm thưởng
+            <TabsTrigger
+              value="loyalty"
+              className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2 text-xs sm:text-sm py-2 px-1 sm:px-3"
+            >
+              <Award className="h-3 w-3 sm:h-4 sm:w-4" />
+              <span className="text-center">Điểm thưởng</span>
             </TabsTrigger>
-            <TabsTrigger value="security" className="flex items-center gap-2">
-              <Lock className="h-4 w-4" />
-              Bảo mật
+            <TabsTrigger
+              value="security"
+              className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2 text-xs sm:text-sm py-2 px-1 sm:px-3"
+            >
+              <Lock className="h-3 w-3 sm:h-4 sm:w-4" />
+              <span className="text-center">Bảo mật</span>
             </TabsTrigger>
             <TabsTrigger
               value="notifications"
-              className="flex items-center gap-2"
+              className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2 text-xs sm:text-sm py-2 px-1 sm:px-3"
             >
-              <Bell className="h-4 w-4" />
-              Thông báo
+              <Bell className="h-3 w-3 sm:h-4 sm:w-4" />
+              <span className="text-center">Thông báo</span>
             </TabsTrigger>
-            <TabsTrigger value="session" className="flex items-center gap-2">
-              <Database className="h-4 w-4" />
-              Session
+            <TabsTrigger
+              value="session"
+              className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2 text-xs sm:text-sm py-2 px-1 sm:px-3"
+            >
+              <Database className="h-3 w-3 sm:h-4 sm:w-4" />
+              <span className="text-center">Session</span>
             </TabsTrigger>
-            <TabsTrigger value="settings" className="flex items-center gap-2">
-              <Settings className="h-4 w-4" />
-              Cài đặt
+            <TabsTrigger
+              value="settings"
+              className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2 text-xs sm:text-sm py-2 px-1 sm:px-3"
+            >
+              <Settings className="h-3 w-3 sm:h-4 sm:w-4" />
+              <span className="text-center">Cài đặt</span>
             </TabsTrigger>
           </TabsList>
 

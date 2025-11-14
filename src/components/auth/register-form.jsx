@@ -246,17 +246,9 @@ export default function RegisterForm({ setCurrentView }) {
     setLoading(true);
     try {
       const response = await authApi.register(formData);
-      console.log("Registration API response:", response);
-      console.log("Response success:", response.success);
-      console.log("Response data:", response.data);
-      console.log("Response message:", response.message);
-      console.log("Response error:", response.error);
 
       if (response.success) {
-        console.log("Registration successful - tokens received:", {
-          accessToken: response.data?.accessToken ? "***" : "missing",
-          refreshToken: response.data?.refreshToken ? "***" : "missing",
-        });
+
         toast.success(
           "Đăng ký thành công. Vui lòng nhập mã OTP được gửi đến email của bạn."
         );
@@ -278,17 +270,10 @@ export default function RegisterForm({ setCurrentView }) {
   };
 
   const handleBackendErrors = (response) => {
-    console.log("Full backend response:", response);
-    console.log("Response data:", response.data);
-    console.log("Response error:", response.error);
-    console.log("Response message:", response.message);
 
     const errorMessage = response.error || response.message || "";
     const exceptionMessage =
       response.data?.message || response.data?.error || "";
-
-    console.log("Backend error message:", errorMessage);
-    console.log("Exception message:", exceptionMessage);
 
     // Now response.data contains the full error response from backend
     const fullErrorData = response.data;
@@ -298,9 +283,6 @@ export default function RegisterForm({ setCurrentView }) {
       fullErrorData?.message ||
       exceptionMessage ||
       errorMessage;
-
-    console.log("Full error data:", fullErrorData);
-    console.log("Backend error field:", backendError);
 
     // Map backend errors to field-specific errors
     const fieldErrors = {};

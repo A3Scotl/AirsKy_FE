@@ -144,7 +144,7 @@ const CustomStepper = ({
         {/* Current Step Title for Mobile */}
         <div className="text-center">
           <div className="text-sm font-semibold text-blue-600">
-            Step {currentStep}: {steps[currentStep - 1]?.title}
+            Bước {currentStep}: {steps[currentStep - 1]?.title}
           </div>
         </div>
       </div>

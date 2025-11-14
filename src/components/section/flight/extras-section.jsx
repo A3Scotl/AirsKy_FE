@@ -14,6 +14,12 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { flightApi } from "@/apis/flight-api";
 import {
   ancillaryServiceApi,
@@ -766,10 +772,6 @@ const AircraftLayout = ({
             { id: 3, name: "Hạng nhất", type: "FIRST" },
           ];
 
-          console.log(
-            `🔄 Loading complete seats for multi-city flight ${flightId}...`
-          );
-
           // Load seats for all travel classes in parallel
           const seatPromises = travelClassIds.map(async (travelClass) => {
             try {
@@ -783,9 +785,6 @@ const AircraftLayout = ({
                 const seatsData = Array.isArray(response.data)
                   ? response.data
                   : [];
-                console.log(
-                  `✅ Loaded ${seatsData.length} ${travelClass.name} seats for multi-city`
-                );
 
                 // Ensure each seat has correct travel class info
                 return seatsData.map((seat) => ({
@@ -808,9 +807,6 @@ const AircraftLayout = ({
           const seatResults = await Promise.all(seatPromises);
           const allSeats = seatResults.flat();
 
-          console.log(
-            `🎯 Loaded ${allSeats.length} total seats for multi-city flight`
-          );
           setCompleteSeatMap(allSeats);
         } catch (error) {
           console.error("Error loading complete seats for multi-city:", error);
@@ -1620,9 +1616,7 @@ const MultiCitySeatSelectionCard = ({
           seatType = "STANDARD";
         }
       } else {
-        console.log(
-          `✅ Using API seatType for segment seat ${seatNumber}: ${seatType}`
-        );
+
       }
 
       // Get seat type price from segment's API pricing data
@@ -1763,6 +1757,11 @@ const SeatSelectionCard = ({
   showReturnSeats,
   setShowReturnSeats,
   setIsUpdating,
+  // Mobile modal props
+  mobileSeatModalOpen,
+  setMobileSeatModalOpen,
+  mobileSeatModalType,
+  setMobileSeatModalType,
 }) => {
   const passengers = formData.passengers;
 
@@ -1961,7 +1960,7 @@ const SeatSelectionCard = ({
           seatType = "STANDARD";
         }
       } else {
-        console.log(`✅ Using API seatType for ${seatNumber}: ${seatType}`);
+
       }
 
       const seatTypePrice = seatTypePricing[seatType]?.priceValue || 0;
@@ -2067,58 +2066,95 @@ const SeatSelectionCard = ({
         <CardContent>
           {showOutboundSeats && (
             <div>
-              {loading ? (
-                <SeatSkeleton />
-              ) : (
-                <>
-                  <SeatLegend seatLegend={seatLegend} />
+              {/* Mobile: Show button to open modal */}
+              <div className="md:hidden">
+                <div className="text-center py-8">
+                  <Button
+                    onClick={() => {
+                      setMobileSeatModalType("outbound");
+                      setMobileSeatModalOpen(true);
+                    }}
+                    className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 text-lg"
+                  >
+                    Chọn Chỗ Ngồi - Chuyến Đi
+                  </Button>
+                  <p className="text-sm text-gray-600 mt-2">
+                    Nhấn để mở bản đồ ghế
+                  </p>
+                </div>
+              </div>
 
-                  {/* Auto Assign Button */}
-                  <div className="mb-4 flex justify-center"></div>
+              {/* Desktop: Show seat map directly */}
+              <div className="hidden md:block">
+                {loading ? (
+                  <SeatSkeleton />
+                ) : (
+                  <>
+                    <SeatLegend seatLegend={seatLegend} />
 
-                  <div className="bg-white dark:bg-gray-400 p-6 rounded-lg border max-h-[600px] overflow-y-auto">
-                    <div className="text-center mb-4">
-                      <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
-                        Cuộn xuống để xem thêm hàng ghế
-                      </p>
-                    </div>
-                    <div className="max-w-6xl mx-auto">
-                      <SeatSelectionWrapper
-                        seats={seats}
+                    {/* Auto Assign Button */}
+                    <div className="mb-4 flex justify-center"></div>
+
+                    <div className="bg-white dark:bg-gray-400 p-3 sm:p-6 rounded-lg border max-h-[400px] sm:max-h-[500px] md:max-h-[600px] overflow-y-auto">
+                      <div className="text-center mb-2 sm:mb-4">
+                        <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-2">
+                          Cuộn xuống để xem thêm hàng ghế
+                        </p>
+                      </div>
+                      <div className="max-w-full sm:max-w-6xl mx-auto overflow-x-auto">
+                        <div className="min-w-[400px] sm:min-w-[600px] md:min-w-0 transform scale-75 sm:scale-90 md:scale-100 origin-top">
+                          {" "}
+                          {/* Responsive scaling for mobile */}
+                          <SeatSelectionWrapper
+                            seats={seats}
+                            selectedSeats={selectedSeats}
+                            passengers={passengersNeedingSeats}
+                            onSeatSelect={(
+                              seatNumber,
+                              passengerIndex,
+                              isReturn
+                            ) =>
+                              handleSeatSelect(
+                                seatNumber,
+                                passengerIndex,
+                                false
+                              )
+                            }
+                            isReturnFlight={false}
+                            flightTitle={`Chọn Chỗ Ngồi - ${
+                              flight?.isRoundTrip ||
+                              flight?.type === "ROUND_TRIP"
+                                ? flight.outboundFlight?.aircraft
+                                    ?.aircraftName ||
+                                  flight.outbound?.aircraftName ||
+                                  flight.outbound?.aircraft?.aircraftName ||
+                                  "N/A"
+                                : flight?.flight?.aircraftName ||
+                                  flight?.flight?.aircraft?.aircraftName ||
+                                  flight?.aircraft?.aircraftName ||
+                                  "N/A"
+                            }`}
+                            showLegend={true}
+                            userTravelClassId={
+                              flight?.isRoundTrip ||
+                              flight?.type === "ROUND_TRIP"
+                                ? flight.outboundFlight?.selectedClass
+                                    ?.travelClass?.id
+                                : flight?.flight?.selectedClass?.travelClass
+                                    ?.id ||
+                                  flight?.selectedClass?.travelClass?.id
+                            }
+                          />
+                        </div>
+                      </div>
+                      <SelectedSeatsSummary
                         selectedSeats={selectedSeats}
-                        passengers={passengersNeedingSeats}
-                        onSeatSelect={(seatNumber, passengerIndex, isReturn) =>
-                          handleSeatSelect(seatNumber, passengerIndex, false)
-                        }
-                        isReturnFlight={false}
-                        flightTitle={`Chọn Chỗ Ngồi - ${
-                          flight?.isRoundTrip || flight?.type === "ROUND_TRIP"
-                            ? flight.outboundFlight?.aircraft?.aircraftName ||
-                              flight.outbound?.aircraftName ||
-                              flight.outbound?.aircraft?.aircraftName ||
-                              "N/A"
-                            : flight?.flight?.aircraftName ||
-                              flight?.flight?.aircraft?.aircraftName ||
-                              flight?.aircraft?.aircraftName ||
-                              "N/A"
-                        }`}
-                        showLegend={true}
-                        userTravelClassId={
-                          flight?.isRoundTrip || flight?.type === "ROUND_TRIP"
-                            ? flight.outboundFlight?.selectedClass?.travelClass
-                                ?.id
-                            : flight?.flight?.selectedClass?.travelClass?.id ||
-                              flight?.selectedClass?.travelClass?.id
-                        }
+                        getSeatPrice={() => getSeatPrice(seats, selectedSeats)}
                       />
                     </div>
-                    <SelectedSeatsSummary
-                      selectedSeats={selectedSeats}
-                      getSeatPrice={() => getSeatPrice(seats, selectedSeats)}
-                    />
-                  </div>
-                </>
-              )}
+                  </>
+                )}
+              </div>
             </div>
           )}
         </CardContent>
@@ -2157,61 +2193,114 @@ const SeatSelectionCard = ({
           <CardContent>
             {showReturnSeats && (
               <div>
-                {returnLoading ? (
-                  <SeatSkeleton />
-                ) : (
-                  <>
-                    <SeatLegend seatLegend={seatLegend} />
+                {/* Mobile: Show button to open modal */}
+                <div className="md:hidden">
+                  <div className="text-center py-8">
+                    <Button
+                      onClick={() => {
+                        setMobileSeatModalType("return");
+                        setMobileSeatModalOpen(true);
+                      }}
+                      className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 text-lg"
+                    >
+                      Chọn Chỗ Ngồi - Chuyến Về
+                    </Button>
+                    <p className="text-sm text-gray-600 mt-2">
+                      Nhấn để mở bản đồ ghế
+                    </p>
+                  </div>
+                </div>
 
-                    {/* Auto Assign Button for Return */}
-                    <div className="mb-4 flex justify-center"></div>
+                {/* Desktop: Show seat map directly */}
+                <div className="hidden md:block">
+                  {returnLoading ? (
+                    <SeatSkeleton />
+                  ) : (
+                    <>
+                      <SeatLegend seatLegend={seatLegend} />
 
-                    <div className="bg-white p-6 rounded-lg border max-h-[600px] overflow-y-auto">
-                      <div className="text-center mb-4">
-                        <p className="text-sm text-gray-500 mt-2">
-                          Cuộn xuống để xem thêm hàng ghế
-                        </p>
-                      </div>
+                      {/* Auto Assign Button for Return */}
+                      <div className="mb-4 flex justify-center"></div>
 
-                      <div className="max-w-6xl mx-auto">
-                        <SeatSelectionWrapper
-                          seats={returnSeats}
+                      <div className="bg-white p-3 rounded-lg border max-h-[400px] sm:max-h-[500px] md:max-h-[600px] overflow-y-auto">
+                        <div className="text-center mb-2 sm:mb-4">
+                          <p className="text-xs sm:text-sm text-gray-500 mt-2">
+                            Cuộn xuống để xem thêm hàng ghế
+                          </p>
+                        </div>
+
+                        <div className="max-w-full sm:max-w-6xl mx-auto overflow-x-auto">
+                          <div className="min-w-[400px] sm:min-w-[600px] md:min-w-0 transform scale-75 sm:scale-90 md:scale-100 origin-top">
+                            {" "}
+                            {/* Responsive scaling for mobile */}
+                            <SeatSelectionWrapper
+                              seats={returnSeats}
+                              selectedSeats={selectedReturnSeats}
+                              passengers={passengersNeedingSeats}
+                              onSeatSelect={(
+                                seatNumber,
+                                passengerIndex,
+                                isReturn
+                              ) =>
+                                handleSeatSelect(
+                                  seatNumber,
+                                  passengerIndex,
+                                  true
+                                )
+                              }
+                              isReturnFlight={true}
+                              flightTitle={`Chọn Chỗ Ngồi - ${
+                                flight.returnFlight?.aircraft?.aircraftName ||
+                                flight.return?.aircraftName ||
+                                flight.return?.aircraft?.aircraftName ||
+                                "N/A"
+                              }`}
+                              showLegend={false}
+                              userTravelClassId={
+                                flight.returnFlight?.selectedClass?.travelClass
+                                  ?.id
+                              }
+                            />
+                          </div>
+                        </div>
+                        <SelectedSeatsSummary
                           selectedSeats={selectedReturnSeats}
-                          passengers={passengersNeedingSeats}
-                          onSeatSelect={(
-                            seatNumber,
-                            passengerIndex,
-                            isReturn
-                          ) =>
-                            handleSeatSelect(seatNumber, passengerIndex, true)
-                          }
-                          isReturnFlight={true}
-                          flightTitle={`Chọn Chỗ Ngồi - ${
-                            flight.returnFlight?.aircraft?.aircraftName ||
-                            flight.return?.aircraftName ||
-                            flight.return?.aircraft?.aircraftName ||
-                            "N/A"
-                          }`}
-                          showLegend={false}
-                          userTravelClassId={
-                            flight.returnFlight?.selectedClass?.travelClass?.id
+                          getSeatPrice={() =>
+                            getReturnSeatPrice(returnSeats, selectedReturnSeats)
                           }
                         />
                       </div>
-                      <SelectedSeatsSummary
-                        selectedSeats={selectedReturnSeats}
-                        getSeatPrice={() =>
-                          getReturnSeatPrice(returnSeats, selectedReturnSeats)
-                        }
-                      />
-                    </div>
-                  </>
-                )}
+                    </>
+                  )}
+                </div>
               </div>
             )}
           </CardContent>
         </Card>
       )}
+
+      {/* Mobile Seat Selection Modal */}
+      <MobileSeatSelectionModal
+        isOpen={mobileSeatModalOpen}
+        onClose={() => setMobileSeatModalOpen(false)}
+        modalType={mobileSeatModalType}
+        flight={flight}
+        seats={seats}
+        returnSeats={returnSeats}
+        selectedSeats={selectedSeats}
+        selectedReturnSeats={selectedReturnSeats}
+        loading={loading}
+        returnLoading={returnLoading}
+        seatLegend={seatLegend}
+        passengersNeedingSeats={passengersNeedingSeats}
+        handleSeatSelect={handleSeatSelect}
+        getSeatPrice={(seats, selectedSeats) =>
+          getSeatPrice(seats, selectedSeats)
+        }
+        getReturnSeatPrice={(seats, selectedSeats) =>
+          getReturnSeatPrice(seats, selectedSeats)
+        }
+      />
     </div>
   );
 };
@@ -2553,11 +2642,7 @@ const AncillaryServicesCard = ({
     isSelected,
     passengerIndex = null
   ) => {
-    console.log("handleServiceChange called:", {
-      serviceId,
-      isSelected,
-      passengerIndex,
-    });
+
     setSelectedServices((prev) => {
       const newServices = { ...prev };
       const serviceKey =
@@ -2576,7 +2661,6 @@ const AncillaryServicesCard = ({
         delete newServices[serviceKey];
       }
 
-      console.log("Updated selectedServices:", newServices);
       return newServices;
     });
   };
@@ -2587,13 +2671,7 @@ const AncillaryServicesCard = ({
         ? `${serviceId}_passenger${passengerIndex}`
         : `${serviceId}_booking`;
     const result = !!selectedServices[serviceKey];
-    console.log("isServiceSelected called:", {
-      serviceId,
-      passengerIndex,
-      serviceKey,
-      result,
-      selectedServices,
-    });
+
     return result;
   };
 
@@ -2707,13 +2785,6 @@ const AncillaryServiceOption = ({
   const [expandedPassengers, setExpandedPassengers] = useState(false);
   const [showNotes, setShowNotes] = useState(false);
 
-  console.log("AncillaryServiceOption render:", {
-    serviceId: service.serviceId,
-    serviceName: service.serviceName,
-    isSelectedProp: typeof isSelectedProp,
-    selectedServices,
-  });
-
   // Determine if service applies to individual passengers or entire booking
   const isPerPassenger = [
     "MEAL",
@@ -2791,10 +2862,7 @@ const AncillaryServiceOption = ({
                               service.serviceId,
                               index
                             );
-                            console.log(
-                              `Passenger checkbox ${service.serviceId}-${index}: checked =`,
-                              checked
-                            );
+
                             return checked;
                           })()}
                           onCheckedChange={(checked) =>
@@ -2848,10 +2916,7 @@ const AncillaryServiceOption = ({
                   id={`service-${service.serviceId}-booking`}
                   checked={(() => {
                     const checked = isSelectedProp(service.serviceId);
-                    console.log(
-                      `Booking checkbox ${service.serviceId}: checked =`,
-                      checked
-                    );
+
                     return checked;
                   })()}
                   onCheckedChange={(checked) =>
@@ -3149,6 +3214,105 @@ const BookingSummary = ({
   </div>
 );
 
+// Mobile Seat Selection Modal Component
+const MobileSeatSelectionModal = ({
+  isOpen,
+  onClose,
+  modalType,
+  flight,
+  seats,
+  returnSeats,
+  selectedSeats,
+  selectedReturnSeats,
+  loading,
+  returnLoading,
+  seatLegend,
+  passengersNeedingSeats,
+  handleSeatSelect,
+  getSeatPrice,
+  getReturnSeatPrice,
+}) => {
+  const isReturnFlight = modalType === "return";
+  const currentSeats = isReturnFlight ? returnSeats : seats;
+  const currentSelectedSeats = isReturnFlight
+    ? selectedReturnSeats
+    : selectedSeats;
+  const currentLoading = isReturnFlight ? returnLoading : loading;
+  const currentGetSeatPrice = isReturnFlight
+    ? getReturnSeatPrice
+    : getSeatPrice;
+
+  const flightTitle = isReturnFlight
+    ? `Chọn Chỗ Ngồi - Chuyến Về - ${
+        flight.returnFlight?.aircraft?.aircraftName ||
+        flight.return?.aircraftName ||
+        flight.return?.aircraft?.aircraftName ||
+        "N/A"
+      }`
+    : `Chọn Chỗ Ngồi - ${
+        flight?.isRoundTrip || flight?.type === "ROUND_TRIP"
+          ? flight.outboundFlight?.aircraft?.aircraftName ||
+            flight.outbound?.aircraftName ||
+            flight.outbound?.aircraft?.aircraftName ||
+            "N/A"
+          : flight?.flight?.aircraftName ||
+            flight?.flight?.aircraft?.aircraftName ||
+            flight?.aircraftName ||
+            flight?.aircraft?.aircraftName ||
+            "N/A"
+      }`;
+
+  const userTravelClassId = isReturnFlight
+    ? flight.returnFlight?.selectedClass?.travelClass?.id
+    : flight?.isRoundTrip || flight?.type === "ROUND_TRIP"
+    ? flight.outboundFlight?.selectedClass?.travelClass?.id
+    : flight?.flight?.selectedClass?.travelClass?.id ||
+      flight?.selectedClass?.travelClass?.id;
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="max-w-full h-full m-0 p-0 rounded-none">
+        <DialogHeader className="p-4 border-b">
+          <DialogTitle className="text-lg font-semibold">
+            {flightTitle}
+          </DialogTitle>
+        </DialogHeader>
+        <div className="flex-1 overflow-y-auto p-4">
+          {currentLoading ? (
+            <SeatSkeleton />
+          ) : (
+            <>
+              <SeatLegend seatLegend={seatLegend} />
+              <div className="mt-4">
+                <SeatSelectionWrapper
+                  seats={currentSeats}
+                  selectedSeats={currentSelectedSeats}
+                  passengers={passengersNeedingSeats}
+                  onSeatSelect={(seatNumber, passengerIndex) =>
+                    handleSeatSelect(seatNumber, passengerIndex, isReturnFlight)
+                  }
+                  isReturnFlight={isReturnFlight}
+                  flightTitle={flightTitle}
+                  showLegend={false}
+                  userTravelClassId={userTravelClassId}
+                />
+              </div>
+              <div className="mt-4">
+                <SelectedSeatsSummary
+                  selectedSeats={currentSelectedSeats}
+                  getSeatPrice={() =>
+                    currentGetSeatPrice(currentSeats, currentSelectedSeats)
+                  }
+                />
+              </div>
+            </>
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
 // Main Extras Component
 const Extras = ({ flight, fare, formData, setExtrasData }) => {
   const [isUpdating, setIsUpdating] = useState(false);
@@ -3187,6 +3351,10 @@ const Extras = ({ flight, fare, formData, setExtrasData }) => {
     seats: false,
     services: false,
   });
+
+  // Mobile seat selection modal states
+  const [mobileSeatModalOpen, setMobileSeatModalOpen] = useState(false);
+  const [mobileSeatModalType, setMobileSeatModalType] = useState("outbound"); // 'outbound' or 'return'
 
   // Multi-city baggage state - per segment per passenger
   const [multiCityBaggage, setMultiCityBaggage] = useState({});
@@ -3285,9 +3453,7 @@ const Extras = ({ flight, fare, formData, setExtrasData }) => {
 
           if (isOldFormat) {
             // Convert old boolean format to new object format
-            console.log(
-              "Converting old ancillary services format to new format"
-            );
+
             const convertedData = {};
             Object.entries(ancillaryData).forEach(
               ([serviceName, isSelected]) => {
@@ -3427,7 +3593,7 @@ const Extras = ({ flight, fare, formData, setExtrasData }) => {
         const response = await ancillaryServiceApi.getAllActiveServices();
 
         if (response.success) {
-          console.log("Available ancillary services:", response.data);
+
           setAvailableServices(response.data || []);
         } else {
           console.error("Không thể tải dịch vụ đi kèm:", response.message);
@@ -3458,30 +3624,13 @@ const Extras = ({ flight, fare, formData, setExtrasData }) => {
           handleFetch({
             apiCall: () => flightApi.getSeatsByFlight(flightId),
             setData: (data) => {
-              console.log(
-                `🪑 Raw multi-city segment ${segmentIndex} seat data from API:`,
-                data
-              );
+
               // Load all seats without filtering by travel class
               const transformedSeats = data.map((seat) => {
-                console.log(
-                  `🪑 Individual multi-city segment ${segmentIndex} seat:`,
-                  seat
-                );
+
                 // Try different field names for travel class ID, with fallback logic
                 const travelClassId = getTravelClassIdFromSeat(seat);
-                console.log(
-                  `🪑 Multi-city segment ${segmentIndex} travel class ID extraction:`,
-                  {
-                    seatNumber: seat.seatNumber,
-                    travelClassId: seat.travelClassId,
-                    classId: seat.classId,
-                    travelClassIdFromObject: seat.travelClass?.id,
-                    classIdFromObject: seat.class?.id,
-                    className: seat.className,
-                    finalTravelClassId: travelClassId,
-                  }
-                );
+
                 return {
                   seatId: seat.seatId,
                   seatNumber: seat.seatNumber,
@@ -3514,7 +3663,6 @@ const Extras = ({ flight, fare, formData, setExtrasData }) => {
       });
     } else if (isRoundTrip) {
       // Round-trip flights - load ALL seats for each flight, same as one-way
-      console.log("🪑 Loading round-trip seats", { flight });
 
       // Get outbound flight ID - try multiple possible sources
       const outboundId = flight.outbound?.id || flight.outboundFlight?.id;
@@ -3522,11 +3670,11 @@ const Extras = ({ flight, fare, formData, setExtrasData }) => {
 
       // Load ALL outbound seats (same approach as one-way)
       if (outboundId) {
-        console.log("🪑 Loading ALL outbound seats for ID:", outboundId);
+
         handleFetch({
           apiCall: () => flightApi.getSeatsByFlight(outboundId),
           setData: (data) => {
-            console.log("🪑 Raw outbound seat data from API:", data);
+
             // Load ALL seats without filtering by travel class (same as one-way)
             setSeats(
               data.map((seat) => {
@@ -3554,11 +3702,11 @@ const Extras = ({ flight, fare, formData, setExtrasData }) => {
 
       // Load ALL return seats (same approach as one-way)
       if (returnId) {
-        console.log("🪑 Loading ALL return seats for ID:", returnId);
+
         handleFetch({
           apiCall: () => flightApi.getSeatsByFlight(returnId),
           setData: (data) => {
-            console.log("🪑 Raw return seat data from API:", data);
+
             // Load ALL seats without filtering by travel class (same as one-way)
             setReturnSeats(
               data.map((seat) => {
@@ -3590,7 +3738,7 @@ const Extras = ({ flight, fare, formData, setExtrasData }) => {
         handleFetch({
           apiCall: () => flightApi.getSeatsByFlight(flightId),
           setData: (data) => {
-            console.log("🪑 Raw seat data from API:", data);
+
             // Load all seats without filtering by travel class
             setSeats(
               data.map((seat) => {
@@ -3744,16 +3892,6 @@ const Extras = ({ flight, fare, formData, setExtrasData }) => {
         const baseSeatPrice = seat?.priceVND || 0;
 
         // Debug multi-city seat type determination
-        console.log(
-          `🪑 Multi-city seat ${seatNumber} (${segmentKey}) pricing debug:`,
-          {
-            seatNumber,
-            segmentKey,
-            seatFromAPI: seat,
-            seatTypeFromAPI: seat?.seatType,
-            basePriceFromAPI: seat?.priceVND,
-          }
-        );
 
         // ALWAYS use seatType from API - no fallback logic
         const seatType = seat?.seatType;
@@ -3762,21 +3900,13 @@ const Extras = ({ flight, fare, formData, setExtrasData }) => {
           console.error(
             `❌ No seatType from API for multi-city seat ${seatNumber}. API data must provide seatType.`
           );
-          console.log(`🔍 Full multi-city seat object:`, seat);
+
           return; // Skip this seat if no seatType from API
         }
 
         // Get seat type price from segment's API pricing data
         const seatTypePrice = segmentSeatTypePricing[seatType]?.priceValue || 0;
 
-        console.log(
-          `✅ Using API seatType for multi-city seat ${seatNumber}: ${seatType} (price: ${seatTypePrice})`
-        );
-        console.log(
-          `💰 Final pricing for multi-city seat ${seatNumber}: base=${baseSeatPrice} + type=${seatTypePrice} = ${
-            baseSeatPrice + seatTypePrice
-          }`
-        );
         total += baseSeatPrice + seatTypePrice;
       });
     });
@@ -3802,32 +3932,17 @@ const Extras = ({ flight, fare, formData, setExtrasData }) => {
     // Multi-city baggage is already calculated per segment, so just multiply by passengers
     const total = baggagePerPassengerTotal * passengersCount;
 
-    console.log("✈️ Multi-City Baggage Price Calculation:", {
-      baggagePerPassengerTotal,
-      passengersCount,
-      segmentCount,
-      total,
-      multiCityBaggage,
-    });
-
     return total;
   };
 
   // Regular price calculations (round-trip and one-way)
   const getSeatPrice = () => {
-    console.log("🧮 getSeatPrice called with:", {
-      selectedSeats,
-      seatsCount: seats.length,
-      hasSelectedSeats: Object.keys(selectedSeats).length > 0,
-    });
 
     const total = Object.values(selectedSeats).reduce((total, seatInfo) => {
       // Handle both new format (object) and old format (string)
       if (typeof seatInfo === "object" && seatInfo.priceVND !== undefined) {
         // New format - use stored price
-        console.log(
-          `✅ Using stored price for seat ${seatInfo.seatNumber}: ${seatInfo.priceVND} VND`
-        );
+
         return total + seatInfo.priceVND;
       } else if (typeof seatInfo === "string") {
         // Old format - calculate price
@@ -3856,34 +3971,23 @@ const Extras = ({ flight, fare, formData, setExtrasData }) => {
         const seatTypePrice = seatTypePricing[seatType]?.priceValue || 0;
         const totalForThisSeat = baseSeatPrice + seatTypePrice;
 
-        console.log(
-          `✅ Calculated price for seat ${seatNumber}: ${totalForThisSeat} VND`
-        );
         return total + totalForThisSeat;
       }
 
       return total;
     }, 0);
 
-    console.log(`💰 getSeatPrice final total: ${total} VND`);
     return total;
   };
 
   const getReturnSeatPrice = () => {
-    console.log("🧮 getReturnSeatPrice called with:", {
-      selectedReturnSeats,
-      returnSeatsCount: returnSeats.length,
-      hasSelectedReturnSeats: Object.keys(selectedReturnSeats).length > 0,
-    });
 
     const total = Object.values(selectedReturnSeats).reduce(
       (total, seatInfo) => {
         // Handle both new format (object) and old format (string)
         if (typeof seatInfo === "object" && seatInfo.priceVND !== undefined) {
           // New format - use stored price
-          console.log(
-            `✅ Using stored price for return seat ${seatInfo.seatNumber}: ${seatInfo.priceVND} VND`
-          );
+
           return total + seatInfo.priceVND;
         } else if (typeof seatInfo === "string") {
           // Old format - calculate price
@@ -3920,9 +4024,6 @@ const Extras = ({ flight, fare, formData, setExtrasData }) => {
             returnSeatTypePricing[seatType]?.priceValue || 0;
           const totalForThisSeat = baseSeatPrice + seatTypePrice;
 
-          console.log(
-            `✅ Calculated price for return seat ${seatNumber}: ${totalForThisSeat} VND`
-          );
           return total + totalForThisSeat;
         }
 
@@ -3931,7 +4032,6 @@ const Extras = ({ flight, fare, formData, setExtrasData }) => {
       0
     );
 
-    console.log(`💰 getReturnSeatPrice final total: ${total} VND`);
     return total;
   };
 
@@ -3960,14 +4060,6 @@ const Extras = ({ flight, fare, formData, setExtrasData }) => {
 
     // Nhân với số segments (x2 cho roundtrip)
     const finalBaggagePrice = totalBaggageAllPassengers * segmentCount;
-
-    console.log("💼 Baggage Price Calculation:", {
-      totalBaggageAllPassengers,
-      segmentCount,
-      finalBaggagePrice,
-      isRoundTrip,
-      baggageSelections: baggage,
-    });
 
     return finalBaggagePrice;
   };
@@ -4025,20 +4117,6 @@ const Extras = ({ flight, fare, formData, setExtrasData }) => {
           serviceTotal *= segmentCount;
         }
       }
-
-      console.log("🛎️ Service Price Calculation:", {
-        serviceName: service.serviceName,
-        serviceId: service.serviceId,
-        basePrice: service.price,
-        quantity: serviceSelection.quantity,
-        passengerId: serviceSelection.passengerId,
-        hasSpecificPassenger,
-        passengersCount,
-        segmentCount,
-        isPerPassenger: service.isPerPassenger,
-        isPerSegment: service.isPerSegment,
-        calculatedTotal: serviceTotal,
-      });
 
       return total + serviceTotal;
     }, 0);
@@ -4247,6 +4325,11 @@ const Extras = ({ flight, fare, formData, setExtrasData }) => {
                 setIsUpdating={setIsUpdating}
                 showReturnSeats={showReturnSeats}
                 setShowReturnSeats={setShowReturnSeats}
+                // Mobile modal props
+                mobileSeatModalOpen={mobileSeatModalOpen}
+                setMobileSeatModalOpen={setMobileSeatModalOpen}
+                mobileSeatModalType={mobileSeatModalType}
+                setMobileSeatModalType={setMobileSeatModalType}
               />
             )}
 

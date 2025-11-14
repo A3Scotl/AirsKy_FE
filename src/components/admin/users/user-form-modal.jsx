@@ -260,12 +260,6 @@ const UserFormModal = ({
               isVerified: formData.verified,
             };
 
-            console.log(
-              "Sending update data without avatar for user:",
-              user.id,
-              updateData
-            );
-
             // Use FormData
             const formDataToSend = new FormData();
             Object.keys(updateData).forEach((key) => {

@@ -17,12 +17,6 @@ export default class PDFExporter {
     company = "AIRSKY",
     chartImage = null
   ) {
-    console.log("📄 PDFExporter starting...", {
-      dataLength: data?.length,
-      columnsLength: columns?.length,
-      sampleData: data?.[0],
-      sampleColumns: columns?.[0],
-    });
 
     if (!data || data.length === 0) {
       console.error("No data to export");
@@ -171,11 +165,6 @@ export default class PDFExporter {
       // Save the PDF
       pdf.save(filename);
 
-      console.log(
-        "✅ PDF exported successfully:",
-        filename,
-        `(${totalPages} pages)`
-      );
       return true;
     } catch (error) {
       console.error("❌ PDF export failed:", error);

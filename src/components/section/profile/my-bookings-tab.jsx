@@ -192,12 +192,7 @@ const MyBookingsTab = () => {
       const reviewsResponse = await reviewApi.getReviewsByBookingFlight(
         booking.bookingId
       );
-      console.log(
-        "All reviews response for booking",
-        booking.bookingId,
-        ":",
-        reviewsResponse
-      );
+
       if (reviewsResponse.success) {
         setBookingReviews(reviewsResponse.data || []);
       }
@@ -207,12 +202,7 @@ const MyBookingsTab = () => {
         booking.bookingId,
         user.id
       );
-      console.log(
-        "My review response for booking",
-        booking.bookingId,
-        ":",
-        myReviewResponse
-      );
+
       if (myReviewResponse.success && myReviewResponse.data) {
         setMyReview(myReviewResponse.data);
       } else {
@@ -407,30 +397,18 @@ const MyBookingsTab = () => {
   const isBookingEligibleForReview = (booking) => {
     if (!booking) return false;
 
-    console.log("Checking review eligibility for booking:", booking.bookingId, {
-      status: booking.status,
-      paymentStatus: booking.payment?.status,
-      passengers: booking.passengers?.map((p) => ({
-        name: p.firstName + " " + p.lastName,
-        checkinStatus: p.checkinStatus,
-      })),
-    });
-
     // Booking must be CONFIRMED
     if (booking.status !== "CONFIRMED") {
-      console.log("Booking not eligible: status is not CONFIRMED");
       return false;
     }
 
     // Payment must be COMPLETED
     if (!booking.payment || booking.payment.status !== "COMPLETED") {
-      console.log("Booking not eligible: payment not completed");
       return false;
     }
 
     // All passengers must have checkin COMPLETED
     if (!booking.passengers || booking.passengers.length === 0) {
-      console.log("Booking not eligible: no passengers");
       return false;
     }
 
@@ -443,7 +421,6 @@ const MyBookingsTab = () => {
     //   return false;
     // }
 
-    console.log("Booking is eligible for review");
     return true;
   };
 
@@ -452,11 +429,6 @@ const MyBookingsTab = () => {
     if (!selectedBooking || !user?.id) return;
 
     // Debug: Log the data being sent
-    console.log("Creating review with data:", {
-      selectedBooking,
-      userId: user.id,
-      reviewFormData,
-    });
 
     setIsSubmittingReview(true);
     try {
@@ -482,11 +454,8 @@ const MyBookingsTab = () => {
         isApproved: true,
       };
 
-      console.log("Review data being sent:", reviewData);
-
       // Always create new review (system may have created empty review automatically)
       const response = await reviewApi.createReview(reviewData);
-      console.log("Create review response:", response);
 
       if (response.success) {
         toast.success("Đánh giá đã được gửi thành công!");
@@ -506,10 +475,7 @@ const MyBookingsTab = () => {
           selectedBooking.bookingId,
           user.id
         );
-        console.log(
-          "Refresh my review response after create:",
-          myReviewResponse
-        );
+
         if (myReviewResponse.success && myReviewResponse.data) {
           setMyReview(myReviewResponse.data);
           // Update review status for this booking
@@ -1190,12 +1156,6 @@ const MyBookingsTab = () => {
                   {/* Reviews Section */}
                   {isBookingEligibleForReview(selectedBooking) && (
                     <Card>
-                      {console.log(
-                        "Reviews Section is rendering for booking:",
-                        selectedBooking.bookingId,
-                        "myReview:",
-                        myReview
-                      )}
                       <CardHeader>
                         <CardTitle className="flex items-center justify-between">
                           <span className="flex items-center gap-2">

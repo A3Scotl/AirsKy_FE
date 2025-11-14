@@ -27,11 +27,7 @@ const PaymentSuccess = () => {
       const currentlyProcessing = localStorage.getItem(processingKey);
 
       if (alreadyProcessed || currentlyProcessing) {
-        console.log("💡 Payment already processed or in progress:", {
-          paymentKey,
-          alreadyProcessed: !!alreadyProcessed,
-          currentlyProcessing: !!currentlyProcessing,
-        });
+
         setStatus("success");
         setMessage("Thanh toán đã được xử lý thành công!");
 
@@ -159,18 +155,11 @@ const PaymentSuccess = () => {
       }
 
       try {
-        console.log("💳 Calling /payments/success API with:", {
-          paymentId,
-          PayerID: payerId,
-          bookingId,
-        });
 
         const response = await axios.get(
           `https://airsky.onrender.com/api/v1/payments/success`,
           { params: { paymentId, PayerID: payerId, bookingId } }
         );
-
-        console.log("💳 /payments/success API response:", response.data);
 
         if (response.data?.success) {
           setStatus("success");
@@ -179,7 +168,6 @@ const PaymentSuccess = () => {
 
           // Clean up processing flag after successful payment
           localStorage.removeItem(processingKey);
-          console.log("🧹 Cleaned up processing flag:", processingKey);
 
           // Check if this is from booking payment flow (stored in localStorage)
           const bookingPaymentInfo = localStorage.getItem(
@@ -202,7 +190,7 @@ const PaymentSuccess = () => {
 
           // Priority: booking payment > checkin payment > my-flights payment
           if (isBookingPayment && bookingPaymentBookingCode) {
-            console.log("🔄 Redirecting to confirm booking (booking payment)");
+
             // Booking payment - go to confirm booking with payment refresh flag
             setTimeout(() => {
               // Set flag to indicate payment status needs refresh
@@ -215,10 +203,7 @@ const PaymentSuccess = () => {
               );
             }, 2500);
           } else if (isCheckinPayment && bookingCode) {
-            console.log(
-              "🔄 Redirecting back to check-in page for booking:",
-              bookingCode
-            );
+
             // Redirect back to check-in page to continue with check-in process
             setTimeout(
               () =>
@@ -228,10 +213,7 @@ const PaymentSuccess = () => {
               2500
             );
           } else if (isMyFlightsPayment && myFlightsBookingCode) {
-            console.log(
-              "🔄 Redirecting back to my-flights success page for booking:",
-              myFlightsBookingCode
-            );
+
             // Redirect back to my-flights page with success state
             setTimeout(
               () =>
@@ -246,9 +228,7 @@ const PaymentSuccess = () => {
               2500
             );
           } else {
-            console.log(
-              "🔄 Redirecting to confirm booking (fallback - normal booking payment)"
-            );
+
             // Fallback - assume normal booking payment, try to get booking code from URL or localStorage
             const fallbackBookingCode = params.get("bookingId") || bookingId;
             setTimeout(() => {
@@ -279,10 +259,7 @@ const PaymentSuccess = () => {
 
         // Clean up processing flag after error
         localStorage.removeItem(processingKey);
-        console.log(
-          "🧹 Cleaned up processing flag after error:",
-          processingKey
-        );
+
       }
     };
 
@@ -299,13 +276,13 @@ const PaymentSuccess = () => {
             Đang xử lý thanh toán, vui lòng chờ...
           </p>
           {/* Back Button */}
-          <button
+          {/* <button
             onClick={() => navigate(-1)}
             className="mt-4 bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 flex items-center gap-2"
           >
             <ArrowLeft className="w-4 h-4" />
             Quay lại
-          </button>
+          </button> */}
         </>
       )}
 
@@ -318,13 +295,13 @@ const PaymentSuccess = () => {
           <p className="text-gray-600 mt-2">{message}</p>
 
           {/* Back Button */}
-          <button
+          {/* <button
             onClick={() => navigate(-1)}
             className="mt-4 bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 mr-4 flex items-center gap-2"
           >
             <ArrowLeft className="w-4 h-4" />
             Quay lại
-          </button>
+          </button> */}
 
           <button
             onClick={() => {

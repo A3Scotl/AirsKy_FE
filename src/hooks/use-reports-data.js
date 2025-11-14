@@ -66,7 +66,7 @@ export const useReportsData = (options = {}) => {
   } = useQuery({
     queryKey: cacheKey,
     queryFn: async () => {
-      console.log(`🚀 Fetching ${mode} data...`);
+
       const startTime = performance.now();
 
       try {
@@ -164,12 +164,6 @@ export const useReportsData = (options = {}) => {
         }
 
         const endTime = performance.now();
-        console.log(
-          `✅ ${mode} data fetched in ${(endTime - startTime).toFixed(2)}ms`
-        );
-        console.log(
-          `📈 Data: ${filteredFlights.length} flights, ${filteredBookings.length} bookings, ${filteredUsers.length} users`
-        );
 
         return {
           flights: filteredFlights,
@@ -199,7 +193,6 @@ export const useReportsData = (options = {}) => {
     queryFn: async () => {
       if (!rawData || !processAllStats) return null;
 
-      console.log("⚡ Processing data with Web Worker...");
       const startTime = performance.now();
 
       try {
@@ -210,9 +203,6 @@ export const useReportsData = (options = {}) => {
         });
 
         const endTime = performance.now();
-        console.log(
-          `🔧 Data processed in ${(endTime - startTime).toFixed(2)}ms`
-        );
 
         return result;
       } catch (error) {

@@ -321,7 +321,7 @@ const DealFormModal = ({
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto dark:bg-gray-900 dark:text-white">
+      <DialogContent className="max-w-[95vw] sm:max-w-[90vw] md:max-w-3xl lg:max-w-4xl max-h-[90vh] overflow-y-auto dark:bg-gray-900 dark:text-white">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 dark:text-white">
             {isEditMode ? (

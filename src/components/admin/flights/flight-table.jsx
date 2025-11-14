@@ -38,6 +38,7 @@ const FlightTable = ({
   onViewFlight,
   onEditFlight,
   onDeleteFlight,
+  onDelayFlight,
 }) => {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(5);
@@ -126,7 +127,9 @@ const FlightTable = ({
 
         const actualStatusFilter = statusMapping[statusFilter] || statusFilter;
         const matchesStatus =
-          statusFilter === "all" || flight.status === actualStatusFilter;
+          statusFilter === "all" ||
+          (statusFilter === "active" && flight.status !== "CANCELLED") ||
+          flight.status === actualStatusFilter;
 
         // Sửa logic aircraft filter
         const matchesAircraft =
@@ -208,6 +211,8 @@ const FlightTable = ({
               // Chỉ cho phép hủy khi chuyến bay đang ON_TIME hoặc DELAYED
               const canCancel =
                 flight.status === "ON_TIME" || flight.status === "DELAYED";
+              // Chỉ cho phép delay khi chuyến bay đang ON_TIME (chưa delay và chưa khởi hành)
+              const canDelay = flight.status === "ON_TIME";
               const loadFactor = calculateLoadFactor(flight);
 
               return (
@@ -258,7 +263,8 @@ const FlightTable = ({
                   <TableCell>
                     <div className="text-sm">
                       <div className="font-medium">
-                        {formatTime(flight.departureTime)} - {formatTime(flight.arrivalTime)}
+                        {formatTime(flight.departureTime)} -{" "}
+                        {formatTime(flight.arrivalTime)}
                       </div>
                       <div className="text-gray-500">
                         {formatDate(flight.departureTime)}
@@ -351,6 +357,22 @@ const FlightTable = ({
                           </TooltipTrigger>
                           <TooltipContent>
                             <p>Chỉnh sửa</p>
+                          </TooltipContent>
+                        </Tooltip>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 w-8 p-0 text-orange-600 hover:text-orange-700 hover:bg-orange-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                              onClick={() => onDelayFlight(flight)}
+                              disabled={!canDelay}
+                            >
+                              <Pause className="h-4 w-4" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>Delay chuyến bay</p>
                           </TooltipContent>
                         </Tooltip>
                         <Tooltip>

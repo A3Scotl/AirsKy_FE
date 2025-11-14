@@ -282,7 +282,7 @@ const BlogPage = () => {
         keywords="blog, bài viết, du lịch, máy bay, hàng không"
       />
 
-      <div className="min-h-screen bg-white ">
+      <div className="min-h-screen bg-white dark:bg-gray-900 ">
         {/* Hero Section */}
         <div className="bg-gradient-to-r from-blue-600 to-blue-700 text-white flex flex-col justify-center">
           <div className=" mx-auto p-16 mt-30 max-w-6xl">
@@ -377,7 +377,7 @@ const BlogPage = () => {
         )}
 
         {/* Main Content */}
-        <div className="max-w-7xl mx-auto px-4 py-16 bg-white">
+        <div className="max-w-7xl mx-auto px-4 py-16 bg-white dark:bg-gray-900">
           <div className="flex flex-col lg:flex-row gap-12">
             {/* Sidebar */}
             <div className="lg:w-1/4">

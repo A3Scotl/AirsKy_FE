@@ -31,25 +31,14 @@ export const useUserProfile = () => {
       const response = await authApi.me();
 
       if (response.success) {
-        console.log("📋 API Profile Response:", response.data);
-        console.log("🔍 Checking for avatar fields in API response:", {
-          avatar: response.data.avatar,
-          profilePicture: response.data.profilePicture,
-          googleAvatar: response.data.googleAvatar,
-          email: response.data.email,
-        });
 
         // Merge Google avatar from auth context if API doesn't have it
         let mergedProfile = { ...response.data };
         if (!mergedProfile.googleAvatar && user?.googleAvatar) {
-          console.log(
-            "🔗 Merging Google avatar from auth context:",
-            user.googleAvatar
-          );
+
           mergedProfile.googleAvatar = user.googleAvatar;
         }
 
-        console.log("✅ Final merged profile:", mergedProfile);
         setUserProfile(mergedProfile);
       } else {
         // Handle specific API errors
@@ -158,21 +147,13 @@ export const userProfileUtils = {
   getAvatarUrl: (userProfile) => {
     if (!userProfile) return null;
 
-    console.log("🔍 Getting avatar for user:", userProfile.email);
-    console.log("📊 Available avatar sources:", {
-      databaseAvatar: userProfile.avatar,
-      profilePicture: userProfile.profilePicture,
-      googleAvatar: userProfile.googleAvatar,
-      email: userProfile.email,
-    });
-
     // Try database avatar first
     if (userProfile.avatar) {
-      console.log("✅ Using database avatar:", userProfile.avatar);
+
       return userProfile.avatar;
     }
     if (userProfile.profilePicture) {
-      console.log("✅ Using profile picture:", userProfile.profilePicture);
+
       return userProfile.profilePicture;
     }
 
@@ -185,9 +166,9 @@ export const userProfileUtils = {
         if (!googleAvatarUrl.includes("=s")) {
           googleAvatarUrl += "=s96-c";
         }
-        console.log("✅ Using Google avatar with CORS fix:", googleAvatarUrl);
+
       } else {
-        console.log("✅ Using Google avatar:", googleAvatarUrl);
+
       }
       return googleAvatarUrl;
     }
@@ -284,23 +265,17 @@ export const userProfileUtils = {
    * Get best available avatar URL with all fallbacks
    */
   getBestAvatarUrl: (userProfile, size = 80) => {
-    console.log(
-      "🎯 getBestAvatarUrl called for user:",
-      userProfile?.email,
-      "size:",
-      size
-    );
 
     // Try main avatar methods
     const avatarUrl = userProfileUtils.getAvatarUrl(userProfile);
     if (avatarUrl) {
-      console.log("✅ getBestAvatarUrl returning main avatar:", avatarUrl);
+
       return avatarUrl;
     }
 
     // Try UI Avatars as final fallback
     const uiAvatarUrl = userProfileUtils.getUIAvatarUrl(userProfile, size);
-    console.log("🔄 getBestAvatarUrl falling back to UI Avatar:", uiAvatarUrl);
+
     return uiAvatarUrl;
   },
 

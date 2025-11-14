@@ -35,7 +35,7 @@ import CountrySelect, {
 // Helper function to convert country name to ISO code for phone input
 const getCountryISOCode = (countryName) => {
   if (!countryName) {
-    console.log("🌍 No country provided, using VN default");
+ 
     return "VN";
   }
 
@@ -43,13 +43,6 @@ const getCountryISOCode = (countryName) => {
   // This dynamically gets the ISO code from the country data
   const country = getCountryByName(countryName);
   const countryCode = country ? country.code : "VN"; // Default to Vietnam if not found
-
-  console.log("🌍 Country mapping:", {
-    countryName,
-    foundCountry: country,
-    resultCode: countryCode,
-    callingCode: country?.callingCode,
-  });
 
   return countryCode;
 };
@@ -327,24 +320,14 @@ const PassengerForm = memo(
 
     useEffect(() => {
       const newCountryCode = getCountryISOCode(passenger.country || "Vietnam");
-      console.log("🔄 Country useEffect triggered for passenger", index, ":", {
-        currentCountry: passenger.country,
-        newCountryCode: newCountryCode,
-        currentPhoneCountry: phoneCountry,
-      });
 
       if (newCountryCode !== phoneCountry) {
-        console.log(
-          "🔄 Country code changed from",
-          phoneCountry,
-          "to",
-          newCountryCode
-        );
+
         setPhoneCountry(newCountryCode);
 
         // Clear phone value when country changes to avoid confusion
         if (passenger.phone) {
-          console.log("🔄 Clearing phone value due to country change");
+
           updatePassenger(index, "phone", "");
         }
       }
@@ -363,12 +346,6 @@ const PassengerForm = memo(
       customValidation = null
     ) => {
       // Debug: Log validation info
-      console.log(`Passenger ${index} - Field ${fieldName}:`, {
-        hasValidationErrors: !!validationErrors,
-        validationErrors,
-        fieldError: validationErrors?.[fieldName],
-        value,
-      });
 
       // Check if there's a validation error for this field
       const hasError = validationErrors && validationErrors[fieldName];
@@ -693,8 +670,7 @@ const PassengerForm = memo(
                 <CountrySelect
                   value={passenger.country || "Vietnam"}
                   onChange={(countryName) => {
-                    console.log("🌍 Country changed to:", countryName);
-                    console.log("🌍 Current passenger data:", passenger);
+
                     updatePassenger(index, "country", countryName);
                   }}
                   error={!!validationErrors?.country}

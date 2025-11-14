@@ -110,7 +110,7 @@ const BookingDetailsModal = ({ open, onOpenChange, booking, onEdit }) => {
   };
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto dark:bg-gray-900 dark:text-white">
+      <DialogContent className="max-w-[95vw] sm:max-w-[90vw] md:max-w-4xl lg:max-w-6xl max-h-[90vh] overflow-y-auto dark:bg-gray-900 dark:text-white">
         <DialogHeader>
           <div className="flex items-center justify-between">
             <div>

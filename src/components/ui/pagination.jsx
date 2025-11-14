@@ -76,7 +76,7 @@ const Pagination = ({
   return (
     <div className={`flex flex-col gap-4 ${className} mt-4`}>
       {/* Top section with page size selector and info */}
-      <div className="flex items-center justify-between text-sm text-gray-600">
+      <div className="flex items-center justify-between flex-wrap gap-3 text-sm text-gray-600">
         {showInfo && (
           <div>
             Hiển thị {startItem} đến {endItem} trong tổng số {totalItems} kết
@@ -144,7 +144,7 @@ const Pagination = ({
 
         {/* Page info for mobile */}
         <div className="flex items-center justify-center text-sm text-gray-500 sm:hidden">
-          Page {currentPage} of {totalPages}
+          Trang {currentPage} trên {totalPages}
         </div>
       </div>
     </div>

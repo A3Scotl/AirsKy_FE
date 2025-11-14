@@ -206,7 +206,7 @@ const MyFlightsBookingDetails = ({ booking, onProceed, onBack }) => {
       {/* Header with Booking Status */}
       <Card className="border-l-4 border-l-blue-500">
         <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950 dark:to-indigo-950">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div className="flex items-center gap-3">
               <div className="p-2 bg-blue-100 dark:bg-blue-900 rounded-full">
                 <Plane className="w-6 h-6 text-blue-600 dark:text-blue-400" />
@@ -223,7 +223,7 @@ const MyFlightsBookingDetails = ({ booking, onProceed, onBack }) => {
                 </p>
               </div>
             </div>
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
               <Badge
                 variant="outline"
                 className={getStatusColor(booking.status)}
@@ -244,7 +244,7 @@ const MyFlightsBookingDetails = ({ booking, onProceed, onBack }) => {
           </div>
         </CardHeader>
         <CardContent className="pt-6">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
             <div className="space-y-1">
               <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
                 Email đặt chỗ
@@ -394,29 +394,29 @@ const MyFlightsBookingDetails = ({ booking, onProceed, onBack }) => {
           <div className="space-y-4">
             {booking.passengers && booking.passengers.length > 0 ? (
               booking.passengers.map((passenger, index) => (
-                <div
-                  key={passenger.passengerId || index}
-                  className="border rounded-lg p-4"
-                >
-                  <div className="flex justify-between items-start mb-3">
-                    <h4 className="font-semibold dark:text-white">
-                      {passenger.lastName || ""} {passenger.firstName || ""}
-                    </h4>
-                    <Badge
-                      variant="outline"
-                      className="dark:text-gray-300 dark:border-gray-600"
-                    >
-                      {passenger.type === "ADULT"
-                        ? "Người lớn"
-                        : passenger.type === "CHILD"
-                        ? "Trẻ em"
-                        : "Em bé"}
-                    </Badge>
-                  </div>
-                  <div className="grid grid-cols-2 gap-4 text-sm">
-                    <div>
-                      <p className="text-gray-600 dark:text-gray-400">
-                        Ngày sinh
+                  <div
+                    key={passenger.passengerId || index}
+                    className="border rounded-lg p-4"
+                  >
+                    <div className="flex flex-col sm:flex-row justify-between items-start mb-3 gap-2">
+                      <h4 className="font-semibold dark:text-white">
+                        {passenger.lastName || ""} {passenger.firstName || ""}
+                      </h4>
+                      <Badge
+                        variant="outline"
+                        className="dark:text-gray-300 dark:border-gray-600"
+                      >
+                        {passenger.type === "ADULT"
+                          ? "Người lớn"
+                          : passenger.type === "CHILD"
+                          ? "Trẻ em"
+                          : "Em bé"}
+                      </Badge>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+                      <div>
+                        <p className="text-gray-600 dark:text-gray-400">
+                          Ngày sinh
                       </p>
                       <p className="dark:text-white">
                         {passenger.dateOfBirth
@@ -527,7 +527,7 @@ const MyFlightsBookingDetails = ({ booking, onProceed, onBack }) => {
                     key={segment.segmentId || index}
                     className="border rounded-lg p-4"
                   >
-                    <div className="flex items-center justify-between mb-4">
+                    <div className="flex flex-col sm:flex-row items-center justify-between mb-4 gap-4">
                       <div className="flex items-center gap-4">
                         <div className="text-center">
                           <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
@@ -547,7 +547,7 @@ const MyFlightsBookingDetails = ({ booking, onProceed, onBack }) => {
                           </p>
                         </div>
                       </div>
-                      <div className="text-right">
+                      <div className="text-right sm:text-left">
                         <p className="text-lg font-semibold dark:text-white">
                           {segment.flightNumber || "N/A"}
                         </p>
@@ -557,7 +557,7 @@ const MyFlightsBookingDetails = ({ booking, onProceed, onBack }) => {
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
                       <div className="flex items-center gap-2">
                         <Calendar className="w-4 h-4 text-gray-500 dark:text-gray-400" />
                         <div>

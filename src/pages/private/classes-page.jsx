@@ -143,12 +143,7 @@ const ClassesPage = () => {
   };
 
   const handleEdit = (travelClass) => {
-    console.log("[ClassesPage] Editing travel class:", travelClass);
-    console.log("[ClassesPage] Available ID fields:", {
-      id: travelClass.id,
-      classId: travelClass.classId,
-      travelClassId: travelClass.travelClassId,
-    });
+
     setEditData(travelClass);
     setModalOpen(true);
   };
@@ -190,12 +185,6 @@ const ClassesPage = () => {
     // Get the correct ID field
     const classId =
       editData?.classId || editData?.id || editData?.travelClassId;
-    console.log(
-      "[ClassesPage] Submitting with ID:",
-      classId,
-      "EditData:",
-      editData
-    );
 
     if (isUpdate && !classId) {
       toast.error("Không tìm thấy ID của hạng vé để cập nhật");
@@ -237,7 +226,7 @@ const ClassesPage = () => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex justify-between items-center">
+      <div className="flex justify-between flex-wrap gap-3 items-center">
         <div>
           <h1 className="text-2xl font-bold">Quản lý Hạng vé</h1>
           <p className="text-sm text-gray-600 mt-1">
