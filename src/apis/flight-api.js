@@ -1,0 +1,381 @@
+import { apiHandler } from "@/utils/api-handler";
+
+/**
+ * API liên quan đến quản lý chuyến bay (flight)
+ */
+export const flightApi = {
+  /**
+   * Tạo chuyến bay mới (Admin only)
+   * @param {object} flightData - Thông tin chuyến bay
+   * @returns {Promise<{ success: boolean, data?: any, message: string }>}
+   */
+  createFlight: async (flightData) => {
+    return apiHandler("post", "/flights", flightData);
+  },
+
+  /**
+   * Cập nhật chuyến bay (Admin only)
+   * @param {number} id - ID chuyến bay
+   * @param {object} flightData - Thông tin chuyến bay
+   * @returns {Promise<{ success: boolean, data?: any, message: string }>}
+   */
+  updateFlight: async (id, flightData) => {
+    return apiHandler("put", `/flights/${id}`, flightData);
+  },
+
+  /**
+   * Xoá chuyến bay (Admin only)
+   * @param {number} id - ID chuyến bay
+   * @returns {Promise<{ success: boolean, data?: any, message: string }>}
+   */
+  deleteFlight: async (id) => {
+    return apiHandler("delete", `/flights/${id}`);
+  },
+
+  /**
+   * Lấy thông tin chuyến bay theo ID
+   * @param {number} id - ID chuyến bay
+   * @returns {Promise<{ success: boolean, data?: any, message: string }>}
+   */
+  getFlightById: async (id) => {
+    return apiHandler("get", `/flights/${id}`);
+  },
+  /**
+   * Lấy thông tin ghế của chuyến bay theo hạng vé
+   * @param {number} flightId - ID chuyến bay
+   * @param {number} travelClassId - ID hạng vé
+   * @returns {Promise<{ success: boolean, data?: any, message: string }>}
+   */
+  getSeatsFlightByFlightIdAndTravelClassId: async (flightId, travelClassId) => {
+    return apiHandler("get", `/flights/${flightId}/seats/${travelClassId}`);
+  },
+
+  /**
+   * Lấy danh sách chuyến bay (phân trang)
+   * @param {{ page?: number, size?: number, sort?: string }} params
+   * @returns {Promise<{ success: boolean, data?: any, message: string }>}
+   */
+  getAllFlights: async (params = {}) => {
+    const queryParams = new URLSearchParams();
+    if (params.page !== undefined) queryParams.append("page", params.page);
+    if (params.size !== undefined) queryParams.append("size", params.size);
+    if (params.sort) queryParams.append("sort", params.sort);
+    const queryString = queryParams.toString();
+    const endpoint = queryString ? `/flights?${queryString}` : "/flights";
+    return apiHandler("get", endpoint);
+  },
+
+  /**
+   * Tìm kiếm chuyến bay
+   * @param {object} params - { departureAirportId, arrivalAirportId, startTime, endTime, status, page, size, sort }
+   * @returns {Promise<{ success: boolean, data?: any, message: string }>}
+   */
+  searchFlights: async (params = {}) => {
+    const queryParams = new URLSearchParams();
+    if (params.departureAirportId)
+      queryParams.append("departureAirportId", params.departureAirportId);
+    if (params.arrivalAirportId)
+      queryParams.append("arrivalAirportId", params.arrivalAirportId);
+    if (params.startTime) queryParams.append("startTime", params.startTime);
+    if (params.endTime) queryParams.append("endTime", params.endTime);
+    if (params.status) queryParams.append("status", params.status);
+    if (params.page !== undefined) queryParams.append("page", params.page);
+    if (params.size !== undefined) queryParams.append("size", params.size);
+    if (params.sort) queryParams.append("sort", params.sort);
+    const queryString = queryParams.toString();
+    const endpoint = queryString
+      ? `/flights/search?${queryString}`
+      : "/flights/search";
+    return apiHandler("get", endpoint);
+  },
+
+  /**
+   * Kiểm tra xung đột lịch trình
+   * @param {object} params - { departureDate, departureTime, arrivalDate, arrivalTime, departureAirportId, arrivalAirportId, aircraftId, gateId, excludeFlightId }
+   * @returns {Promise<{ success: boolean, data?: { aircraft: [], departureAirport: [], arrivalAirport: [], gate: [] }, message: string }>}
+   */
+  checkScheduleConflicts: async (params = {}) => {
+    const queryParams = new URLSearchParams();
+    if (params.departureDate)
+      queryParams.append("departureDate", params.departureDate);
+    if (params.departureTime)
+      queryParams.append("departureTime", params.departureTime);
+    if (params.arrivalDate)
+      queryParams.append("arrivalDate", params.arrivalDate);
+    if (params.arrivalTime)
+      queryParams.append("arrivalTime", params.arrivalTime);
+    if (params.departureAirportId)
+      queryParams.append("departureAirportId", params.departureAirportId);
+    if (params.arrivalAirportId)
+      queryParams.append("arrivalAirportId", params.arrivalAirportId);
+    if (params.aircraftId) queryParams.append("aircraftId", params.aircraftId);
+    if (params.gateId) queryParams.append("gateId", params.gateId);
+    if (params.excludeFlightId)
+      queryParams.append("excludeFlightId", params.excludeFlightId);
+
+    const queryString = queryParams.toString();
+    const endpoint = queryString
+      ? `/flights/check-conflicts?${queryString}`
+      : "/flights/check-conflicts";
+    return apiHandler("get", endpoint);
+  },
+
+  /**
+   * Lấy danh sách ghế theo chuyến bay
+   * @param {number} flightId - ID chuyến bay
+   * @returns {Promise<{ success: boolean, data?: any, message: string }>}
+   */
+  getSeatsByFlight: async (flightId) => {
+    return apiHandler("get", `/flights/${flightId}/seats`);
+  },
+
+  /**
+   * In ra các chuyến bay nội địa trong một quốc gia
+   * @param {string} country - Tên quốc gia
+   * @param {{ page?: number, size?: number }} params
+   * @returns {Promise<{ success: boolean, data?: any, message: string }>}
+   */
+  findDomesticFlights: async (country, params = {}) => {
+    const queryParams = new URLSearchParams();
+    queryParams.append("country", country);
+    if (params.page !== undefined) queryParams.append("page", params.page);
+    if (params.size !== undefined) queryParams.append("size", params.size);
+    const queryString = queryParams.toString();
+    const endpoint = `/flights/domestic?${queryString}`;
+    return apiHandler("get", endpoint);
+  },
+
+  /**
+   * Tìm kiếm chuyến bay giữa hai quốc gia
+   * @param {string} departureCountry - Quốc gia khởi hành
+   * @param {string} arrivalCountry - Quốc gia đến
+   * @param {{ page?: number, size?: number }} params
+   * @returns {Promise<{ success: boolean, data?: any, message: string }>}
+   */
+  findFlightsBetweenCountries: async (
+    departureCountry,
+    arrivalCountry,
+    params = {}
+  ) => {
+    const queryParams = new URLSearchParams();
+    queryParams.append("departureCountry", departureCountry);
+    queryParams.append("arrivalCountry", arrivalCountry);
+    if (params.page !== undefined) queryParams.append("page", params.page);
+    if (params.size !== undefined) queryParams.append("size", params.size);
+    const queryString = queryParams.toString();
+    const endpoint = `/flights/between-countries?${queryString}`;
+    return apiHandler("get", endpoint);
+  },
+
+  /**
+   * Tìm kiếm chuyến bay một chiều
+   * @param {object} params - { departureAirportId, arrivalAirportId, date, status, page, size, sort }
+   * @returns {Promise<{ success: boolean, data?: any, message: string }>}
+   */
+  searchOneWayFlights: async (params = {}) => {
+    const queryParams = new URLSearchParams();
+    if (params.departureAirportId !== undefined)
+      queryParams.append("departureAirportId", params.departureAirportId);
+    if (params.arrivalAirportId !== undefined)
+      queryParams.append("arrivalAirportId", params.arrivalAirportId);
+    if (params.date) queryParams.append("date", params.date);
+    if (params.status) queryParams.append("status", params.status);
+    if (params.page !== undefined) queryParams.append("page", params.page);
+    if (params.size !== undefined) queryParams.append("size", params.size);
+    if (params.sort) queryParams.append("sort", params.sort);
+    const queryString = queryParams.toString();
+    const endpoint = queryString
+      ? `/flights/search-oneway?${queryString}`
+      : "/flights/search-oneway";
+    return apiHandler("get", endpoint);
+  },
+
+  /**
+   * Tìm kiếm chuyến bay khứ hồi
+   * @param {object} params - { departureAirportId, arrivalAirportId, outboundDate, returnDate, status, page, size, sort }
+   * @returns {Promise<{ success: boolean, data?: any, message: string }>}
+   */
+  searchRoundTripFlights: async (params = {}) => {
+    const queryParams = new URLSearchParams();
+    if (params.departureAirportId !== undefined)
+      queryParams.append("departureAirportId", params.departureAirportId);
+    if (params.arrivalAirportId !== undefined)
+      queryParams.append("arrivalAirportId", params.arrivalAirportId);
+    if (params.outboundDate)
+      queryParams.append("outboundDate", params.outboundDate);
+    if (params.returnDate) queryParams.append("returnDate", params.returnDate);
+    if (params.status) queryParams.append("status", params.status);
+    if (params.page !== undefined) queryParams.append("page", params.page);
+    if (params.size !== undefined) queryParams.append("size", params.size);
+    if (params.sort) queryParams.append("sort", params.sort);
+    const queryString = queryParams.toString();
+    const endpoint = queryString
+      ? `/flights/search-roundtrip?${queryString}`
+      : "/flights/search-roundtrip";
+    return apiHandler("get", endpoint);
+  },
+
+  /**
+   * Tìm chuyến bay khứ hồi theo groupId
+   * @param {string} groupId - ID nhóm chuyến bay khứ hồi
+   * @param {{ page?: number, size?: number, sort?: string }} params
+   * @returns {Promise<{ success: boolean, data?: any, message: string }>}
+   */
+  findRoundTripFlightsByGroupId: async (groupId, params = {}) => {
+    const queryParams = new URLSearchParams();
+    queryParams.append("groupId", groupId);
+    if (params.page !== undefined) queryParams.append("page", params.page);
+    if (params.size !== undefined) queryParams.append("size", params.size);
+    if (params.sort) queryParams.append("sort", params.sort);
+    const queryString = queryParams.toString();
+    const endpoint = `/flights/roundtrip-group?${queryString}`;
+    return apiHandler("get", endpoint);
+  },
+
+  /**
+   * Tìm chuyến bay thống nhất (unified search)
+   * @param {object} request - { tripType, adultCount, childCount, infantCount, travelClass, departureAirportId, arrivalAirportId, outboundDepartureDate, returnDate, multiCityLegs, segments }
+   * @param {{ page?: number, size?: number, sort?: string }} params
+   * @returns {Promise<{ success: boolean, data?: any, message: string }>}
+   */
+  searchUnifiedFlights: async (request, params = {}) => {
+    const queryParams = new URLSearchParams();
+    if (params.page !== undefined) queryParams.append("page", params.page);
+    if (params.size !== undefined) queryParams.append("size", params.size);
+    if (params.sort) queryParams.append("sort", params.sort);
+    const queryString = queryParams.toString();
+    const endpoint = queryString
+      ? `/flights/search-unified?${queryString}`
+      : "/flights/search-unified";
+    return apiHandler("post", endpoint, request);
+  },
+
+  /**
+   * Tìm kiếm chuyến bay multi-city (kết hợp nhiều chặng one-way)
+   * @param {Array} segments - Array các chặng bay { departureAirportIds, arrivalAirportIds, date }
+   * @param {string} travelClass - Hạng vé
+   * @param {object} passengers - Số lượng hành khách
+   * @returns {Promise<{ success: boolean, data?: any, message: string }>}
+   */
+  searchMultiCityFlights: async (segments, travelClass, passengers) => {
+    try {
+      console.log("Searching multi-city flights:", {
+        segments,
+        travelClass,
+        passengers,
+      });
+
+      // Tìm kiếm từng chặng riêng biệt sử dụng unified API
+      const segmentResults = await Promise.all(
+        segments.map(async (segment, index) => {
+          const segmentSearches = [];
+
+          // Tạo các tổ hợp sân bay cho mỗi chặng
+          for (const departureAirportId of segment.departureAirportIds) {
+            for (const arrivalAirportId of segment.arrivalAirportIds) {
+              segmentSearches.push(
+                flightApi.searchUnifiedFlights({
+                  tripType: "ONE_WAY",
+                  departureAirportId,
+                  arrivalAirportId,
+                  outboundDepartureDate: segment.date,
+                  passengers,
+                  travelClass,
+                })
+              );
+            }
+          }
+
+          // Thực hiện tất cả tìm kiếm cho chặng này
+          const results = await Promise.all(segmentSearches);
+          const allFlights = results
+            .filter((result) => result.success && result.data)
+            .flatMap((result) => {
+              // Extract flights from unified API response
+              if (result.data.oneWayFlights?.content) {
+                return result.data.oneWayFlights.content;
+              } else if (Array.isArray(result.data)) {
+                return result.data;
+              } else {
+                return [];
+              }
+            })
+            .map((flight) => ({
+              ...flight,
+              segmentIndex: index,
+              segmentLabel: `Chặng ${index + 1}`,
+            }));
+
+          console.log(
+            `Segment ${index + 1} found ${allFlights.length} flights`
+          );
+          return allFlights;
+        })
+      );
+
+      return {
+        success: true,
+        data: {
+          segments: segmentResults,
+          totalSegments: segments.length,
+          searchCriteria: {
+            travelClass,
+            passengers,
+            segments: segments.map((seg, idx) => ({
+              index: idx + 1,
+              departureAirportIds: seg.departureAirportIds,
+              arrivalAirportIds: seg.arrivalAirportIds,
+              date: seg.date,
+            })),
+          },
+        },
+        message: `Tìm thấy kết quả cho ${segmentResults.length} chặng bay`,
+      };
+    } catch (error) {
+      console.error("Error searching multi-city flights:", error);
+      return {
+        success: false,
+        message: "Lỗi khi tìm kiếm chuyến bay đa thành phố",
+        error: error.message,
+      };
+    }
+  },
+
+  /**
+   * Hủy chuyến bay với lý do bắt buộc
+   * @param {number} flightId - ID chuyến bay
+   * @param {object} params - { reason: string } - Lý do hủy (bắt buộc)
+   * @returns {Promise<{ success: boolean, data?: any, message: string }>}
+   */
+  cancelFlight: async (flightId, params) => {
+    const queryParams = new URLSearchParams();
+    if (params.reason) queryParams.append("reason", params.reason);
+    const queryString = queryParams.toString();
+    const endpoint = `/flights/${flightId}/cancel${
+      queryString ? `?${queryString}` : ""
+    }`;
+    return apiHandler("post", endpoint);
+  },
+
+  /**
+   * Delay chuyến bay với lý do và thời gian mới bắt buộc
+   * @param {number} flightId - ID chuyến bay
+   * @param {object} params - { reason: string, newDepartureTime: string } - Lý do delay và thời gian khởi hành mới (ISO format)
+   * @returns {Promise<{ success: boolean, data?: any, message: string }>}
+   */
+  delayFlight: async (flightId, params) => {
+    const queryParams = new URLSearchParams();
+    if (params.reason) queryParams.append("reason", params.reason);
+    if (params.newDepartureTime)
+      queryParams.append("newDepartureTime", params.newDepartureTime);
+    const queryString = queryParams.toString();
+    const endpoint = `/flights/${flightId}/delay${
+      queryString ? `?${queryString}` : ""
+    }`;
+    return apiHandler("post", endpoint);
+  },
+
+  compareFlightPrices: async (params) => {
+    return apiHandler("post", "/flights/compare-prices", params);
+  },
+};

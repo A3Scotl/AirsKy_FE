@@ -1,0 +1,249 @@
+/* Swiper Parallax Styles */
+.parallax-bg {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+/* Custom Pagination */
+.hero-swiper .swiper-pagination-bullet {
+  background: white;
+  opacity: 1;
+  width: 12px;
+  height: 12px;
+  transition: all 0.3s ease;
+}
+
+.hero-swiper .swiper-pagination-bullet-active {
+  background: rgb(45, 64, 208);
+  transform: scale(1.2);
+  box-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+}
+
+/* Ensure content stays above swiper */
+.hero-content {
+  position: relative;
+  z-index: 50 !important;
+}
+
+/* Add overlay to swiper for better text readability */
+.hero-swiper .swiper-slide::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(
+    to bottom,
+    rgba(0, 0, 0, 0.3) 0%,
+    rgba(0, 0, 0, 0.4) 50%,
+    rgba(0, 0, 0, 0.6) 100%
+  );
+  z-index: 1;
+}
+
+.swiper-wrapper {
+  height: 100vh !important;
+}
+
+/* Search form overlay styling */
+.search-form-overlay {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(20px);
+  border-radius: 20px;
+  padding: 2rem;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  max-width: 100%;
+  margin: 0 auto;
+  transition: all 0.3s ease;
+}
+
+/* Dark theme for search form overlay */
+.dark .search-form-overlay {
+  background: none;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6);
+}
+
+/* Hero Swiper Styles - Full Height */
+.hero-swiper {
+  width: 100%;
+  height: 100vh;
+  position: relative;
+}
+
+.hero-swiper .swiper-slide {
+  height: 100vh;
+  position: relative;
+  overflow: hidden;
+}
+
+.hero-swiper .swiper-pagination {
+  bottom: 30px !important;
+}
+
+.hero-swiper .swiper-pagination-bullet {
+  background: rgba(255, 255, 255, 0.7);
+  opacity: 1;
+}
+
+.hero-swiper .swiper-pagination-bullet-active {
+  background: #ffffff;
+  transform: scale(1.2);
+}
+
+/* Airlines Swiper Styles - Auto Height */
+.airlines-slider {
+  width: 100%;
+  height: auto;
+  position: relative;
+}
+
+.airlines-slider .swiper-slide {
+  height: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.airlines-slider .swiper-wrapper {
+  align-items: stretch;
+}
+
+/* Override global Swiper styles to prevent conflicts */
+.airlines-slider .swiper {
+  height: auto !important;
+}
+
+.airlines-slider .swiper-slide {
+  height: auto !important;
+}
+
+/* Ensure airlines section doesn't inherit hero swiper height */
+.airlines-slider {
+  min-height: 120px;
+  max-height: 200px;
+}
+
+/* Additional safety overrides */
+.airlines-slider .swiper-container {
+  height: auto !important;
+}
+
+.airlines-slider .swiper-wrapper {
+  height: auto !important;
+}
+
+.airlines-slider .swiper-slide {
+  height: auto !important;
+  flex-shrink: 0;
+}
+
+/* Global Swiper overrides to prevent height inheritance */
+.swiper:not(.hero-swiper) {
+  height: auto !important;
+}
+
+.swiper:not(.hero-swiper) .swiper-slide {
+  height: auto !important;
+}
+
+.swiper:not(.hero-swiper) .swiper-wrapper {
+  height: auto !important;
+}
+
+/* Specific airlines section container */
+section:has(.airlines-slider) {
+  height: auto !important;
+  min-height: auto !important;
+}
+
+/* Blog Carousel Styles - Auto Height */
+.blog-carousel {
+  width: 100%;
+  height: auto;
+  position: relative;
+}
+
+.blog-carousel .swiper-slide {
+  height: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.blog-carousel .swiper-wrapper {
+  align-items: stretch;
+}
+
+/* Override global Swiper styles for blog carousel */
+.blog-carousel .swiper {
+  height: auto !important;
+}
+
+.blog-carousel .swiper-slide {
+  height: auto !important;
+}
+
+/* Ensure blog section doesn't inherit hero swiper height */
+.blog-carousel {
+  min-height: 400px;
+  max-height: 600px;
+}
+
+/* Global overrides to prevent height conflicts */
+.swiper {
+  height: auto !important;
+}
+
+.swiper-slide {
+  height: auto !important;
+}
+
+.swiper-wrapper {
+  height: auto !important;
+}
+
+/* Specific height overrides for each swiper type */
+.hero-swiper {
+  height: 100vh !important;
+}
+
+.hero-swiper .swiper-slide {
+  height: 100vh !important;
+}
+
+.hero-swiper .swiper-wrapper {
+  height: 100vh !important;
+}
+
+.airlines-slider {
+  height: auto !important;
+}
+
+.airlines-slider .swiper-slide {
+  height: auto !important;
+}
+
+.airlines-slider .swiper-wrapper {
+  height: auto !important;
+}
+
+.blog-carousel {
+  height: auto !important;
+}
+
+.blog-carousel .swiper-slide {
+  height: auto !important;
+}
+
+.blog-carousel .swiper-wrapper {
+  height: auto !important;
+}
