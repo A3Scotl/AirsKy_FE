@@ -5,19 +5,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import {
-  Calendar,
-  Clock,
-  User,
-  ArrowRight,
-  ChevronLeft,
-  ChevronRight,
-  Search,
-  BookOpen,
-  Eye,
-  Heart,
-  Filter,
-} from "lucide-react";
+import { Calendar, Clock, User, ArrowRight, ChevronLeft, ChevronRight, Search, BookOpen, Eye, Heart, Filter, TrendingUp } from 'lucide-react';
 import { Swiper, SwiperSlide } from "swiper/react";
 import { Autoplay, Navigation, Pagination } from "swiper/modules";
 import "swiper/css";
@@ -38,29 +26,24 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 const BlogCardSkeleton = () => {
   return (
-    <article className="bg-white rounded-lg shadow-md overflow-hidden">
-      {/* Featured Image Skeleton */}
+    <article className="bg-white rounded-lg shadow-sm overflow-hidden hover:shadow-md transition-shadow">
       <div className="relative h-48 overflow-hidden">
         <Skeleton className="w-full h-full" />
       </div>
 
       <div className="p-6">
-        {/* Categories Skeleton */}
         <div className="flex flex-wrap gap-2 mb-3">
           <Skeleton className="h-5 w-16 rounded-full" />
           <Skeleton className="h-5 w-20 rounded-full" />
         </div>
 
-        {/* Title Skeleton */}
         <Skeleton className="h-6 w-full mb-2" />
         <Skeleton className="h-6 w-3/4 mb-4" />
 
-        {/* Excerpt Skeleton */}
         <Skeleton className="h-4 w-full mb-2" />
         <Skeleton className="h-4 w-full mb-2" />
         <Skeleton className="h-4 w-2/3 mb-4" />
 
-        {/* Meta Info Skeleton */}
         <div className="flex items-center justify-between text-sm border-t pt-4">
           <div className="flex items-center gap-4">
             <Skeleton className="h-4 w-4 rounded" />
@@ -76,7 +59,6 @@ const BlogCardSkeleton = () => {
 const BlogPage = () => {
   const [searchParams, setSearchParams] = useSearchParams();
 
-  // State management
   const [blogs, setBlogs] = useState([]);
   const [featuredBlogs, setFeaturedBlogs] = useState([]);
   const [categories, setCategories] = useState([]);
@@ -84,7 +66,6 @@ const BlogPage = () => {
   const [searchLoading, setSearchLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  // Filters and pagination
   const [searchTerm, setSearchTerm] = useState(
     searchParams.get("search") || ""
   );
@@ -101,7 +82,6 @@ const BlogPage = () => {
     searchParams.get("sort") || "createdAt,desc"
   );
 
-  // Fetch categories
   const fetchCategories = async () => {
     try {
       const result = await categoryApi.getAllCategoriesList();
@@ -113,7 +93,6 @@ const BlogPage = () => {
     }
   };
 
-  // Fetch featured blogs (top like)
   const fetchFeaturedBlogs = async () => {
     try {
       const result = await blogApi.getAllPublishedBlogs({
@@ -148,7 +127,6 @@ const BlogPage = () => {
     }
   };
 
-  // Fetch blogs with filters
   const fetchBlogs = async (
     page = 1,
     search = "",
@@ -162,23 +140,20 @@ const BlogPage = () => {
       let result;
 
       if (search.trim()) {
-        // Search blogs with optional category filter
         result = await blogApi.searchBlogs({
           keyword: search,
-          category: category || undefined, // Include category in search if provided
+          category: category || undefined,
           page: page - 1,
           size: blogsPerPage,
           sort: sort,
         });
       } else if (category) {
-        // Filter by category only
         result = await blogApi.getBlogsByCategory(category, {
           page: page - 1,
           size: blogsPerPage,
           sort: sort,
         });
       } else {
-        // Get all published blogs
         result = await blogApi.getAllPublishedBlogs({
           page: page - 1,
           size: blogsPerPage,
@@ -204,7 +179,6 @@ const BlogPage = () => {
     }
   };
 
-  // Load initial data
   useEffect(() => {
     const loadInitialData = async () => {
       setLoading(true);
@@ -219,7 +193,6 @@ const BlogPage = () => {
     loadInitialData();
   }, []);
 
-  // Update URL when filters change
   useEffect(() => {
     const params = new URLSearchParams();
     if (searchTerm) params.set("search", searchTerm);
@@ -231,28 +204,24 @@ const BlogPage = () => {
     setSearchParams(params);
   }, [searchTerm, selectedCategory, currentPage, sortOption, setSearchParams]);
 
-  // Handle search
   const handleSearch = async (e) => {
     e.preventDefault();
     setCurrentPage(1);
     await fetchBlogs(1, searchTerm, selectedCategory, sortOption);
   };
 
-  // Handle sort change
   const handleSortChange = async (value) => {
     setSortOption(value);
     setCurrentPage(1);
     await fetchBlogs(1, searchTerm, selectedCategory, value);
   };
 
-  // Handle category filter
   const handleCategoryChange = async (categoryId) => {
     setSelectedCategory(categoryId);
     setCurrentPage(1);
     await fetchBlogs(1, searchTerm, categoryId);
   };
 
-  // Handle pagination
   const handlePageChange = async (page) => {
     setCurrentPage(page);
     await fetchBlogs(page, searchTerm, selectedCategory);
@@ -267,13 +236,6 @@ const BlogPage = () => {
     });
   };
 
-  const formatViews = (views) => {
-    if (views >= 1000) {
-      return (views / 1000).toFixed(1) + "k";
-    }
-    return views?.toString() || "0";
-  };
-
   return (
     <>
       <SEO
@@ -282,130 +244,64 @@ const BlogPage = () => {
         keywords="blog, bài viết, du lịch, máy bay, hàng không"
       />
 
-      <div className="min-h-screen bg-white dark:bg-gray-900 ">
-        {/* Hero Section */}
-        <div className="bg-gradient-to-r from-blue-600 to-blue-700 text-white flex flex-col justify-center">
-          <div className=" mx-auto p-16 mt-30 max-w-6xl">
-            <div className="text-center">
-              <h1 className="text-4xl md:text-6xl font-bold mb-6">
-                Blog Du Lịch
-              </h1>
-              <p className="text-xl md:text-2xl mb-8 text-blue-100">
-                Khám phá những câu chuyện thú vị và mẹo du lịch hữu ích
-              </p>
-
-              {/* Search Bar */}
-              <form onSubmit={handleSearch} className="max-w-xl mx-auto">
-                <div className="relative">
-                  <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
-                  <Input
-                    type="text"
-                    placeholder="Tìm kiếm bài viết..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-12 pr-20 py-4 text-gray-600 text-lg rounded-full border-0 focus:ring-2 focus:ring-blue-300"
-                  />
-                </div>
-              </form>
+      <div className="min-h-screen bg-gray-50">
+        <div className="bg-blue-700 text-white pt-20 pb-20">
+          <div className="max-w-6xl mx-auto px-6 text-center">
+            <div className="mb-8">
+              
             </div>
+            
+            <h1 className="text-5xl md:text-6xl font-bold mb-4 leading-tight">
+              Blog Du Lịch
+            </h1>
+            <p className="text-blue-100 text-lg md:text-xl mb-8 max-w-2xl mx-auto leading-relaxed">
+              Kinh nghiệm – Cảm hứng – Những câu chuyện đáng nhớ từ những hành trình của chúng tôi
+            </p>
+
+            <form onSubmit={handleSearch} className="max-w-2xl mx-auto">
+              <div className="relative">
+                <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-gray-300 h-5 w-5" />
+                <Input
+                  type="text"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  placeholder="Tìm kiếm bài viết..."
+                  className="pl-14 pr-5 py-4 text-gray-700 bg-white rounded-lg focus:ring-2 focus:ring-blue-300 border-none shadow-lg"
+                />
+              </div>
+            </form>
           </div>
         </div>
 
-        {/* Featured Blogs Carousel (only show when no search term) */}
-        {!searchTerm && featuredBlogs.length > 0 && (
-          <div className="py-16 bg-white dark:bg-gray-500">
-            <div className="container mx-auto px-4">
-              <h2 className="text-3xl font-bold text-center mb-12 text-gray-800">
-                Bài Viết Nổi Bật
-              </h2>
-              <Swiper
-                modules={[Autoplay, Navigation, Pagination]}
-                spaceBetween={30}
-                slidesPerView={1}
-                navigation
-                pagination={{ clickable: true }}
-                autoplay={{ delay: 5000 }}
-                breakpoints={{
-                  640: { slidesPerView: 2 },
-                  1024: { slidesPerView: 3 },
-                }}
-                className="featured-blogs-swiper"
-              >
-                {featuredBlogs.map((blog) => (
-                  <SwiperSlide key={blog.blogId}>
-                    <Card className="overflow-hidden hover:shadow-xl transition-shadow duration-300">
-                      <div className="relative">
-                        <img
-                          src={blog.featuredImage || "/api/placeholder/400/250"}
-                          alt={blog.title}
-                          className="w-full h-48 object-cover"
-                        />
-                        <Badge className="absolute top-4 left-4 bg-blue-600">
-                          Nổi bật
-                        </Badge>
-                      </div>
-                      <div className="p-6">
-                        <h3 className="font-bold text-lg mb-2 line-clamp-2">
-                          {blog.title}
-                        </h3>
-                        {/* <p className="text-gray-600 mb-4 line-clamp-2">
-                          {blog.excerpt}
-                        </p> */}
-                        <div className="flex items-center justify-between text-sm text-gray-500">
-                          <div className="flex items-center gap-2">
-                            <Calendar className="h-4 w-4" />
-                            {formatDate(blog.publishedDate)}
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <Eye className="h-4 w-4" />
-                            {formatViews(blog.viewCount)}
-                          </div>
-                        </div>
-                        <Link to={`/blog/${blog.slug}`}>
-                          <Button className="w-full mt-4">
-                            Đọc thêm
-                            <ArrowRight className="ml-2 h-4 w-4" />
-                          </Button>
-                        </Link>
-                      </div>
-                    </Card>
-                  </SwiperSlide>
-                ))}
-              </Swiper>
-            </div>
-          </div>
-        )}
-
         {/* Main Content */}
-        <div className="max-w-7xl mx-auto px-4 py-16 bg-white dark:bg-gray-900">
-          <div className="flex flex-col lg:flex-row gap-12">
-            {/* Sidebar */}
-            <div className="lg:w-1/4">
-              <Card className="p-6 sticky top-6">
-                <h3 className="text-xl font-bold mb-4 flex items-center gap-2">
-                  <Filter className="h-5 w-5" />
-                  Danh mục
-                </h3>
+        <div className="max-w-7xl mx-auto px-4 py-16">
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+            <div className="lg:col-span-1">
+              <div className="sticky top-6 bg-white rounded-lg shadow-sm p-6 border border-gray-100">
+                <div className="flex items-center gap-2 mb-6">
+                  <h3 className="text-lg font-semibold text-gray-900 pl-1">Danh mục</h3>
+                </div>
+                
                 <div className="space-y-2">
                   <Button
                     variant="ghost"
-                    className={`w-full justify-start transition-colors duration-200 ${
+                    className={`w-full justify-start rounded-lg transition-all duration-200 ${
                       selectedCategory === ""
-                        ? "bg-blue-600 text-white hover:bg-blue-700"
-                        : "bg-white text-blue-600 hover:bg-blue-600 hover:text-white"
+                        ? "bg-blue-700 text-white hover:bg-blue-800"
+                        : "text-gray-700 hover:bg-blue-50"
                     }`}
                     onClick={() => handleCategoryChange("")}
                   >
-                    Tất cả
+                    Tất cả bài viết
                   </Button>
                   {categories.map((category) => (
                     <Button
-                      key={category.categoryId}
+                      key={category.slug}
                       variant="ghost"
-                      className={`w-full justify-start transition-colors duration-200 ${
+                      className={`w-full justify-start rounded-lg cursor-pointer transition-all duration-200 ${
                         selectedCategory === category.slug
-                          ? "bg-blue-600 text-white hover:bg-blue-700"
-                          : "bg-white text-black hover:bg-blue-600 hover:text-white"
+                          ? "bg-blue-700 text-white hover:bg-blue-800"
+                          : "text-gray-700 hover:bg-blue-50"
                       }`}
                       onClick={() => handleCategoryChange(category.slug)}
                     >
@@ -413,38 +309,28 @@ const BlogPage = () => {
                     </Button>
                   ))}
                 </div>
-              </Card>
+              </div>
             </div>
 
             {/* Blog Grid */}
-            <div className="lg:w-3/4">
-              {/* Results Info */}
-              <div className="flex flex-col md:flex-row md:justify-between md:items-center mb-8 gap-4">
-                <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-200">
-                  {searchTerm
-                    ? `Kết quả tìm kiếm: "${searchTerm}"`
-                    : selectedCategory
-                    ? `Danh mục: ${
-                        categories.find((c) => c.slug === selectedCategory)
-                          ?.name || "Đang tải..."
-                      }`
-                    : "Tất cả bài viết"}
-                </h2>
-                <div className="w-full md:w-60">
+            <div className="lg:col-span-3">
+              <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-8 gap-4">
+                <div>
+                  <h2 className="text-3xl font-bold text-gray-900">
+                    {searchTerm || selectedCategory ? "Kết quả tìm kiếm" : "Bài viết mới"}
+                  </h2>
+                  <p className="text-gray-500 text-sm mt-1">{totalBlogs} bài viết</p>
+                </div>
+                
+                <div className="w-full sm:w-48">
                   <Select value={sortOption} onValueChange={handleSortChange}>
                     <SelectTrigger className="w-full">
                       <SelectValue placeholder="Sắp xếp" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="publishedDate,desc">
-                        Mới nhất
-                      </SelectItem>
-                      <SelectItem value="viewCount,desc">
-                        Phổ biến nhất
-                      </SelectItem>
-                      <SelectItem value="likeCount,desc">
-                        Yêu thích nhất
-                      </SelectItem>
+                      <SelectItem value="createdAt,desc">Mới nhất</SelectItem>
+                      <SelectItem value="viewCount,desc">Phổ biến nhất</SelectItem>
+                      <SelectItem value="likeCount,desc">Yêu thích nhất</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -452,13 +338,13 @@ const BlogPage = () => {
 
               {/* Error State */}
               {error && (
-                <div className="text-center py-12">
-                  <p className="text-red-600 text-lg">{error}</p>
+                <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
+                  <p className="text-red-600 mb-4">{error}</p>
                   <Button
                     onClick={() =>
                       fetchBlogs(currentPage, searchTerm, selectedCategory)
                     }
-                    className="mt-4"
+                    className="bg-blue-700 hover:bg-blue-800 text-white"
                   >
                     Thử lại
                   </Button>
@@ -467,8 +353,8 @@ const BlogPage = () => {
 
               {/* Loading State */}
               {searchLoading && (
-                <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-8">
-                  {Array.from({ length: 9 }).map((_, index) => (
+                <div className="grid md:grid-cols-2 gap-6">
+                  {Array.from({ length: 6 }).map((_, index) => (
                     <BlogCardSkeleton key={index} />
                   ))}
                 </div>
@@ -476,14 +362,14 @@ const BlogPage = () => {
 
               {/* No Results */}
               {!searchLoading && !error && blogs.length === 0 && (
-                <div className="text-center py-12">
-                  <BookOpen className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-                  <h3 className="text-xl font-semibold text-gray-600 mb-2">
+                <div className="bg-white rounded-lg shadow-sm p-12 text-center border border-gray-100">
+                  <BookOpen className="h-16 w-16 text-gray-300 mx-auto mb-4" />
+                  <h3 className="text-xl font-semibold text-gray-900 mb-2">
                     Không tìm thấy bài viết
                   </h3>
                   <p className="text-gray-500">
                     {searchTerm || selectedCategory
-                      ? "Thử thay đổi từ khóa tìm kiếm hoặc danh mục"
+                      ? "Hãy thử thay đổi từ khóa tìm kiếm hoặc danh mục"
                       : "Chưa có bài viết nào được đăng"}
                   </p>
                 </div>
@@ -492,7 +378,7 @@ const BlogPage = () => {
               {/* Blog Grid */}
               {!searchLoading && !error && blogs.length > 0 && (
                 <>
-                  <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-8">
+                  <div className="grid md:grid-cols-2 gap-6">
                     {blogs.map((blog) => (
                       <BlogCard
                         key={blog.blogId}
@@ -502,7 +388,6 @@ const BlogPage = () => {
                     ))}
                   </div>
 
-                  {/* Pagination */}
                   {totalPages > 1 && (
                     <div className="flex justify-center mt-12">
                       <div className="flex items-center gap-2">
@@ -511,6 +396,7 @@ const BlogPage = () => {
                           size="sm"
                           onClick={() => handlePageChange(currentPage - 1)}
                           disabled={currentPage === 1}
+                          className="rounded-lg"
                         >
                           <ChevronLeft className="h-4 w-4" />
                           Trước
@@ -531,7 +417,7 @@ const BlogPage = () => {
                               page === currentPage + 2
                             ) {
                               return (
-                                <span key={page} className="px-2">
+                                <span key={page} className="px-2 text-gray-500">
                                   ...
                                 </span>
                               );
@@ -542,9 +428,13 @@ const BlogPage = () => {
                           return (
                             <Button
                               key={page}
-                              variant={isCurrentPage ? "default" : "outline"}
-                              size="sm"
                               onClick={() => handlePageChange(page)}
+                              className={`rounded-lg ${
+                                isCurrentPage
+                                  ? "bg-blue-700 hover:bg-blue-800 text-white"
+                                  : "border border-gray-300 text-gray-700 hover:bg-gray-50"
+                              }`}
+                              variant={isCurrentPage ? "default" : "outline"}
                             >
                               {page}
                             </Button>
@@ -556,6 +446,7 @@ const BlogPage = () => {
                           size="sm"
                           onClick={() => handlePageChange(currentPage + 1)}
                           disabled={currentPage === totalPages}
+                          className="rounded-lg"
                         >
                           Sau
                           <ChevronRight className="h-4 w-4" />

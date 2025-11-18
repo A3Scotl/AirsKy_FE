@@ -329,30 +329,30 @@ export function FlightSearchResults() {
     });
   }, []);
 
-  const loadAllFlights = useCallback(async () => {
-    try {
-      setLoading(true);
-      setError(null);
+  // const loadAllFlights = useCallback(async () => {
+  //   try {
+  //     setLoading(true);
+  //     setError(null);
 
-      const response = await flightApi.getAllFlights({ size: 100 });
+  //     const response = await flightApi.getAllFlights({ size: 100 });
 
-      if (response.success && response.data?.content) {
-        setAllFlights(response.data.content);
-        setTabExpandedFlights({});
-        setTabPages({});
-      } else {
-        setAllFlights([]);
-        setAllItineraries([]);
-      }
-    } catch (err) {
-      setError("Không thể tải danh sách chuyến bay");
-      setAllFlights([]);
-      setAllItineraries([]);
-    } finally {
-      setLoading(false);
-      setFlightsLoaded(true);
-    }
-  }, []);
+  //     if (response.success && response.data?.content) {
+  //       setAllFlights(response.data.content);
+  //       setTabExpandedFlights({});
+  //       setTabPages({});
+  //     } else {
+  //       setAllFlights([]);
+  //       setAllItineraries([]);
+  //     }
+  //   } catch (err) {
+  //     setError("Không thể tải danh sách chuyến bay");
+  //     setAllFlights([]);
+  //     setAllItineraries([]);
+  //   } finally {
+  //     setLoading(false);
+  //     setFlightsLoaded(true);
+  //   }
+  // }, []);
 
   const toggleDetails = useCallback(
     (itineraryId) => {

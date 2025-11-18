@@ -54,7 +54,7 @@
 
 /* Search form overlay styling */
 .search-form-overlay {
-  background: rgba(255, 255, 255, 0.95);
+  background: white;
   backdrop-filter: blur(20px);
   border-radius: 20px;
   padding: 2rem;

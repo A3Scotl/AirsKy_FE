@@ -462,9 +462,9 @@ const DealsPage = () => {
       />
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
         {/* Hero Banner */}
-        <section className="relative bg-gradient-to-r from-blue-600 to-blue-900 text-white pt-24 pb-16">
+        <section className="relative bg-gradient-to-r from-blue-600  max-w-8xl mx-auto to-blue-900 text-white pt-24 pb-16">
           <div className="absolute inset-0 bg-black/20"></div>
-          <div className="relative container mx-auto py-12 px-6 lg:px-8 text-center md:text-left">
+          <div className="relative max-w-7xl mx-auto py-12 px-6 lg:px-8 text-center md:text-left">
             <div className="md:w-2/3 lg:w-1/2">
               <h1 className="text-4xl md:text-5xl font-bold mb-4">
                 Khuyến Mãi & Ưu Đãi
@@ -856,15 +856,14 @@ const DealsPage = () => {
                 flashSalePaginated.map((deal) => (
                   <Card
                     key={deal.dealId}
-                    className="relative overflow-hidden group hover:shadow-xl transition-all duration-300 border-0 shadow-lg"
+                    className="relative overflow-hidden group hover:shadow-xl transition-all duration-300 border-0 shadow-lg bg-white"
                     style={{
-                      backgroundImage: `url(${deal.thumbnail})`,
                       backgroundSize: "cover",
                       backgroundPosition: "center",
-                      minHeight: 350,
+                      minHeight: 200,
                     }}
                   >
-                    <div className="absolute inset-0 bg-black/50 z-10"></div>
+                    <div className="absolute inset-0 bg-black/40 z-10"></div>
                     <div className="absolute top-3 right-3 bg-blue-600 text-white px-2 py-1 rounded-full font-bold text-xs z-20">
                       -{deal.discountPercentage}%
                     </div>
@@ -901,11 +900,6 @@ const DealsPage = () => {
                           Hết hạn: {formatDateVN(deal.validTo)}
                         </div>
                       </div>
-                      <Link to="/flights" className="block">
-                        <Button className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold">
-                          Đặt ngay
-                        </Button>
-                      </Link>
                     </div>
                   </Card>
                 ))
