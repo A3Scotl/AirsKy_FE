@@ -730,7 +730,7 @@ export function FlightFlexSearch({
   const moveDateRange = useCallback(
     (direction) => {
       const newOffset = dateOffset + (direction === "prev" ? -1 : 1);
-      if (newOffset >= 0 && newOffset <= 12) {
+      if (newOffset >= -2 && newOffset <= 12) {
         setDateOffset(newOffset);
         setSelectedDate(null);
       }
@@ -779,7 +779,7 @@ export function FlightFlexSearch({
               variant="outline"
               size="sm"
               onClick={() => moveDateRange("prev")}
-              disabled={dateOffset === 0}
+              disabled={dateOffset <= -2}
               className="bg-white/95 hover:bg-white shadow-lg border-gray-300 dark:border-gray-600 h-10 w-10 p-0 rounded-full backdrop-blur-sm transition-all duration-200 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <ChevronLeft className="h-5 w-5 text-gray-700 dark:text-gray-300" />

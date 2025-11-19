@@ -256,42 +256,47 @@ const SuggestionSection = () => {
     const fetchDomesticFlights = async () => {
       try {
         setLoading(true);
-        const response = await flightApi.findDomesticFlights("Viet Nam", {
+        const response = await flightApi.findDomesticFlights("Việt Nam", {
           page: 0,
-          size: 10,
+          size: 50, // Lấy nhiều hơn để có thể filter
         });
 
         if (response.success && response.data) {
-          // Lọc chỉ lấy chuyến bay còn hoạt động (cách hiện tại ít nhất 24 giờ)
+          // Lọc chỉ lấy chuyến bay có thời gian khởi hành cách hiện tại ít nhất 4 tiếng
           const now = new Date();
-          const minBookingLeadTime = 24 * 60 * 60 * 1000; // 24 giờ
+          const minBookingLeadTime = 4 * 60 * 60 * 1000; // 4 tiếng
 
-          const activeFlights = response.data.content.filter((flight) => {
-            try {
-              // Xử lý departureTime - có thể là ISO string hoặc date + time
-              let departureDateTime;
-              if (flight.departureTime && flight.departureTime.includes("T")) {
-                // ISO string format: "2025-10-31T06:00:00"
-                departureDateTime = new Date(flight.departureTime);
-              } else if (flight.departureDate && flight.departureTime) {
-                // Legacy format: separate date and time
-                departureDateTime = new Date(
-                  `${flight.departureDate} ${flight.departureTime}`
-                );
-              } else {
-                return false; // Invalid datetime format
+          const activeFlights = response.data.content
+            .filter((flight) => {
+              try {
+                // Xử lý departureTime - có thể là ISO string hoặc date + time
+                let departureDateTime;
+                if (
+                  flight.departureTime &&
+                  flight.departureTime.includes("T")
+                ) {
+                  // ISO string format: "2025-10-31T06:00:00"
+                  departureDateTime = new Date(flight.departureTime);
+                } else if (flight.departureDate && flight.departureTime) {
+                  // Legacy format: separate date and time
+                  departureDateTime = new Date(
+                    `${flight.departureDate} ${flight.departureTime}`
+                  );
+                } else {
+                  return false; // Invalid datetime format
+                }
+
+                // Chỉ lấy chuyến bay có thời gian khởi hành cách hiện tại ít nhất 4 tiếng
+                const isValidTime =
+                  departureDateTime.getTime() - now.getTime() >=
+                  minBookingLeadTime;
+
+                return isValidTime;
+              } catch (error) {
+                return false;
               }
-
-              // Chỉ lấy chuyến bay có thời gian khởi hành cách hiện tại ít nhất 24 giờ
-              return (
-                departureDateTime.getTime() - now.getTime() >=
-                minBookingLeadTime
-              );
-            } catch (error) {
-              console.warn("Error parsing flight datetime:", flight, error);
-              return false;
-            }
-          });
+            })
+            .slice(0, 5); // Chỉ lấy tối đa 5 chuyến bay đầu tiên
 
           // Map API response to component format
           const mappedFlights = activeFlights.map((flight, index) => ({
@@ -378,7 +383,6 @@ const SuggestionSection = () => {
           setError(response.message || "Không thể tải dữ liệu chuyến bay");
         }
       } catch (err) {
-        console.error("Error fetching domestic flights:", err);
         setError("Có lỗi xảy ra khi tải dữ liệu");
       } finally {
         setLoading(false);

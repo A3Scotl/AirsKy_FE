@@ -97,10 +97,18 @@ function DatePicker({ date, onSelect, placeholder, disabled = false }) {
   );
 }
 
-export function SearchForm({ onSearch, initialValues, onTripTypeChange }) {
+export function SearchForm({ onSearch, initialValues, onTripTypeChange, onSearchStart }) {
   const [tripType, setTripType] = useState("ROUND_TRIP");
-  const [fromLocations, setFromLocations] = useState([]);
-  const [toLocations, setToLocations] = useState([]);
+  const [fromLocations, setFromLocationsInternal] = useState([]);
+  const [toLocations, setToLocationsInternal] = useState([]);
+
+  const setFromLocations = (value) => {
+    setFromLocationsInternal(value);
+  };
+
+  const setToLocations = (value) => {
+    setToLocationsInternal(value);
+  };
   const [departDate, setDepartDate] = useState();
   const [returnDate, setReturnDate] = useState();
   const [validationErrors, setValidationErrors] = useState([]);
@@ -116,9 +124,15 @@ export function SearchForm({ onSearch, initialValues, onTripTypeChange }) {
   const [travelClass, setTravelClass] = useState("Phổ thông");
   const [travelClasses, setTravelClasses] = useState([]);
   const [loadingClasses, setLoadingClasses] = useState(false);
+  const [searchHistory, setSearchHistory] = useState([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [swapKey, setSwapKey] = useState(0);
 
   // Track if trip type was changed by user (not programmatically)
   const tripTypeChangedByUser = useRef(false);
+
+  // Track if initial values have been loaded
+  const initialValuesLoaded = useRef(false);
 
   // Modal management functions
   const closeAllModals = () => {
@@ -158,7 +172,8 @@ export function SearchForm({ onSearch, initialValues, onTripTypeChange }) {
 
   // Handle initial values
   useEffect(() => {
-    if (initialValues) {
+    if (initialValues && !initialValuesLoaded.current) {
+      initialValuesLoaded.current = true;
       tripTypeChangedByUser.current = false; // Reset flag when initialValues change
       setTripType(initialValues.tripType || "ROUND_TRIP");
 
@@ -219,6 +234,20 @@ export function SearchForm({ onSearch, initialValues, onTripTypeChange }) {
     loadTravelClasses();
   }, []);
 
+  // Load search history from localStorage
+  useEffect(() => {
+    const savedHistory = localStorage.getItem("searchHistory");
+    if (savedHistory) {
+      try {
+        const history = JSON.parse(savedHistory);
+        setSearchHistory(Array.isArray(history) ? history : []);
+      } catch (error) {
+        console.error("Error parsing search history:", error);
+        setSearchHistory([]);
+      }
+    }
+  }, []);
+
   const updatePassenger = useCallback((type, value) => {
     setPassengers((prev) => ({
       ...prev,
@@ -249,8 +278,7 @@ export function SearchForm({ onSearch, initialValues, onTripTypeChange }) {
         passengers.adults > 1 ||
         passengers.children > 0 ||
         passengers.infants > 0 ||
-        travelClass !== "Phổ thông" ||
-        tripType !== "ROUND_TRIP"
+        travelClass !== "Phổ thông"
       );
     }
   }, [
@@ -265,30 +293,59 @@ export function SearchForm({ onSearch, initialValues, onTripTypeChange }) {
     tripType,
   ]);
   const isFormValid = useMemo(() => {
+    // Check if any from airport is the same as any to airport
+    const hasOverlappingAirports = fromLocations.some(from =>
+      toLocations.some(to => to.airportCode === from.airportCode)
+    );
+
     if (tripType === "ROUND_TRIP") {
       return (
         fromLocations.length > 0 &&
         toLocations.length > 0 &&
+        !hasOverlappingAirports &&
         departDate &&
         returnDate &&
         returnDate > departDate
       );
     } else if (tripType === "ONE_WAY") {
-      return fromLocations.length > 0 && toLocations.length > 0 && departDate;
+      return fromLocations.length > 0 && toLocations.length > 0 && !hasOverlappingAirports && departDate;
     }
     return false;
   }, [
     tripType,
-    fromLocations.length,
-    toLocations.length,
+    fromLocations,
+    toLocations,
     departDate,
     returnDate,
   ]);
 
+  // Update validation errors
+  useEffect(() => {
+    const errors = [];
+    const hasOverlappingAirports = fromLocations.some(from =>
+      toLocations.some(to => to.airportCode === from.airportCode)
+    );
+
+    if (hasOverlappingAirports) {
+      errors.push("Sân bay đi và sân bay đến không được trùng nhau");
+    }
+
+    if (tripType === "ROUND_TRIP" && returnDate && departDate && returnDate <= departDate) {
+      errors.push("Ngày về phải sau ngày đi");
+    }
+
+    setValidationErrors(errors);
+  }, [fromLocations, toLocations, tripType, departDate, returnDate]);
+
   // Handle search submission
   const handleSearch = useCallback(() => {
-    if (!isFormValid) {
+    if (!isFormValid || isSearching) {
       return;
+    }
+
+    setIsSearching(true);
+    if (onSearchStart) {
+      onSearchStart();
     }
 
     let searchData = {
@@ -331,11 +388,39 @@ export function SearchForm({ onSearch, initialValues, onTripTypeChange }) {
 
     localStorage.setItem("searchData", JSON.stringify(searchData));
 
+    // Save to search history
+    const historyItem = {
+      fromLocations: fromLocations,
+      toLocations: toLocations,
+      timestamp: new Date().toISOString(),
+      id: Date.now().toString(),
+    };
+
+    setSearchHistory((prev) => {
+      const newHistory = [
+        historyItem,
+        ...prev.filter(
+          (item) =>
+            !(
+              JSON.stringify(item.fromLocations) === JSON.stringify(historyItem.fromLocations) &&
+              JSON.stringify(item.toLocations) === JSON.stringify(historyItem.toLocations)
+            )
+        ),
+      ].slice(0, 5); // Keep only 5 recent searches
+      localStorage.setItem("searchHistory", JSON.stringify(newHistory));
+      return newHistory;
+    });
+
     if (onSearch) {
       onSearch(searchData);
     }
+
+    // Reset searching state after search is initiated
+    // Keep disabled for a short time to show loading state
+    setTimeout(() => setIsSearching(false), 500);
   }, [
     isFormValid,
+    isSearching,
     tripType,
     passengers,
     travelClass,
@@ -353,7 +438,33 @@ export function SearchForm({ onSearch, initialValues, onTripTypeChange }) {
     setDepartDate();
     setReturnDate();
     setValidationErrors([]);
+    setIsSearching(false);
     closeAllModals();
+  }, []);
+
+  const handleSwapAirports = useCallback(() => {
+    // Only allow swap when both fields have exactly 1 airport
+    if (fromLocations.length === 1 && toLocations.length === 1) {
+      const tempFrom = [...fromLocations];
+      const tempTo = [...toLocations];
+      setFromLocations(tempTo);
+      setToLocations(tempFrom);
+      setSwapKey((k) => k + 1);
+    }
+  }, [fromLocations, toLocations]);
+
+  const handleHistorySelect = useCallback((historyItem) => {
+    setFromLocations(historyItem.fromLocations || []);
+    setToLocations(historyItem.toLocations || []);
+    closeAllModals();
+  }, []);
+
+  const handleRemoveHistory = useCallback((historyId) => {
+    setSearchHistory((prev) => {
+      const newHistory = prev.filter((item) => item.id !== historyId);
+      localStorage.setItem("searchHistory", JSON.stringify(newHistory));
+      return newHistory;
+    });
   }, []);
 
   return (
@@ -399,6 +510,7 @@ export function SearchForm({ onSearch, initialValues, onTripTypeChange }) {
               <div
                 key={tab.key}
                 onClick={() => {
+                  if (isSearching) return;
                   tripTypeChangedByUser.current = true;
                   setTripType(tab.key);
                 }}
@@ -419,6 +531,7 @@ export function SearchForm({ onSearch, initialValues, onTripTypeChange }) {
               variant="outline"
               onClick={handlePassengerPopupToggle}
               className="min-w-[220px] w-full sm:w-auto justify-between dark:bg-gray-800"
+              disabled={isSearching}
             >
               {passengerSummary}
               <svg
@@ -457,6 +570,7 @@ export function SearchForm({ onSearch, initialValues, onTripTypeChange }) {
                           updatePassenger(item.key, passengers[item.key] - 1)
                         }
                         className="dark:text-gray-500 dark:border-gray-600"
+                        disabled={isSearching}
                       >
                         –
                       </Button>
@@ -470,6 +584,7 @@ export function SearchForm({ onSearch, initialValues, onTripTypeChange }) {
                           updatePassenger(item.key, passengers[item.key] + 1)
                         }
                         className="dark:text-gray-500 dark:border-gray-600"
+                        disabled={isSearching}
                       >
                         +
                       </Button>
@@ -507,6 +622,7 @@ export function SearchForm({ onSearch, initialValues, onTripTypeChange }) {
                 <Button
                   className="w-full mt-4 bg-blue-500 text-white hover:bg-blue-600"
                   onClick={() => setPassengerPopup(false)}
+                  disabled={isSearching}
                 >
                   Xong
                 </Button>
@@ -533,144 +649,437 @@ export function SearchForm({ onSearch, initialValues, onTripTypeChange }) {
 
         {/* Round Trip Form */}
         {tripType === "ROUND_TRIP" && (
-          <div className="grid md:grid-cols-5 gap-4">
-            <div className="relative">
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Từ sân bay
-              </label>
-              <AirportAutocomplete
-                placeholder="Chọn sân bay đi"
-                value={fromLocations}
-                onChange={setFromLocations}
-                multiple={true}
-                open={fromAirportOpen}
-                onOpenChange={handleFromAirportOpenChange}
-              />
-              {fromLocations.length > 1 && (
-                <div className="text-xs text-blue-600 mt-1">
-                  Đã chọn {fromLocations.length} sân bay đi
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-4 relative">
+            {/* Desktop layout: all fields in one row */}
+            <div className="hidden md:flex md:col-span-5 gap-4 items-end">
+              {/* From Airport */}
+              <div className="flex-1">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Từ sân bay
+                </label>
+                <AirportAutocomplete
+                  key={`from-desktop-rt-${swapKey}`}
+                  placeholder="Chọn sân bay đi"
+                  value={fromLocations}
+                  onChange={setFromLocations}
+                  multiple={true}
+                  open={fromAirportOpen}
+                  onOpenChange={handleFromAirportOpenChange}
+                  disabled={isSearching}
+                />
+                {fromLocations.length > 1 && (
+                  <div className="text-xs text-blue-600 mt-1">
+                    Đã chọn {fromLocations.length} sân bay đi
+                  </div>
+                )}
+              </div>
+              
+              {/* Swap Button - Desktop inline */}
+              <div className="flex items-center justify-center px-1 h-full">
+                <div className="relative flex items-center">
+                 
+                  
+                  {/* Swap button */}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleSwapAirports}
+                    disabled={isSearching || fromLocations.length !== 1 || toLocations.length !== 1}
+                    className="h-7 w-7 p-0 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-600 shadow-sm transition-all duration-200 hover:scale-110 disabled:opacity-30 disabled:cursor-not-allowed rounded-full mx-1"
+                    title="Trao đổi sân bay đi và đến (chỉ khi mỗi trường có 1 sân bay)"
+                  >
+                    <ArrowRightLeft className="h-3 w-3 text-gray-600 dark:text-gray-400" />
+                  </Button>
+                  
+                 
                 </div>
-              )}
-            </div>
-            <div className="relative">
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Đến sân bay
-              </label>
-              <AirportAutocomplete
-                placeholder="Chọn sân bay đến"
-                value={toLocations}
-                onChange={setToLocations}
-                multiple={true}
-                open={toAirportOpen}
-                onOpenChange={handleToAirportOpenChange}
-              />
-              {toLocations.length > 1 && (
-                <div className="text-xs text-blue-600 mt-1">
-                  Đã chọn {toLocations.length} sân bay đến
-                </div>
-              )}
-            </div>
-            <div className="relative">
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Ngày đi
-              </label>
-              <DatePicker
-                date={departDate}
-                onSelect={setDepartDate}
-                placeholder="Chọn ngày đi"
-              />
-            </div>
+              </div>
+              
+              {/* To Airport */}
+              <div className="flex-1">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Đến sân bay
+                </label>
+                <AirportAutocomplete
+                  key={`to-desktop-rt-${swapKey}`}
+                  placeholder="Chọn sân bay đến"
+                  value={toLocations}
+                  onChange={setToLocations}
+                  multiple={true}
+                  open={toAirportOpen}
+                  onOpenChange={handleToAirportOpenChange}
+                  disabled={isSearching}
+                />
+                {toLocations.length > 1 && (
+                  <div className="text-xs text-blue-600 mt-1">
+                    Đã chọn {toLocations.length} sân bay đến
+                  </div>
+                )}
+              </div>
+              
+              {/* Depart Date */}
+              <div className="flex-1">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Ngày đi
+                </label>
+                <DatePicker
+                  date={departDate}
+                  onSelect={setDepartDate}
+                  placeholder="Chọn ngày đi"
+                  disabled={isSearching}
+                />
+              </div>
 
-            <div className="relative">
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Ngày về
-              </label>
-              <DatePicker
-                date={returnDate}
-                onSelect={setReturnDate}
-                placeholder="Chọn ngày về"
-              />
+              {/* Return Date */}
+              <div className="flex-1">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Ngày về
+                </label>
+                <DatePicker
+                  date={returnDate}
+                  onSelect={setReturnDate}
+                  placeholder="Chọn ngày về"
+                  disabled={isSearching}
+                />
+              </div>
+            </div>
+            
+            {/* Mobile layout: stacked with swap button between airport fields */}
+            <div className="md:hidden space-y-4">
+              {/* From Airport */}
+              <div className="relative">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Từ sân bay
+                </label>
+                <div className="flex items-end gap-2">
+                  <div className="flex-1">
+                    <AirportAutocomplete
+                      key={`from-mobile-rt-${swapKey}`}
+                      placeholder="Chọn sân bay đi"
+                      value={fromLocations}
+                      onChange={setFromLocations}
+                      multiple={true}
+                      open={fromAirportOpen}
+                      onOpenChange={handleFromAirportOpenChange}
+                      disabled={isSearching}
+                    />
+                    {fromLocations.length > 1 && (
+                      <div className="text-xs text-blue-600 mt-1">
+                        Đã chọn {fromLocations.length} sân bay đi
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Swap Button - positioned between fields */}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleSwapAirports}
+                    disabled={isSearching || fromLocations.length !== 1 || toLocations.length !== 1}
+                    className={`h-8 w-8 p-0 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 shadow-sm transition-all duration-200 hover:scale-110 disabled:opacity-30 disabled:cursor-not-allowed rounded-full border-2 ${
+                      fromLocations.length === 1 && toLocations.length === 1 && !isSearching
+                        ? 'border-blue-500'
+                        : 'border-gray-200 dark:border-gray-600'
+                    }`}
+                    title="Trao đổi sân bay đi và đến (chỉ khi mỗi trường có 1 sân bay)"
+                  >
+                    <ArrowRightLeft className="h-4 w-4 text-gray-600 dark:text-gray-400 rotate-90" />
+                  </Button>
+                </div>
+              </div>
+
+              {/* To Airport */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Đến sân bay
+                </label>
+                <AirportAutocomplete
+                  key={`to-mobile-rt-${swapKey}`}
+                  placeholder="Chọn sân bay đến"
+                  value={toLocations}
+                  onChange={setToLocations}
+                  multiple={true}
+                  open={toAirportOpen}
+                  onOpenChange={handleToAirportOpenChange}
+                  disabled={isSearching}
+                />
+                {toLocations.length > 1 && (
+                  <div className="text-xs text-blue-600 mt-1">
+                    Đã chọn {toLocations.length} sân bay đến
+                  </div>
+                )}
+              </div>
+              
+              {/* Date fields */}
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Ngày đi
+                  </label>
+                  <DatePicker
+                    date={departDate}
+                    onSelect={setDepartDate}
+                    placeholder="Chọn ngày đi"
+                    disabled={isSearching}
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Ngày về
+                  </label>
+                  <DatePicker
+                    date={returnDate}
+                    onSelect={setReturnDate}
+                    placeholder="Chọn ngày về"
+                    disabled={isSearching}
+                  />
+                </div>
+              </div>
             </div>
 
             <Button
               className="bg-blue-500 text-white hover:bg-blue-600 disabled:bg-gray-400 disabled:cursor-not-allowed mt-6 dark:bg-blue-50 dark:text-gray-800 dark:hover:bg-blue-100"
-              disabled={!isFormValid}
+              disabled={!isFormValid || isSearching}
               onClick={handleSearch}
             >
-              {fromLocations.length > 1 || toLocations.length > 1
-                ? `Tìm chuyến bay (${
-                    fromLocations.length * toLocations.length
-                  } kết hợp)`
-                : "Tìm chuyến bay"}
+              {isSearching ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Đang tìm kiếm...
+                </>
+              ) : fromLocations.length > 1 || toLocations.length > 1 ? (
+                `Tìm chuyến bay (${fromLocations.length * toLocations.length} kết hợp)`
+              ) : (
+                "Tìm chuyến bay"
+              )}
             </Button>
           </div>
         )}
 
         {/* One Way Form */}
         {tripType === "ONE_WAY" && (
-          <div className="grid md:grid-cols-4 gap-4">
-            <div className="relative">
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Từ sân bay
-              </label>
-              <AirportAutocomplete
-                placeholder="Chọn sân bay đi"
-                value={fromLocations}
-                onChange={setFromLocations}
-                multiple={true}
-                open={fromAirportOpen}
-                onOpenChange={handleFromAirportOpenChange}
-              />
-              {fromLocations.length > 1 && (
-                <div className="text-xs text-blue-600 mt-1">
-                  Đã chọn {fromLocations.length} sân bay đi
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 relative">
+            {/* Desktop layout: airport fields and date in one row */}
+            <div className="hidden md:flex md:col-span-3 gap-4 items-end">
+              {/* From Airport */}
+              <div className="flex-1">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Từ sân bay
+                </label>
+                <AirportAutocomplete
+                  key={`from-desktop-ow-${swapKey}`}
+                  placeholder="Chọn sân bay đi"
+                  value={fromLocations}
+                  onChange={setFromLocations}
+                  multiple={true}
+                  open={fromAirportOpen}
+                  onOpenChange={handleFromAirportOpenChange}
+                  disabled={isSearching}
+                />
+                {fromLocations.length > 1 && (
+                  <div className="text-xs text-blue-600 mt-1">
+                    Đã chọn {fromLocations.length} sân bay đi
+                  </div>
+                )}
+              </div>
+              
+              {/* Swap Button - Desktop inline */}
+              <div className="flex items-center justify-center px-1 h-full">
+                <div className="relative flex items-center">
+                
+                  
+                  {/* Swap button */}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleSwapAirports}
+                    disabled={isSearching || fromLocations.length !== 1 || toLocations.length !== 1}
+                    className="h-7 w-7 p-0 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-600 shadow-sm transition-all duration-200 hover:scale-110 disabled:opacity-30 disabled:cursor-not-allowed rounded-full mx-1"
+                    title="Trao đổi sân bay đi và đến (chỉ khi mỗi trường có 1 sân bay)"
+                  >
+                    <ArrowRightLeft className="h-3 w-3 text-gray-600 dark:text-gray-400" />
+                  </Button>
+                  
+                
                 </div>
-              )}
+              </div>
+              
+              {/* To Airport */}
+              <div className="flex-1">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Đến sân bay
+                </label>
+                <AirportAutocomplete
+                  key={`to-desktop-ow-${swapKey}`}
+                  placeholder="Chọn sân bay đến "
+                  value={toLocations}
+                  onChange={setToLocations}
+                  multiple={true}
+                  open={toAirportOpen}
+                  onOpenChange={handleToAirportOpenChange}
+                  disabled={isSearching}
+                />
+                {toLocations.length > 1 && (
+                  <div className="text-xs text-blue-600 mt-1">
+                    Đã chọn {toLocations.length} sân bay đến
+                  </div>
+                )}
+              </div>
+              
+              {/* Depart Date */}
+              <div className="flex-1">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Ngày đi
+                </label>
+                <DatePicker
+                  date={departDate}
+                  onSelect={setDepartDate}
+                  placeholder="Chọn ngày đi"
+                  disabled={isSearching}
+                />
+              </div>
             </div>
-            <div className="relative">
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Đến sân bay
-              </label>
-              <AirportAutocomplete
-                placeholder="Chọn sân bay đến "
-                value={toLocations}
-                onChange={setToLocations}
-                multiple={true}
-                open={toAirportOpen}
-                onOpenChange={handleToAirportOpenChange}
-              />
-              {toLocations.length > 1 && (
-                <div className="text-xs text-blue-600 mt-1">
-                  Đã chọn {toLocations.length} sân bay đến
-                </div>
-              )}
-            </div>
+            
+            {/* Mobile layout: stacked with swap button between airport fields */}
+            <div className="md:hidden space-y-4">
+              {/* From Airport */}
+              <div className="relative">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Từ sân bay
+                </label>
+                <div className="flex items-end gap-2">
+                  <div className="flex-1">
+                    <AirportAutocomplete
+                      key={`from-mobile-ow-${swapKey}`}
+                      placeholder="Chọn sân bay đi"
+                      value={fromLocations}
+                      onChange={setFromLocations}
+                      multiple={true}
+                      open={fromAirportOpen}
+                      onOpenChange={handleFromAirportOpenChange}
+                      disabled={isSearching}
+                    />
+                    {fromLocations.length > 1 && (
+                      <div className="text-xs text-blue-600 mt-1">
+                        Đã chọn {fromLocations.length} sân bay đi
+                      </div>
+                    )}
+                  </div>
 
-            <div className="relative">
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Ngày đi
-              </label>
-              <DatePicker
-                date={departDate}
-                onSelect={setDepartDate}
-                placeholder="Chọn ngày đi"
-              />
+                  {/* Swap Button - positioned between fields */}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleSwapAirports}
+                    disabled={isSearching || fromLocations.length !== 1 || toLocations.length !== 1}
+                    className={`h-8 w-8 p-0 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 shadow-sm transition-all duration-200 hover:scale-110 disabled:opacity-30 disabled:cursor-not-allowed rounded-full border-2 ${
+                      fromLocations.length === 1 && toLocations.length === 1 && !isSearching
+                        ? 'border-blue-500'
+                        : 'border-gray-200 dark:border-gray-600'
+                    }`}
+                    title="Trao đổi sân bay đi và đến (chỉ khi mỗi trường có 1 sân bay)"
+                  >
+                    <ArrowRightLeft className="h-4 w-4 text-gray-600 dark:text-gray-400 rotate-90" />
+                  </Button>
+                </div>
+              </div>
+
+              {/* To Airport */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Đến sân bay
+                </label>
+                <AirportAutocomplete
+                  key={`to-mobile-ow-${swapKey}`}
+                  placeholder="Chọn sân bay đến "
+                  value={toLocations}
+                  onChange={setToLocations}
+                  multiple={true}
+                  open={toAirportOpen}
+                  onOpenChange={handleToAirportOpenChange}
+                  disabled={isSearching}
+                />
+                {toLocations.length > 1 && (
+                  <div className="text-xs text-blue-600 mt-1">
+                    Đã chọn {toLocations.length} sân bay đến
+                  </div>
+                )}
+              </div>
+              
+              {/* Date field */}
+              <div className="relative">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Ngày đi
+                </label>
+                <DatePicker
+                  date={departDate}
+                  onSelect={setDepartDate}
+                  placeholder="Chọn ngày đi"
+                  disabled={isSearching}
+                />
+              </div>
             </div>
 
             <Button
               className="bg-blue-500 text-white hover:bg-blue-600 disabled:bg-gray-400 disabled:cursor-not-allowed mt-6 dark:bg-blue-50 dark:text-gray-800 dark:hover:bg-blue-100"
               onClick={handleSearch}
-              disabled={!isFormValid}
+              disabled={!isFormValid || isSearching}
             >
-              {fromLocations.length > 1 || toLocations.length > 1
-                ? `Tìm chuyến bay (${
-                    fromLocations.length * toLocations.length
-                  } kết hợp)`
-                : "Tìm chuyến bay"}
+              {isSearching ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Đang tìm kiếm...
+                </>
+              ) : fromLocations.length > 1 || toLocations.length > 1 ? (
+                `Tìm chuyến bay (${fromLocations.length * toLocations.length} kết hợp)`
+              ) : (
+                "Tìm chuyến bay"
+              )}
             </Button>
           </div>
         )}
       </div>
+
+      {/* Search History */}
+      {searchHistory.length > 0 && (
+        <div className="mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
+          <div className="flex items-center justify-between mb-3">
+            <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+              Tìm kiếm gần đây
+            </label>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {searchHistory.map((item) => (
+              <div
+                key={item.id}
+                className="flex items-center gap-2 px-3 py-2 bg-gray-50 dark:bg-gray-700 rounded-lg cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
+                onClick={() => handleHistorySelect(item)}
+              >
+                <span className="text-sm font-medium">
+                  {item.fromLocations?.[0]?.cityNames?.[0] ||
+                    item.fromLocations?.[0]?.airportName}{" "}
+                  ({item.fromLocations?.[0]?.airportCode}) -{" "}
+                  {item.toLocations?.[0]?.cityNames?.[0] ||
+                    item.toLocations?.[0]?.airportName}{" "}
+                  ({item.toLocations?.[0]?.airportCode})
+                </span>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleRemoveHistory(item.id);
+                  }}
+                  className="text-gray-400 hover:text-red-500 p-1 h-5 w-5"
+                >
+                  <X className="w-3 h-3" />
+                </Button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </Card>
   );
 }

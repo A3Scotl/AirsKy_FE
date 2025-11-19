@@ -73,7 +73,19 @@ function HomePage() {
   const navigate = useNavigate();
   const { updateSearchCriteria } = useSearch();
 
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 640);
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 640);
+    };
+
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
   // Refs and inView states for sections
+  const [destinationRef, destinationInView] = useInView({ threshold: 0.2 });
   const [suggestionRef, suggestionInView] = useInView({ threshold: 0.2 });
   const [featuresRef, featuresInView] = useInView({ threshold: 0.2 });
   const [blogRef, blogInView] = useInView({ threshold: 0.2 });
@@ -155,9 +167,32 @@ function HomePage() {
   return (
     <>
       <SEO
-        title="Trang chủ"
-        description="AirSky - Nền tảng đặt vé máy bay trực tuyến hàng đầu. Tìm kiếm và so sánh giá vé từ hàng trăm hãng hàng không với giá tốt nhất."
-        keywords="đặt vé máy bay, vé máy bay giá rẻ, so sánh giá vé máy bay, du lịch, AirSky"
+        title="Đặt Vé Máy Bay Online Giá Rẻ - AirSky Việt Nam"
+        description="AirSky - Nền tảng đặt vé máy bay trực tuyến hàng đầu Việt Nam. Đặt vé máy bay giá rẻ, so sánh giá vé từ 20+ hãng hàng không. Đảm bảo giá tốt nhất, thanh toán an toàn, hỗ trợ 24/7. Vietnam Airlines, Vietjet, Bamboo Airways."
+        keywords="đặt vé máy bay, vé máy bay giá rẻ, vé máy bay online, so sánh giá vé máy bay, AirSky, du lịch Việt Nam, hàng không Việt Nam, Vietnam Airlines, Vietjet, Bamboo Airways, vé máy bay nội địa, vé máy bay quốc tế"
+        url="https://airsky.online"
+        image="https://airsky.online/images/og-homepage.jpg"
+        structuredData={{
+          "@context": "https://schema.org",
+          "@type": "WebSite",
+          name: "AirSky",
+          url: "https://airsky.online",
+          description: "Nền tảng đặt vé máy bay trực tuyến hàng đầu Việt Nam",
+          publisher: {
+            "@type": "Organization",
+            name: "AirSky",
+            url: "https://airsky.online",
+            logo: {
+              "@type": "ImageObject",
+              url: "https://airsky.online/images/logo.png",
+            },
+          },
+          potentialAction: {
+            "@type": "SearchAction",
+            target: "https://airsky.online/flights?from={search_term_string}",
+            "query-input": "required name=search_term_string",
+          },
+        }}
       />
       <div className="pt-0">
         {/* Hero Section with Search Form - Fixed Parallax Swiper */}
@@ -218,7 +253,15 @@ function HomePage() {
           </div>
         </section>
 
-        {/* <DestinationSection /> */}
+        <div
+          className="mt-12 sm:mt-8 lg:mt-16"
+          style={isMobile ? { marginTop: "24rem" } : {}}
+          ref={destinationRef}
+        >
+          <DestinationSection
+            className={destinationInView ? "animate-fadeInUp" : "opacity-0"}
+          />
+        </div>
 
         <div className="" ref={suggestionRef}>
           <SuggestionSection

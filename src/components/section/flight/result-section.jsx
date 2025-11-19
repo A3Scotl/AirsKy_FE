@@ -2043,6 +2043,7 @@ export function FlightSearchResults() {
             onSearch={handleSearch}
             initialValues={searchFormInitialValues}
             onTripTypeChange={handleTripTypeChange}
+            onSearchStart={() => setLoading(true)}
           />
         </div>
       </div>

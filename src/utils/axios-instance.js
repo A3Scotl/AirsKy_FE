@@ -2,7 +2,7 @@ import axios from "axios";
 import axiosRetry from "axios-retry";
 
 const API_BASE_URL =
-  import.meta.env.VITE_BASE_API || "http://localhost:8080/api/v1";
+  import.meta.env.VITE_BASE_API || "https://airsky.onrender.com/api/v1";
 
 const axiosInstance = axios.create({
   baseURL: API_BASE_URL,

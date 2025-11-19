@@ -419,13 +419,46 @@ const BlogTable = ({
     try {
       if (formMode === "add") {
         // Call API to create blog
-        const response = await blogApi.createBlog(blogData);
-        if (response.success) {
+        const response = await blogApi.createBlog(blogData);       
+
+        // Check for database errors in the response
+        if (
+          response.data &&
+          typeof response.data === "object" &&
+          response.data.success === false
+        ) {
+          const errorMessage = response.data.message || "Lỗi từ server";
+          toast.error("Lỗi tạo bài viết: " + errorMessage);
+          return;
+        }
+
+        // Check for SQL errors in message
+        if (
+          response.data &&
+          response.data.message &&
+          (response.data.message.includes("Data truncation") ||
+            response.data.message.includes("could not execute statement"))
+        ) {
+          toast.error("Lỗi database. Vui lòng kiểm tra dữ liệu nhập vào.");
+          return;
+        }
+
+        if (
+          response.success &&
+          response.data &&
+          typeof response.data === "object" &&
+          !response.data.error
+        ) {
           onAdd?.(response.data);
           setShowFormModal(false);
           toast.success("Tạo bài viết thành công!");
         } else {
-          toast.error("Lỗi tạo bài viết: " + response.message);
+          
+          const errorMessage =
+            response.data?.message ||
+            response.message ||
+            "Không nhận được dữ liệu từ server";
+          toast.error("Lỗi tạo bài viết: " + errorMessage);
         }
       } else {
         // Call API to update blog
@@ -433,16 +466,23 @@ const BlogTable = ({
           selectedBlog.blogId,
           blogData
         );
-        if (response.success) {
+     
+
+        if (response.success && response.data) {
           onEdit?.(selectedBlog.blogId, response.data);
           setShowFormModal(false);
           toast.success("Cập nhật bài viết thành công!");
         } else {
-          toast.error("Lỗi cập nhật bài viết: " + response.message);
+       
+          toast.error(
+            "Lỗi cập nhật bài viết: " +
+              (response.message || "Không nhận được dữ liệu từ server")
+          );
         }
       }
       // Don't close modal here, let success case handle it
     } catch (error) {
+    
       toast.error("Lỗi kết nối API: " + error.message);
     }
   };
