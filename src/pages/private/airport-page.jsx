@@ -234,18 +234,72 @@ const AirportPage = () => {
         cell: (info) => {
           const gates = info.getValue();
           if (Array.isArray(gates) && gates.length > 0) {
+            // Group gates by terminal
+            const grouped = gates.reduce((acc, gate) => {
+              const terminal = gate.terminal || "N/A";
+              if (!acc[terminal]) acc[terminal] = [];
+              acc[terminal].push(gate.gateName);
+              return acc;
+            }, {});
+
+            const displayItems = [];
+            let totalShown = 0;
+            const maxPerGroup = 5; // Show max 5 gates per terminal
+            const maxTotal = 10; // Total max badges
+
+            for (const [terminal, gateNames] of Object.entries(grouped)) {
+              const remainingSlots = maxTotal - totalShown;
+              if (remainingSlots <= 0) break;
+
+              const showCount = Math.min(
+                gateNames.length,
+                maxPerGroup,
+                remainingSlots
+              );
+              const shownGates = gateNames.slice(0, showCount);
+              const hasMore = gateNames.length > showCount;
+
+              displayItems.push({
+                terminal,
+                gates: shownGates,
+                hasMore,
+                moreCount: gateNames.length - showCount,
+              });
+
+              totalShown += showCount;
+              if (totalShown >= maxTotal) break;
+            }
+
+            const hasOverflow = totalShown < gates.length;
+
             return (
-              <div className="flex flex-wrap gap-1">
-                {gates.map((gate) => (
-                  <Badge
-                    key={gate.gateId}
-                    variant="outline"
-                    className="text-xs"
-                  >
-                    {gate.gateName}
-                    {gate.terminal ? ` (${gate.terminal})` : ""}
-                  </Badge>
+              <div className="space-y-1">
+                {displayItems.map((item, idx) => (
+                  <div key={idx} className="flex flex-wrap gap-1 items-center">
+                    <span className="text-xs font-medium text-gray-600 dark:text-gray-400">
+                      {item.terminal}:
+                    </span>
+                    {item.gates.map((gateName, gIdx) => (
+                      <Badge
+                        key={`${item.terminal}-${gateName}-${gIdx}`}
+                        variant="outline"
+                        className="text-xs"
+                      >
+                        {gateName}
+                      </Badge>
+                    ))}
+                    {item.hasMore && (
+                      <span className="text-xs text-gray-500">
+                        +{item.moreCount}...
+                      </span>
+                    )}
+                  </div>
                 ))}
+                {hasOverflow && (
+                  <div className="text-xs text-gray-500">
+                    +{gates.length - totalShown} more gates...
+                  </div>
+                )}
               </div>
             );
           }
@@ -503,7 +557,6 @@ const AirportPage = () => {
 
     toast.promise(
       async () => {
-
         const response = isUpdate
           ? await airportApi.updateAirport(editData.airportId, formData)
           : await airportApi.createAirport(formData);

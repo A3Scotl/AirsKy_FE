@@ -21,6 +21,11 @@ const AirportAutocomplete = ({
   const inputRef = useRef(null);
   const dropdownRef = useRef(null);
 
+  // Sync selectedLocations with external value prop
+  useEffect(() => {
+    setSelectedLocations(value || []);
+  }, [value]);
+
   // Use external open state if provided, otherwise use internal
   const isOpen = externalOpen !== undefined ? externalOpen : internalIsOpen;
   const setIsOpen = (value) => {
@@ -44,22 +49,12 @@ const AirportAutocomplete = ({
     debounceMs: 300,
   });
 
+  // Load all airports on mount if not loaded
   useEffect(() => {
-    // Only update selectedLocations if the value has actually changed
-    const currentCodes = selectedLocations.map((loc) => loc.airportCode).sort();
-    const newCodes = (value || []).map((loc) => loc.airportCode).sort();
-
-    if (JSON.stringify(currentCodes) !== JSON.stringify(newCodes)) {
-
-      // Remove duplicates from the incoming value
-      const uniqueValue = (value || []).filter(
-        (location, index, self) =>
-          index ===
-          self.findIndex((loc) => loc.airportCode === location.airportCode)
-      );
-      setSelectedLocations(uniqueValue);
+    if (allAirports.length === 0 && !isLoading) {
+      searchAirports("");
     }
-  }, [value]);
+  }, [allAirports.length, isLoading, searchAirports]);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -67,8 +62,8 @@ const AirportAutocomplete = ({
         setIsOpen(false);
       }
     };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+    document.addEventListener("click", handleClickOutside);
+    return () => document.removeEventListener("click", handleClickOutside);
   }, []);
 
   // Debounced search
@@ -165,7 +160,6 @@ const AirportAutocomplete = ({
 
     // Check if it's just an airport code (3 letters)
     if (/^[A-Z]{3}$/.test(trimmed.toUpperCase())) {
-
       return {
         cityName: trimmed.toUpperCase(),
         airportCode: trimmed.toUpperCase(),
@@ -195,7 +189,6 @@ const AirportAutocomplete = ({
     });
 
     if (matchingAirport) {
-
       const primaryCityName =
         Array.isArray(matchingAirport.cityNames) &&
         matchingAirport.cityNames.length > 0
@@ -244,10 +237,12 @@ const AirportAutocomplete = ({
     };
 
     if (!multiple) {
-      setSelectedLocations([normalizedLocation]);
-      onChange([normalizedLocation]);
+      const newSelection = [normalizedLocation];
+      setSelectedLocations(newSelection);
+      onChange(newSelection);
       setSearchTerm("");
-      setIsOpen(false);
+      // Delay closing dropdown to ensure state updates are processed
+      setTimeout(() => setIsOpen(false), 100);
       return;
     }
 
@@ -255,21 +250,22 @@ const AirportAutocomplete = ({
       (loc) => loc.airportCode === normalizedLocation.airportCode
     );
 
+    let newSelection;
     if (isAlreadySelected) {
       // If already selected, remove it (toggle behavior)
-      const newSelection = selectedLocations.filter(
+      newSelection = selectedLocations.filter(
         (loc) => loc.airportCode !== normalizedLocation.airportCode
       );
-      setSelectedLocations(newSelection);
-      onChange(newSelection);
     } else {
       // If not selected, add it
-      const newSelection = [...selectedLocations, normalizedLocation];
-      setSelectedLocations(newSelection);
-      onChange(newSelection);
+      newSelection = [...selectedLocations, normalizedLocation];
     }
 
+    setSelectedLocations(newSelection);
+    onChange(newSelection);
     setSearchTerm("");
+    // Delay closing dropdown to ensure state updates are processed
+    setTimeout(() => setIsOpen(false), 100);
   };
 
   const handleRemoveLocation = (airportCodeToRemove) => {
@@ -333,7 +329,15 @@ const AirportAutocomplete = ({
         className={`min-h-[40px] w-full border border-gray-300 rounded-md px-3 py-2 bg-white dark:bg-gray-800 cursor-text transition-colors focus-within:border-blue-500 focus-within:ring-1 focus-within:ring-blue-500 ${
           disabled ? "bg-gray-50 cursor-not-allowed" : ""
         }`}
-        onClick={() => !disabled && setIsOpen(true)}
+        onClick={(e) => {
+          e.stopPropagation();
+          !disabled && setIsOpen(true);
+        }}
+        onFocus={(e) => {
+          e.stopPropagation();
+          !disabled && setIsOpen(true);
+        }}
+        tabIndex={0}
       >
         {/* Selected locations */}
         {multiple && (
@@ -472,7 +476,12 @@ const AirportAutocomplete = ({
           )}
 
           {/* Results */}
-          {!isLoading && destinationsToShow().length > 0 ? (
+          {isLoading || (isOpen && destinationsToShow().length === 0) ? (
+            <div className="p-2 sm:p-3 text-center text-xs sm:text-sm text-gray-500">
+              <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 animate-spin mx-auto mb-2" />
+              <span>Đang tải danh sách sân bay...</span>
+            </div>
+          ) : destinationsToShow().length > 0 ? (
             destinationsToShow().map((destination) => {
               const isSelected = selectedLocations.some(
                 (loc) => loc.airportCode === destination.airportCode

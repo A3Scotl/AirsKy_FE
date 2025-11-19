@@ -44,6 +44,7 @@ const AirportModal = ({ open, onClose, onSubmit, initialData, countries }) => {
 
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [gatesExpanded, setGatesExpanded] = useState(false);
   const isMounted = useRef(true);
 
   useEffect(() => {
@@ -54,7 +55,18 @@ const AirportModal = ({ open, onClose, onSubmit, initialData, countries }) => {
             initialData.airportCode || initialData.airport_code || "",
           airport_name:
             initialData.airportName || initialData.airport_name || "",
-          countryId: initialData.countryId ? String(initialData.countryId) : "",
+          countryId: (() => {
+            if (initialData.countryId) return String(initialData.countryId);
+            if (initialData.country && countries.length > 0) {
+              const country = countries.find(
+                (c) =>
+                  c.countryName === initialData.country ||
+                  c.name === initialData.country
+              );
+              return country ? String(country.countryId || country.id) : "";
+            }
+            return "";
+          })(),
           city_name: (() => {
             const cityData =
               initialData.cityNames || initialData.cityName || initialData.city;
@@ -212,10 +224,9 @@ const AirportModal = ({ open, onClose, onSubmit, initialData, countries }) => {
   };
 
   const removeGate = (index) => {
-    // Khi xóa bất kỳ gate nào, xóa tất cả gates (theo yêu cầu: xóa 1 = xóa hết)
     setForm((prev) => ({
       ...prev,
-      gates: prev.gates.map(() => ({ gateName: "", terminal: "" })),
+      gates: prev.gates.filter((_, i) => i !== index),
     }));
   };
 
@@ -260,7 +271,6 @@ const AirportModal = ({ open, onClose, onSubmit, initialData, countries }) => {
       } else if (form.thumbnail) {
         formData.thumbnailUrl = form.thumbnail;
       } else {
-
       }
 
       await onSubmit(formData);
@@ -388,16 +398,31 @@ const AirportModal = ({ open, onClose, onSubmit, initialData, countries }) => {
               <label className="block text-sm font-medium dark:text-gray-300">
                 Cửa ra máy bay (Gates)
               </label>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={addGate}
-                className="flex items-center gap-1 dark:border-gray-600 dark:hover:bg-gray-700"
-              >
-                <Plus className="w-4 h-4" />
-                Thêm gate
-              </Button>
+              <div className="flex gap-2">
+                {form.gates.length > 3 && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setGatesExpanded(!gatesExpanded)}
+                    className="text-xs dark:text-gray-400 dark:hover:text-gray-200"
+                  >
+                    {gatesExpanded
+                      ? "Thu gọn"
+                      : `Hiển thị tất cả (${form.gates.length})`}
+                  </Button>
+                )}
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={addGate}
+                  className="flex items-center gap-1 dark:border-gray-600 dark:hover:bg-gray-700"
+                >
+                  <Plus className="w-4 h-4" />
+                  Thêm gate
+                </Button>
+              </div>
             </div>
 
             {form.gates.length === 0 ? (
@@ -406,41 +431,50 @@ const AirportModal = ({ open, onClose, onSubmit, initialData, countries }) => {
               </p>
             ) : (
               <div className="space-y-3">
-                {form.gates.map((gate, index) => (
-                  <div
-                    key={index}
-                    className="flex items-center gap-3 p-3 border rounded-lg dark:border-gray-600 dark:bg-gray-700"
-                  >
-                    <div className="flex-1">
-                      <Input
-                        placeholder="Tên gate (VD: T7, G11)"
-                        value={gate.gateName}
-                        onChange={(e) =>
-                          updateGate(index, "gateName", e.target.value)
-                        }
-                        className="mb-2 text-black"
-                      />
-                      <Input
-                        placeholder="Terminal (VD: T5, T11)"
-                        value={gate.terminal}
-                        onChange={(e) =>
-                          updateGate(index, "terminal", e.target.value)
-                        }
-                        className="text-black"
-                      />
-                    </div>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => removeGate(index)}
-                      className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:text-red-300 dark:hover:bg-red-900/20 dark:border-gray-600"
-                      title="Xóa tất cả gates (gửi dữ liệu rỗng để backend xóa)"
+                {(gatesExpanded ? form.gates : form.gates.slice(0, 3)).map(
+                  (gate, index) => (
+                    <div
+                      key={index}
+                      className="flex items-center gap-3 p-3 border rounded-lg dark:border-gray-600 dark:bg-gray-700"
                     >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
+                      <div className="flex-1">
+                        <Input
+                          placeholder="Tên gate (VD: T7, G11)"
+                          value={gate.gateName}
+                          onChange={(e) =>
+                            updateGate(index, "gateName", e.target.value)
+                          }
+                          className="mb-2 text-black"
+                        />
+                        <Input
+                          placeholder="Terminal (VD: T5, T11)"
+                          value={gate.terminal}
+                          onChange={(e) =>
+                            updateGate(index, "terminal", e.target.value)
+                          }
+                          className="text-black"
+                        />
+                      </div>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => removeGate(index)}
+                        className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:text-red-300 dark:hover:bg-red-900/20 dark:border-gray-600"
+                        title="Xóa gate này"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  )
+                )}
+                {!gatesExpanded && form.gates.length > 3 && (
+                  <div className="text-center py-2">
+                    <span className="text-sm text-muted-foreground dark:text-gray-500">
+                      và {form.gates.length - 3} gate khác...
+                    </span>
                   </div>
-                ))}
+                )}
               </div>
             )}
           </div>

@@ -201,19 +201,54 @@ const BlogFormModal = ({
       newErrors.categories = "Vui lòng chọn ít nhất một danh mục";
     }
 
+    if (formData.featuredImage && formData.featuredImage.length > 2000) {
+      newErrors.featuredImage =
+        "URL ảnh không được vượt quá 2000 ký tự. Khuyến nghị upload file ảnh thay vì dùng URL dài.";
+    }
+
+    // Validate URL format
+    if (formData.featuredImage && formData.featuredImage.trim()) {
+      try {
+        new URL(formData.featuredImage);
+      } catch {
+        newErrors.featuredImage =
+          "URL ảnh không hợp lệ. Vui lòng nhập URL đúng định dạng.";
+      }
+    }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
   // Check if form is valid
   const isFormValid = () => {
+    // Basic validations
+    const titleValid =
+      formData.title.trim().length >= 5 && formData.title.length <= 200;
+    const contentValid = formData.content.trim().length >= 50;
+    const excerptValid =
+      formData.excerpt.trim().length >= 10 && formData.excerpt.length <= 500;
+    const categoriesValid = selectedCategories.length > 0;
+    const urlLengthValid =
+      !formData.featuredImage || formData.featuredImage.length <= 2000;
+
+    // URL format validation
+    let urlFormatValid = true;
+    if (formData.featuredImage && formData.featuredImage.trim()) {
+      try {
+        new URL(formData.featuredImage);
+      } catch {
+        urlFormatValid = false;
+      }
+    }
+
     return (
-      formData.title.trim().length >= 5 &&
-      formData.title.length <= 200 &&
-      formData.content.trim().length >= 50 &&
-      formData.excerpt.trim().length >= 10 &&
-      formData.excerpt.length <= 500 &&
-      selectedCategories.length > 0 &&
+      titleValid &&
+      contentValid &&
+      excerptValid &&
+      categoriesValid &&
+      urlLengthValid &&
+      urlFormatValid &&
       !isSubmitting
     );
   };
@@ -268,12 +303,28 @@ const BlogFormModal = ({
         data.append("categoryIds", selectedCategories.join(","));
         await onSave(data, true); // true: là FormData
       } else {
-        // Nếu chỉ nhập URL ảnh
+        // Nếu chỉ nhập URL ảnh - sanitize và truncate URL nếu quá dài
+        let featuredImageUrl = formData.featuredImage.trim();
+
+        // Sanitize URL - encode special characters if needed
+        try {
+          // Try to create URL object to validate
+          const urlObj = new URL(featuredImageUrl);
+          featuredImageUrl = urlObj.toString(); // Normalize URL
+        } catch (error) {
+          console.warn("URL validation warning:", error);
+        }
+
+        // Truncate if too long
+        if (featuredImageUrl.length > 2000) {
+          featuredImageUrl = featuredImageUrl.substring(0, 2000);
+        }
+
         const blogData = {
           title: formData.title.trim(),
           content: formData.content.trim(),
           excerpt: formData.excerpt.trim(),
-          featuredImage: formData.featuredImage,
+          featuredImage: featuredImageUrl,
           isPublished: formData.isPublished,
           categoryIds: selectedCategories,
         };

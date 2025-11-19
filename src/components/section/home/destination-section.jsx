@@ -11,8 +11,9 @@ import "swiper/css/pagination";
 import { countryService } from "@/services/country-service";
 import { flightApi } from "@/apis/flight-api";
 import { Loader2 } from "lucide-react";
+import { cn } from "@/lib/utils";
 
-export function DestinationSection() {
+export function DestinationSection({ className }) {
   const navigate = useNavigate();
   const [destinations, setDestinations] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -23,7 +24,6 @@ export function DestinationSection() {
   }, []);
 
   const handleDestinationClick = (destination) => {
-
     navigate("/flights", {
       state: {
         flightsData: destination.flights,
@@ -74,9 +74,9 @@ export function DestinationSection() {
             response.data &&
             response.data?.content.length > 0
           ) {
-            // Lọc chỉ lấy chuyến bay còn hoạt động (cách hiện tại ít nhất 24 giờ)
+            // Lọc chỉ lấy chuyến bay có thời gian khởi hành cách hiện tại ít nhất 4 tiếng
             const now = new Date();
-            const minBookingLeadTime = 24 * 60 * 60 * 1000; // 24 giờ
+            const minBookingLeadTime = 4 * 60 * 60 * 1000; // 4 tiếng
 
             const activeFlights = response.data.content.filter((flight) => {
               try {
@@ -97,7 +97,7 @@ export function DestinationSection() {
                   return false; // Invalid datetime format
                 }
 
-                // Chỉ lấy chuyến bay có thời gian khởi hành cách hiện tại ít nhất 24 giờ
+                // Chỉ lấy chuyến bay có thời gian khởi hành cách hiện tại ít nhất 4 tiếng
                 return (
                   departureDateTime.getTime() - now.getTime() >=
                   minBookingLeadTime
@@ -175,7 +175,7 @@ export function DestinationSection() {
 
   if (loading) {
     return (
-      <section className="py-16 bg-[#f9fafb] dark:bg-gray-800">
+      <section className={cn("py-16 bg-[#f9fafb] dark:bg-gray-800", className)}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
             <h2 className="text-3xl font-bold text-[#111827] dark:text-white mb-4">
@@ -199,7 +199,7 @@ export function DestinationSection() {
 
   if (error && destinations.length === 0) {
     return (
-      <section className="py-16 bg-[#f9fafb] dark:bg-gray-800">
+      <section className={cn("py-16 bg-[#f9fafb] dark:bg-gray-800", className)}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
             <h2 className="text-3xl font-bold text-[#111827] dark:text-white mb-4">
@@ -225,7 +225,9 @@ export function DestinationSection() {
   }
 
   return (
-    <section className="py-12 sm:py-16 bg-[#f9fafb] dark:bg-gray-800">
+    <section
+      className={cn("py-12 sm:py-16 sm:mt-12 dark:bg-gray-800", className)}
+    >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-12">
           <h2 className="text-3xl font-bold text-[#111827] dark:text-white mb-4">

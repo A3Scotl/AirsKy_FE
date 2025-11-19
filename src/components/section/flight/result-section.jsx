@@ -996,11 +996,9 @@ export function FlightSearchResults() {
       setIsFlexSearchUpdate(isFlexSearchUpdate);
 
       if (!isFlexSearchUpdate) {
-
         setRoundTripStep("outbound");
         setSelectedOutboundFlight(null);
       } else {
-
       }
 
       const formatDateForAPI = (dateInput) => {
@@ -2043,6 +2041,7 @@ export function FlightSearchResults() {
             onSearch={handleSearch}
             initialValues={searchFormInitialValues}
             onTripTypeChange={handleTripTypeChange}
+            onSearchStart={() => setLoading(true)}
           />
         </div>
       </div>
@@ -2059,7 +2058,6 @@ export function FlightSearchResults() {
             }
             isReturnSelection={roundTripStep === "return"}
             onDateSelect={(dateSelection) => {
-
               if (
                 typeof dateSelection === "object" &&
                 dateSelection.departDate
@@ -2237,7 +2235,6 @@ export function FlightSearchResults() {
                           variant="outline"
                           size="sm"
                           onClick={() => {
-
                             setRoundTripStep("outbound");
                             // Reset return flights and show outbound flights again
                             setAllItineraries(
