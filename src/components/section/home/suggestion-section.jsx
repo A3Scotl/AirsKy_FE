@@ -258,13 +258,15 @@ const SuggestionSection = () => {
         setLoading(true);
         const response = await flightApi.findDomesticFlights("Việt Nam", {
           page: 0,
-          size: 50, // Lấy nhiều hơn để có thể filter
+          size: 500, // Lấy nhiều hơn để có thể filter
         });
 
         if (response.success && response.data) {
-          // Lọc chỉ lấy chuyến bay có thời gian khởi hành cách hiện tại ít nhất 4 tiếng
+          console.log("API Response flights:", response.data.content?.length || 0);
+
+          // Lọc chỉ lấy chuyến bay có thời gian khởi hành hợp lệ (ít nhất 30 phút nữa)
           const now = new Date();
-          const minBookingLeadTime = 4 * 60 * 60 * 1000; // 4 tiếng
+          const minBookingLeadTime = 30 * 60 * 1000; // 30 phút thay vì 4 tiếng
 
           const activeFlights = response.data.content
             .filter((flight) => {
@@ -286,7 +288,7 @@ const SuggestionSection = () => {
                   return false; // Invalid datetime format
                 }
 
-                // Chỉ lấy chuyến bay có thời gian khởi hành cách hiện tại ít nhất 4 tiếng
+                // Chỉ lấy chuyến bay có thời gian khởi hành cách hiện tại ít nhất 30 phút
                 const isValidTime =
                   departureDateTime.getTime() - now.getTime() >=
                   minBookingLeadTime;
@@ -295,11 +297,36 @@ const SuggestionSection = () => {
               } catch (error) {
                 return false;
               }
-            })
-            .slice(0, 5); // Chỉ lấy tối đa 5 chuyến bay đầu tiên
+            });
+
+          console.log("Flights after time filter:", activeFlights.length);
+
+          // Lọc chỉ lấy chuyến bay có trạng thái ON_TIME hoặc DELAYED
+          const validStatusFlights = activeFlights.filter(flight => {
+            const status = flight.flight?.status || flight.status || "ON_TIME";
+            return status === "ON_TIME" || status === "DELAYED";
+          });
+
+          console.log("Flights after status filter:", validStatusFlights.length);
+
+          // Lọc để chỉ lấy các tuyến bay duy nhất từ tất cả chuyến bay hợp lệ
+          const uniqueRoutes = new Map();
+          validStatusFlights.forEach(flight => {
+            const route = `${flight.departureAirport?.airportCode || flight.fromCode || "UNK"}-${flight.arrivalAirport?.airportCode || flight.toCode || "UNK"}`;
+            if (!uniqueRoutes.has(route)) {
+              uniqueRoutes.set(route, flight);
+            }
+          });
+
+          console.log("Unique routes found:", uniqueRoutes.size);
+
+          // Lấy danh sách các chuyến bay duy nhất và slice tối đa 5 chuyến
+          const uniqueFlights = Array.from(uniqueRoutes.values()).slice(0, 5);
+
+          console.log("Final flights to display:", uniqueFlights.length);
 
           // Map API response to component format
-          const mappedFlights = activeFlights.map((flight, index) => ({
+          const mappedFlights = uniqueFlights.map((flight, index) => ({
             id:
               flight.flight?.flightId?.toString() ||
               flight.flightId?.toString() ||

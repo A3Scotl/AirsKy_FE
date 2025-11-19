@@ -241,7 +241,7 @@ function HomePage() {
             ))}
           </Swiper>
 
-          <div className="absolute inset-0 mx-auto px-4 sm:px-6 lg:px-8 top-[35%] sm:top-[35%] lg:top-[45%] w-full z-[10]">
+          <div className="absolute inset-0 mx-auto px-4 sm:px-6 lg:px-8 top-[10%] sm:top-[15%] lg:top-[50%] md:top-[50%] w-full z-[10]">
             <div
               data-swiper-parallax="0"
               className="relative z-[11] max-w-6xl mx-auto"
@@ -275,15 +275,14 @@ function HomePage() {
           />
         </div>
 
-        <div className="" ref={blogRef}>
-          <BlogSection
-            className={blogInView ? "animate-fadeInUp" : "opacity-0"}
-          />
-        </div>
-
         <div className="" ref={faqRef}>
           <FAQSection
             className={faqInView ? "animate-fadeInUp" : "opacity-0"}
+          />
+        </div>
+        <div className="" ref={blogRef}>
+          <BlogSection
+            className={blogInView ? "animate-fadeInUp" : "opacity-0"}
           />
         </div>
       </div>

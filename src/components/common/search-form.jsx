@@ -97,7 +97,12 @@ function DatePicker({ date, onSelect, placeholder, disabled = false }) {
   );
 }
 
-export function SearchForm({ onSearch, initialValues, onTripTypeChange, onSearchStart }) {
+export function SearchForm({
+  onSearch,
+  initialValues,
+  onTripTypeChange,
+  onSearchStart,
+}) {
   const [tripType, setTripType] = useState("ROUND_TRIP");
   const [fromLocations, setFromLocationsInternal] = useState([]);
   const [toLocations, setToLocationsInternal] = useState([]);
@@ -294,8 +299,8 @@ export function SearchForm({ onSearch, initialValues, onTripTypeChange, onSearch
   ]);
   const isFormValid = useMemo(() => {
     // Check if any from airport is the same as any to airport
-    const hasOverlappingAirports = fromLocations.some(from =>
-      toLocations.some(to => to.airportCode === from.airportCode)
+    const hasOverlappingAirports = fromLocations.some((from) =>
+      toLocations.some((to) => to.airportCode === from.airportCode)
     );
 
     if (tripType === "ROUND_TRIP") {
@@ -308,29 +313,33 @@ export function SearchForm({ onSearch, initialValues, onTripTypeChange, onSearch
         returnDate > departDate
       );
     } else if (tripType === "ONE_WAY") {
-      return fromLocations.length > 0 && toLocations.length > 0 && !hasOverlappingAirports && departDate;
+      return (
+        fromLocations.length > 0 &&
+        toLocations.length > 0 &&
+        !hasOverlappingAirports &&
+        departDate
+      );
     }
     return false;
-  }, [
-    tripType,
-    fromLocations,
-    toLocations,
-    departDate,
-    returnDate,
-  ]);
+  }, [tripType, fromLocations, toLocations, departDate, returnDate]);
 
   // Update validation errors
   useEffect(() => {
     const errors = [];
-    const hasOverlappingAirports = fromLocations.some(from =>
-      toLocations.some(to => to.airportCode === from.airportCode)
+    const hasOverlappingAirports = fromLocations.some((from) =>
+      toLocations.some((to) => to.airportCode === from.airportCode)
     );
 
     if (hasOverlappingAirports) {
       errors.push("Sân bay đi và sân bay đến không được trùng nhau");
     }
 
-    if (tripType === "ROUND_TRIP" && returnDate && departDate && returnDate <= departDate) {
+    if (
+      tripType === "ROUND_TRIP" &&
+      returnDate &&
+      departDate &&
+      returnDate <= departDate
+    ) {
       errors.push("Ngày về phải sau ngày đi");
     }
 
@@ -402,8 +411,10 @@ export function SearchForm({ onSearch, initialValues, onTripTypeChange, onSearch
         ...prev.filter(
           (item) =>
             !(
-              JSON.stringify(item.fromLocations) === JSON.stringify(historyItem.fromLocations) &&
-              JSON.stringify(item.toLocations) === JSON.stringify(historyItem.toLocations)
+              JSON.stringify(item.fromLocations) ===
+                JSON.stringify(historyItem.fromLocations) &&
+              JSON.stringify(item.toLocations) ===
+                JSON.stringify(historyItem.toLocations)
             )
         ),
       ].slice(0, 5); // Keep only 5 recent searches
@@ -673,28 +684,28 @@ export function SearchForm({ onSearch, initialValues, onTripTypeChange, onSearch
                   </div>
                 )}
               </div>
-              
+
               {/* Swap Button - Desktop inline */}
               <div className="flex items-center justify-center px-1 h-full">
                 <div className="relative flex items-center">
-                 
-                  
                   {/* Swap button */}
                   <Button
                     variant="ghost"
                     size="sm"
                     onClick={handleSwapAirports}
-                    disabled={isSearching || fromLocations.length !== 1 || toLocations.length !== 1}
+                    disabled={
+                      isSearching ||
+                      fromLocations.length !== 1 ||
+                      toLocations.length !== 1
+                    }
                     className="h-7 w-7 p-0 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-600 shadow-sm transition-all duration-200 hover:scale-110 disabled:opacity-30 disabled:cursor-not-allowed rounded-full mx-1"
                     title="Trao đổi sân bay đi và đến (chỉ khi mỗi trường có 1 sân bay)"
                   >
                     <ArrowRightLeft className="h-3 w-3 text-gray-600 dark:text-gray-400" />
                   </Button>
-                  
-                 
                 </div>
               </div>
-              
+
               {/* To Airport */}
               <div className="flex-1">
                 <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -716,7 +727,7 @@ export function SearchForm({ onSearch, initialValues, onTripTypeChange, onSearch
                   </div>
                 )}
               </div>
-              
+
               {/* Depart Date */}
               <div className="flex-1">
                 <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -743,7 +754,7 @@ export function SearchForm({ onSearch, initialValues, onTripTypeChange, onSearch
                 />
               </div>
             </div>
-            
+
             {/* Mobile layout: stacked with swap button between airport fields */}
             <div className="md:hidden space-y-4">
               {/* From Airport */}
@@ -775,11 +786,17 @@ export function SearchForm({ onSearch, initialValues, onTripTypeChange, onSearch
                     variant="ghost"
                     size="sm"
                     onClick={handleSwapAirports}
-                    disabled={isSearching || fromLocations.length !== 1 || toLocations.length !== 1}
+                    disabled={
+                      isSearching ||
+                      fromLocations.length !== 1 ||
+                      toLocations.length !== 1
+                    }
                     className={`h-8 w-8 p-0 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 shadow-sm transition-all duration-200 hover:scale-110 disabled:opacity-30 disabled:cursor-not-allowed rounded-full border-2 ${
-                      fromLocations.length === 1 && toLocations.length === 1 && !isSearching
-                        ? 'border-blue-500'
-                        : 'border-gray-200 dark:border-gray-600'
+                      fromLocations.length === 1 &&
+                      toLocations.length === 1 &&
+                      !isSearching
+                        ? "border-blue-500"
+                        : "border-gray-200 dark:border-gray-600"
                     }`}
                     title="Trao đổi sân bay đi và đến (chỉ khi mỗi trường có 1 sân bay)"
                   >
@@ -809,7 +826,7 @@ export function SearchForm({ onSearch, initialValues, onTripTypeChange, onSearch
                   </div>
                 )}
               </div>
-              
+
               {/* Date fields */}
               <div className="space-y-4">
                 <div>
@@ -849,7 +866,9 @@ export function SearchForm({ onSearch, initialValues, onTripTypeChange, onSearch
                   Đang tìm kiếm...
                 </>
               ) : fromLocations.length > 1 || toLocations.length > 1 ? (
-                `Tìm chuyến bay (${fromLocations.length * toLocations.length} kết hợp)`
+                `Tìm chuyến bay (${
+                  fromLocations.length * toLocations.length
+                } kết hợp)`
               ) : (
                 "Tìm chuyến bay"
               )}
@@ -883,28 +902,28 @@ export function SearchForm({ onSearch, initialValues, onTripTypeChange, onSearch
                   </div>
                 )}
               </div>
-              
+
               {/* Swap Button - Desktop inline */}
               <div className="flex items-center justify-center px-1 h-full">
                 <div className="relative flex items-center">
-                
-                  
                   {/* Swap button */}
                   <Button
                     variant="ghost"
                     size="sm"
                     onClick={handleSwapAirports}
-                    disabled={isSearching || fromLocations.length !== 1 || toLocations.length !== 1}
+                    disabled={
+                      isSearching ||
+                      fromLocations.length !== 1 ||
+                      toLocations.length !== 1
+                    }
                     className="h-7 w-7 p-0 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-600 shadow-sm transition-all duration-200 hover:scale-110 disabled:opacity-30 disabled:cursor-not-allowed rounded-full mx-1"
                     title="Trao đổi sân bay đi và đến (chỉ khi mỗi trường có 1 sân bay)"
                   >
                     <ArrowRightLeft className="h-3 w-3 text-gray-600 dark:text-gray-400" />
                   </Button>
-                  
-                
                 </div>
               </div>
-              
+
               {/* To Airport */}
               <div className="flex-1">
                 <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -926,7 +945,7 @@ export function SearchForm({ onSearch, initialValues, onTripTypeChange, onSearch
                   </div>
                 )}
               </div>
-              
+
               {/* Depart Date */}
               <div className="flex-1">
                 <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -940,7 +959,7 @@ export function SearchForm({ onSearch, initialValues, onTripTypeChange, onSearch
                 />
               </div>
             </div>
-            
+
             {/* Mobile layout: stacked with swap button between airport fields */}
             <div className="md:hidden space-y-4">
               {/* From Airport */}
@@ -972,11 +991,17 @@ export function SearchForm({ onSearch, initialValues, onTripTypeChange, onSearch
                     variant="ghost"
                     size="sm"
                     onClick={handleSwapAirports}
-                    disabled={isSearching || fromLocations.length !== 1 || toLocations.length !== 1}
+                    disabled={
+                      isSearching ||
+                      fromLocations.length !== 1 ||
+                      toLocations.length !== 1
+                    }
                     className={`h-8 w-8 p-0 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 shadow-sm transition-all duration-200 hover:scale-110 disabled:opacity-30 disabled:cursor-not-allowed rounded-full border-2 ${
-                      fromLocations.length === 1 && toLocations.length === 1 && !isSearching
-                        ? 'border-blue-500'
-                        : 'border-gray-200 dark:border-gray-600'
+                      fromLocations.length === 1 &&
+                      toLocations.length === 1 &&
+                      !isSearching
+                        ? "border-blue-500"
+                        : "border-gray-200 dark:border-gray-600"
                     }`}
                     title="Trao đổi sân bay đi và đến (chỉ khi mỗi trường có 1 sân bay)"
                   >
@@ -1006,7 +1031,7 @@ export function SearchForm({ onSearch, initialValues, onTripTypeChange, onSearch
                   </div>
                 )}
               </div>
-              
+
               {/* Date field */}
               <div className="relative">
                 <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -1032,7 +1057,9 @@ export function SearchForm({ onSearch, initialValues, onTripTypeChange, onSearch
                   Đang tìm kiếm...
                 </>
               ) : fromLocations.length > 1 || toLocations.length > 1 ? (
-                `Tìm chuyến bay (${fromLocations.length * toLocations.length} kết hợp)`
+                `Tìm chuyến bay (${
+                  fromLocations.length * toLocations.length
+                } kết hợp)`
               ) : (
                 "Tìm chuyến bay"
               )}

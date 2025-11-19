@@ -160,7 +160,6 @@ const AirportAutocomplete = ({
 
     // Check if it's just an airport code (3 letters)
     if (/^[A-Z]{3}$/.test(trimmed.toUpperCase())) {
-
       return {
         cityName: trimmed.toUpperCase(),
         airportCode: trimmed.toUpperCase(),
@@ -190,7 +189,6 @@ const AirportAutocomplete = ({
     });
 
     if (matchingAirport) {
-
       const primaryCityName =
         Array.isArray(matchingAirport.cityNames) &&
         matchingAirport.cityNames.length > 0
@@ -331,8 +329,14 @@ const AirportAutocomplete = ({
         className={`min-h-[40px] w-full border border-gray-300 rounded-md px-3 py-2 bg-white dark:bg-gray-800 cursor-text transition-colors focus-within:border-blue-500 focus-within:ring-1 focus-within:ring-blue-500 ${
           disabled ? "bg-gray-50 cursor-not-allowed" : ""
         }`}
-        onClick={(e) => { e.stopPropagation(); !disabled && setIsOpen(true); }}
-        onFocus={(e) => { e.stopPropagation(); !disabled && setIsOpen(true); }}
+        onClick={(e) => {
+          e.stopPropagation();
+          !disabled && setIsOpen(true);
+        }}
+        onFocus={(e) => {
+          e.stopPropagation();
+          !disabled && setIsOpen(true);
+        }}
         tabIndex={0}
       >
         {/* Selected locations */}

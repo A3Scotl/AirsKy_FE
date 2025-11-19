@@ -329,30 +329,30 @@ export function FlightSearchResults() {
     });
   }, []);
 
-  const loadAllFlights = useCallback(async () => {
-    try {
-      setLoading(true);
-      setError(null);
+  // const loadAllFlights = useCallback(async () => {
+  //   try {
+  //     setLoading(true);
+  //     setError(null);
 
-      const response = await flightApi.getAllFlights({ size: 100 });
+  //     const response = await flightApi.getAllFlights({ size: 100 });
 
-      if (response.success && response.data?.content) {
-        setAllFlights(response.data.content);
-        setTabExpandedFlights({});
-        setTabPages({});
-      } else {
-        setAllFlights([]);
-        setAllItineraries([]);
-      }
-    } catch (err) {
-      setError("Không thể tải danh sách chuyến bay");
-      setAllFlights([]);
-      setAllItineraries([]);
-    } finally {
-      setLoading(false);
-      setFlightsLoaded(true);
-    }
-  }, []);
+  //     if (response.success && response.data?.content) {
+  //       setAllFlights(response.data.content);
+  //       setTabExpandedFlights({});
+  //       setTabPages({});
+  //     } else {
+  //       setAllFlights([]);
+  //       setAllItineraries([]);
+  //     }
+  //   } catch (err) {
+  //     setError("Không thể tải danh sách chuyến bay");
+  //     setAllFlights([]);
+  //     setAllItineraries([]);
+  //   } finally {
+  //     setLoading(false);
+  //     setFlightsLoaded(true);
+  //   }
+  // }, []);
 
   const toggleDetails = useCallback(
     (itineraryId) => {
@@ -996,11 +996,9 @@ export function FlightSearchResults() {
       setIsFlexSearchUpdate(isFlexSearchUpdate);
 
       if (!isFlexSearchUpdate) {
-
         setRoundTripStep("outbound");
         setSelectedOutboundFlight(null);
       } else {
-
       }
 
       const formatDateForAPI = (dateInput) => {
@@ -2060,7 +2058,6 @@ export function FlightSearchResults() {
             }
             isReturnSelection={roundTripStep === "return"}
             onDateSelect={(dateSelection) => {
-
               if (
                 typeof dateSelection === "object" &&
                 dateSelection.departDate
@@ -2238,7 +2235,6 @@ export function FlightSearchResults() {
                           variant="outline"
                           size="sm"
                           onClick={() => {
-
                             setRoundTripStep("outbound");
                             // Reset return flights and show outbound flights again
                             setAllItineraries(

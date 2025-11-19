@@ -3,6 +3,7 @@ import { useParams, Link } from "react-router-dom";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -33,6 +34,9 @@ import {
   MessageSquare,
   Copy,
   MoreHorizontal,
+  Icon,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { Swiper, SwiperSlide } from "swiper/react";
 import { Autoplay, Navigation } from "swiper/modules";
@@ -47,6 +51,8 @@ import {
   RedditShareButton,
   EmailShareButton,
 } from "react-share";
+import { Skeleton } from "@/components/ui/skeleton";
+
 import "@/components/ui/ckeditor-theme.css";
 
 const BlogDetailPage = () => {
@@ -304,11 +310,38 @@ const BlogDetailPage = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="h-16 w-16 text-blue-600 animate-spin" />
+      <div className="min-h-screen bg-gray-50">
+        {/* Hero Skeleton */}
+        <div className="relative h-96 w-full">
+          <Skeleton className="h-full w-full rounded-none" />
+        </div>
+
+        <div className="max-w-7xl mx-auto px-4 py-10">
+          {/* Title */}
+          <Skeleton className="h-10 w-3/4 mb-4" />
+          <Skeleton className="h-5 w-1/3 mb-6" />
+
+          {/* Action buttons */}
+          <div className="flex gap-3 mb-10">
+            <Skeleton className="h-10 w-24" />
+            <Skeleton className="h-10 w-24" />
+            <Skeleton className="h-10 w-10" />
+            <Skeleton className="h-10 w-10" />
+          </div>
+
+          {/* Content skeleton */}
+          <div className="bg-white rounded-xl shadow-sm p-8">
+            <Skeleton className="h-6 w-full mb-4" />
+            <Skeleton className="h-6 w-5/6 mb-4" />
+            <Skeleton className="h-6 w-2/3 mb-4" />
+            <Skeleton className="h-6 w-full mb-4" />
+            <Skeleton className="h-6 w-4/5 mb-4" />
+          </div>
+        </div>
       </div>
     );
   }
+
   if (error || !post) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -330,7 +363,7 @@ const BlogDetailPage = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-gray-500 dark:via-gray-700 dark:to-gray-900">
       {/* Hero Image */}
-      <div className="relative h-96 md:h-[500px] overflow-hidden">
+      <div className="relative h-96 md:h-[500px] max-w-8xl overflow-hidden mx-auto">
         <img
           src={
             post.thumbnail || post.featuredImage || "/api/placeholder/800/400"
@@ -342,8 +375,8 @@ const BlogDetailPage = () => {
 
         {/* Hero Content */}
         <div className="absolute bottom-8 left-8 right-8">
-          <div className="max-w-4xl">
-            <h1 className="text-3xl md:text-5xl font-bold text-white mb-4 leading-tight">
+          <div className="max-w-6xl mx-auto ">
+            <h1 className="text-2xl md:text-4xl font-bold text-white mb-4 leading-tight">
               {post.title}
             </h1>
             <div className="flex items-center space-x-6 text-white/90">
@@ -376,7 +409,10 @@ const BlogDetailPage = () => {
                   : "Chưa phân loại"}
               </span>
               <span className="mx-1">/</span>
-              <span className="text-gray-700 font-semibold truncate" title={post?.title || slug}>
+              <span
+                className="text-gray-700 font-semibold truncate"
+                title={post?.title || slug}
+              >
                 {post?.title || slug}
               </span>
             </nav>
@@ -478,7 +514,7 @@ const BlogDetailPage = () => {
           </div>
         </div>
 
-        <div className="max-w-4xl mx-auto">
+        <div className="max-w-7xl mx-auto">
           {/* Article Content */}
           <div className="bg-white rounded-xl shadow-sm p-8 mb-12">
             <div
@@ -506,44 +542,65 @@ const BlogDetailPage = () => {
           </div>
         </div>
 
-        {/* Related Blogs Section dưới cùng */}
+        {/* Related Blogs Section */}
         <div className="max-w-7xl mx-auto mt-10 mb-14 px-4 sm:px-6 lg:px-8">
           <h2 className="text-2xl font-bold mb-6 text-gray-800">
             Bài viết liên quan
           </h2>
+
           {relatedLoading ? (
-            <div className="flex justify-center py-8">
-              <Loader2 className="h-8 w-8 text-blue-600 animate-spin" />
+            // Skeleton loading
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="rounded-xl border p-4">
+                  <Skeleton className="h-40 w-full mb-4 rounded-lg" />
+                  <Skeleton className="h-6 w-3/4 mb-2" />
+                  <Skeleton className="h-4 w-1/2 mb-2" />
+                  <Skeleton className="h-4 w-2/3" />
+                </div>
+              ))}
             </div>
           ) : relatedBlogs.length === 0 ? (
-            <div className="text-gray-500 text-center py-8">
+            <p className="text-gray-500 text-center py-8">
               Không có bài viết liên quan
-            </div>
-          ) : relatedBlogs.length <= 3 ? (
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {relatedBlogs.map((blog) => (
-                <BlogCard key={blog.blogId} blog={blog} />
-              ))}
-            </div>
+            </p>
           ) : (
-            <Swiper
-              modules={[Autoplay, Navigation]}
-              spaceBetween={24}
-              slidesPerView={1}
-              navigation
-              autoplay={{ delay: 5000 }}
-              breakpoints={{
-                640: { slidesPerView: 2 },
-                1024: { slidesPerView: 3 },
-              }}
-              className="related-blogs-swiper"
-            >
-              {relatedBlogs.map((blog) => (
-                <SwiperSlide key={blog.blogId}>
-                  <BlogCard blog={blog} />
-                </SwiperSlide>
-              ))}
-            </Swiper>
+            <>
+              <Swiper
+                modules={[Navigation]}
+                spaceBetween={20}
+                slidesPerView={1}
+                onSwiper={(swiper) => (window.blogSwiper = swiper)}
+                breakpoints={{
+                  640: { slidesPerView: 2 },
+                  1024: { slidesPerView: 3 },
+                }}
+                className="related-blogs-swiper"
+              >
+                {relatedBlogs.map((blog) => (
+                  <SwiperSlide key={blog.blogId}>
+                    <BlogCard blog={blog} />
+                  </SwiperSlide>
+                ))}
+              </Swiper>
+
+              {/* Nút Next/Prev đơn giản đặt dưới */}
+              <div className="flex justify-end mt-4 space-x-2">
+                <button
+                  onClick={() => window.blogSwiper.slidePrev()}
+                  className="p-2 border rounded-md  cursor-pointer hover:bg-gray-100"
+                >
+                  <ChevronLeft size={18} />
+                </button>
+
+                <button
+                  onClick={() => window.blogSwiper.slideNext()}
+                  className="p-2 border rounded-md cursor-pointer hover:bg-gray-100"
+                >
+                  <ChevronRight size={18} />
+                </button>
+              </div>
+            </>
           )}
         </div>
       </div>
