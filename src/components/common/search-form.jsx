@@ -662,7 +662,7 @@ export function SearchForm({
         {tripType === "ROUND_TRIP" && (
           <div className="grid grid-cols-1 md:grid-cols-5 gap-4 relative">
             {/* Desktop layout: all fields in one row */}
-            <div className="hidden md:flex md:col-span-5 gap-4 items-end">
+            <div className="hidden md:flex md:col-span-5 gap-4 items-end justify-center" >
               {/* From Airport */}
               <div className="flex-1">
                 <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -686,7 +686,7 @@ export function SearchForm({
               </div>
 
               {/* Swap Button - Desktop inline */}
-              <div className="flex items-center justify-center px-1 h-full">
+              <div className="flex items-center justify-center px-1 h-full pt-4">
                 <div className="relative flex items-center">
                   {/* Swap button */}
                   <Button
@@ -904,7 +904,7 @@ export function SearchForm({
               </div>
 
               {/* Swap Button - Desktop inline */}
-              <div className="flex items-center justify-center px-1 h-full">
+              <div className="flex items-center justify-center px-1 pt-6 h-full">
                 <div className="relative flex items-center">
                   {/* Swap button */}
                   <Button

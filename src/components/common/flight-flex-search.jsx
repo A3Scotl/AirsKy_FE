@@ -9,7 +9,7 @@ import "swiper/css/pagination";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ChevronLeft, ChevronRight, Calendar, RefreshCw } from "lucide-react";
+import { ChevronLeft, ChevronRight, Calendar, RefreshCw, Loader, Loader2 } from "lucide-react";
 import { flightApi } from "@/apis/flight-api";
 import { airportApi } from "@/apis/airport-api";
 
@@ -739,42 +739,10 @@ export function FlightFlexSearch({
   );
 
   return (
-    <div className="w-full bg-gradient-to-br from-white via-blue-50/30 to-indigo-50/20 dark:from-gray-900 dark:via-blue-950/20 dark:to-indigo-950/10 rounded-xl shadow-lg border border-gray-200/50 dark:border-gray-700/50 backdrop-blur-sm">
-      <div className="p-6 border-b border-gray-200/60 dark:border-gray-700/60 bg-gradient-to-r from-blue-600/5 to-indigo-600/5">
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-blue-600 rounded-lg shadow-sm">
-              <Calendar className="h-5 w-5 text-white" />
-            </div>
-            <div>
-              <h3 className="text-xl font-bold text-gray-900 dark:text-white">
-                {isReturnSelection
-                  ? "Chọn ngày về linh hoạt"
-                  : "Chọn ngày khởi hành linh hoạt"}
-              </h3>
-              <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                {isReturnSelection
-                  ? "So sánh giá vé ngày về để tìm chuyến bay giá rẻ nhất"
-                  : "So sánh giá vé theo ngày để tìm chuyến bay giá rẻ nhất"}
-              </p>
-            </div>
-          </div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleRefresh}
-            disabled={loading}
-            className="flex items-center gap-2 border-gray-300 dark:border-gray-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-all duration-200"
-          >
-            <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
-            <span className="hidden sm:inline font-medium">Làm mới</span>
-          </Button>
-        </div>
-      </div>
-
+    <div className="w-full mt-8  px-8 via-blue-50/30 to-indigo-50/20 dark:from-gray-900 dark:via-blue-950/20 dark:to-indigo-950/10   dark:border-gray-700/50 backdrop-blur-sm">
       <div className="p-6">
         <div className="relative">
-          <div className="absolute left-2 top-1/2 -translate-y-1/2 z-10">
+          <div className="absolute -left-12 top-1/2 -translate-y-1/2 z-10">
             <Button
               variant="outline"
               size="sm"
@@ -785,7 +753,7 @@ export function FlightFlexSearch({
               <ChevronLeft className="h-5 w-5 text-gray-700 dark:text-gray-300" />
             </Button>
           </div>
-          <div className="absolute right-2 top-1/2 -translate-y-1/2 z-10">
+          <div className="absolute -right-12 top-1/2 -translate-y-1/2 z-10">
             <Button
               variant="outline"
               size="sm"
@@ -800,111 +768,86 @@ export function FlightFlexSearch({
           <Swiper
             onSwiper={(swiper) => (swiperRef.current = swiper)}
             modules={[Pagination]}
-            spaceBetween={16}
-            slidesPerView={1}
+            spaceBetween={20}
+            slidesPerView={2}
             pagination={{
               clickable: true,
               el: ".swiper-pagination",
-              bulletClass:
-                "swiper-pagination-bullet !bg-gray-300 dark:!bg-gray-600",
-              bulletActiveClass: "swiper-pagination-bullet-active !bg-blue-600",
             }}
             breakpoints={{
               640: { slidesPerView: 3 },
               768: { slidesPerView: 5 },
-              1024: { slidesPerView: 7 },
+              1024: { slidesPerView: 5 },
             }}
-            className="pb-10 px-14"
+            className="pb-12 px-8"
           >
-            {dates.map((dateObj, index) => (
-              <SwiperSlide key={`${dateObj.formatted}-${index}`}>
-                <Card
-                  className={`cursor-pointer transition-all duration-300 hover:shadow-xl hover:scale-105 border-0 shadow-md ${
-                    selectedDate?.formatted === dateObj.formatted ||
-                    dateObj.isSelected
-                      ? "ring-2 ring-blue-500 bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/30 dark:to-blue-800/30 shadow-blue-200 dark:shadow-blue-900/50"
-                      : dateObj.error
-                      ? "bg-gradient-to-br from-red-50 to-red-100 dark:from-red-900/20 dark:to-red-800/20"
-                      : dateObj.price && dateObj.price === minOverallPrice
-                      ? "bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900/30 dark:to-green-800/30"
-                      : "hover:bg-gradient-to-br hover:from-gray-50 hover:to-blue-50/50 dark:hover:from-gray-700 dark:hover:to-blue-900/20 bg-white dark:bg-gray-800"
-                  }`}
-                  onClick={() => handleDateSelect(dateObj)}
-                >
-                  <CardContent className="p-4 text-center">
-                    <div className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            {dates.map((dateObj, index) => {
+              const isSelected =
+                selectedDate?.formatted === dateObj.formatted ||
+                dateObj.isSelected;
+
+              const isMin = dateObj.price === minOverallPrice;
+
+              return (
+                <SwiperSlide key={dateObj.formatted + index}>
+                  <div
+                    onClick={() => handleDateSelect(dateObj)}
+                    className={`
+            group cursor-pointer rounded-2xl border 
+            transition-all duration-300 
+            p-4 text-center shadow-sm 
+            hover:shadow-md bg-white dark:bg-gray-800
+            hover:-translate-y-1 
+            ${
+              isSelected
+                ? "border-blue-500 shadow-blue-200 dark:shadow-blue-900/30"
+                : "border-gray-200 dark:border-gray-700"
+            }
+            ${dateObj.error ? "opacity-50" : ""}
+          `}
+                  >
+                    {/* Ngày */}
+                    <div className="text-sm text-gray-500 dark:text-gray-400">
                       {dateObj.display}
                     </div>
 
+                    {/* Loading */}
                     {dateObj.loading ? (
-                      <div className="flex justify-center py-3">
-                        <div className="animate-pulse h-5 bg-gray-300 dark:bg-gray-600 rounded w-16"></div>
+                      <div className="flex justify-center py-2">
+                          <Loader/>
                       </div>
                     ) : dateObj.error ||
                       !dateObj.price ||
                       dateObj.price === 0 ? (
-                      <div className="text-xs text-red-600 dark:text-red-400 py-3 font-medium">
-                        Không có chuyến
+                      <div className="py-2 text-red-500 dark:text-red-400 font-medium">
+                        --
                       </div>
                     ) : (
-                      <div
-                        className={`text-lg font-bold py-1 ${
-                          dateObj.price === minOverallPrice
-                            ? "text-green-600 dark:text-green-400"
-                            : "text-blue-600 dark:text-blue-400"
-                        }`}
-                      >
-                        {formatPrice(dateObj.price)}
+                      <div className="py-2">
+                        <div
+                          className={`
+                  text-lg font-semibold 
+                  ${
+                    isMin
+                      ? "text-emerald-600 dark:text-emerald-400"
+                      : "text-blue-600 dark:text-blue-400"
+                  }
+                `}
+                        >
+                          {formatPrice(dateObj.price)}
+                        </div>
+
+
                       </div>
                     )}
-
-                    <div className="flex justify-center gap-1 mt-2">
-                      {dateObj.isToday && (
-                        <Badge
-                          variant="secondary"
-                          className="text-xs px-2 py-0.5 bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300 border-blue-200 dark:border-blue-800"
-                        >
-                          Hôm nay
-                        </Badge>
-                      )}
-                      {dateObj.price && dateObj.price === minOverallPrice && (
-                        <Badge
-                          variant="secondary"
-                          className="text-xs px-2 py-0.5 bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300 border-green-200 dark:border-green-800"
-                        >
-                          Rẻ nhất
-                        </Badge>
-                      )}
-                      {(selectedDate?.formatted === dateObj.formatted ||
-                        dateObj.isSelected) && (
-                        <Badge
-                          variant="default"
-                          className="text-xs px-2 py-0.5 bg-blue-600 hover:bg-blue-700 text-white shadow-sm"
-                        >
-                          Đã chọn
-                        </Badge>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-              </SwiperSlide>
-            ))}
+                  </div>
+                </SwiperSlide>
+              );
+            })}
           </Swiper>
 
-          <div className="swiper-pagination flex justify-center mt-6"></div>
+          {/* <div className="swiper-pagination flex justify-center mt-6"></div> */}
         </div>
-
-        {loading && (
-          <div className="mt-6 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/30 rounded-xl border border-blue-200/50 dark:border-blue-800/50">
-            <div className="flex items-center gap-3">
-              <div className="animate-spin rounded-full h-5 w-5 border-2 border-blue-600 border-t-transparent"></div>
-              <p className="text-sm font-medium text-blue-700 dark:text-blue-300">
-                Đang tải giá vé cho các ngày...
-              </p>
-            </div>
-          </div>
-        )}
-
         {error && (
           <div className="mt-6 p-4 bg-gradient-to-r from-red-50 to-pink-50 dark:from-red-950/30 dark:to-pink-950/30 rounded-xl border border-red-200/50 dark:border-red-800/50">
             <div className="flex items-center justify-between">
