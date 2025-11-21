@@ -9,11 +9,11 @@ import { Calendar, Clock, User, ArrowRight, ChevronLeft, ChevronRight, Search, B
 import { Swiper, SwiperSlide } from "swiper/react";
 import { Autoplay, Navigation, Pagination } from "swiper/modules";
 import "swiper/css";
+import { useQuery } from "@tanstack/react-query";
 import "swiper/css/navigation";
 import "swiper/css/pagination";
 import { blogApi } from "@/apis/blog-api";
 import { categoryApi } from "@/apis/category-api";
-import { blogLikeApi } from "@/apis/blog-like-api";
 import BlogCard from "@/components/section/blog/blog-card";
 import {
   Select,
@@ -56,15 +56,48 @@ const BlogCardSkeleton = () => {
   );
 };
 
+const fetchCategories = async () => {
+  const result = await categoryApi.getAllCategoriesList();
+  if (result.success && result.data) {
+    return result.data;
+  }
+  throw new Error("Không thể tải danh mục.");
+};
+
+const fetchBlogs = async ({ queryKey }) => {
+  const [_key, { page, search, category, sort }] = queryKey;
+  let result;
+
+  if (search.trim()) {
+    result = await blogApi.searchBlogs({
+      keyword: search,
+      category: category || undefined,
+      page: page - 1,
+      size: 9,
+      sort: sort,
+    });
+  } else if (category) {
+    result = await blogApi.getBlogsByCategory(category, {
+      page: page - 1,
+      size: 9,
+      sort: sort,
+    });
+  } else {
+    result = await blogApi.getAllPublishedBlogs({
+      page: page - 1,
+      size: 9,
+      sort: sort,
+    });
+  }
+
+  if (result.success && result.data) {
+    return result.data;
+  }
+  throw new Error(result.message || "Không thể tải danh sách bài viết.");
+};
+
 const BlogPage = () => {
   const [searchParams, setSearchParams] = useSearchParams();
-
-  const [blogs, setBlogs] = useState([]);
-  const [featuredBlogs, setFeaturedBlogs] = useState([]);
-  const [categories, setCategories] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [searchLoading, setSearchLoading] = useState(false);
-  const [error, setError] = useState(null);
 
   const [searchTerm, setSearchTerm] = useState(
     searchParams.get("search") || ""
@@ -72,126 +105,37 @@ const BlogPage = () => {
   const [selectedCategory, setSelectedCategory] = useState(
     searchParams.get("category") || ""
   );
-  const [currentPage, setCurrentPage] = useState(
-    parseInt(searchParams.get("page") || "1")
-  );
-  const [totalPages, setTotalPages] = useState(1);
-  const [totalBlogs, setTotalBlogs] = useState(0);
-  const blogsPerPage = 9;
   const [sortOption, setSortOption] = useState(
     searchParams.get("sort") || "createdAt,desc"
   );
+  const [currentPage, setCurrentPage] = useState(
+    parseInt(searchParams.get("page") || "1")
+  );
 
-  const fetchCategories = async () => {
-    try {
-      const result = await categoryApi.getAllCategoriesList();
-      if (result.success && result.data) {
-        setCategories(result.data);
-      }
-    } catch (error) {
-      console.error("Error fetching categories:", error);
-    }
-  };
+  const { data: categories = [] } = useQuery({
+    queryKey: ["blogCategories"],
+    queryFn: fetchCategories,
+    staleTime: 1000 * 60 * 5, // 5 phut
+  });
 
-  const fetchFeaturedBlogs = async () => {
-    try {
-      const result = await blogApi.getAllPublishedBlogs({
-        page: 0,
-        size: 50,
-        sort: "createdAt,desc",
-      });
-      if (result.success && result.data) {
-        let blogs = result.data.content || result.data;
-        const likeCounts = await Promise.all(
-          blogs.map(async (blog) => {
-            const likeRes = await blogLikeApi.getLikeCount(blog.blogId);
-            return likeRes.success ? likeRes.data : 0;
-          })
-        );
-        blogs = blogs.map((blog, idx) => ({
-          ...blog,
-          likeCount: likeCounts[idx],
-        }));
-        blogs = blogs.filter(
-          (b) => (b.viewCount || 0) > 200 || (b.likeCount || 0) > 10
-        );
-        blogs.sort(
-          (a, b) =>
-            (b.likeCount || 0) - (a.likeCount || 0) ||
-            (b.viewCount || 0) - (a.viewCount || 0)
-        );
-        setFeaturedBlogs(blogs.slice(0, 5));
-      }
-    } catch (error) {
-      console.error("Error fetching featured blogs:", error);
-    }
-  };
+  const {
+    data: blogData,
+    isLoading: searchLoading,
+    isError,
+    error,
+    refetch,
+  } = useQuery({
+    queryKey: [
+      "blogs",
+      { page: currentPage, search: searchTerm, category: selectedCategory, sort: sortOption },
+    ],
+    queryFn: fetchBlogs,
+    keepPreviousData: true,
+  });
 
-  const fetchBlogs = async (
-    page = 1,
-    search = "",
-    category = "",
-    sort = sortOption
-  ) => {
-    try {
-      setSearchLoading(true);
-      setError(null);
-
-      let result;
-
-      if (search.trim()) {
-        result = await blogApi.searchBlogs({
-          keyword: search,
-          category: category || undefined,
-          page: page - 1,
-          size: blogsPerPage,
-          sort: sort,
-        });
-      } else if (category) {
-        result = await blogApi.getBlogsByCategory(category, {
-          page: page - 1,
-          size: blogsPerPage,
-          sort: sort,
-        });
-      } else {
-        result = await blogApi.getAllPublishedBlogs({
-          page: page - 1,
-          size: blogsPerPage,
-          sort: sort,
-        });
-      }
-
-      if (result.success && result.data) {
-        const data = result.data;
-        setBlogs(data.content || []);
-        setTotalPages(data.totalPages || 1);
-        setTotalBlogs(data.totalElements || 0);
-      } else {
-        setError(result.message || "Không thể tải danh sách bài viết");
-        setBlogs([]);
-      }
-    } catch (err) {
-      console.error("Error fetching blogs:", err);
-      setError("Có lỗi xảy ra khi tải bài viết");
-      setBlogs([]);
-    } finally {
-      setSearchLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    const loadInitialData = async () => {
-      setLoading(true);
-      await Promise.all([
-        fetchCategories(),
-        fetchFeaturedBlogs(),
-        fetchBlogs(currentPage, searchTerm, selectedCategory),
-      ]);
-      setLoading(false);
-    };
-
-    loadInitialData();
-  }, []);
+  const blogs = blogData?.content || [];
+  const totalPages = blogData?.totalPages || 1;
+  const totalBlogs = blogData?.totalElements || 0;
 
   useEffect(() => {
     const params = new URLSearchParams();
@@ -204,37 +148,27 @@ const BlogPage = () => {
     setSearchParams(params);
   }, [searchTerm, selectedCategory, currentPage, sortOption, setSearchParams]);
 
-  const handleSearch = async (e) => {
+  const handleSearch = (e) => {
     e.preventDefault();
     setCurrentPage(1);
-    await fetchBlogs(1, searchTerm, selectedCategory, sortOption);
   };
 
-  const handleSortChange = async (value) => {
+  const handleSortChange = (value) => {
     setSortOption(value);
     setCurrentPage(1);
-    await fetchBlogs(1, searchTerm, selectedCategory, value);
   };
 
-  const handleCategoryChange = async (categoryId) => {
+  const handleCategoryChange = (categoryId) => {
     setSelectedCategory(categoryId);
     setCurrentPage(1);
-    await fetchBlogs(1, searchTerm, categoryId);
+    setSearchTerm(""); // Reset search term when changing category
   };
 
-  const handlePageChange = async (page) => {
+  const handlePageChange = (page) => {
     setCurrentPage(page);
-    await fetchBlogs(page, searchTerm, selectedCategory);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleDateString("vi-VN", {
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-    });
-  };
 
   return (
     <>
@@ -337,13 +271,11 @@ const BlogPage = () => {
               </div>
 
               {/* Error State */}
-              {error && (
+              {isError && (
                 <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
-                  <p className="text-red-600 mb-4">{error}</p>
+                  <p className="text-red-600 mb-4">{error.message}</p>
                   <Button
-                    onClick={() =>
-                      fetchBlogs(currentPage, searchTerm, selectedCategory)
-                    }
+                    onClick={() => refetch()}
                     className="bg-blue-700 hover:bg-blue-800 text-white"
                   >
                     Thử lại
@@ -361,7 +293,7 @@ const BlogPage = () => {
               )}
 
               {/* No Results */}
-              {!searchLoading && !error && blogs.length === 0 && (
+              {!searchLoading && !isError && blogs.length === 0 && (
                 <div className="bg-white rounded-lg shadow-sm p-12 text-center border border-gray-100">
                   <BookOpen className="h-16 w-16 text-gray-300 mx-auto mb-4" />
                   <h3 className="text-xl font-semibold text-gray-900 mb-2">
@@ -376,7 +308,7 @@ const BlogPage = () => {
               )}
 
               {/* Blog Grid */}
-              {!searchLoading && !error && blogs.length > 0 && (
+              {!searchLoading && !isError && blogs.length > 0 && (
                 <>
                   <div className="grid md:grid-cols-2 gap-6">
                     {blogs.map((blog) => (

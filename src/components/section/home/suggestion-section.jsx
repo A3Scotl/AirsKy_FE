@@ -1,7 +1,7 @@
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useState, useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { ArrowRight, Plane, Clock, Calendar, MapPin } from "lucide-react";
 import { flightApi } from "@/apis/flight-api";
 import { useNavigate } from "react-router-dom";
@@ -243,85 +243,52 @@ const FlightCard = ({ flight, onClick, main }) => {
   );
 };
 
-const SuggestionSection = () => {
-  const [flights, setFlights] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [selectedFlight, setSelectedFlight] = useState(null);
-
-  const navigate = useNavigate();
-  const handleViewAllFlights = () => navigate("/flights");
-
-  useEffect(() => {
-    const fetchDomesticFlights = async () => {
-      try {
-        setLoading(true);
+const fetchDomesticFlights = async () => {
+  try {
         const response = await flightApi.findDomesticFlights("Việt Nam", {
           page: 0,
-          size: 500, // Lấy nhiều hơn để có thể filter
+          size: 50, // Tối ưu: Giảm số lượng chuyến bay tải về
         });
-
+        console.log(response);
         if (response.success && response.data) {
-          
-
-          // Lọc chỉ lấy chuyến bay có thời gian khởi hành hợp lệ (ít nhất 30 phút nữa)
           const now = new Date();
           const minBookingLeadTime = 30 * 60 * 1000; // 30 phút thay vì 4 tiếng
-
-          const activeFlights = response.data.content.filter((flight) => {
-            try {
-              // Xử lý departureTime - có thể là ISO string hoặc date + time
-              let departureDateTime;
-              if (flight.departureTime && flight.departureTime.includes("T")) {
-                // ISO string format: "2025-10-31T06:00:00"
-                departureDateTime = new Date(flight.departureTime);
-              } else if (flight.departureDate && flight.departureTime) {
-                // Legacy format: separate date and time
-                departureDateTime = new Date(
-                  `${flight.departureDate} ${flight.departureTime}`
-                );
-              } else {
-                return false; // Invalid datetime format
-              }
-
-              // Chỉ lấy chuyến bay có thời gian khởi hành cách hiện tại ít nhất 30 phút
-              const isValidTime =
-                departureDateTime.getTime() - now.getTime() >=
-                minBookingLeadTime;
-
-              return isValidTime;
-            } catch (error) {
-              return false;
-            }
-          });
-
-          
-
-          // Lọc chỉ lấy chuyến bay có trạng thái ON_TIME hoặc DELAYED
-          const validStatusFlights = activeFlights.filter((flight) => {
-            const status = flight.flight?.status || flight.status || "ON_TIME";
-            return status === "ON_TIME" || status === "DELAYED";
-          });
-
-          
-
-          // Lọc để chỉ lấy các tuyến bay duy nhất từ tất cả chuyến bay hợp lệ
           const uniqueRoutes = new Map();
-          validStatusFlights.forEach((flight) => {
+          const uniqueFlights = [];
+
+          for (const flight of response.data.content) {
+            if (uniqueFlights.length >= 5) break; // Dừng khi đã đủ 5 chuyến bay
+
+            // 1. Kiểm tra thời gian khởi hành
+            let departureDateTime;
+            if (flight.departureTime?.includes("T")) {
+              departureDateTime = new Date(flight.departureTime);
+            } else if (flight.departureDate && flight.departureTime) {
+              departureDateTime = new Date(`${flight.departureDate} ${flight.departureTime}`);
+            } else {
+              continue; // Bỏ qua nếu không có thời gian hợp lệ
+            }
+
+            if (departureDateTime.getTime() - now.getTime() < minBookingLeadTime) {
+              continue;
+            }
+
+            // 2. Kiểm tra trạng thái chuyến bay
+            const status = flight.flight?.status || flight.status || "ON_TIME";
+            if (status !== "ON_TIME" && status !== "DELAYED") {
+              continue;
+            }
+
+            // 3. Kiểm tra tuyến bay duy nhất
             const route = `${
               flight.departureAirport?.airportCode || flight.fromCode || "UNK"
             }-${flight.arrivalAirport?.airportCode || flight.toCode || "UNK"}`;
+
             if (!uniqueRoutes.has(route)) {
               uniqueRoutes.set(route, flight);
+              uniqueFlights.push(flight);
             }
-          });
-
-         
-
-          // Lấy danh sách các chuyến bay duy nhất và slice tối đa 5 chuyến
-          const uniqueFlights = Array.from(uniqueRoutes.values()).slice(0, 5);
-
-       
+          }
 
           // Map API response to component format
           const mappedFlights = uniqueFlights.map((flight, index) => ({
@@ -403,21 +370,27 @@ const SuggestionSection = () => {
             originalFlight: flight, // Store original flight data for detail page
           }));
 
-          setFlights(mappedFlights);
+          return mappedFlights;
         } else {
-          setError(response.message || "Không thể tải dữ liệu chuyến bay");
+          throw new Error(response.message || "Không thể tải dữ liệu chuyến bay");
         }
       } catch (err) {
-        setError("Có lỗi xảy ra khi tải dữ liệu");
-      } finally {
-        setLoading(false);
+        throw new Error("Có lỗi xảy ra khi tải dữ liệu");
       }
-    };
+};
 
-    fetchDomesticFlights();
-  }, []);
+const SuggestionSection = () => {
+  const {
+    data: flights = [],
+    isLoading,
+    isError,
+    error,
+  } = useQuery({ queryKey: ["suggestedFlights"], queryFn: fetchDomesticFlights });
 
-  if (loading) {
+  const navigate = useNavigate();
+  const handleViewAllFlights = () => navigate("/flights");
+
+  if (isLoading) {
     return (
       <section className="mx-auto py-16 bg-gradient-to-b from-blue-50 via-white to-indigo-50 dark:from-gray-500 dark:via-gray-900 dark:to-gray-700">
         <div className="container mx-auto px-16">
@@ -446,7 +419,7 @@ const SuggestionSection = () => {
     );
   }
 
-  if (error) {
+  if (isError) {
     return (
       <section className="mx-auto py-16 bg-gradient-to-b from-blue-50 via-white to-indigo-50 dark:from-gray-500 dark:via-gray-900 dark:to-gray-700">
         <div className="container mx-auto px-16">
@@ -486,10 +459,7 @@ const SuggestionSection = () => {
               <div className="flex flex-col gap-4" key={col}>
                 {smallFlights.slice(col * 2, col * 2 + 2).map((flight) => (
                   <FlightCard
-                    key={flight.id}
-                    flight={flight}
-                    onClick={() => setSelectedFlight(flight)}
-                  />
+                    key={flight.id} flight={flight} />
                 ))}
               </div>
             ))}

@@ -1,10 +1,11 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Swiper, SwiperSlide } from "swiper/react";
 import { Autoplay, Pagination } from "swiper/modules";
 import { blogApi } from "@/apis/blog-api";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useQuery } from "@tanstack/react-query";
 
 const BlogCardSkeleton = () => (
   <div className="rounded-xl overflow-hidden bg-white shadow-sm border p-4">
@@ -15,46 +16,47 @@ const BlogCardSkeleton = () => (
   </div>
 );
 
+const fetchRecentBlogs = async () => {
+  try {
+    const result = await blogApi.getAllPublishedBlogs({
+      page: 0,
+      size: 8,
+      sort: "viewCount,desc",
+    });
+
+    if (result.success && result.data) {
+      return (
+        result.data.content?.map((blog) => ({
+          id: blog.blogId,
+          title: blog.title,
+          slug: blog.slug,
+          excerpt: blog.excerpt,
+          featuredImage: blog.featuredImage,
+          publishedAt: blog.publishedAt || blog.createdAt,
+          category: blog.categories?.[0]?.categoryName || "Du lịch",
+        })) || []
+      );
+    }
+    throw new Error("Không thể tải danh sách bài viết.");
+  } catch (err) {
+    throw new Error(err.message || "Có lỗi xảy ra khi tải bài viết.");
+  }
+};
+
 const BlogSection = () => {
   const navigate = useNavigate();
-  const [blogs, setBlogs] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
   const swiperRef = useRef(null);
 
-  useEffect(() => {
-    const fetchBlogs = async () => {
-      try {
-        const result = await blogApi.getAllPublishedBlogs({
-          page: 0,
-          size: 8,
-          sort: "viewCount,desc",
-        });
-
-        if (result.success && result.data) {
-          setBlogs(
-            result.data.content?.map((blog) => ({
-              id: blog.blogId,
-              title: blog.title,
-              slug: blog.slug,
-              excerpt: blog.excerpt,
-              featuredImage: blog.featuredImage,
-              publishedAt: blog.publishedAt || blog.createdAt,
-              category: blog.categories?.[0]?.categoryName || "Du lịch",
-            })) || []
-          );
-        } else {
-          setError("Không thể tải blog");
-        }
-      } catch {
-        setError("Có lỗi xảy ra khi tải blog");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchBlogs();
-  }, []);
+  const {
+    data: blogs = [],
+    isLoading,
+    isError,
+    error,
+  } = useQuery({
+    queryKey: ["recentBlogs"],
+    queryFn: fetchRecentBlogs,
+    staleTime: 1000 * 60 * 5, // 5 phut
+  });
 
   const formatDate = (dateString) => {
     try {
@@ -67,7 +69,7 @@ const BlogSection = () => {
   const handlePrev = () => swiperRef.current?.swiper?.slidePrev();
   const handleNext = () => swiperRef.current?.swiper?.slideNext();
 
-  if (loading)
+  if (isLoading)
     return (
       <section className="py-12">
         <div className="max-w-6xl mx-auto px-4">
@@ -81,11 +83,11 @@ const BlogSection = () => {
       </section>
     );
 
-  if (error)
+  if (isError)
     return (
       <section className="py-12">
         <div className="max-w-6xl mx-auto px-4 text-center text-red-600">
-          {error}
+          {error.message}
         </div>
       </section>
     );

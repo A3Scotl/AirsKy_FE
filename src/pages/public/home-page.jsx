@@ -263,11 +263,11 @@ function HomePage() {
           />
         </div>
 
-        <div className="" ref={suggestionRef}>
+        {/* <div className="" ref={suggestionRef}>
           <SuggestionSection
             className={suggestionInView ? "animate-fadeInUp" : "opacity-0"}
           />
-        </div>
+        </div> */}
 
         <div className="" ref={featuresRef}>
           <FeaturesSection

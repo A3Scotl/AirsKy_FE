@@ -1,35 +1,18 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Swiper, SwiperSlide } from "swiper/react";
 import { Pagination, Autoplay } from "swiper/modules";
-import "swiper/css";
-import "swiper/css/pagination";
 import { countryService } from "@/services/country-service";
 import { flightApi } from "@/apis/flight-api";
-import { Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import "swiper/css";
+import "swiper/css/pagination";
 
-export function DestinationSection({ className }) {
-  const navigate = useNavigate();
-  const [destinations, setDestinations] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
 
-  useEffect(() => {
-    loadDestinations();
-  }, []);
-
-  const handleDestinationClick = (destination) => {
-    navigate("/flights", {
-      state: {
-        flightsData: destination.flights,
-      },
-    });
-  };
 
   const DestinationCardSkeleton = () => (
     <Card className="overflow-hidden">
@@ -46,11 +29,8 @@ export function DestinationSection({ className }) {
     </Card>
   );
 
-  const loadDestinations = async () => {
+  const fetchDestinations = async () => {
     try {
-      setLoading(true);
-      setError(null);
-
       // Lấy danh sách quốc gia đang active từ API
       const countries = await countryService.getActiveCountries();
 
@@ -59,12 +39,9 @@ export function DestinationSection({ className }) {
         (country) => country.countryName !== "Việt Nam"
       );
 
-      // Gọi API để lấy giá thấp nhất cho mỗi quốc gia
-      const destinationsWithPrices = [];
-
-      for (const country of filteredCountries) {
-        try {
-          const response = await flightApi.findFlightsBetweenCountries(
+      // Gọi API song song để lấy giá thấp nhất cho mỗi quốc gia
+      const promises = filteredCountries.map(async (country) => {
+        const response = await flightApi.findFlightsBetweenCountries(
             "Việt Nam",
             country.countryName
           );
@@ -110,7 +87,7 @@ export function DestinationSection({ className }) {
 
             // Nếu không có chuyến bay hoạt động, bỏ qua quốc gia này
             if (activeFlights.length === 0) {
-              continue;
+                return null;
             }
 
             // ✅ CẬP NHẬT: Lấy giá thấp nhất từ price trong flightTravelClasses
@@ -129,7 +106,7 @@ export function DestinationSection({ className }) {
 
             // Nếu không có chuyến bay nào có giá, bỏ qua quốc gia này
             if (flightPrices.length === 0) {
-              continue;
+              return null;
             }
 
             // Lấy giá thấp nhất trong tất cả chuyến bay của quốc gia này
@@ -141,7 +118,7 @@ export function DestinationSection({ className }) {
               currency: "VND",
             }).format(minPrice);
 
-            destinationsWithPrices.push({
+            return {
               id: country.countryId,
               country: country.countryName,
               countryCode: country.countryCode,
@@ -151,29 +128,41 @@ export function DestinationSection({ className }) {
               departureAirport: activeFlights[0].departureAirport,
               arrivalAirport: activeFlights[0].arrivalAirport,
               flights: activeFlights, // Chỉ lưu các chuyến bay còn hoạt động
-            });
-
-            // Cập nhật state ngay lập tức khi có data cho quốc gia này
-            setDestinations([...destinationsWithPrices]);
+            };
           }
-          // Nếu không có chuyến bay, bỏ qua (không thêm vào danh sách)
-        } catch (err) {
-          console.error(
-            `Error fetching flights for ${country.countryName}:`,
-            err
-          );
-          // Bỏ qua nếu có lỗi
-        }
-      }
+        return null; // Trả về null nếu không có chuyến bay hoặc có lỗi
+      });
+
+      const results = await Promise.allSettled(promises);
+      const destinationsWithPrices = results
+        .filter((result) => result.status === "fulfilled" && result.value)
+        .map((result) => result.value);
+
+      return destinationsWithPrices;
     } catch (err) {
       console.error("Error loading destinations:", err);
-      setError("Không thể tải danh sách điểm đến");
-    } finally {
-      setLoading(false);
+      throw new Error("Không thể tải danh sách điểm đến");
     }
   };
 
-  if (loading) {
+export function DestinationSection({ className }) {
+  const navigate = useNavigate();
+  const handleDestinationClick = (destination) => {
+    navigate("/flights", {
+      state: {
+        flightsData: destination.flights,
+      },
+    });
+  };
+  const {
+    data: destinations = [],
+    isLoading,
+    isError,
+    error,
+    refetch,
+  } = useQuery({ queryKey: ["destinations"], queryFn: fetchDestinations,staleTime: 1000 * 60 * 5 });
+
+  if (isLoading) {
     return (
       <section className={cn("py-16 bg-[#f9fafb] dark:bg-gray-800", className)}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -197,7 +186,7 @@ export function DestinationSection({ className }) {
     );
   }
 
-  if (error && destinations.length === 0) {
+  if (isError && destinations.length === 0) {
     return (
       <section className={cn("py-16 bg-[#f9fafb] dark:bg-gray-800", className)}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -211,9 +200,9 @@ export function DestinationSection({ className }) {
             </p>
           </div>
           <div className="text-center py-12">
-            <p className="text-red-500 mb-4">{error}</p>
+            <p className="text-red-500 mb-4">{error.message}</p>
             <button
-              onClick={loadDestinations}
+              onClick={() => refetch()}
               className="bg-[#2563eb] text-white px-4 py-2 rounded-lg hover:bg-[#1d4ed8] transition-colors"
             >
               Thử lại

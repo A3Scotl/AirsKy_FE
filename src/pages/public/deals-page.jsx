@@ -55,6 +55,7 @@ import { Autoplay } from "swiper/modules";
 import "swiper/css";
 import { Skeleton } from "@/components/ui/skeleton";
 import { airportApi } from "@/apis/airport-api";
+import { useQuery } from "@tanstack/react-query";
 
 // 🚀 Đề xuất: Chuyển Skeletons sang file riêng (ví dụ: /components/common/DealSkeletons.jsx)
 const DealCardSkeleton = ({ isLarge = false }) => {
@@ -136,18 +137,52 @@ const DealCardSkeletonGrid = () => {
   );
 };
 
+const fetchAirports = async () => {
+  try {
+    const result = await airportApi.getAllAirports({
+      size: 1000,
+      sort: "airportName,asc",
+    });
+    if (result.success && result.data && result.data.content) {
+      return result.data.content;
+    }
+    return [];
+  } catch (error) {
+    console.error("Error fetching airports:", error);
+    throw new Error("Không thể tải danh sách sân bay.");
+  }
+};
+
+const fetchFlightDeals = async () => {
+  try {
+    const res = await dealApi.getActiveDeals({
+      page: 0,
+      size: 100,
+      sort: "createdAt,desc",
+    });
+    if (res.success && res.data && res.data.content) {
+      return res.data.content;
+    }
+    return [];
+  } catch (error) {
+    console.error("Error fetching flight deals:", error);
+    throw new Error("Không thể tải danh sách ưu đãi.");
+  }
+};
+
+const fetchUserLoyalty = async () => {
+  try {
+    const loyaltyData = await loyaltyApi.getLoyaltyStats();
+    return loyaltyData;
+  } catch (error) {
+    console.error("Error fetching user loyalty:", error);
+    // Trả về null thay vì ném lỗi để không làm hỏng giao diện nếu chỉ API này lỗi
+    return null;
+  }
+};
+
 const DealsPage = () => {
   const { user } = useAuth();
-
-  // API Data
-  const [flightDeals, setFlightDeals] = useState([]);
-  const [airports, setAirports] = useState([]);
-  const [userLoyalty, setUserLoyalty] = useState(null);
-
-  // Loading States
-  const [flightLoading, setFlightLoading] = useState(true);
-  const [loyaltyLoading, setLoyaltyLoading] = useState(false);
-  const [airportsLoading, setAirportsLoading] = useState(false);
 
   // Filters for "Featured" and "Flash Sale"
   const [sortBy, setSortBy] = useState("discount");
@@ -167,74 +202,27 @@ const DealsPage = () => {
   const [flashSaleCurrentPage, setFlashSaleCurrentPage] = useState(1);
   const flashSaleItemsPerPage = 8;
 
-  // --- Data Fetching ---
+  // --- React Query Data Fetching ---
+  const { data: airports = [], isLoading: airportsLoading } = useQuery({
+    queryKey: ["airports"],
+    queryFn: fetchAirports,
+  });
 
-  // Fetch airports for filter dropdowns
-  useEffect(() => {
-    const fetchAirports = async () => {
-      try {
-        setAirportsLoading(true);
-        const result = await airportApi.getAllAirports({
-          size: 1000,
-          sort: "airportName,asc",
-        });
-        if (result.success && result.data && result.data.content) {
-          setAirports(result.data.content);
-        }
-      } catch (error) {
-        console.error("Error fetching airports:", error);
-      } finally {
-        setAirportsLoading(false);
-      }
-    };
-    fetchAirports();
-  }, []);
+  const { data: flightDeals = [], isLoading: flightLoading } = useQuery({
+    queryKey: ["flightDeals"],
+    queryFn: fetchFlightDeals,
+    staleTime: 1000 * 60 * 5, // 5 phút
+  });
 
-  // Fetch all active deals
-  useEffect(() => {
-    const fetchFlightDeals = async () => {
-      setFlightLoading(true);
-      try {
-        const res = await dealApi.getActiveDeals({
-          page: 0,
-          size: 100,
-          sort: "createdAt,desc",
-        });
-        if (res.success && res.data && res.data.content) {
-          setFlightDeals(res.data.content);
-        } else {
-          setFlightDeals([]);
-        }
-      } catch (error) {
-        console.error("Error fetching flight deals:", error);
-        setFlightDeals([]);
-      } finally {
-        setFlightLoading(false);
-      }
-    };
-    fetchFlightDeals();
-  }, []);
-
-  // Fetch user loyalty information
-  useEffect(() => {
-    const fetchUserLoyalty = async () => {
-      if (user) {
-        setLoyaltyLoading(true);
-        try {
-          const loyaltyData = await loyaltyApi.getLoyaltyStats();
-          setUserLoyalty(loyaltyData);
-        } catch (error) {
-          console.error("Error fetching user loyalty:", error);
-          setUserLoyalty(null);
-        } finally {
-          setLoyaltyLoading(false);
-        }
-      } else {
-        setUserLoyalty(null);
-      }
-    };
-    fetchUserLoyalty();
-  }, [user]);
+  const { data: userLoyalty, isLoading: loyaltyLoading } = useQuery({
+    // Query key phụ thuộc vào user.id để tự động fetch lại khi user thay đổi
+    queryKey: ["userLoyalty", user?.id],
+    queryFn: fetchUserLoyalty,
+    // Chỉ chạy query này khi user đã đăng nhập
+    enabled: !!user,
+    // Giữ lại dữ liệu cũ khi user logout để tránh giật màn hình
+    keepPreviousData: true,
+  });
 
   // --- Helper Functions ---
 
