@@ -115,7 +115,7 @@ const NotificationDropdown = ({ showText = false }) => {
 
     try {
       await markAsRead(notificationId);
-      toast.success("Đã đánh dấu là đã đọc");
+      // toast.success("Đã đánh dấu là đã đọc");
     } catch (error) {
       toast.error("Có lỗi khi đánh dấu đã đọc");
     }
@@ -252,7 +252,7 @@ const NotificationDropdown = ({ showText = false }) => {
                 {unreadCount > 0 && (
                   <Badge
                     variant="destructive"
-                    className="absolute -top-1.5 -right-1.5 sm:-top-2 sm:-right-2 h-3 w-3 sm:h-4 sm:w-4 text-[10px] sm:text-xs p-0 flex items-center justify-center animate-pulse"
+                    className="absolute text-white -top-1.5 -right-1.5 sm:-top-2 sm:-right-2 h-3 w-3 sm:h-4 sm:w-4 text-[10px] sm:text-xs p-0 flex items-center justify-center animate-pulse"
                   >
                     {unreadCount > 99 ? "99+" : unreadCount}
                   </Badge>

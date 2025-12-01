@@ -63,7 +63,6 @@ const validateLoginForm = (formData) => {
 };
 
 const handleLoginBackendErrors = (response, setValidationErrors) => {
-
   // Now response.data contains the full error response from backend
   const fullErrorData = response.data;
   const errorMessage = response.error || response.message || "";
@@ -113,7 +112,13 @@ export default function LoginForm({ setCurrentView }) {
   const { login, user } = useAuth();
 
   useEffect(() => {
-    if (user) navigate("/");
+    if (user) {
+      if (user.role !== "CUSTOMER") {
+        navigate("/admin/dashboard");
+      } else {
+        navigate("/");
+      }
+    }
   }, [user, navigate]);
 
   // Delay Google login button to avoid initialization conflicts
@@ -155,11 +160,9 @@ export default function LoginForm({ setCurrentView }) {
     setLoading(true);
 
     try {
-
       const response = await authApi.login(formData);
 
       if (response.success) {
-      
         // Try multiple token field names
         const token =
           response.data?.accessToken ||
@@ -169,15 +172,12 @@ export default function LoginForm({ setCurrentView }) {
 
         if (!token) {
           console.error("❌ No token found in response:", response.data);
-          toast.error("Không nhận được token từ server");
           return;
         }
 
         localStorage.setItem("token", token);
 
         const decoded = jwtDecode(token);
-
-        // Try multiple user ID sources
         const userData = {
           id:
             response.data?.user?.id ||
@@ -192,13 +192,14 @@ export default function LoginForm({ setCurrentView }) {
 
         login(userData);
         toast.success(response.message || "Đăng nhập thành công!");
-        navigate("/");
+
+        // Điều hướng sau khi đã cập nhật context
+        if (decoded.role !== "CUSTOMER") {
+          navigate("/admin/dashboard");
+        } else {
+          navigate("/"); // Điều hướng người dùng CUSTOMER về trang chủ
+        }
       } else {
-        console.error("❌ Login failed:", response);
-        console.error("❌ Login failed - response.success:", response.success);
-        console.error("❌ Login failed - response.message:", response.message);
-        console.error("❌ Login failed - response.error:", response.error);
-        console.error("❌ Login failed - response.data:", response.data);
         // Handle backend validation errors
         handleLoginBackendErrors(response, setValidationErrors);
       }

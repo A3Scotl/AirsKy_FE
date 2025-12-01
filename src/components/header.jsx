@@ -270,21 +270,42 @@ export function Header() {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="mt-6 w-64">
-                  <DropdownMenuItem asChild>
-                    <Link to="/profile" className="flex items-center w-full">
-                      <User className="w-4 h-4 mr-3" />
-                      Hồ sơ cá nhân
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <Link
-                      to="/profile#my-booking"
-                      className="flex items-center w-full"
-                    >
-                      <Calendar className="w-4 h-4 mr-3" />
-                      Đơn đặt chỗ của tôi
-                    </Link>
-                  </DropdownMenuItem>
+                  {user.role == "CUSTOMER" && (
+                    <>
+                      <DropdownMenuItem asChild>
+                        <Link
+                          to="/profile"
+                          className="flex items-center w-full"
+                        >
+                          <User className="w-4 h-4 mr-3" />
+                          Hồ sơ cá nhân
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild>
+                        <Link
+                          to="/profile#my-booking"
+                          className="flex items-center w-full"
+                        >
+                          <Calendar className="w-4 h-4 mr-3" />
+                          Đơn đặt chỗ của tôi
+                        </Link>
+                      </DropdownMenuItem>
+                    </>
+                  )}
+                  {user.role !== "CUSTOMER" && (
+                    <>
+                      <DropdownMenuItem asChild>
+                        <Link
+                          to="/admin/dashboard"
+                          className="flex items-center w-full"
+                        >
+                          <User className="w-4 h-4 mr-3" />
+                          Trang quản trị
+                        </Link>
+                      </DropdownMenuItem>
+                    </>
+                  )}
+
                   <DropdownMenuSeparator />
                   <DropdownMenuItem
                     onClick={handleLogout}
@@ -362,21 +383,33 @@ export function Header() {
                           )}
                         </div>
                       </div>
+                      {user.role == "CUSTOMER" && (
+                        <>
+                          <Button
+                            variant="ghost"
+                            className="flex items-center justify-start space-x-3 w-full"
+                            onClick={() => navigate("/profile")}
+                          >
+                            <User className="w-5 h-5" />
+                            <span>Hồ sơ cá nhân</span>
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            className="flex items-center justify-start space-x-3 w-full"
+                            onClick={() => navigate("/profile#my-booking")}
+                          >
+                            <Calendar className="w-5 h-5" />
+                            <span>Đơn đặt chỗ của tôi</span>
+                          </Button>
+                        </>
+                      )}
                       <Button
                         variant="ghost"
                         className="flex items-center justify-start space-x-3 w-full"
-                        onClick={() => navigate("/profile")}
+                        onClick={() => navigate("/admin/dashboard")}
                       >
                         <User className="w-5 h-5" />
-                        <span>Hồ sơ cá nhân</span>
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        className="flex items-center justify-start space-x-3 w-full"
-                        onClick={() => navigate("/profile#my-booking")}
-                      >
-                        <Calendar className="w-5 h-5" />
-                        <span>Đơn đặt chỗ của tôi</span>
+                        <span>Trang quản trị</span>
                       </Button>
                       <div className="py-2 border-t border-gray-200 dark:border-gray-700">
                         <NotificationDropdown showText={true} />

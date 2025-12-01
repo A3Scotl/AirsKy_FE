@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { blogApi } from "@/apis/blog-api";
@@ -20,74 +21,64 @@ const PAGE_SIZE = 6;
 
 const MyBlogsTab = () => {
   const [tab, setTab] = useState("liked");
-  const [likedBlogs, setLikedBlogs] = useState([]);
-  const [savedBlogs, setSavedBlogs] = useState([]);
-  const [loadingLiked, setLoadingLiked] = useState(false);
-  const [loadingSaved, setLoadingSaved] = useState(false);
   const [likedPage, setLikedPage] = useState(1);
   const [savedPage, setSavedPage] = useState(1);
-  const [likedTotal, setLikedTotal] = useState(0);
-  const [savedTotal, setSavedTotal] = useState(0);
   const [sort, setSort] = useState("createdAt,desc");
   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  useEffect(() => {
-    setLoadingLiked(true);
-    blogApi
-      .getLikedBlogs?.({ page: likedPage - 1, size: PAGE_SIZE, sort })
-      .then((res) => {
-        if (res?.success) {
-          setLikedBlogs(res.data?.content || []);
-          setLikedTotal(res.data?.totalElements || 0);
-        }
-        setLoadingLiked(false);
+  // =======================
+  //     React Query Calls
+  // =======================
+
+  const likedQuery = useQuery({
+    queryKey: ["likedBlogs", likedPage, sort],
+    queryFn: async () => {
+      const res = await blogApi.getLikedBlogs({
+        page: likedPage - 1,
+        size: PAGE_SIZE,
+        sort,
       });
-  }, [likedPage, sort]);
+      if (!res?.success) throw new Error("Failed to fetch liked blogs");
+      return res.data;
+    },
+  });
 
-  useEffect(() => {
-    setLoadingSaved(true);
-    blogApi
-      .getSavedBlogs?.({ page: savedPage - 1, size: PAGE_SIZE, sort })
-      .then((res) => {
-        if (res?.success) {
-          setSavedBlogs(res.data?.content || []);
-          setSavedTotal(res.data?.totalElements || 0);
-        }
-        setLoadingSaved(false);
+  const savedQuery = useQuery({
+    queryKey: ["savedBlogs", savedPage, sort],
+    queryFn: async () => {
+      const res = await blogApi.getSavedBlogs({
+        page: savedPage - 1,
+        size: PAGE_SIZE,
+        sort,
       });
-  }, [savedPage, sort]);
+      if (!res?.success) throw new Error("Failed to fetch saved blogs");
+      return res.data;
+    },
+  });
 
-  // Tính tổng số trang
-  const likedTotalPages = Math.ceil(likedTotal / PAGE_SIZE);
-  const savedTotalPages = Math.ceil(savedTotal / PAGE_SIZE);
-
-  // Refresh blogs data
+  // =======================
+  //     Refresh Function
+  // =======================
   const handleRefresh = async () => {
     setIsRefreshing(true);
-    try {
-      // Refresh both liked and saved blogs
-      const [likedRes, savedRes] = await Promise.all([
-        blogApi.getLikedBlogs?.({ page: likedPage - 1, size: PAGE_SIZE, sort }),
-        blogApi.getSavedBlogs?.({ page: savedPage - 1, size: PAGE_SIZE, sort }),
-      ]);
-
-      if (likedRes?.success) {
-        setLikedBlogs(likedRes.data?.content || []);
-        setLikedTotal(likedRes.data?.totalElements || 0);
-      }
-
-      if (savedRes?.success) {
-        setSavedBlogs(savedRes.data?.content || []);
-        setSavedTotal(savedRes.data?.totalElements || 0);
-      }
-    } catch (error) {
-      console.error("Error refreshing blogs data:", error);
-    } finally {
-      setIsRefreshing(false);
-    }
+    await Promise.all([likedQuery.refetch(), savedQuery.refetch()]);
+    setIsRefreshing(false);
   };
 
-  // Card layout helper
+  // =======================
+  //     Data Extract
+  // =======================
+  const likedBlogs = likedQuery.data?.content || [];
+  const likedTotal = likedQuery.data?.totalElements || 0;
+  const likedTotalPages = Math.ceil(likedTotal / PAGE_SIZE);
+
+  const savedBlogs = savedQuery.data?.content || [];
+  const savedTotal = savedQuery.data?.totalElements || 0;
+  const savedTotalPages = Math.ceil(savedTotal / PAGE_SIZE);
+
+  // =======================
+  //     Blog Card
+  // =======================
   const BlogCard = ({ blog }) => (
     <Card className="hover:shadow-lg transition-shadow flex flex-col h-full">
       {blog.featuredImage && (
@@ -97,17 +88,13 @@ const MyBlogsTab = () => {
           className="w-full object-cover rounded-t-md"
           style={{
             height: CARD_IMAGE_HEIGHT,
-            minHeight: CARD_IMAGE_HEIGHT,
-            maxHeight: CARD_IMAGE_HEIGHT,
           }}
         />
       )}
       <CardHeader className="pb-2">
         <CardTitle
           className="text-base font-semibold mb-1 line-clamp-2"
-          style={{
-            minHeight: CARD_TITLE_HEIGHT,
-          }}
+          style={{ minHeight: CARD_TITLE_HEIGHT }}
         >
           {blog.title}
         </CardTitle>
@@ -119,15 +106,11 @@ const MyBlogsTab = () => {
         <div className="flex items-center justify-between mt-2">
           <span className="text-xs text-gray-400">
             {blog.publishedDate || blog.createdAt
-              ? new Date(
-                  blog.publishedDate || blog.createdAt
-                ).toLocaleDateString()
+              ? new Date(blog.publishedDate || blog.createdAt).toLocaleDateString()
               : ""}
           </span>
           <Button asChild size="sm" variant="outline">
-            <Link to={blog.slug ? `/blog/${blog.slug}` : `/blog/${blog.id}`}>
-              Xem chi tiết
-            </Link>
+            <Link to={`/blog/${blog.slug || blog.id}`}>Xem chi tiết</Link>
           </Button>
         </div>
       </CardContent>
@@ -152,6 +135,7 @@ const MyBlogsTab = () => {
             Làm mới
           </Button>
         </div>
+
         <div className="flex gap-2 mt-2 items-center">
           <span className="text-sm text-gray-500">Sắp xếp:</span>
           <Select
@@ -161,9 +145,10 @@ const MyBlogsTab = () => {
               setLikedPage(1);
               setSavedPage(1);
             }}
+            
           >
             <SelectTrigger className="w-36 h-9">
-              <SelectValue />
+               <SelectValue /> 
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="publishedDate,desc">Mới nhất</SelectItem>
@@ -172,14 +157,17 @@ const MyBlogsTab = () => {
           </Select>
         </div>
       </CardHeader>
+
       <CardContent>
         <Tabs value={tab} onValueChange={setTab} className="w-full">
           <TabsList className="mb-4">
             <TabsTrigger value="liked">Bài viết yêu thích</TabsTrigger>
             <TabsTrigger value="saved">Bài viết đã lưu</TabsTrigger>
           </TabsList>
+
+          {/* Liked */}
           <TabsContent value="liked">
-            {loadingLiked ? (
+            {likedQuery.isLoading ? (
               <div className="flex justify-center py-8">
                 <Loader2 className="animate-spin" />
               </div>
@@ -191,11 +179,12 @@ const MyBlogsTab = () => {
                       Chưa có bài viết yêu thích nào.
                     </div>
                   ) : (
-                    likedBlogs.map((blog, index) => (
-                      <BlogCard key={`liked-${index}`} blog={blog} />
+                    likedBlogs.map((blog, i) => (
+                      <BlogCard key={`liked-${i}`} blog={blog} />
                     ))
                   )}
                 </div>
+
                 <Pagination
                   currentPage={likedPage}
                   totalPages={likedTotalPages}
@@ -207,8 +196,10 @@ const MyBlogsTab = () => {
               </>
             )}
           </TabsContent>
+
+          {/* Saved */}
           <TabsContent value="saved">
-            {loadingSaved ? (
+            {savedQuery.isLoading ? (
               <div className="flex justify-center py-8">
                 <Loader2 className="animate-spin" />
               </div>
@@ -220,11 +211,12 @@ const MyBlogsTab = () => {
                       Chưa có bài viết đã lưu nào.
                     </div>
                   ) : (
-                    savedBlogs.map((blog, index) => (
-                      <BlogCard key={`saved-${index}`} blog={blog} />
+                    savedBlogs.map((blog, i) => (
+                      <BlogCard key={`saved-${i}`} blog={blog} />
                     ))
                   )}
                 </div>
+
                 <Pagination
                   currentPage={savedPage}
                   totalPages={savedTotalPages}

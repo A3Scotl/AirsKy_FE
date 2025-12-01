@@ -12,14 +12,8 @@ const AdminRoute = ({ children }) => {
     if (!loading && !user && !hasShownToast) {
       toast.error("Bạn cần đăng nhập để truy cập trang này");
       setHasShownToast(true);
-    } else if (
-      !loading &&
-      user &&
-      user.role !== "ADMIN" &&
-      user.role !== "BUSINESS" &&
-      !hasShownToast
-    ) {
-      toast.error("Truy cập bị từ chối. Cần quyền Admin hoặc Business.");
+    } else if (!loading && user && user.role === "CUSTOMER" && !hasShownToast) {
+      toast.error("Bạn không có quyền truy cập vào trang quản trị.");
       setHasShownToast(true);
     }
   }, [user, loading, hasShownToast]);
@@ -34,12 +28,12 @@ const AdminRoute = ({ children }) => {
     return <Navigate to="/auth" replace />;
   }
 
-  // Người dùng thường
-  if (user.role === "USER") {
-    return <Navigate to="/auth" replace />;
+  // Nếu là CUSTOMER, điều hướng về trang chủ
+  if (user.role === "CUSTOMER") {
+    return <Navigate to="/" replace />;
   }
-
-  // Admin hoặc Business → cho phép vào
+  
+  // Nếu người dùng có vai trò hợp lệ (không phải CUSTOMER), cho phép truy cập vào trang được yêu cầu
   return children;
 };
 

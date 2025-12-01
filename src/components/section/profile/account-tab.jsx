@@ -172,22 +172,7 @@ const AccountTab = ({ userProfile, onProfileUpdate }) => {
     return "";
   };
 
-  // Vietnamese social accounts data
-  const [socialAccounts] = useState([
-    {
-      name: "Facebook",
-      icon: Facebook,
-      connected: true,
-      username: "nguyen.vana",
-    },
-    {
-      name: "Twitter",
-      icon: Twitter,
-      connected: false,
-      username: "vana_nguyen",
-    },
-    { name: "Instagram", icon: Instagram, connected: false, username: "" },
-  ]);
+ 
 
   // Loyalty state
   const [loyaltyStats, setLoyaltyStats] = useState(null);

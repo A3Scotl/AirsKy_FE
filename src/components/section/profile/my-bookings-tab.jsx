@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import {
@@ -63,6 +63,7 @@ import { paymentApi } from "@/apis/payment-api";
 import { reviewApi } from "@/apis/review-api";
 import { useAuth } from "@/contexts/auth-context";
 import { formatCurrencyVND } from "@/utils/currency-utils";
+import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 const MyBookingsTab = () => {
@@ -71,13 +72,10 @@ const MyBookingsTab = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [dateRange, setDateRange] = useState();
+  const [sortOption, setSortOption] = useState("createdAt,desc");
   const [currentPage, setCurrentPage] = useState(1);
-  const [isRefreshing, setIsRefreshing] = useState(false);
   const [selectedBooking, setSelectedBooking] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [bookings, setBookings] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
   const [paymentError, setPaymentError] = useState(null);
   const [bookingReviews, setBookingReviews] = useState([]);
@@ -91,13 +89,10 @@ const MyBookingsTab = () => {
   const [isSubmittingReview, setIsSubmittingReview] = useState(false);
   const itemsPerPage = 5;
 
-  // Fetch bookings data
-  const fetchBookings = async () => {
+  // --- React Query for fetching bookings ---
+  const fetchUserBookings = async () => {
     if (!user?.id) return;
-
     try {
-      setLoading(true);
-      setError(null);
       const response = await userApi.getBookingsByUserId(user.id);
 
       if (response.success) {
@@ -153,34 +148,28 @@ const MyBookingsTab = () => {
             userEmail: booking.userEmail,
           };
         });
-        setBookings(transformedBookings);
+        return transformedBookings;
       } else {
-        setError(response.message || "Failed to load bookings");
+        throw new Error(response.message || "Failed to load bookings");
       }
     } catch (err) {
       console.error("Error fetching bookings:", err);
-      setError("Failed to load bookings. Please try again.");
-    } finally {
-      setLoading(false);
+      throw new Error("Failed to load bookings. Please try again.");
     }
   };
 
-  // Initial data fetch
-  useEffect(() => {
-    fetchBookings();
-  }, [user?.id]);
-
-  // Refresh bookings data
-  const handleRefresh = async () => {
-    setIsRefreshing(true);
-    try {
-      await fetchBookings();
-    } catch (error) {
-      console.error("Error refreshing data:", error);
-    } finally {
-      setIsRefreshing(false);
-    }
-  };
+  const {
+    data: bookings = [],
+    isLoading: loading,
+    isError: error,
+    refetch,
+    isFetching: isRefreshing,
+  } = useQuery({
+    queryKey: ["userBookings", user?.id],
+    queryFn: fetchUserBookings,
+    enabled: !!user?.id,
+    staleTime: 1000 * 60 * 3, // Cache for 3 minutes
+  });
 
   // Handle view booking details
   const handleViewBooking = async (booking) => {
@@ -296,7 +285,7 @@ const MyBookingsTab = () => {
         const response = await bookingApi.deleteBooking(booking.id);
         if (response.success) {
           // Refresh bookings list
-          fetchBookings();
+          refetch();
           alert("Hủy booking thành công!");
         } else {
           alert(`Lỗi: ${response.message}`);
@@ -495,25 +484,45 @@ const MyBookingsTab = () => {
   };
 
   // Filter bookings based on search, status, and date range
-  const filteredBookings = bookings.filter((booking) => {
-    const matchesSearch =
-      booking.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      booking.flight.toLowerCase().includes(searchTerm.toLowerCase());
+  const filteredBookings = useMemo(() => {
+    let sortedBookings = [...bookings];
 
-    const matchesStatus =
-      statusFilter === "all" || booking.status.toLowerCase() === statusFilter;
+    // Sorting logic
+    sortedBookings.sort((a, b) => {
+      switch (sortOption) {
+        case "createdAt,desc":
+          return new Date(b.createdAt) - new Date(a.createdAt);
+        case "createdAt,asc":
+          return new Date(a.createdAt) - new Date(b.createdAt);
+        case "price,desc":
+          return b.price - a.price;
+        case "price,asc":
+          return a.price - b.price;
+        default:
+          return 0;
+      }
+    });
 
-    let matchesDateRange = true;
-    if (dateRange?.from && dateRange?.to) {
-      const bookingDate = new Date(booking.date);
-      const fromDate = new Date(dateRange.from);
-      const toDate = new Date(dateRange.to);
-      matchesDateRange = bookingDate >= fromDate && bookingDate <= toDate;
-    }
+    return sortedBookings.filter((booking) => {
+      const matchesSearch =
+        booking.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        booking.flight.toLowerCase().includes(searchTerm.toLowerCase());
 
-    return matchesSearch && matchesStatus && matchesDateRange;
-  });
+      const matchesStatus =
+        statusFilter === "all" || booking.status.toLowerCase() === statusFilter;
 
+      let matchesDateRange = true;
+      if (dateRange?.from && dateRange?.to) {
+        const bookingDate = new Date(booking.date);
+        matchesDateRange =
+          bookingDate >= new Date(dateRange.from) &&
+          bookingDate <= new Date(dateRange.to);
+      }
+
+      return matchesSearch && matchesStatus && matchesDateRange;
+    });
+  }, [bookings, searchTerm, statusFilter, dateRange, sortOption]);
+  console.log(bookings[0])
   // Pagination logic
   const totalPages = Math.ceil(filteredBookings.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
@@ -527,7 +536,7 @@ const MyBookingsTab = () => {
 
   React.useEffect(() => {
     resetPagination();
-  }, [searchTerm, statusFilter, dateRange]);
+  }, [searchTerm, statusFilter, dateRange, sortOption]);
 
   return (
     <>
@@ -543,7 +552,13 @@ const MyBookingsTab = () => {
             <Button
               variant="outline"
               size="sm"
-              onClick={handleRefresh}
+              onClick={() => {
+                setSortOption("createdAt,desc");
+                setSearchTerm("");
+                setStatusFilter("all");
+                setDateRange(undefined);
+                refetch();
+              }}
               disabled={isRefreshing}
               className="flex items-center gap-2"
             >
@@ -554,14 +569,14 @@ const MyBookingsTab = () => {
             </Button>
           </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="overflow-hidden">
           {/* Filters */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
             <div>
-              <Label htmlFor="search">Tìm kiếm theo ID hoặc chuyến bay</Label>
+              <Label htmlFor="search">Tìm kiếm</Label>
               <Input
                 id="search"
-                placeholder="Nhập ID đặt chỗ hoặc số chuyến bay"
+                placeholder="Mã đặt chỗ hoặc số chuyến bay"
                 className="dark:bg-black dark:text-white"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
@@ -582,33 +597,30 @@ const MyBookingsTab = () => {
               </Select>
             </div>
             <div>
-              <Label htmlFor="dateRange">Lọc theo khoảng thời gian</Label>
+              <Label htmlFor="sort">Sắp xếp theo</Label>
+              <Select value={sortOption} onValueChange={setSortOption}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Sắp xếp" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="createdAt,desc">Mới nhất</SelectItem>
+                  <SelectItem value="createdAt,asc">Cũ nhất</SelectItem>
+                  <SelectItem value="price,desc">Giá cao nhất</SelectItem>
+                  <SelectItem value="price,asc">Giá thấp nhất</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label htmlFor="dateRange">Khoảng thời gian</Label>
               <DateRangePicker
                 date={dateRange}
                 setDate={setDateRange}
                 placeholder="Chọn khoảng thời gian"
-                className="w-full  "
               />
             </div>
           </div>
 
-          {/* Clear Filters */}
-          {(searchTerm || statusFilter !== "all" || dateRange) && (
-            <div className="mb-4">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  setSearchTerm("");
-                  setStatusFilter("all");
-                  setDateRange(undefined);
-                }}
-              >
-                Xóa bộ lọc
-              </Button>
-            </div>
-          )}
-
+       
           {/* Loading State */}
           {loading && (
             <div className="space-y-4">
@@ -657,7 +669,6 @@ const MyBookingsTab = () => {
             </div>
           )}
 
-          {/* Bookings Table */}
           {!loading && !error && (
             <Table>
               <TableHeader>
@@ -667,7 +678,7 @@ const MyBookingsTab = () => {
                   <TableHead>Từ</TableHead>
                   <TableHead>Đến</TableHead>
                   <TableHead>Ngày</TableHead>
-                  <TableHead>Trạng Thái</TableHead>
+                  <TableHead>Thanh toán</TableHead>
                   <TableHead>Giá</TableHead>
                   <TableHead>Thao tác</TableHead>
                 </TableRow>
@@ -677,9 +688,11 @@ const MyBookingsTab = () => {
                   <TableRow key={booking.id}>
                     <TableCell>{booking.bookingCode || booking.id}</TableCell>
                     <TableCell>{booking.flight}</TableCell>
+                   
                     <TableCell>{booking.from}</TableCell>
                     <TableCell>{booking.to}</TableCell>
                     <TableCell>{booking.displayDate}</TableCell>
+                    
                     <TableCell>
                       <Badge
                         variant={
@@ -689,6 +702,7 @@ const MyBookingsTab = () => {
                             ? "warning"
                             : "destructive"
                         }
+                        className="text-white"
                       >
                         {booking.status}
                       </Badge>

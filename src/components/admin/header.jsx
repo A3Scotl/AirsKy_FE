@@ -36,7 +36,7 @@ const AdminHeader = ({ setSidebarOpen }) => {
 
   const handleLogout = () => {
     logout();
-    navigate("/auth");
+    navigate("/");
   };
 
   return (
@@ -61,20 +61,7 @@ const AdminHeader = ({ setSidebarOpen }) => {
             <ThemeToggle />
           </div>
 
-          {/* Notifications */}
-          {/* <div className="relative">
-            <Button
-              variant="ghost"
-              size="sm"
-              className="relative hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg p-2 transition-colors"
-            >
-              <Bell className="h-5 w-5 text-gray-600 dark:text-gray-400" />
-
-              <span className="absolute -top-1 -right-1 h-5 w-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-semibold animate-pulse">
-                3
-              </span>
-            </Button>
-          </div> */}
+        
 
           {/* User menu */}
           <DropdownMenu>

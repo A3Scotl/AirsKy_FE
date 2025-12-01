@@ -277,7 +277,7 @@ const AdminBookings = () => {
               flightNumber: booking.flightNumber,
               travelClass: booking.travelClass,
               totalAmount: booking.totalAmount,
-              status: booking.status,
+             
               flightSegments: booking.flightSegments,
               baggage: booking.baggage,
               ancillaryServices: booking.ancillaryServices,
