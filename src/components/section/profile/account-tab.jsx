@@ -739,7 +739,7 @@ const AccountTab = ({ userProfile, onProfileUpdate }) => {
                         }
                         onSelect={(date) => {
                           const formattedDate = date
-                            ? date.toISOString().split("T")[0]
+                            ? format(date, "yyyy-MM-dd")
                             : "";
                           setFormData((prev) => ({
                             ...prev,
@@ -757,6 +757,9 @@ const AccountTab = ({ userProfile, onProfileUpdate }) => {
                         disabled={(date) =>
                           date > new Date() || date < new Date(1900, 0, 1)
                         }
+                        captionLayout="dropdown"
+                        fromYear={1900}
+                        toYear={new Date().getFullYear()}
                         initialFocus
                       />
                     </PopoverContent>
@@ -828,7 +831,7 @@ const AccountTab = ({ userProfile, onProfileUpdate }) => {
                         }
                         onSelect={(date) => {
                           const formattedDate = date
-                            ? date.toISOString().split("T")[0]
+                            ? format(date, "yyyy-MM-dd")
                             : "";
                           setFormData((prev) => ({
                             ...prev,
@@ -844,6 +847,9 @@ const AccountTab = ({ userProfile, onProfileUpdate }) => {
                           }));
                         }}
                         disabled={(date) => date < new Date()}
+                        captionLayout="dropdown"
+                        fromYear={new Date().getFullYear()}
+                        toYear={new Date().getFullYear() + 20}
                         initialFocus
                       />
                     </PopoverContent>

@@ -225,14 +225,12 @@ const getDataKey = (header, type) => {
     },
     flights: {
       "Mã Chuyến Bay": "flightNumber",
-      "Hãng Hàng Không": "airlineName",
       "Tuyến Bay": "route",
       "Khởi Hành": "departureTime",
       Đến: "arrivalTime",
       "Thời Lượng": "duration",
       "Loại Chuyến": "flightType",
       "Ghế Đặt/Tổng": "seatOccupancy",
-      "Tỷ Lệ Lấp Đầy": "occupancyRate",
       "Doanh Thu": "revenue",
       "Trạng Thái": "status",
     },
@@ -268,7 +266,6 @@ const TableRowItem = memo(({ row, headers, type, onRowClick }) => {
 
         // Debug log for date field
         if (header === "Ngày" && (type === "overview" || type === "revenue")) {
-
         }
 
         // Format dữ liệu theo từng loại
@@ -348,11 +345,13 @@ const TableRowItem = memo(({ row, headers, type, onRowClick }) => {
           </TableCell>
         );
       })}
-      <TableCell>
-        <Button variant="ghost" size="sm" onClick={() => onRowClick(row)}>
-          <Eye className="h-4 w-4" />
-        </Button>
-      </TableCell>
+      {type !== "revenue" && (
+        <TableCell>
+          <Button variant="ghost" size="sm" onClick={() => onRowClick(row)}>
+            <Eye className="h-4 w-4" />
+          </Button>
+        </TableCell>
+      )}
     </TableRow>
   );
 });
@@ -801,10 +800,6 @@ const ReportTable = ({
               duration: flight.duration ? `${flight.duration} phút` : "N/A",
               status: getFlightStatusName(flight.status),
               seatOccupancy: `${finalBookedSeats}/${totalSeats}`,
-              occupancyRate:
-                totalSeats > 0
-                  ? `${Math.round((finalBookedSeats / totalSeats) * 100)}%`
-                  : "0%",
               revenue: finalRevenue,
               flightType: getFlightTypeName(flight.type || flight.flightType),
               gate: flight.gate || "N/A",
@@ -1300,14 +1295,12 @@ const ReportTable = ({
       ],
       flights: [
         "Mã Chuyến Bay",
-        "Hãng Hàng Không",
         "Tuyến Bay",
         "Khởi Hành",
         "Đến",
         "Thời Lượng",
         "Loại Chuyến",
         "Ghế Đặt/Tổng",
-        "Tỷ Lệ Lấp Đầy",
         "Doanh Thu",
         "Trạng Thái",
       ],
@@ -1468,7 +1461,6 @@ const ReportTable = ({
               value: formatCurrency(row.revenue),
               icon: DollarSign,
             },
-            { label: "Tỷ lệ lấp đầy", value: `${row.occupancyRate}%` },
             { label: "Trạng thái", value: row.status },
           ];
         case "airlines":
@@ -1662,9 +1654,11 @@ const ReportTable = ({
                     </div>
                   </TableHead>
                 ))}
-                <TableHead className="w-[80px] dark:text-white">
-                  Chi Tiết
-                </TableHead>
+                {type !== "revenue" && (
+                  <TableHead className="w-[80px] dark:text-white">
+                    Chi Tiết
+                  </TableHead>
+                )}
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -1683,15 +1677,17 @@ const ReportTable = ({
                         <div className="h-4 bg-muted dark:bg-gray-700 animate-pulse rounded"></div>
                       </TableCell>
                     ))}
-                    <TableCell className="dark:border-gray-700">
-                      <div className="h-8 w-8 bg-muted dark:bg-gray-700 animate-pulse rounded"></div>
-                    </TableCell>
+                    {type !== "revenue" && (
+                      <TableCell className="dark:border-gray-700">
+                        <div className="h-8 w-8 bg-muted dark:bg-gray-700 animate-pulse rounded"></div>
+                      </TableCell>
+                    )}
                   </TableRow>
                 ))
               ) : error ? (
                 <TableRow className="dark:border-gray-700">
                   <TableCell
-                    colSpan={getHeaders().length + 1}
+                    colSpan={getHeaders().length + (type !== "revenue" ? 1 : 0)}
                     className="text-center py-8 text-red-500 dark:text-red-400"
                   >
                     {error}
@@ -1700,7 +1696,7 @@ const ReportTable = ({
               ) : paginatedData.length === 0 ? (
                 <TableRow className="dark:border-gray-700">
                   <TableCell
-                    colSpan={getHeaders().length + 1}
+                    colSpan={getHeaders().length + (type !== "revenue" ? 1 : 0)}
                     className="text-center py-8 text-muted-foreground dark:text-gray-400"
                   >
                     Không có dữ liệu để hiển thị

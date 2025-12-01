@@ -927,7 +927,7 @@ const AdminProfilePage = () => {
                           <Button
                             variant="outline"
                             className={cn(
-                              "w-full justify-start text-left font-normal dark:bg-gray-800 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700",
+                              "flex-1 justify-start text-left font-normal dark:bg-gray-800 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700",
                               !profileData.dateOfBirth &&
                                 "text-muted-foreground"
                             )}
@@ -940,7 +940,7 @@ const AdminProfilePage = () => {
                                 "dd/MM/yyyy"
                               )
                             ) : (
-                              <span>Chọn ngày sinh</span>
+                              <span>Chọn ngày</span>
                             )}
                           </Button>
                         </PopoverTrigger>
@@ -955,13 +955,16 @@ const AdminProfilePage = () => {
                             onSelect={(date) => {
                               handleProfileChange(
                                 "dateOfBirth",
-                                date ? date.toISOString().split("T")[0] : ""
+                                date ? format(date, "yyyy-MM-dd") : ""
                               );
                               setCalendarOpen(false);
                             }}
                             disabled={(date) =>
                               date > new Date() || date < new Date("1900-01-01")
                             }
+                            captionLayout="dropdown"
+                            fromYear={1900}
+                            toYear={new Date().getFullYear()}
                             initialFocus
                           />
                         </PopoverContent>

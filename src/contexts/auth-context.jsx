@@ -249,6 +249,20 @@ export function AuthProvider({ children }) {
     setUser(null);
     localStorage.removeItem("user");
     localStorage.removeItem("token");
+
+    // Clear user-specific localStorage data
+    localStorage.removeItem("readBlogs");
+
+    localStorage.removeItem("searchCriteria");
+    localStorage.removeItem("searchData");
+
+    // Clear blog-like related localStorage
+    for (let key in localStorage) {
+      if (key.startsWith("blog-like-")) {
+        localStorage.removeItem(key);
+      }
+    }
+
     toast.info("Bạn đã đăng xuất thành công");
     navigate("/");
   };

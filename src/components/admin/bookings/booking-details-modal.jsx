@@ -25,6 +25,7 @@ import {
 } from "lucide-react";
 import { format } from "date-fns";
 import { vi } from "date-fns/locale";
+import { exportBookingToPDF } from "@/utils/booking-pdf-exporter";
 
 // Vietnamese text constants
 const TEXT = {
@@ -64,6 +65,8 @@ const TEXT = {
 
 const BookingDetailsModal = ({ open, onOpenChange, booking, onEdit }) => {
   if (!booking) return null;
+
+  const [isExportingPDF, setIsExportingPDF] = React.useState(false);
 
   const statusMap = {
     Confirmed: "Đã Xác Nhận",
@@ -108,6 +111,19 @@ const BookingDetailsModal = ({ open, onOpenChange, booking, onEdit }) => {
       return dateString;
     }
   };
+
+  const handleExportPDF = async () => {
+    try {
+      setIsExportingPDF(true);
+      await exportBookingToPDF(booking);
+    } catch (error) {
+      console.error("Error exporting PDF:", error);
+      // Có thể thêm toast notification ở đây
+    } finally {
+      setIsExportingPDF(false);
+    }
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-[95vw] sm:max-w-[90vw] md:max-w-4xl lg:max-w-6xl max-h-[90vh] overflow-y-auto dark:bg-gray-900 dark:text-white">
@@ -178,7 +194,11 @@ const BookingDetailsModal = ({ open, onOpenChange, booking, onEdit }) => {
                         {TEXT.passengers}
                       </p>
                       <p className="font-semibold dark:text-white">
-                        {booking.passengers} {TEXT.passenger}
+                        {booking.passengerCount ||
+                          (Array.isArray(booking.passengers)
+                            ? booking.passengers.length
+                            : 1)}{" "}
+                        {TEXT.passenger}
                       </p>
                     </div>
                   </div>
@@ -313,72 +333,71 @@ const BookingDetailsModal = ({ open, onOpenChange, booking, onEdit }) => {
           </Card>
 
           {/* Passengers Information */}
-          {booking.passengersDetails &&
-            booking.passengersDetails.length > 0 && (
-              <Card className="dark:bg-gray-800 dark:border-gray-700">
-                <CardHeader className="dark:bg-gray-800 dark:border-gray-700">
-                  <CardTitle className="flex items-center gap-2 dark:text-white">
-                    <Users className="h-5 w-5 dark:text-gray-400" />
-                    {TEXT.passengers}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="dark:bg-gray-800">
-                  <div className="space-y-4">
-                    {booking.passengersDetails.map((passenger, index) => (
-                      <div
-                        key={passenger.passengerId}
-                        className="border rounded-lg p-4 dark:border-gray-600 dark:bg-gray-700"
-                      >
-                        <div className="flex justify-between items-start mb-2">
-                          <h4 className="font-medium dark:text-white">
-                            {passenger.firstName} {passenger.lastName}
-                          </h4>
-                          <Badge variant="outline">{passenger.type}</Badge>
-                        </div>
-                        <div className="grid grid-cols-2 gap-4 text-sm">
-                          <div>
-                            <p className="text-gray-600 dark:text-gray-400">
-                              Ngày sinh
-                            </p>
-                            <p className="dark:text-white">
-                              {formatShortDate(passenger.dateOfBirth)}
-                            </p>
-                          </div>
-                          <div>
-                            <p className="text-gray-600 dark:text-gray-400">
-                              Hộ chiếu
-                            </p>
-                            <p className="dark:text-white">
-                              {passenger.passportNumber}
-                            </p>
-                          </div>
-                          {passenger.seatNumber && (
-                            <div>
-                              <p className="text-gray-600 dark:text-gray-400">
-                                Số ghế
-                              </p>
-                              <p className="dark:text-white">
-                                {passenger.seatNumber}
-                              </p>
-                            </div>
-                          )}
-                          {passenger.className && (
-                            <div>
-                              <p className="text-gray-600 dark:text-gray-400">
-                                Hạng
-                              </p>
-                              <p className="dark:text-white">
-                                {passenger.className}
-                              </p>
-                            </div>
-                          )}
-                        </div>
+          {booking.passengers && booking.passengers.length > 0 && (
+            <Card className="dark:bg-gray-800 dark:border-gray-700">
+              <CardHeader className="dark:bg-gray-800 dark:border-gray-700">
+                <CardTitle className="flex items-center gap-2 dark:text-white">
+                  <Users className="h-5 w-5 dark:text-gray-400" />
+                  {TEXT.passengers}
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="dark:bg-gray-800">
+                <div className="space-y-4">
+                  {booking.passengers.map((passenger, index) => (
+                    <div
+                      key={passenger.passengerId}
+                      className="border rounded-lg p-4 dark:border-gray-600 dark:bg-gray-700"
+                    >
+                      <div className="flex justify-between items-start mb-2">
+                        <h4 className="font-medium dark:text-white">
+                          {passenger.firstName} {passenger.lastName}
+                        </h4>
+                        <Badge variant="outline">{passenger.type}</Badge>
                       </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            )}
+                      <div className="grid grid-cols-2 gap-4 text-sm">
+                        <div>
+                          <p className="text-gray-600 dark:text-gray-400">
+                            Ngày sinh
+                          </p>
+                          <p className="dark:text-white">
+                            {formatShortDate(passenger.dateOfBirth)}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-gray-600 dark:text-gray-400">
+                            Hộ chiếu
+                          </p>
+                          <p className="dark:text-white">
+                            {passenger.passportNumber}
+                          </p>
+                        </div>
+                        {passenger.seatNumber && (
+                          <div>
+                            <p className="text-gray-600 dark:text-gray-400">
+                              Số ghế
+                            </p>
+                            <p className="dark:text-white">
+                              {passenger.seatNumber}
+                            </p>
+                          </div>
+                        )}
+                        {passenger.className && (
+                          <div>
+                            <p className="text-gray-600 dark:text-gray-400">
+                              Hạng
+                            </p>
+                            <p className="dark:text-white">
+                              {passenger.className}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Additional Information */}
           {(booking.specialRequests ||
@@ -547,19 +566,12 @@ const BookingDetailsModal = ({ open, onOpenChange, booking, onEdit }) => {
             <div className="flex gap-2">
               <Button
                 variant="outline"
-                size="sm"
-                className="dark:border-gray-600 dark:hover:bg-gray-700"
+                onClick={handleExportPDF}
+                disabled={isExportingPDF}
+                className="border-blue-500 text-blue-600 hover:bg-blue-50 dark:border-blue-600 dark:text-blue-400 dark:hover:bg-blue-900/20"
               >
                 <Download className="h-4 w-4 mr-2" />
-                {TEXT.downloadPdf}
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                className="dark:border-gray-600 dark:hover:bg-gray-700"
-              >
-                <Mail className="h-4 w-4 mr-2" />
-                {TEXT.sendEmail}
+                {isExportingPDF ? "Đang xuất PDF..." : "Xuất PDF"}
               </Button>
             </div>
 

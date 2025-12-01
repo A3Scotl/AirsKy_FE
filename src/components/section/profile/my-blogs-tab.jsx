@@ -80,7 +80,6 @@ const MyBlogsTab = () => {
         setSavedBlogs(savedRes.data?.content || []);
         setSavedTotal(savedRes.data?.totalElements || 0);
       }
-
     } catch (error) {
       console.error("Error refreshing blogs data:", error);
     } finally {
@@ -105,13 +104,9 @@ const MyBlogsTab = () => {
       )}
       <CardHeader className="pb-2">
         <CardTitle
-          className="text-base font-semibold mb-1"
+          className="text-base font-semibold mb-1 line-clamp-2"
           style={{
             minHeight: CARD_TITLE_HEIGHT,
-            maxHeight: CARD_TITLE_HEIGHT,
-            overflow: "hidden",
-            display: "flex",
-            alignItems: "center",
           }}
         >
           {blog.title}
@@ -196,8 +191,8 @@ const MyBlogsTab = () => {
                       Chưa có bài viết yêu thích nào.
                     </div>
                   ) : (
-                    likedBlogs.map((blog) => (
-                      <BlogCard key={blog.id} blog={blog} />
+                    likedBlogs.map((blog, index) => (
+                      <BlogCard key={`liked-${index}`} blog={blog} />
                     ))
                   )}
                 </div>
@@ -225,8 +220,8 @@ const MyBlogsTab = () => {
                       Chưa có bài viết đã lưu nào.
                     </div>
                   ) : (
-                    savedBlogs.map((blog) => (
-                      <BlogCard key={blog.id} blog={blog} />
+                    savedBlogs.map((blog, index) => (
+                      <BlogCard key={`saved-${index}`} blog={blog} />
                     ))
                   )}
                 </div>

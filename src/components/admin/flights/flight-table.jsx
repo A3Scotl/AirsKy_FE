@@ -194,7 +194,7 @@ const FlightTable = ({
               <TableHead>Tuyến</TableHead>
               <TableHead>Lịch trình</TableHead>
               <TableHead>Trạng thái</TableHead>
-              <TableHead>Tỷ lệ lấp đầy</TableHead>
+              
               <TableHead>Cổng</TableHead>
               <TableHead>Điểm dừng</TableHead>
               <TableHead className="text-right">Thao tác</TableHead>
@@ -280,30 +280,7 @@ const FlightTable = ({
                       <span>{label}</span>
                     </Badge>
                   </TableCell>
-                  <TableCell>
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger>
-                          <div className="flex items-center space-x-2">
-                            <Users className="h-4 w-4 text-gray-400" />
-                            <span
-                              className={`font-medium ${getLoadFactorColor(
-                                loadFactor
-                              )}`}
-                            >
-                              {loadFactor}%
-                            </span>
-                          </div>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p>
-                            {flight.totalSeats - flight.availableSeats} /{" "}
-                            {flight.totalSeats} passengers
-                          </p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                  </TableCell>
+                  
                   <TableCell>
                     <div className="flex items-center space-x-1">
                       <div className="w-2 h-2 bg-green-500 rounded-full" />

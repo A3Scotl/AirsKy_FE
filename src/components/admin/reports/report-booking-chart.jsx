@@ -163,12 +163,11 @@ const BookingChart = ({ bookings, isLoading, detailed = false, dateRange }) => {
   const totalBookings = data.reduce((sum, d) => sum + (d.bookings || 0), 0);
   const avgBookings = totalBookings / data.length;
 
-  const bookingGrowth =
-    data.length > 1
-      ? ((data[data.length - 1].bookings - data[data.length - 2].bookings) /
-          data[data.length - 2].bookings) *
-        100
-      : 0;
+  // Find peak and lowest booking days
+  const peakDay = data.find((d) => d.bookings === maxBookings);
+  const lowestDay = data.find(
+    (d) => d.bookings === Math.min(...data.map((d) => d.bookings || 0))
+  );
 
   // Calculate success rate
   const totalConfirmed = data.reduce((sum, d) => sum + (d.confirmed || 0), 0);
@@ -282,7 +281,7 @@ const BookingChart = ({ bookings, isLoading, detailed = false, dateRange }) => {
       </CardHeader>
       <CardContent>
         {detailed && (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
             <div className="space-y-2">
               <p className="text-sm font-medium dark:text-white">Tổng Đặt Vé</p>
               <p className="text-2xl font-bold dark:text-white">
@@ -296,33 +295,6 @@ const BookingChart = ({ bookings, isLoading, detailed = false, dateRange }) => {
               <p className="text-2xl font-bold dark:text-white">
                 {formatNumber(Math.round(avgBookings))}
               </p>
-            </div>
-            <div className="space-y-2">
-              <p className="text-sm font-medium dark:text-white">
-                Tỷ Lệ Tăng Trưởng
-              </p>
-              <div className="flex items-center gap-2">
-                <p className="text-2xl font-bold dark:text-white">
-                  {Math.abs(bookingGrowth).toFixed(1)}%
-                </p>
-                {bookingGrowth > 0 ? (
-                  <Badge
-                    variant="success"
-                    className="gap-1 dark:bg-green-900 dark:text-green-100"
-                  >
-                    <TrendingUp className="h-3 w-3" />
-                    Tăng
-                  </Badge>
-                ) : (
-                  <Badge
-                    variant="destructive"
-                    className="gap-1 dark:bg-red-900 dark:text-red-100"
-                  >
-                    <TrendingDown className="h-3 w-3" />
-                    Giảm
-                  </Badge>
-                )}
-              </div>
             </div>
           </div>
         )}
@@ -349,7 +321,7 @@ const BookingChart = ({ bookings, isLoading, detailed = false, dateRange }) => {
               <div className="space-y-3">
                 <h5 className="font-medium text-sm flex items-center gap-2">
                   <CheckCircle className="h-4 w-4" />
-                  Booking Success Rate
+                  Tỷ lệ đặt chỗ thành công
                 </h5>
                 <div className="h-64 w-full">
                   <Doughnut
@@ -398,18 +370,24 @@ const BookingChart = ({ bookings, isLoading, detailed = false, dateRange }) => {
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6 pt-4 border-t dark:border-gray-700">
               <div className="text-center p-4 bg-green-50 rounded-lg border dark:bg-green-900/20 dark:border-green-800">
                 <div className="text-2xl font-bold text-green-600 dark:text-green-400">
-                  {formatNumber(Math.max(...data.map((d) => d.bookings)))}
+                  {formatNumber(maxBookings)}
                 </div>
                 <div className="text-sm text-gray-600 dark:text-gray-400">
                   Peak Bookings
                 </div>
+                <div className="text-xs text-gray-500 dark:text-gray-500 mt-1">
+                  {peakDay?.date || "N/A"}
+                </div>
               </div>
               <div className="text-center p-4 bg-blue-50 rounded-lg border dark:bg-blue-900/20 dark:border-blue-800">
                 <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
-                  {formatNumber(Math.min(...data.map((d) => d.bookings)))}
+                  {formatNumber(Math.min(...data.map((d) => d.bookings || 0)))}
                 </div>
                 <div className="text-sm text-gray-600 dark:text-gray-400">
                   Lowest Bookings
+                </div>
+                <div className="text-xs text-gray-500 dark:text-gray-500 mt-1">
+                  {lowestDay?.date || "N/A"}
                 </div>
               </div>
               <div className="text-center p-4 bg-emerald-50 rounded-lg border dark:bg-emerald-900/20 dark:border-emerald-800">

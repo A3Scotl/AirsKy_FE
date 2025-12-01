@@ -41,26 +41,42 @@ const BookingMetrics = ({ isLoading = false }) => {
   const metricsData = useMemo(() => {
     const totalBookings = bookings.length;
 
+    // Use the same status mapping logic as booking-page.jsx
     const confirmedBookings = bookings.filter(
-      (b) => b.status === "Confirmed" || b.status === "COMPLETED"
-    ).length;
-    const pendingBookings = bookings.filter(
-      (b) => b.status === "Pending"
-    ).length;
-    const cancelledBookings = bookings.filter(
-      (b) => b.status === "Cancelled"
+      (b) => b.status === "CONFIRMED" || b.status === "COMPLETED"
     ).length;
 
+    const pendingBookings = bookings.filter(
+      (b) => b.status === "PENDING"
+    ).length;
+
+    const cancelledBookings = bookings.filter(
+      (b) => b.status === "CANCELLED"
+    ).length;
+
+    // Only count revenue from actually confirmed/completed bookings
     const totalRevenue = bookings
-      .filter((b) => b.status === "Confirmed" || b.status === "COMPLETED")
+      .filter((b) => b.status === "CONFIRMED" || b.status === "COMPLETED")
       .reduce((sum, booking) => {
         const amount = booking.totalAmount || 0;
         return sum + amount;
       }, 0);
 
+    // Only count passengers from confirmed/completed bookings
     const totalPassengers = bookings
-      .filter((b) => b.status === "Confirmed" || b.status === "COMPLETED")
-      .reduce((sum, booking) => sum + (booking.passengers || 0), 0);
+      .filter((b) => b.status === "CONFIRMED" || b.status === "COMPLETED")
+      .reduce((sum, booking) => {
+        // Handle different passenger data formats
+        let passengerCount = 0;
+        if (Array.isArray(booking.passengers)) {
+          passengerCount = booking.passengers.length;
+        } else if (typeof booking.passengers === "number") {
+          passengerCount = booking.passengers;
+        } else {
+          passengerCount = 0;
+        }
+        return sum + passengerCount;
+      }, 0);
 
     // Calculate booking trends
     const confirmedRate =

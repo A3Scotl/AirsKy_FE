@@ -87,6 +87,10 @@ const BlogDetailPage = () => {
 
       if (result.success) {
         setIsLiked(result.isLiked);
+        localStorage.setItem(
+          `blog-like-${user.id}-${post.blogId}`,
+          result.isLiked.toString()
+        );
         setLikeCount((prev) =>
           result.isLiked ? prev + 1 : Math.max(0, prev - 1)
         );
@@ -122,8 +126,47 @@ const BlogDetailPage = () => {
               : (res.data.likeCount && res.data.likeCount.count) || 0
           );
 
-          // Set default like status to false - will be updated on first user interaction
-          setIsLiked(false);
+          // Mark blog as read
+          if (res.data.blogId) {
+            const readBlogs = JSON.parse(
+              localStorage.getItem("readBlogs") || "[]"
+            );
+            if (!readBlogs.includes(res.data.blogId)) {
+              readBlogs.push(res.data.blogId);
+              localStorage.setItem("readBlogs", JSON.stringify(readBlogs));
+            }
+          }
+
+          // Check like status if user is authenticated
+          if (isAuthenticated && res.data.blogId && user?.id) {
+            const savedLike = localStorage.getItem(
+              `blog-like-${user.id}-${res.data.blogId}`
+            );
+            if (savedLike !== null) {
+              setIsLiked(savedLike === "true");
+            } else {
+              try {
+                const likeStatusRes = await blogLikeApi.checkIfLiked(
+                  res.data.blogId
+                );
+
+                if (likeStatusRes.success) {
+                  setIsLiked(likeStatusRes.data || false);
+                  localStorage.setItem(
+                    `blog-like-${user.id}-${res.data.blogId}`,
+                    (likeStatusRes.data || false).toString()
+                  );
+                } else {
+                  setIsLiked(false);
+                }
+              } catch (likeError) {
+                console.warn("Failed to check like status:", likeError);
+                setIsLiked(false);
+              }
+            }
+          } else {
+            setIsLiked(false);
+          }
           setLikeStatusLoading(false);
 
           // Check save status if user is authenticated
@@ -310,32 +353,32 @@ const BlogDetailPage = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
         {/* Hero Skeleton */}
         <div className="relative h-96 w-full">
-          <Skeleton className="h-full w-full rounded-none" />
+          <Skeleton className="h-full w-full rounded-none dark:bg-gray-700" />
         </div>
 
         <div className="max-w-7xl mx-auto px-4 py-10">
           {/* Title */}
-          <Skeleton className="h-10 w-3/4 mb-4" />
-          <Skeleton className="h-5 w-1/3 mb-6" />
+          <Skeleton className="h-10 w-3/4 mb-4 dark:bg-gray-700" />
+          <Skeleton className="h-5 w-1/3 mb-6 dark:bg-gray-700" />
 
           {/* Action buttons */}
           <div className="flex gap-3 mb-10">
-            <Skeleton className="h-10 w-24" />
-            <Skeleton className="h-10 w-24" />
-            <Skeleton className="h-10 w-10" />
-            <Skeleton className="h-10 w-10" />
+            <Skeleton className="h-10 w-24 dark:bg-gray-700" />
+            <Skeleton className="h-10 w-24 dark:bg-gray-700" />
+            <Skeleton className="h-10 w-10 dark:bg-gray-700" />
+            <Skeleton className="h-10 w-10 dark:bg-gray-700" />
           </div>
 
           {/* Content skeleton */}
-          <div className="bg-white rounded-xl shadow-sm p-8">
-            <Skeleton className="h-6 w-full mb-4" />
-            <Skeleton className="h-6 w-5/6 mb-4" />
-            <Skeleton className="h-6 w-2/3 mb-4" />
-            <Skeleton className="h-6 w-full mb-4" />
-            <Skeleton className="h-6 w-4/5 mb-4" />
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-8 border border-gray-200 dark:border-gray-700">
+            <Skeleton className="h-6 w-full mb-4 dark:bg-gray-700" />
+            <Skeleton className="h-6 w-5/6 mb-4 dark:bg-gray-700" />
+            <Skeleton className="h-6 w-2/3 mb-4 dark:bg-gray-700" />
+            <Skeleton className="h-6 w-full mb-4 dark:bg-gray-700" />
+            <Skeleton className="h-6 w-4/5 mb-4 dark:bg-gray-700" />
           </div>
         </div>
       </div>
@@ -344,13 +387,13 @@ const BlogDetailPage = () => {
 
   if (error || !post) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-gray-500 dark:via-gray-700 dark:to-gray-900 flex items-center justify-center">
         <div className="text-center">
-          <h2 className="text-2xl font-bold text-gray-900 mb-4">
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-4">
             {error || "Bài viết không tồn tại"}
           </h2>
           <Link to="/blog">
-            <Button>
+            <Button className="bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600">
               <ArrowLeft className="w-4 h-4 mr-2" />
               Quay lại Blog
             </Button>
@@ -391,26 +434,26 @@ const BlogDetailPage = () => {
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Article Meta & Share */}
-        <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4 mb-8 p-4 md:p-6 rounded-xl shadow-sm">
+        <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4 mb-8 p-4 md:p-6 rounded-xl shadow-sm bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
           <div className="w-full">
-            <nav className="text-sm text-gray-500 flex items-center gap-2 flex-wrap">
+            <nav className="text-sm text-gray-500 dark:text-gray-400 flex items-center gap-2 flex-wrap">
               <Link
                 to="/blog"
-                className="hover:underline text-blue-600 font-medium"
+                className="hover:underline text-blue-600 dark:text-blue-400 font-medium"
               >
                 Blog
               </Link>
-              <span className="mx-1">/</span>
-              <span className="text-gray-700 font-medium">
+              <span className="mx-1 text-gray-400 dark:text-gray-500">/</span>
+              <span className="text-gray-700 dark:text-gray-300 font-medium">
                 {post?.categories &&
                 post.categories.length > 0 &&
                 post.categories[0]?.name
                   ? post.categories[0].name
                   : "Chưa phân loại"}
               </span>
-              <span className="mx-1">/</span>
+              <span className="mx-1 text-gray-400 dark:text-gray-500">/</span>
               <span
-                className="text-gray-700 font-semibold truncate"
+                className="text-gray-700 dark:text-gray-300 font-semibold truncate"
                 title={post?.title || slug}
               >
                 {post?.title || slug}
@@ -516,23 +559,25 @@ const BlogDetailPage = () => {
 
         <div className="max-w-7xl mx-auto">
           {/* Article Content */}
-          <div className="bg-white rounded-xl shadow-sm p-8 mb-12">
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-8 mb-12 border border-gray-200 dark:border-gray-700">
             <div
-              className="blog-content"
+              className="blog-content text-gray-900 dark:text-gray-100"
               dangerouslySetInnerHTML={{ __html: post.content }}
             />
 
             {/* Tags */}
-            <div className="mt-8 pt-8 border-t border-gray-200">
+            <div className="mt-8 pt-8 border-t border-gray-200 dark:border-gray-700">
               <div className="flex items-center space-x-2">
-                <Tag className="w-5 h-5 text-gray-400" />
-                <span className="text-sm font-medium text-gray-500">Tags:</span>
+                <Tag className="w-5 h-5 text-gray-400 dark:text-gray-500" />
+                <span className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                  Tags:
+                </span>
                 {Array.isArray(post.categories) &&
                   post.categories.map((cate) => (
                     <Badge
                       key={cate.categoryId || cate.slug || cate.name}
                       variant="outline"
-                      className="text-blue-600 border-blue-600"
+                      className="text-blue-600 dark:text-blue-400 border-blue-600 dark:border-blue-400 bg-blue-50 dark:bg-blue-900/20"
                     >
                       {cate.name}
                     </Badge>
@@ -543,8 +588,8 @@ const BlogDetailPage = () => {
         </div>
 
         {/* Related Blogs Section */}
-        <div className="max-w-7xl mx-auto mt-10 mb-14 px-4 sm:px-6 lg:px-8">
-          <h2 className="text-2xl font-bold mb-6 text-gray-800">
+        <div className="max-w-7xl mx-auto mt-10 pb-14 px-4 sm:px-6 lg:px-8">
+          <h2 className="text-2xl font-bold mb-6 text-gray-800 dark:text-gray-100">
             Bài viết liên quan
           </h2>
 
@@ -552,16 +597,19 @@ const BlogDetailPage = () => {
             // Skeleton loading
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
               {[1, 2, 3].map((i) => (
-                <div key={i} className="rounded-xl border p-4">
-                  <Skeleton className="h-40 w-full mb-4 rounded-lg" />
-                  <Skeleton className="h-6 w-3/4 mb-2" />
-                  <Skeleton className="h-4 w-1/2 mb-2" />
-                  <Skeleton className="h-4 w-2/3" />
+                <div
+                  key={i}
+                  className="rounded-xl border border-gray-200 dark:border-gray-700 p-4 bg-white dark:bg-gray-800"
+                >
+                  <Skeleton className="h-40 w-full mb-4 rounded-lg bg-gray-200 dark:bg-gray-700" />
+                  <Skeleton className="h-6 w-3/4 mb-2 bg-gray-200 dark:bg-gray-700" />
+                  <Skeleton className="h-4 w-1/2 mb-2 bg-gray-200 dark:bg-gray-700" />
+                  <Skeleton className="h-4 w-2/3 bg-gray-200 dark:bg-gray-700" />
                 </div>
               ))}
             </div>
           ) : relatedBlogs.length === 0 ? (
-            <p className="text-gray-500 text-center py-8">
+            <p className="text-gray-500 dark:text-gray-400 text-center py-8">
               Không có bài viết liên quan
             </p>
           ) : (
@@ -588,14 +636,14 @@ const BlogDetailPage = () => {
               <div className="flex justify-end mt-4 space-x-2">
                 <button
                   onClick={() => window.blogSwiper.slidePrev()}
-                  className="p-2 border rounded-md  cursor-pointer hover:bg-gray-100"
+                  className="p-2 border border-gray-300 dark:border-gray-600 rounded-md cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300"
                 >
                   <ChevronLeft size={18} />
                 </button>
 
                 <button
                   onClick={() => window.blogSwiper.slideNext()}
-                  className="p-2 border rounded-md cursor-pointer hover:bg-gray-100"
+                  className="p-2 border border-gray-300 dark:border-gray-600 rounded-md cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300"
                 >
                   <ChevronRight size={18} />
                 </button>

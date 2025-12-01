@@ -3,6 +3,7 @@ import { useParams, Link } from "react-router-dom";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   ArrowLeft,
   Copy,
@@ -24,12 +25,14 @@ import { dealApi } from "@/apis/deal-api";
 const DealDetailPage = () => {
   const { dealId } = useParams();
   const [deal, setDeal] = useState(null);
+  const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
   const [activeTab, setActiveTab] = useState("overview");
 
   useEffect(() => {
     const fetchDeal = async () => {
       try {
+        setLoading(true);
         const res = await dealApi.getDealById(dealId);
         if (res.success && res.data) {
           setDeal(res.data);
@@ -38,6 +41,8 @@ const DealDetailPage = () => {
         }
       } catch (err) {
         setDeal(null);
+      } finally {
+        setLoading(false);
       }
     };
     fetchDeal();
@@ -94,6 +99,77 @@ const DealDetailPage = () => {
     ],
   };
 
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-700">
+        {/* Hero Section Loading */}
+        <section className="relative py-20 overflow-hidden">
+          <div className="absolute inset-0 bg-gray-200 dark:bg-gray-600 animate-pulse">
+            <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/50 to-black/30"></div>
+          </div>
+
+          <div className="relative container mx-auto px-4">
+            <div className="max-w-4xl mx-auto text-center">
+              <Skeleton className="h-12 w-3/4 mx-auto mb-4 bg-white/20" />
+              <Skeleton className="h-6 w-1/2 mx-auto mb-8 bg-white/20" />
+
+              {/* Deal Code Loading */}
+              <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl p-8 mb-8">
+                <div className="text-center">
+                  <Skeleton className="h-4 w-32 mx-auto mb-2 bg-white/20" />
+                  <Skeleton className="h-12 w-48 mx-auto mb-4 bg-white/20" />
+                  <Skeleton className="h-16 w-24 mx-auto mb-2 bg-white/20" />
+                  <Skeleton className="h-12 w-40 mx-auto bg-white/20" />
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Content Loading */}
+        <div className="container mx-auto px-4 py-12">
+          <div className="max-w-4xl mx-auto">
+            {/* Tab Navigation Loading */}
+            <div className="flex items-center justify-center mb-8 bg-white rounded-xl p-2 shadow-sm">
+              <div className="flex space-x-2">
+                {[1, 2, 3, 4].map((i) => (
+                  <Skeleton key={i} className="h-12 w-24 rounded-lg" />
+                ))}
+              </div>
+            </div>
+
+            {/* Content Loading */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+              <div className="lg:col-span-2 space-y-6">
+                <Card className="p-6">
+                  <Skeleton className="h-6 w-48 mb-4" />
+                  <div className="grid grid-cols-2 gap-6">
+                    {[1, 2, 3, 4].map((i) => (
+                      <div key={i}>
+                        <Skeleton className="h-4 w-20 mb-1" />
+                        <Skeleton className="h-8 w-24" />
+                      </div>
+                    ))}
+                  </div>
+                </Card>
+              </div>
+
+              <div className="space-y-6">
+                <Card className="p-6">
+                  <Skeleton className="h-6 w-40 mb-4" />
+                  <Skeleton className="h-4 w-full mb-2" />
+                  <Skeleton className="h-2 w-full mb-4" />
+                  <Skeleton className="h-8 w-16 mx-auto" />
+                </Card>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Nếu đã load xong nhưng không có deal
   if (!deal) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -153,8 +229,6 @@ const DealDetailPage = () => {
                 </button>
               </div>
             </div>
-
-            
           </div>
         </div>
       </section>
@@ -222,7 +296,8 @@ const DealDetailPage = () => {
                     <div>
                       <div className="text-sm text-gray-500 mb-1">Thời hạn</div>
                       <div className="text-xl font-semibold">
-                        {formatDate(deal.validFrom)}{" "} - {formatDate(deal.validTo)}
+                        {formatDate(deal.validFrom)} -{" "}
+                        {formatDate(deal.validTo)}
                         <Badge
                           variant="outline"
                           className="border-red-500 text-red-500"

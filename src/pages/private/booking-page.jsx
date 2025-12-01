@@ -187,7 +187,6 @@ const AdminBookings = () => {
 
                   page++;
                 } else {
-
                   hasMore = false;
                 }
               } catch (pageError) {
@@ -239,7 +238,6 @@ const AdminBookings = () => {
               typeof booking.passengers !== "number" &&
               !Array.isArray(booking.passengers)
             ) {
-
             }
 
             return {
@@ -252,8 +250,11 @@ const AdminBookings = () => {
               route: booking.flightNumber,
               departure: booking.flightSegments?.[0]?.departureTime,
               passengers: Array.isArray(booking.passengers)
+                ? booking.passengers
+                : [], // Ensure it's always an array for PDF export
+              passengerCount: Array.isArray(booking.passengers)
                 ? booking.passengers.length
-                : booking.passengers || 0,
+                : 0, // Add separate count field
               class: booking.travelClass,
               status:
                 booking.status === "CONFIRMED" || booking.status === "COMPLETED"
@@ -265,12 +266,27 @@ const AdminBookings = () => {
                   : "Pending", // Default to Pending for unknown status
               amount: `${booking.totalAmount.toLocaleString()} VNĐ`,
               bookingDate: booking.createdAt || booking.bookingDate,
-              passengersDetails: booking.passengers,
               payment: booking.payment,
               updatedAt: booking.updatedAt,
               cancellationReason: booking.cancellationReason,
               isRefundable: booking.travelClassDetails?.refundable || false,
               isChangeable: booking.travelClassDetails?.changeable || false,
+              // Add all fields needed for PDF export
+              bookingId: booking.bookingId,
+              bookingCode: booking.bookingCode,
+              flightNumber: booking.flightNumber,
+              travelClass: booking.travelClass,
+              totalAmount: booking.totalAmount,
+              status: booking.status,
+              flightSegments: booking.flightSegments,
+              baggage: booking.baggage,
+              ancillaryServices: booking.ancillaryServices,
+              ancillaryServicesAmount: booking.ancillaryServicesAmount,
+              seatTypeAmount: booking.seatTypeAmount,
+              discountAmount: booking.discountAmount,
+              pointsDiscountAmount: booking.pointsDiscountAmount,
+              createdAt: booking.createdAt,
+              phone: booking.phone,
             };
           });
           // Không cần sort ở client vì BE đã sắp xếp sẵn
@@ -425,9 +441,10 @@ const AdminBookings = () => {
         !state.advancedFilters.passengers ||
         state.advancedFilters.passengers === "all" ||
         (state.advancedFilters.passengers === "4+" &&
-          booking.passengers >= 4) ||
+          booking.passengerCount >= 4) ||
         (state.advancedFilters.passengers !== "4+" &&
-          booking.passengers === parseInt(state.advancedFilters.passengers));
+          booking.passengerCount ===
+            parseInt(state.advancedFilters.passengers));
 
       const matchesBookingDate = (() => {
         if (!state.advancedFilters.bookingDate) return true;
@@ -602,7 +619,7 @@ const AdminBookings = () => {
                       <TableCell>
                         <div className="flex items-center text-sm">
                           <User className="h-3 w-3 mr-1 text-gray-400" />
-                          {booking.passengers}
+                          {booking.passengerCount}
                         </div>
                       </TableCell>
                       <TableCell>

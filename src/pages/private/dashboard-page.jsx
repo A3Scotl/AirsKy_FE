@@ -124,18 +124,13 @@ const AdminDashboard = () => {
       ).length || 0;
     const totalUsers = rawData.users?.length || 0;
 
-    // Calculate real change percentages based on data availability
-    const bookingChange = totalBookings > 0 ? "+8%" : "0%";
-    const revenueChange = totalRevenue > 0 ? "+12%" : "0%";
-    const flightChange = activeFlights > 0 ? "+5%" : "0%";
-    const customerChange = totalUsers > 0 ? "+15%" : "0%";
-    const cancelledChange =
-      cancelledBookings > 0
-        ? `-${Math.round((cancelledBookings / totalBookings) * 100)}%`
-        : "0%";
-    const occupancyChange = occupancyRate > 0 ? "+3%" : "0%";
+    // Calculate real statistics only - no fake comparisons
+    const cancelledRate =
+      totalBookings > 0
+        ? Math.round((cancelledBookings / totalBookings) * 100)
+        : 0;
 
-    // Create stats array from real processedData
+    // Create stats array with real data only
     const stats = [
       {
         title: "Tổng Doanh Thu",
@@ -143,9 +138,7 @@ const AdminDashboard = () => {
         format: "currency",
         icon: DollarSign,
         color: "text-green-600",
-        positive: totalRevenue > 0,
-        change: revenueChange,
-        description: "so với tháng trước",
+        description: "tổng doanh thu từ đặt vé",
       },
       {
         title: "Tổng Đặt Vé",
@@ -153,9 +146,7 @@ const AdminDashboard = () => {
         format: "number",
         icon: Users,
         color: "text-blue-600",
-        positive: totalBookings > 0,
-        change: bookingChange,
-        description: "so với tháng trước",
+        description: "số lượng booking trong hệ thống",
       },
       {
         title: "Chuyến Bay Hoạt Động",
@@ -163,9 +154,7 @@ const AdminDashboard = () => {
         format: "number",
         icon: Plane,
         color: "text-purple-600",
-        positive: activeFlights > 0,
-        change: flightChange,
-        description: "so với tháng trước",
+        description: "chuyến bay sắp khởi hành",
       },
       {
         title: "Khách Hàng",
@@ -173,9 +162,7 @@ const AdminDashboard = () => {
         format: "number",
         icon: User,
         color: "text-orange-600",
-        positive: totalUsers > 0,
-        change: customerChange,
-        description: "so với tháng trước",
+        description: "tổng số người dùng đã đăng ký",
       },
       {
         title: "Đặt Vé Đã Hủy",
@@ -183,9 +170,7 @@ const AdminDashboard = () => {
         format: "number",
         icon: X,
         color: "text-red-600",
-        positive: false,
-        change: cancelledChange,
-        description: "tỷ lệ hủy",
+        description: `${cancelledRate}% tổng số booking`,
       },
       {
         title: "Tỷ Lệ Lấp Đầy",
@@ -194,9 +179,7 @@ const AdminDashboard = () => {
         suffix: "%",
         icon: Target,
         color: "text-indigo-600",
-        positive: occupancyRate > 0,
-        change: occupancyChange,
-        description: "so với tháng trước",
+        description: "tỷ lệ ghế đã được đặt",
       },
     ];
 
@@ -345,9 +328,6 @@ const AdminDashboard = () => {
           <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
             Bảng Điều Khiển
           </h1>
-          <p className="text-gray-600 dark:text-gray-400">
-            Đang tải dữ liệu...
-          </p>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {[...Array(4)].map((_, i) => (
@@ -433,20 +413,8 @@ const AdminDashboard = () => {
                     ? `${formatNumber(stat.value)}${stat.suffix}`
                     : formatNumber(stat.value)}
                 </div>
-                <div className="flex items-center text-xs text-gray-600 dark:text-gray-400 mt-1">
-                  {stat.positive ? (
-                    <TrendingUp className="h-3 w-3 text-green-500 mr-1" />
-                  ) : (
-                    <TrendingDown className="h-3 w-3 text-red-500 mr-1" />
-                  )}
-                  <span
-                    className={
-                      stat.positive ? "text-green-600" : "text-red-600"
-                    }
-                  >
-                    {stat.change}
-                  </span>
-                  <span className="ml-1">{stat.description}</span>
+                <div className="text-xs text-gray-600 dark:text-gray-400 mt-1">
+                  <span>{stat.description}</span>
                 </div>
               </CardContent>
             </Card>

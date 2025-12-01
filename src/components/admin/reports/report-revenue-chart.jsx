@@ -339,8 +339,8 @@ const RevenueChart = ({
         </CardDescription>
       </CardHeader>
       <CardContent>
-        {/* Key Revenue Metrics - STREAMLINED (only 3 main metrics) */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        {/* Key Revenue Metrics - STREAMLINED (only 2 main metrics) */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
           <div className="p-4 rounded-lg bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 border border-green-200 dark:border-green-800">
             <div className="flex items-center gap-2 mb-1">
               <DollarSign className="h-4 w-4 text-green-600 dark:text-green-400" />
@@ -379,21 +379,6 @@ const RevenueChart = ({
             </div>
             <div className="text-xs text-blue-600 dark:text-blue-400 mt-1">
               {totalBookings} vé đã bán
-            </div>
-          </div>
-
-          <div className="p-4 rounded-lg bg-gradient-to-r from-purple-50 to-violet-50 dark:from-purple-900/20 dark:to-violet-900/20 border border-purple-200 dark:border-purple-800">
-            <div className="flex items-center gap-2 mb-1">
-              <Target className="h-4 w-4 text-purple-600 dark:text-purple-400" />
-              <span className="text-sm font-medium text-purple-900 dark:text-purple-100">
-                Hiệu Suất Bán Hàng
-              </span>
-            </div>
-            <div className="text-xl font-bold text-purple-800 dark:text-purple-300">
-              {formatNumber(totalBookings)}
-            </div>
-            <div className="text-xs text-purple-600 dark:text-purple-400 mt-1">
-              {uniqueCustomers} khách hàng • {totalFlights} chuyến bay
             </div>
           </div>
         </div>

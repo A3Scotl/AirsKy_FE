@@ -503,7 +503,7 @@ const FlightChart = ({ flights, isLoading, detailed = false, dateRange }) => {
       </CardHeader>
       <CardContent>
         {/* Key Flight Metrics */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-6">
           <div className="text-center p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border dark:border-blue-800">
             <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
               {formatNumber(totalFlights)}
@@ -521,14 +521,6 @@ const FlightChart = ({ flights, isLoading, detailed = false, dateRange }) => {
             </div>
             <div className="text-sm text-gray-600 dark:text-gray-400">
               Tỷ Lệ Đúng Giờ
-            </div>
-          </div>
-          <div className="text-center p-4 bg-purple-50 dark:bg-purple-900/20 rounded-lg border dark:border-purple-800">
-            <div className="text-2xl font-bold text-purple-600 dark:text-purple-400">
-              {avgOccupancyRate}%
-            </div>
-            <div className="text-sm text-gray-600 dark:text-gray-400">
-              Tỷ Lệ Lấp Đầy
             </div>
           </div>
           <div className="text-center p-4 bg-orange-50 dark:bg-orange-900/20 rounded-lg border dark:border-orange-800">

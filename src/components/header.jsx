@@ -262,7 +262,7 @@ export function Header() {
                         {getUserDisplayName()}
                       </div>
                       {user.fullName && user.email && (
-                        <div className="text-xs text-gray-500">
+                        <div className="text-xs text-gray-500 dark:text-gray-900">
                           {user.email}
                         </div>
                       )}
@@ -352,11 +352,11 @@ export function Header() {
                           </AvatarFallback>
                         </Avatar>
                         <div>
-                          <div className="font-medium text-sm">
+                          <div className="font-medium text-sm dark:text-gray-900">
                             {getUserDisplayName()}
                           </div>
                           {user.fullName && user.email && (
-                            <div className="text-xs text-gray-500">
+                            <div className="text-xs text-gray-500 dark:text-gray-900">
                               {user.email}
                             </div>
                           )}

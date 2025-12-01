@@ -120,7 +120,7 @@ const CustomerChart = ({
         chartData: [],
         loyaltyTiers: { standard: 0, silver: 0, gold: 0, platinum: 0 },
         ageGroups: { "18-25": 0, "26-35": 0, "36-50": 0, "51+": 0 },
-        authProviders: { local: 0, google: 0, facebook: 0 },
+        authProviders: { local: 0, google: 0 },
         activityStats: { active: 0, verified: 0, total: 0 },
       };
     }
@@ -129,7 +129,7 @@ const CustomerChart = ({
     const usersByDate = {};
     const loyaltyTiers = { standard: 0, silver: 0, gold: 0, platinum: 0 };
     const ageGroups = { "18-25": 0, "26-35": 0, "36-50": 0, "51+": 0 };
-    const authProviders = { local: 0, google: 0, facebook: 0 };
+    const authProviders = { local: 0, google: 0 };
     const activityStats = { active: 0, verified: 0, total: users.length };
 
     // Tính ngày hiện tại để phân tích new/returning customers
@@ -164,7 +164,7 @@ const CustomerChart = ({
 
       // Count auth providers
       const provider = user.authProvider?.toLowerCase() || "local";
-      if (authProviders.hasOwnProperty(provider)) {
+      if (provider !== "facebook" && authProviders.hasOwnProperty(provider)) {
         authProviders[provider] += 1;
       }
 

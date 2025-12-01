@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Heart, Calendar, User, MessageCircle, Eye } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -16,6 +16,15 @@ const BlogCard = ({ blog, showLikeButton = true }) => {
   );
   const [isLiked, setIsLiked] = useState(blog.isLiked || false);
   const [isLiking, setIsLiking] = useState(false);
+  const [isRead, setIsRead] = useState(false);
+
+  // Check if blog has been read
+  useEffect(() => {
+    if (blog?.blogId) {
+      const readBlogs = JSON.parse(localStorage.getItem("readBlogs") || "[]");
+      setIsRead(readBlogs.includes(blog.blogId));
+    }
+  }, [blog?.blogId]);
 
   const formatDate = (dateString) => {
     const options = { year: "numeric", month: "long", day: "numeric" };
@@ -67,9 +76,9 @@ const BlogCard = ({ blog, showLikeButton = true }) => {
         {/* Categories */}
         {blog.categories && blog.categories.length > 0 && (
           <div className="flex flex-wrap gap-2 mb-3 ">
-            {blog.categories.map((category) => (
+            {blog.categories.map((category, index) => (
               <Badge
-                key={category.category_id || category.id}
+                key={`${category.category_id || category.id || index}-${index}`}
                 variant="outline"
                 className="text-xs"
               >
@@ -80,7 +89,13 @@ const BlogCard = ({ blog, showLikeButton = true }) => {
         )}
 
         {/* Title */}
-        <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2 line-clamp-2">
+        <h3
+          className={`text-xl font-semibold mb-2 line-clamp-2 ${
+            isRead
+              ? "text-purple-600 dark:text-purple-400"
+              : "text-gray-900 dark:text-white"
+          }`}
+        >
           <Link
             to={`/blog/${blog.slug}`}
             className="hover:text-blue-600 transition-colors"

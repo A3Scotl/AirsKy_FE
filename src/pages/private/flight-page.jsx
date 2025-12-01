@@ -117,7 +117,6 @@ const getLastWeekStats = () => {
     // Trả về dữ liệu của tuần trước nếu có
     const lastWeekData = weeklyData[lastWeekKey];
     if (lastWeekData) {
-
       return lastWeekData;
     }
 
@@ -194,48 +193,10 @@ const AdminFlights = () => {
     fetchData();
   }, []);
 
-  // Tự động cập nhật thống kê khi dữ liệu flights thay đổi
+  // Tự động cập nhật metrics khi dữ liệu flights thay đổi
   useEffect(() => {
-    if (flights.length > 0) {
-      // Tính toán thống kê tổng hợp cho tuần hiện tại
-      const stats = calculateFlightStats(flights);
-
-      // Lưu dữ liệu tổng hợp cho tuần này để so sánh với tuần sau
-      const weeklyStats = {
-        totalFlights: flights.length, // Tổng số chuyến bay trong tuần
-        activeFlights: flights.filter((f) => f.status !== "CANCELLED").length, // Chuyến bay hoạt động
-        onTimeRate: parseFloat(
-          stats
-            .find((s) => s.title === "Tỷ lệ đúng giờ")
-            ?.value?.replace("%", "") || 0
-        ), // % đúng giờ
-        occupancyRate: parseFloat(
-          stats
-            .find((s) => s.title === "Tỷ lệ lấp đầy")
-            ?.value?.replace("%", "") || 0
-        ), // % lấp đầy
-        estimatedRevenue: flights.reduce((sum, flight) => {
-          // Tổng doanh thu ước tính
-          const aircraftSeats = flight?.aircraft?.totalSeats || 0;
-          const availableSeats = flight.availableSeats || 0;
-          const bookedSeatsCount = Math.max(0, aircraftSeats - availableSeats);
-          const pricePerSeat = flight.priceNumeric || flight.price || 0;
-          return sum + bookedSeatsCount * pricePerSeat;
-        }, 0),
-        totalSeats: flights.reduce(
-          (sum, flight) => sum + (flight?.aircraft?.totalSeats || 0),
-          0
-        ), // Tổng ghế
-        bookedSeats: flights.reduce((sum, flight) => {
-          // Ghế đã đặt
-          const aircraftSeats = flight?.aircraft?.totalSeats || 0;
-          const availableSeats = flight.availableSeats || 0;
-          return sum + Math.max(0, aircraftSeats - availableSeats);
-        }, 0),
-      };
-
-      saveWeeklyStats(weeklyStats);
-    }
+    // Không cần lưu trữ weekly stats nữa vì đã bỏ comparison
+    console.log(`Loaded ${flights.length} flights for metrics calculation`);
   }, [flights]);
 
   // Hàm tính toán thống kê chuyến bay toàn diện với dữ liệu lịch sử
@@ -267,12 +228,12 @@ const AdminFlights = () => {
           color: "bg-indigo-500",
         },
         {
-          title: "Tỷ lệ lấp đầy",
-          value: "0%",
+          title: "Doanh thu ước tính",
+          value: "0M VNĐ",
           change: "0%",
           isPositive: true,
           icon: Users,
-          color: "bg-purple-500",
+          color: "bg-emerald-500",
         },
       ];
     }
@@ -292,104 +253,76 @@ const AdminFlights = () => {
     const onTimeRate =
       totalFlights > 0 ? ((onTimeFlights / totalFlights) * 100).toFixed(1) : 0;
 
-    // Tính tỷ lệ lấp đầy trung bình
-    const totalSeats = currentFlights.reduce(
-      (sum, flight) => sum + (flight?.aircraft?.totalSeats || 0),
-      0
-    );
+    // Tính tổng doanh thu tiềm năng từ chuyến bay
+    const potentialRevenue = currentFlights.reduce((sum, flight) => {
+      // Use flightTravelClasses for accurate revenue calculation
+      if (flight.flightTravelClasses?.length > 0) {
+        const flightRevenue = flight.flightTravelClasses.reduce((total, tc) => {
+          return total + (tc.capacity || 0) * (tc.price || 0);
+        }, 0);
+        return sum + flightRevenue;
+      }
+
+      // Fallback for flights without flightTravelClasses
+      const aircraftSeats = flight?.aircraft?.totalSeats || 0;
+      const pricePerSeat =
+        flight.basePrice || flight.priceNumeric || flight.price || 0;
+      return sum + aircraftSeats * pricePerSeat;
+    }, 0);
+
+    // Đếm số tuyến bay khác nhau
+    const uniqueRoutes = new Set(
+      currentFlights.map(
+        (flight) =>
+          `${flight.departureAirport?.airportCode || "DEP"} - ${
+            flight.arrivalAirport?.airportCode || "ARR"
+          }`
+      )
+    ).size;
+
+    // === TÍNH TOÁN METRICS ĐƠN GIẢN ===
     const bookedSeats = currentFlights.reduce((sum, flight) => {
       const aircraftSeats = flight?.aircraft?.totalSeats || 0;
       const availableSeats = flight.availableSeats || 0;
       return sum + Math.max(0, aircraftSeats - availableSeats);
     }, 0);
+
+    const totalSeats = currentFlights.reduce(
+      (sum, flight) => sum + (flight?.aircraft?.totalSeats || 0),
+      0
+    );
+
     const occupancyRate =
       totalSeats > 0 ? ((bookedSeats / totalSeats) * 100).toFixed(1) : 0;
-
-    // Tính doanh thu ước tính
-    const estimatedRevenue = currentFlights.reduce((sum, flight) => {
-      const aircraftSeats = flight?.aircraft?.totalSeats || 0;
-      const availableSeats = flight.availableSeats || 0;
-      const bookedSeatsCount = Math.max(0, aircraftSeats - availableSeats);
-      const pricePerSeat = flight.priceNumeric || flight.price || 0;
-      return sum + bookedSeatsCount * pricePerSeat;
-    }, 0);
-
-    // === LẤY DỮ LIỆU TUẦN TRƯỚC ===
-    const lastWeekStats = getLastWeekStats();
-
-    // === TÍNH % THAY ĐỔI ===
-    const calculateChange = (current, previous) => {
-      if (!previous || previous <= 0) return { value: "0.0", isPositive: true };
-      const change = ((current - previous) / previous) * 100;
-      return {
-        value: Math.abs(change).toFixed(1),
-        isPositive: change >= 0,
-      };
-    };
-
-    const totalChange = calculateChange(
-      totalFlights,
-      lastWeekStats?.totalFlights
-    );
-    const activeChange = calculateChange(
-      activeFlights,
-      lastWeekStats?.activeFlights
-    );
-    const onTimeChange = calculateChange(
-      parseFloat(onTimeRate),
-      lastWeekStats?.onTimeRate
-    );
-    const occupancyChange = calculateChange(
-      parseFloat(occupancyRate),
-      lastWeekStats?.occupancyRate
-    );
 
     return [
       {
         title: "Tổng chuyến bay",
         value: totalFlights.toString(),
-        change: `${totalChange.isPositive ? "+" : "-"}${totalChange.value}%`,
-        isPositive: totalChange.isPositive,
         icon: Plane,
         color: "bg-blue-500",
-        description: lastWeekStats
-          ? `Tuần trước: ${lastWeekStats.totalFlights || 0}`
-          : "Dữ liệu mới",
+        description: "Tổng số chuyến bay trong hệ thống",
       },
       {
         title: "Chuyến bay hoạt động",
         value: activeFlights.toString(),
-        change: `${activeChange.isPositive ? "+" : "-"}${activeChange.value}%`,
-        isPositive: activeChange.isPositive,
         icon: CheckCircle,
         color: "bg-green-500",
-        description: lastWeekStats
-          ? `Tuần trước: ${lastWeekStats.activeFlights || 0}`
-          : "Dữ liệu mới",
+        description: "Chuyến bay không bị hủy",
       },
       {
         title: "Tỷ lệ đúng giờ",
         value: `${onTimeRate}%`,
-        change: `${onTimeChange.isPositive ? "+" : "-"}${onTimeChange.value}%`,
-        isPositive: onTimeChange.isPositive,
         icon: Clock,
         color: "bg-indigo-500",
-        description: lastWeekStats
-          ? `Tuần trước: ${lastWeekStats.onTimeRate?.toFixed(1) || 0}%`
-          : "Dữ liệu mới",
+        description: "Chuyến bay đúng lịch trình",
       },
       {
-        title: "Tỷ lệ lấp đầy",
-        value: `${occupancyRate}%`,
-        change: `${occupancyChange.isPositive ? "+" : "-"}${
-          occupancyChange.value
-        }%`,
-        isPositive: occupancyChange.isPositive,
+        title: "Doanh thu tiềm năng",
+        value: `${(potentialRevenue / 1000000).toFixed(1)}M VNĐ`,
         icon: Users,
-        color: "bg-purple-500",
-        description: lastWeekStats
-          ? `Tuần trước: ${lastWeekStats.occupancyRate?.toFixed(1) || 0}%`
-          : "Dữ liệu mới",
+        color: "bg-emerald-500",
+        description: `${bookedSeats}/${totalSeats} ghế đã đặt (${occupancyRate}%)`,
       },
     ];
   };
@@ -691,25 +624,8 @@ const AdminFlights = () => {
                     <p className="text-2xl font-bold text-gray-900 dark:text-gray-100 mt-2">
                       {stat.value}
                     </p>
-                    <div className="flex items-center mt-2 text-xs">
-                      <TrendingUp
-                        className={`h-3 w-3 mr-1 ${
-                          stat.isPositive ? "text-green-500" : "text-red-500"
-                        }`}
-                      />
-                      <span
-                        className={
-                          stat.isPositive ? "text-green-600" : "text-red-600"
-                        }
-                      >
-                        {stat.change}
-                      </span>
-                      <span className="text-gray-500 ml-1">
-                        so với tuần trước
-                      </span>
-                    </div>
                     {stat.description && (
-                      <p className="text-xs text-gray-500 mt-1">
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
                         {stat.description}
                       </p>
                     )}

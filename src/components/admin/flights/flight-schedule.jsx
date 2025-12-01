@@ -174,11 +174,13 @@ const FlightSchedule = ({ flights }) => {
   };
 
   const getBookedSeats = (flight) => {
-    return flight.totalSeats - (flight.availableSeats || 0);
+    const totalSeats = flight.aircraft?.totalSeats || flight.totalSeats || 0;
+    const availableSeats = flight.availableSeats || 0;
+    return Math.max(0, totalSeats - availableSeats);
   };
 
   const getTotalSeats = (flight) => {
-    return flight.totalSeats || 0;
+    return flight.aircraft?.totalSeats || flight.totalSeats || 0;
   };
 
   return (
@@ -324,7 +326,7 @@ const FlightSchedule = ({ flights }) => {
 
                               <div className="flex items-center space-x-4">
                                 <div className="text-right">
-                                  <div className="text-sm font-medium">
+                                  <div className="text-sm font-medium dark:text-gray-900">
                                     {formatTime(flight.departureTime)} -{" "}
                                     {formatTime(flight.arrivalTime)}
                                   </div>
@@ -371,7 +373,7 @@ const FlightSchedule = ({ flights }) => {
                 <p className="text-sm font-medium text-gray-600">
                   {TEXT.totalFlights}
                 </p>
-                <p className="text-2xl font-bold text-gray-900">
+                <p className="text-2xl font-bold text-gray-900 dark:text-white">
                   {filteredFlights.length}
                 </p>
               </div>
@@ -411,33 +413,41 @@ const FlightSchedule = ({ flights }) => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-600">
-                  {TEXT.loadFactor}
+                  Doanh thu ước tính
                 </p>
-                <p className="text-2xl font-bold text-purple-600">
-                  {filteredFlights.length > 0
+                <p className="text-2xl font-bold text-emerald-600">
+                  {dailyFlights.length > 0
                     ? `${(
-                        (filteredFlights.reduce(
-                          (sum, f) => sum + getBookedSeats(f),
-                          0
-                        ) /
-                          filteredFlights.reduce(
-                            (sum, f) => sum + getTotalSeats(f),
-                            0
-                          )) *
-                        100
-                      ).toFixed(1)}%`
-                    : "0%"}
+                        dailyFlights.reduce((sum, f) => {
+                          // Use flightTravelClasses for accurate revenue calculation
+                          if (f.flightTravelClasses?.length > 0) {
+                            const flightRevenue = f.flightTravelClasses.reduce(
+                              (total, tc) => {
+                                const bookedSeats =
+                                  (tc.capacity || 0) - (tc.availableSeats || 0);
+                                return total + bookedSeats * (tc.price || 0);
+                              },
+                              0
+                            );
+                            return sum + flightRevenue;
+                          }
+
+                          // Fallback for flights without flightTravelClasses
+                          const bookedSeats = getBookedSeats(f);
+                          const avgPrice =
+                            f.basePrice || f.priceNumeric || f.price || 5000000; // Default price
+                          return sum + bookedSeats * avgPrice;
+                        }, 0) / 1000000
+                      ).toFixed(1)}M VNĐ`
+                    : "0M VNĐ"}
                 </p>
                 <p className="text-xs text-gray-500">
-                  {filteredFlights.reduce(
-                    (sum, f) => sum + getBookedSeats(f),
-                    0
-                  )}{" "}
+                  {dailyFlights.reduce((sum, f) => sum + getBookedSeats(f), 0)}{" "}
                   {TEXT.passengers}
                 </p>
               </div>
-              <div className="h-8 w-8 bg-purple-500 rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold text-sm">%</span>
+              <div className="h-8 w-8 bg-emerald-500 rounded-lg flex items-center justify-center">
+                <span className="text-white font-bold text-sm">₫</span>
               </div>
             </div>
           </CardContent>
